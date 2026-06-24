@@ -1,0 +1,42 @@
+---
+description: Guidelines for Lit Components, IndexedDB (idb), and Audio/Video Playback/Recording Practice Web App
+globs: src/**/*.{ts,css,html}
+---
+
+# Lit + IndexedDB + TypeScript Audio/Video Practice Web App Rules
+
+## 1. Tech Stack Overview
+- **Lit**: Component library using Shadow DOM, reactive properties, and `lit-html` templates.
+- **IndexedDB (`idb`)**: Promise-based IndexedDB library for offline data storage (media files, subtitles, recording history).
+- **TypeScript**: Strict-mode typed system for components, helpers, and state controllers.
+
+## 2. Lit Components Best Practices
+- **Encapsulation**: Always use Shadow DOM. Define styles statically in component static `styles` block using the `css` tagged template literal.
+- **Property Decorators**:
+  - Use `@property({ type: Type })` for public inputs.
+  - Use `@state()` for internal reactive states.
+  - Type-hint all decorators explicitly:
+    ```typescript
+    @property({ type: String }) title = '';
+    @state() private _isPlaying = false;
+    ```
+- **Lifecycle Rules**:
+  - Perform initialization that requires DOM access in `firstUpdated()`.
+  - Clean up event listeners, timers, and MediaStreams in `disconnectedCallback()`.
+- **Querying**: Use `@query` and `@queryAll` to get references to elements in Shadow DOM. Avoid raw `document.querySelector`.
+
+## 3. IndexedDB (`idb`) Rules
+- Import from `'idb'`. Initialize database dynamically:
+  ```typescript
+  import { openDB, DBSchema, IDBPDatabase } from 'idb';
+  ```
+- Define database schemas (`DBSchema`) in a central `db.ts` file.
+- Perform updates inside the `upgrade` block. Never hardcode index additions outside migrations.
+- Manage memory for large audio/video blobs. Release memory blobs when components unmount using `URL.revokeObjectURL(url)`.
+
+## 4. Media Playback & Recording Rules
+- **A-B Looping**: Compare `currentTime` with current subtitle segment boundaries. Loop by updating `currentTime = start` when `currentTime >= end`.
+- **MediaRecorder**:
+  - Always clean up stream tracks: `stream.getTracks().forEach(t => t.stop())`.
+  - Export pronunciation recordings as Blobs and save to IndexedDB.
+- **Performance**: Throttle `timeupdate` listeners. Do not trigger expensive calculations on every fractional second change.

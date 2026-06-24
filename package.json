@@ -1,0 +1,64 @@
+{
+  "name": "fluent-any-lang",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Listening and speaking practice web app for any language",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "lit-localize build && tsc && vite build",
+    "preview": "vite preview",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
+    "format": "prettier --write \"src/**/*.{ts,css,html}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,css,html}\"",
+    "localize:extract": "lit-localize extract",
+    "localize:build": "lit-localize build",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{ts,html}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{css,json}": [
+      "prettier --write"
+    ]
+  },
+  "keywords": [
+    "language-learning",
+    "lit",
+    "indexeddb"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@lit/localize": "^0.12.2",
+    "idb": "^8.0.3",
+    "lit": "^3.3.3"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^21.0.2",
+    "@commitlint/config-conventional": "^21.0.2",
+    "@eslint/js": "^10.0.1",
+    "@lit/localize-tools": "^0.8.2",
+    "@types/node": "^26.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.61.1",
+    "@typescript-eslint/parser": "^8.61.1",
+    "eslint": "^10.5.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-lit": "^2.3.1",
+    "globals": "^17.6.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.0.8",
+    "prettier": "^3.8.4",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.16"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "^11.5.2",
+      "onFail": "download"
+    }
+  }
+}
