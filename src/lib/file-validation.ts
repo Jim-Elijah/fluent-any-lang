@@ -91,7 +91,7 @@ export function bufferToHex(buffer: ArrayBuffer) {
   return Array.from(byteArray, (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
-export function hashAny(target: string | File) {
+export async function hashAny(target: string | File) {
   if (typeof target === 'string') {
     return hashString(target);
   }

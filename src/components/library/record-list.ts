@@ -3,11 +3,11 @@ import { css, html, LitElement } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 
 import {
-  listRecordings,
+  findRecordings,
   deleteRecording,
-  listAllRecordings,
+  getRecordingList,
   getRecordingBlob,
-} from '../../db/media-store.js';
+} from '../../db/service.js';
 import { exportRecording } from '../../lib/export-content.js';
 import '../ui/alert.js';
 import '../ui/button.js';
@@ -153,9 +153,9 @@ export class RecordList extends LitElement {
     this._error = '';
     try {
       if (this.mediaId && this.mediaId.length > 0) {
-        this._items = await listRecordings(this.mediaId);
+        this._items = await findRecordings(this.mediaId);
       } else {
-        this._items = (await listAllRecordings()) || [];
+        this._items = (await getRecordingList()) || [];
       }
       // sort newest first
       this._items.sort((a, b) => b.createdAt - a.createdAt);

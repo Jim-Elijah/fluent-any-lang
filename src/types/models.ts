@@ -28,6 +28,7 @@ export type MediaBlob = {
 export type SubtitleTrack = {
   id: string; // 根据filename生成hash，上传时判重
   title: string; // basename
+  // TODO whether or not to add more metadata
   segments: SubtitleSegment[];
 };
 
@@ -75,6 +76,6 @@ export type ImportError = {
 };
 
 export type ImportResult = {
-  imported: MediaItem[];
+  imported: Array<MediaItem | SubtitleTrack>;
   errors: ImportError[];
 };

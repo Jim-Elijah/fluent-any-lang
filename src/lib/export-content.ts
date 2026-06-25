@@ -1,6 +1,6 @@
 import { formatDate } from './playback-utils.js';
 import { DEFAULT_SETTINGS, type PracticeRecord } from '../types/models.js';
-import { getMedia, getRecordingBlob } from '../db/media-store.js';
+import { getMedia, getRecordingBlob } from '../db/service.js';
 
 export function formatRecordingFileName(recording: PracticeRecord, title?: string): string {
   const match = recording.mimeType.match(/\/([^;]+)/);

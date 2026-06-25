@@ -5,13 +5,12 @@ import { customElement, property, state } from 'lit/decorators.js';
 import '../library/record-list.js';
 import { MediaController } from '../../controllers/media-controller.js';
 import { loadPlaylistForPlayback } from '../../lib/media-loader.js';
-import { countRecordings, getMedia, saveRecording } from '../../db/media-store.js';
+import { countRecording, getMedia, saveRecording } from '../../db/service.js';
 import { estimateStorage } from '../../lib/export-content.js';
 import { getMediaDuration } from '../../lib/file-validation.js';
 import type { PracticeMode, PracticeRecord } from '../../types/models.js';
 import { DEFAULT_SETTINGS } from '../../types/models.js';
 import { formatStorageUsage } from '../../lib/playback-utils.js';
-// import { hashAny } from '../../lib/file-validation.js';
 import '../ui/alert.js';
 import '../ui/button.js';
 import './media-player.js';
@@ -250,7 +249,7 @@ export class PracticeView extends LitElement {
   }
 
   render() {
-    console.log('practice-view');
+    console.log('practice-view render');
     // const snapshot = this._controller.getSnapshot();
     // const currentSegment = snapshot.segments[snapshot.currentSegmentIndex];
     const remaining = Math.max(this._recordingLimit - this._recordingCount, 0);
@@ -686,6 +685,7 @@ export class PracticeView extends LitElement {
       };
 
       await saveRecording(record, blob);
+      // fixme 没有刷新录音列表
       await this._refreshRecordings();
       this._recordingSaved = true;
     } catch {
@@ -714,8 +714,7 @@ export class PracticeView extends LitElement {
     }
 
     try {
-      // this._recordings = await listRecordings(this.mediaId);
-      this._recordingCount = await countRecordings(this.mediaId);
+      this._recordingCount = await countRecording(this.mediaId);
       this._storageEstimate = await estimateStorage();
     } catch {
       this._storageEstimate = null;

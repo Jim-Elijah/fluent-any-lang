@@ -1,4 +1,4 @@
-import { getMedia, getMediaBlob, getSubtitle, listMedia } from '../db/media-store.js';
+import { getMedia, getMediaBlob, getSubtitle, getMediaList } from '../db/service.js';
 import type { MediaItem, SubtitleSegment } from '../types/models.js';
 
 export type LoadedMedia = {
@@ -27,7 +27,7 @@ export async function loadMediaForPlayback(id: string): Promise<LoadedMedia | nu
 }
 
 export async function loadPlaylistForPlayback(): Promise<LoadedMedia[]> {
-  const items = await listMedia();
+  const items = await getMediaList();
   const loaded: LoadedMedia[] = [];
 
   for (const item of items) {

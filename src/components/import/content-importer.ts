@@ -3,7 +3,7 @@ import { css, html, LitElement } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 
 import { importContentFiles } from '../../lib/import-content.js';
-import type { ImportError, MediaItem } from '../../types/models.js';
+import type { ImportError, MediaItem, SubtitleTrack } from '../../types/models.js';
 import '../ui/alert.js';
 import '../ui/button.js';
 
@@ -189,7 +189,7 @@ export class ContentImporter extends LitElement {
     }
   }
 
-  private _dispatchImported(items: MediaItem[]): void {
+  private _dispatchImported(items: Array<MediaItem | SubtitleTrack>): void {
     this.dispatchEvent(
       new CustomEvent('content-imported', {
         detail: { items },

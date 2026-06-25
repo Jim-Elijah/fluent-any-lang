@@ -2,7 +2,7 @@ import { msg, str, updateWhenLocaleChanges } from '@lit/localize';
 import { css, html, LitElement } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 
-import { deleteMedia, listMedia } from '../../db/media-store.js';
+import { deleteMedia, getMediaList, deleteSubtitle } from '../../db/service.js';
 import { formatTime, formatDate } from '../../lib/playback-utils.js';
 import type { MediaItem } from '../../types/models.js';
 import '../ui/alert.js';
@@ -139,7 +139,7 @@ export class MediaList extends LitElement {
     this._error = '';
 
     try {
-      this._items = await listMedia();
+      this._items = await getMediaList();
     } catch {
       this._error = msg('无法加载内容库');
       this._items = [];
@@ -149,6 +149,7 @@ export class MediaList extends LitElement {
   }
 
   render() {
+    console.log('media list render');
     return html`
       <section>
         <div class="header">
@@ -221,7 +222,7 @@ export class MediaList extends LitElement {
     this._deletingId = item.id;
 
     try {
-      await deleteMedia(item.id, item.title);
+      await Promise.all([deleteMedia(item.id), deleteSubtitle(item.title)]);
       this._items = this._items.filter((entry) => entry.id !== item.id);
       this.dispatchEvent(
         new CustomEvent('media-deleted', {
