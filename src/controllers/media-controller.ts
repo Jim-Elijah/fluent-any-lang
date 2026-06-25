@@ -40,6 +40,7 @@ export class MediaController extends EventTarget {
   private shuffleOrder: number[] = [];
   private shuffleCursor = 0;
   private timeUpdateFrame: number | null = null;
+  private _segmentEndDispatched: boolean | null = null;
 
   playlist: MediaItem[] = [];
   segments: SubtitleSegment[] = [];
@@ -100,6 +101,7 @@ export class MediaController extends EventTarget {
   }
 
   async loadTrack(index: number, autoPlay = false): Promise<void> {
+    // console.log('loadTrack enter', index, autoPlay);
     if (this.tracks.length === 0) {
       this._clearTrackState();
       this._emitChange();
@@ -150,9 +152,11 @@ export class MediaController extends EventTarget {
       this.duration = this.mediaElement.duration || track.item.duration;
       this.currentTime = 0;
 
-      if (this.currentSegmentIndex >= 0) {
-        this.seekToSegment(this.currentSegmentIndex, false);
-      }
+      // console.log('this.currentSegmentIndex', this.currentSegmentIndex);
+      // delete below to make sure new track always start from
+      // if (this.currentSegmentIndex >= 0) {
+      //   this.seekToSegment(this.currentSegmentIndex, false);
+      // }
 
       if (shouldPlay) {
         await this.play();
@@ -188,7 +192,7 @@ export class MediaController extends EventTarget {
       sleepActive: this.sleepMode !== 'off',
       canPreviousTrack: this.playlist.length > 1,
       canNextTrack: this.playlist.length > 1,
-      canPreviousSegment: this.currentSegmentIndex > 0,
+      canPreviousSegment: this.segments.length > 0 && this.currentSegmentIndex > 0,
       canNextSegment:
         this.segments.length > 0 &&
         this.currentSegmentIndex >= 0 &&
@@ -216,6 +220,7 @@ export class MediaController extends EventTarget {
   }
 
   seek(time: number): void {
+    // console.log('seek', time);
     if (!this.mediaElement) {
       return;
     }
@@ -228,6 +233,7 @@ export class MediaController extends EventTarget {
   }
 
   seekToSegment(index: number, autoPlay = true): void {
+    // console.log('seekToSegment', index, autoPlay);
     const segment = this.segments[index];
     if (!segment) {
       return;
@@ -278,7 +284,6 @@ export class MediaController extends EventTarget {
 
   previousSegment(): void {
     if (this.currentSegmentIndex <= 0) {
-      this.seekToSegment(0);
       return;
     }
     this.seekToSegment(this.currentSegmentIndex - 1);
@@ -334,6 +339,7 @@ export class MediaController extends EventTarget {
   }
 
   setSleepMinutes(minutes: number): void {
+    /** @fixme why max is 90? */
     const clamped = Math.max(0, Math.min(minutes, 90));
     this.sleepMinutes = clamped;
 
@@ -430,9 +436,35 @@ export class MediaController extends EventTarget {
 
     this.currentTime = this.mediaElement.currentTime;
     this.duration = this.mediaElement.duration || this.duration;
+    this._detectSegmentEnd();
     this._applySegmentLoop();
     this._updateCurrentSegment();
     this._emitChange();
+  }
+
+  private _detectSegmentEnd(): void {
+    if (this.currentSegmentIndex < 0 || !this.mediaElement) {
+      return;
+    }
+    const segment = this.segments[this.currentSegmentIndex];
+    if (!segment) {
+      return;
+    }
+
+    if (
+      !this._segmentEndDispatched &&
+      this.mediaElement.currentTime >= segment.endTime - LOOP_EPSILON
+    ) {
+      console.log('dispatch segment-ended');
+      this.dispatchEvent(
+        new CustomEvent('segment-ended', {
+          detail: { segmentIndex: this.currentSegmentIndex, segment },
+        }),
+      );
+      this._segmentEndDispatched = true;
+    } else if (this.mediaElement.currentTime < segment.endTime - LOOP_EPSILON) {
+      this._segmentEndDispatched = false;
+    }
   }
 
   private _applySegmentLoop(): void {

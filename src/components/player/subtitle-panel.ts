@@ -123,14 +123,6 @@ export class SubtitlePanel extends LitElement {
       return null;
     }
 
-    if (!snapshot.subtitlesVisible) {
-      return html`
-        <div class="surface">
-          <div class="hidden-note">${msg('字幕已隐藏')}</div>
-        </div>
-      `;
-    }
-
     if (!snapshot.hasSubtitles) {
       return html`
         <div class="surface">
@@ -139,7 +131,13 @@ export class SubtitlePanel extends LitElement {
       `;
     }
 
-    console.log('subtitle-panel render', snapshot);
+    if (!snapshot.subtitlesVisible) {
+      return html`
+        <div class="surface">
+          <div class="hidden-note">${msg('字幕已隐藏')}</div>
+        </div>
+      `;
+    }
 
     return html`
       <div class="surface">

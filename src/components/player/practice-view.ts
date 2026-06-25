@@ -8,7 +8,7 @@ import { loadPlaylistForPlayback } from '../../lib/media-loader.js';
 import { countRecording, getMedia, saveRecording } from '../../db/service.js';
 import { estimateStorage } from '../../lib/export-content.js';
 import { getMediaDuration } from '../../lib/file-validation.js';
-import type { PracticeMode, PracticeRecord } from '../../types/models.js';
+import type { PracticeMode, PracticeRecord, SubtitleSegment } from '../../types/models.js';
 import { DEFAULT_SETTINGS } from '../../types/models.js';
 import { formatStorageUsage } from '../../lib/playback-utils.js';
 import '../ui/alert.js';
@@ -227,7 +227,7 @@ export class PracticeView extends LitElement {
   }
 
   disconnectedCallback(): void {
-    this._controller.removeEventListener('state-change', this._onStateChange);
+    this._controller.removeEventListener('segment-ended', this._onSegmentEnded);
     this._controller.removeEventListener('state-change', this._onRecordingControllerStateChange);
     this._stopRecording().catch(() => undefined);
     this._clearSegmentRepeatTimer();
@@ -464,7 +464,7 @@ export class PracticeView extends LitElement {
 
       await this._controller.loadTracks(playlist, startIndex);
       await this._refreshRecordings();
-      this._controller.addEventListener('state-change', this._onStateChange);
+      this._controller.addEventListener('segment-ended', this._onSegmentEnded);
     } catch {
       this._error = msg('加载媒体失败，请重试。');
     } finally {
@@ -517,51 +517,35 @@ export class PracticeView extends LitElement {
     }
   }
 
-  private _onStateChange = (event: Event): void => {
+  private _onSegmentEnded = (event: Event): void => {
+    console.log('on segment-ended', event);
     if (this._practiceType !== 'speaking' || this._speakingMode !== 'repeat') {
       return;
     }
 
-    const customEvent = event as CustomEvent;
-    const snapshot = customEvent.detail;
-
-    if (!snapshot || !snapshot.isPlaying) {
-      return;
-    }
-
-    const segment = snapshot.segments[snapshot.currentSegmentIndex];
+    const customEvent = event as CustomEvent<{ segmentIndex: number; segment: SubtitleSegment }>;
+    const detail = customEvent.detail;
+    const segment = detail?.segment;
     if (!segment) {
       return;
     }
 
-    // Detect segment end and trigger pause
-    if (
-      snapshot.currentSegmentIndex !== this._lastSegmentIndex &&
-      snapshot.currentTime >= segment.startTime
-    ) {
-      this._lastSegmentIndex = snapshot.currentSegmentIndex;
-    }
+    this._clearSegmentRepeatTimer();
+    const pauseDuration =
+      this._repeatPauseMode === 'seconds'
+        ? this._repeatPauseSeconds * 1000
+        : (((segment.endTime - segment.startTime) * this._repeatPausePercent) / 100) * 1000;
 
-    if (
-      snapshot.currentSegmentIndex === this._lastSegmentIndex &&
-      snapshot.currentTime >= segment.endTime - 0.1
-    ) {
-      this._clearSegmentRepeatTimer();
-      const pauseDuration =
-        this._repeatPauseMode === 'seconds'
-          ? this._repeatPauseSeconds * 1000
-          : (((segment.endTime - segment.startTime) * this._repeatPausePercent) / 100) * 1000;
+    this._controller.pause();
+    this._recordingError = '';
+    this._recordingSaved = false;
 
-      this._controller.pause();
-      this._recordingError = '';
-      this._recordingSaved = false;
-
-      this._segmentRepeatTimer = setTimeout(() => {
-        if (this._practiceType === 'speaking' && this._speakingMode === 'repeat') {
-          void this._controller.play();
-        }
-      }, pauseDuration);
-    }
+    // @fixme 单据循环时，不会等待
+    this._segmentRepeatTimer = setTimeout(() => {
+      if (this._practiceType === 'speaking' && this._speakingMode === 'repeat') {
+        void this._controller.play();
+      }
+    }, pauseDuration);
   };
 
   private _clearSegmentRepeatTimer(): void {
@@ -714,6 +698,7 @@ export class PracticeView extends LitElement {
     }
 
     try {
+      // this._recordings = await (this.mediaId);
       this._recordingCount = await countRecording(this.mediaId);
       this._storageEstimate = await estimateStorage();
     } catch {

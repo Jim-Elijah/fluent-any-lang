@@ -177,6 +177,22 @@ export class MediaPlayer extends LitElement {
 
   render() {
     const snapshot = this._controllerHost?.snapshot;
+
+    console.log('media player render');
+    // if (snapshot) {
+    //   // const notLogKeys = ['playlist', 'currentItem', 'segments'];
+    //   const logKeys = ['currentTime', 'currentSegmentIndex'];
+    //   const entries = Object.entries(snapshot);
+    //   console.log('currentItem', snapshot.currentItem?.title);
+    //   for (const [key, value] of entries) {
+    //     // if (!notLogKeys.includes(key)) {
+    //     if (logKeys.includes(key)) {
+    //       console.log(`${key}: ${value}`);
+    //     }
+    //   }
+    //   console.log('-'.repeat(50));
+    // }
+
     if (!snapshot?.currentItem) {
       return html`<div class="surface"><div class="controls">${msg('未选择媒体')}</div></div>`;
     }
@@ -195,9 +211,11 @@ export class MediaPlayer extends LitElement {
         <div class="controls">
           <div class="title-row">
             <h3 class="title">${snapshot.currentItem.title}</h3>
-            <ui-button variant="ghost" @click="${this._toggleSubtitles}">
-              ${snapshot.subtitlesVisible ? msg('隐藏字幕') : msg('显示字幕')}
-            </ui-button>
+            ${snapshot.hasSubtitles
+              ? html`<ui-button variant="ghost" @click="${this._toggleSubtitles}">
+                  ${snapshot.subtitlesVisible ? msg('隐藏字幕') : msg('显示字幕')}
+                </ui-button>`
+              : ''}
           </div>
 
           <div class="progress">
@@ -225,7 +243,7 @@ export class MediaPlayer extends LitElement {
             </ui-button>
             <ui-button
               variant="secondary"
-              ?disabled="${!snapshot.hasSubtitles || this.disabled}"
+              ?disabled="${!snapshot.canPreviousSegment || this.disabled}"
               @click="${this._previousSegment}"
             >
               ${msg('上一句')}
@@ -235,7 +253,7 @@ export class MediaPlayer extends LitElement {
             </ui-button>
             <ui-button
               variant="secondary"
-              ?disabled="${!snapshot.hasSubtitles || !snapshot.canNextSegment || this.disabled}"
+              ?disabled="${!snapshot.canNextSegment || this.disabled}"
               @click="${this._nextSegment}"
             >
               ${msg('下一句')}
