@@ -66,7 +66,6 @@ export class MediaController extends EventTarget {
 
     this.detachMediaElement();
     this.mediaElement = element;
-    element.addEventListener('timeupdate', this._handleTimeUpdate);
     element.addEventListener('play', this._handlePlay);
     element.addEventListener('pause', this._handlePause);
     element.addEventListener('ended', this._handleEnded);
@@ -80,7 +79,7 @@ export class MediaController extends EventTarget {
       return;
     }
 
-    this.mediaElement.removeEventListener('timeupdate', this._handleTimeUpdate);
+    this._stopRafLoop();
     this.mediaElement.removeEventListener('play', this._handlePlay);
     this.mediaElement.removeEventListener('pause', this._handlePause);
     this.mediaElement.removeEventListener('ended', this._handleEnded);
@@ -368,24 +367,34 @@ export class MediaController extends EventTarget {
     this.segments = [];
   }
 
-  private _handleTimeUpdate = (): void => {
+  private _rafLoop = (): void => {
+    this._syncFromMedia();
+    this.timeUpdateFrame = requestAnimationFrame(this._rafLoop);
+  };
+
+  private _startRafLoop(): void {
     if (this.timeUpdateFrame !== null) {
       return;
     }
+    this.timeUpdateFrame = requestAnimationFrame(this._rafLoop);
+  }
 
-    this.timeUpdateFrame = requestAnimationFrame(() => {
+  private _stopRafLoop(): void {
+    if (this.timeUpdateFrame !== null) {
+      cancelAnimationFrame(this.timeUpdateFrame);
       this.timeUpdateFrame = null;
-      this._syncFromMedia();
-    });
-  };
+    }
+  }
 
   private _handlePlay = (): void => {
     this.isPlaying = true;
+    this._startRafLoop();
     this._emitChange();
   };
 
   private _handlePause = (): void => {
     this.isPlaying = false;
+    this._stopRafLoop();
     this._emitChange();
   };
 

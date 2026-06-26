@@ -47,22 +47,49 @@ export function formatTime(seconds: number): string {
 }
 
 export function findSegmentIndex(segments: SubtitleSegment[], time: number): number {
-  if (segments.length === 0) {
+  const len = segments.length;
+  if (len === 0) {
     return -1;
   }
 
-  for (let index = 0; index < segments.length; index++) {
-    const segment = segments[index];
-    const isLast = index === segments.length - 1;
-    const inRange =
-      time >= segment.startTime && (time < segment.endTime || (isLast && time <= segment.endTime));
+  // Binary search: find the rightmost segment whose startTime <= time
+  let low = 0;
+  let high = len - 1;
+  let candidate = -1;
 
-    if (inRange) {
-      return index;
+  while (low <= high) {
+    const mid = (low + high) >>> 1;
+    if (segments[mid].startTime <= time) {
+      candidate = mid;
+      low = mid + 1;
+    } else {
+      high = mid - 1;
     }
   }
 
-  return -1;
+  // time is before the first segment
+  if (candidate < 0) {
+    return -1;
+  }
+
+  const seg = segments[candidate];
+  const isLast = candidate === len - 1;
+
+  // Within the segment's time range
+  // 采用左闭右开  [startTime, endTime)
+  // 当time=endTime时，归于下个segment，这适用于中间的segment
+  // 但最后一个segment, time=endTime时归于本segment
+  if (time < seg.endTime || (isLast && time <= seg.endTime)) {
+    return candidate;
+  }
+
+  // After all subtitles have ended
+  if (isLast) {
+    return -1;
+  }
+
+  // In a gap between segments — keep previous segment active to avoid flicker
+  return candidate;
 }
 
 export function shuffleIndices(length: number): number[] {
