@@ -213,7 +213,6 @@ export class PracticeView extends LitElement {
   private _recordingStream: MediaStream | null = null;
   private _recordingChunks: Blob[] = [];
   private _segmentRepeatTimer: ReturnType<typeof setTimeout> | null = null;
-  private _lastSegmentIndex = -1;
   private readonly _recordingLimit = DEFAULT_SETTINGS.maxRecordingsPerMedia;
   private readonly _recordingSupported =
     typeof window !== 'undefined' &&
