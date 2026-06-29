@@ -3,15 +3,70 @@ import { css, html, LitElement } from 'lit';
 import { customElement, property, query, state } from 'lit/decorators.js';
 
 import { MediaControllerHost } from '../../controllers/media-controller-host.js';
-import type { MediaController } from '../../controllers/media-controller.js';
-import { formatTime, MAX_SLEEP_MINUTES, PLAYBACK_RATES } from '../../lib/playback-utils.js';
+import type {
+  MediaController,
+  MediaControllerSnapshot,
+} from '../../controllers/media-controller.js';
+import {
+  formatTime,
+  FORWARDED_MEDIA_EVENTS,
+  MAX_SLEEP_MINUTES,
+  PLAYBACK_RATES,
+} from '../../lib/playback-utils.js';
 import '../ui/button.js';
+import { MediaControlsConfig, MediaPlayerMode } from '../../types/index.js';
+
+// @TODO apply default config
+const defaultControlConfig: MediaControlsConfig = {
+  loopMode: true,
+  sleepMode: true,
+  playPause: true,
+  volume: true,
+  playbackRate: true,
+  progress: true,
+  previousNextTrack: true,
+  previousNextSegment: false,
+};
 
 @customElement('media-player')
 export class MediaPlayer extends LitElement {
   static styles = css`
     :host {
       display: block;
+    }
+    /* Normal 模式 (默认) */
+    :host([mode='normal']) .surface {
+      display: block;
+      /* 现有样式 */
+    }
+
+    /* Fixed 模式 - 固定在底部 */
+    :host([mode='fixed']) {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 1000;
+      box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+      transition: transform 0.3s ease;
+    }
+
+    :host([mode='fixed'][collapsed]) {
+      transform: translateY(calc(100% - 48px));
+      /* 只露出一小部分，比如进度条或切换钮 */
+    }
+
+    /* Mini 模式 - 悬浮小球 */
+    :host([mode='mini']) .surface {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: var(--shadow-md);
     }
 
     .surface {
@@ -131,6 +186,15 @@ export class MediaPlayer extends LitElement {
     }
   `;
 
+  @property({ type: String, reflect: true })
+  mode: MediaPlayerMode = 'normal';
+
+  // @state()
+  // private _isCollapsed = true; // 仅 fixed
+
+  @property({ type: Object })
+  controlsConfig: MediaControlsConfig = defaultControlConfig;
+
   @property({ type: Boolean })
   disabled = false;
 
@@ -151,6 +215,7 @@ export class MediaPlayer extends LitElement {
   constructor() {
     super();
     updateWhenLocaleChanges(this);
+    // this.controlsConfig = Object.assign(this.controlsConfig, defaultControlConfig);
   }
 
   disconnectedCallback(): void {
@@ -158,14 +223,53 @@ export class MediaPlayer extends LitElement {
     super.disconnectedCallback();
   }
 
+  // protected willUpdate(changed: Map<PropertyKey, unknown>): void {
+  //   if (changed.has('controller') && this.controller !== this._boundController) {
+  //     this._boundController = this.controller;
+  //     if (this.controller && !this._controllerHost) {
+  //       this._controllerHost = new MediaControllerHost(this, this.controller);
+  //     }
+  //   }
+  // }
+
+  // added by agy
   protected willUpdate(changed: Map<PropertyKey, unknown>): void {
     if (changed.has('controller') && this.controller !== this._boundController) {
+      if (this._boundController) {
+        this._unbindControllerEvents(this._boundController);
+      }
       this._boundController = this.controller;
-      if (this.controller && !this._controllerHost) {
-        this._controllerHost = new MediaControllerHost(this, this.controller);
+      if (this.controller) {
+        this._bindControllerEvents(this.controller);
+        if (!this._controllerHost) {
+          this._controllerHost = new MediaControllerHost(this, this.controller);
+        }
       }
     }
   }
+
+  private _bindControllerEvents(ctrl: MediaController) {
+    for (const evtName of FORWARDED_MEDIA_EVENTS) {
+      ctrl.addEventListener(evtName, this._forwardEvent);
+    }
+  }
+
+  private _unbindControllerEvents(ctrl: MediaController) {
+    for (const evtName of FORWARDED_MEDIA_EVENTS) {
+      ctrl.addEventListener(evtName, this._forwardEvent);
+    }
+  }
+
+  private _forwardEvent = (e: Event) => {
+    // 向上层（Shadow DOM 之外）抛出
+    this.dispatchEvent(
+      new CustomEvent(e.type, {
+        detail: (e as CustomEvent).detail,
+        bubbles: true,
+        composed: true,
+      }),
+    );
+  };
 
   protected firstUpdated(): void {
     this._attachMediaElement();
@@ -200,6 +304,16 @@ export class MediaPlayer extends LitElement {
     const isVideo = snapshot.currentItem.type === 'video';
     const progressMax = snapshot.duration > 0 ? snapshot.duration : 0;
 
+    if (this.mode === 'mini') {
+      return this._renderMini(snapshot);
+    }
+    if (this.mode === 'fixed') {
+      return this._renderFixed(snapshot);
+    }
+
+    const showSegments = this.controlsConfig.previousNextSegment && snapshot.hasSubtitles;
+    const showLoopMode = this.controlsConfig.loopMode;
+
     return html`
       <div class="surface">
         <div class="media-wrap">
@@ -211,11 +325,6 @@ export class MediaPlayer extends LitElement {
         <div class="controls">
           <div class="title-row">
             <h3 class="title">${snapshot.currentItem.title}</h3>
-            ${snapshot.hasSubtitles
-              ? html`<ui-button variant="ghost" @click="${this._toggleSubtitles}">
-                  ${snapshot.subtitlesVisible ? msg('隐藏字幕') : msg('显示字幕')}
-                </ui-button>`
-              : ''}
           </div>
 
           <div class="progress">
@@ -234,83 +343,103 @@ export class MediaPlayer extends LitElement {
           </div>
 
           <div class="transport">
-            <ui-button
-              variant="secondary"
-              ?disabled="${!snapshot.canPreviousTrack || this.disabled}"
-              @click="${this._previousTrack}"
-            >
-              ${msg('上一首')}
-            </ui-button>
-            <ui-button
-              variant="secondary"
-              ?disabled="${!snapshot.canPreviousSegment || this.disabled}"
-              @click="${this._previousSegment}"
-            >
-              ${msg('上一句')}
-            </ui-button>
-            <ui-button variant="primary" @click="${this._togglePlay}">
-              ${snapshot.isPlaying ? msg('暂停') : msg('播放')}
-            </ui-button>
-            <ui-button
-              variant="secondary"
-              ?disabled="${!snapshot.canNextSegment || this.disabled}"
-              @click="${this._nextSegment}"
-            >
-              ${msg('下一句')}
-            </ui-button>
-            <ui-button
-              variant="secondary"
-              ?disabled="${!snapshot.canNextTrack || this.disabled}"
-              @click="${this._nextTrack}"
-            >
-              ${msg('下一首')}
-            </ui-button>
+            ${this.controlsConfig.previousNextTrack
+              ? html` <ui-button
+                  variant="secondary"
+                  ?disabled="${!snapshot.canPreviousTrack || this.disabled}"
+                  @click="${this._previousTrack}"
+                >
+                  ${msg('上一首')}
+                </ui-button>`
+              : ''}
+            ${showSegments && snapshot.hasSubtitles
+              ? html` <ui-button
+                  variant="secondary"
+                  ?disabled="${!snapshot.canPreviousSegment || this.disabled}"
+                  @click="${this._previousSegment}"
+                >
+                  ${msg('上一句')}
+                </ui-button>`
+              : ''}
+            ${this.controlsConfig.playPause
+              ? html` <ui-button variant="primary" @click="${this._togglePlay}">
+                  ${snapshot.isPlaying ? msg('暂停') : msg('播放')}
+                </ui-button>`
+              : ''}
+            ${showSegments && snapshot.hasSubtitles
+              ? html`<ui-button
+                  variant="secondary"
+                  ?disabled="${!snapshot.canNextSegment || this.disabled}"
+                  @click="${this._nextSegment}"
+                >
+                  ${msg('下一句')}
+                </ui-button>`
+              : ''}
+            ${this.controlsConfig.previousNextTrack
+              ? html`<ui-button
+                  variant="secondary"
+                  ?disabled="${!snapshot.canNextTrack || this.disabled}"
+                  @click="${this._nextTrack}"
+                >
+                  ${msg('下一首')}
+                </ui-button>`
+              : ''}
           </div>
 
           <div class="settings">
-            <label>
-              ${msg('循环模式')}
-              <select .value="${snapshot.loopMode}" @change="${this._handleLoopModeChange}">
-                <option value="none">${msg('不循环')}</option>
-                <option value="single">${msg('单曲循环')}</option>
-                <option value="segment" ?disabled="${!snapshot.hasSubtitles}">
-                  ${msg('单句循环')}
-                </option>
-                <option value="list">${msg('列表循环')}</option>
-                <option value="shuffle">${msg('随机播放')}</option>
-              </select>
-            </label>
-
-            <label>
-              ${msg('倍速')}
-              <select .value="${String(snapshot.playbackRate)}" @change="${this._handleRateChange}">
-                ${PLAYBACK_RATES.map((rate) => html` <option value="${rate}">${rate}x</option> `)}
-              </select>
-            </label>
-
-            <label class="volume">
-              ${msg('音量')}
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.01"
-                .value="${String(snapshot.volume)}"
-                @input="${this._handleVolumeChange}"
-              />
-            </label>
+            ${showLoopMode
+              ? html`<label>
+                  ${msg('循环模式')}
+                  <select .value="${snapshot.loopMode}" @change="${this._handleLoopModeChange}">
+                    <option value="none">${msg('不循环')}</option>
+                    <option value="single">${msg('单曲循环')}</option>
+                    <option value="segment" ?disabled="${!snapshot.hasSubtitles}">
+                      ${msg('单句循环')}
+                    </option>
+                    <option value="list">${msg('列表循环')}</option>
+                    <option value="shuffle">${msg('随机播放')}</option>
+                  </select>
+                </label>`
+              : ''}
+            ${this.controlsConfig.playbackRate
+              ? html`<label>
+                  ${msg('倍速')}
+                  <select
+                    .value="${String(snapshot.playbackRate)}"
+                    @change="${this._handleRateChange}"
+                  >
+                    ${PLAYBACK_RATES.map(
+                      (rate) => html` <option value="${rate}">${rate}x</option> `,
+                    )}
+                  </select>
+                </label>`
+              : ''}
+            ${this.controlsConfig.volume
+              ? html`<label class="volume">
+                  ${msg('音量')}
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    .value="${String(snapshot.volume)}"
+                    @input="${this._handleVolumeChange}"
+                  />
+                </label>`
+              : ''}
           </div>
 
           <div class="sleep-row">
-            <label>
-              ${msg('睡眠模式')}
-              <select .value="${snapshot.sleepMode}" @change="${this._handleSleepModeChange}">
-                <option value="off">${msg('关闭')}</option>
-                <option value="minutes">${msg('定时暂停')}</option>
-                <option value="until-end">${msg('播完本集暂停')}</option>
-              </select>
-            </label>
-
+            ${this.controlsConfig.sleepMode
+              ? html`<label>
+                  ${msg('睡眠模式')}
+                  <select .value="${snapshot.sleepMode}" @change="${this._handleSleepModeChange}">
+                    <option value="off">${msg('关闭')}</option>
+                    <option value="minutes">${msg('定时暂停')}</option>
+                    <option value="until-end">${msg('播完本集暂停')}</option>
+                  </select>
+                </label>`
+              : ''}
             ${snapshot.sleepMode === 'minutes'
               ? html`
                   <label>
@@ -344,6 +473,24 @@ export class MediaPlayer extends LitElement {
               `
             : null}
         </div>
+      </div>
+    `;
+  }
+
+  /** @TODO */
+  private _renderFixed(snapshot: MediaControllerSnapshot) {
+    console.log('_renderFixed', snapshot);
+    return html` <div class="surface fixed-player">fixed</div> `;
+  }
+
+  /** @TODO */
+  private _renderMini(snapshot: MediaControllerSnapshot) {
+    console.log('_renderMini', snapshot);
+    // <div class="mini-avatar" style="background-image: url(${snapshot.currentItem?.cover || ''})">
+    return html`
+      <div class="surface mini-player" @click="${this._togglePlay}">
+        <!-- 极简圆形，显示播放状态、进度环或封面图 -->
+        <div class="mini-avatar">${snapshot.isPlaying ? '⏸️' : '▶️'}</div>
       </div>
     `;
   }
@@ -386,13 +533,13 @@ export class MediaPlayer extends LitElement {
     this.controller?.nextSegment();
   }
 
-  private _toggleSubtitles(): void {
-    const snapshot = this._controllerHost?.snapshot;
-    if (!snapshot) {
-      return;
-    }
-    this.controller?.setSubtitlesVisible(!snapshot.subtitlesVisible);
-  }
+  // private _toggleSubtitles(): void {
+  //   const snapshot = this._controllerHost?.snapshot;
+  //   if (!snapshot) {
+  //     return;
+  //   }
+  //   this.controller?.setSubtitlesVisible(!snapshot.subtitlesVisible);
+  // }
 
   private _handleSeekInput(event: Event): void {
     const input = event.target as HTMLInputElement;

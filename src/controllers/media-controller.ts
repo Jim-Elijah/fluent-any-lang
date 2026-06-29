@@ -1,4 +1,4 @@
-import { findSegmentIndex, shuffleIndices } from '../lib/playback-utils.js';
+import { findSegmentIndex, FORWARDED_MEDIA_EVENTS, shuffleIndices } from '../lib/playback-utils.js';
 import type { LoopMode, MediaItem, SleepMode, SubtitleSegment } from '../types/models.js';
 
 export type MediaControllerSnapshot = {
@@ -70,6 +70,12 @@ export class MediaController extends EventTarget {
     element.addEventListener('pause', this._handlePause);
     element.addEventListener('ended', this._handleEnded);
     element.addEventListener('loadedmetadata', this._handleLoadedMetadata);
+
+    // 转发原生 media 事件
+    for (const evtName of FORWARDED_MEDIA_EVENTS) {
+      element.addEventListener(evtName, this._handleNativeEvent);
+    }
+
     element.playbackRate = this.playbackRate;
     element.volume = this.volume;
   }
@@ -84,8 +90,23 @@ export class MediaController extends EventTarget {
     this.mediaElement.removeEventListener('pause', this._handlePause);
     this.mediaElement.removeEventListener('ended', this._handleEnded);
     this.mediaElement.removeEventListener('loadedmetadata', this._handleLoadedMetadata);
+
+    // 移除原生事件转发
+    for (const evtName of FORWARDED_MEDIA_EVENTS) {
+      this.mediaElement.removeEventListener(evtName, this._handleNativeEvent);
+    }
+
     this.mediaElement = null;
   }
+
+  private _handleNativeEvent = (event: Event): void => {
+    // 转发原生事件，携带原始 event 作为 detail
+    this.dispatchEvent(
+      new CustomEvent(event.type, {
+        detail: { originalEvent: event },
+      }),
+    );
+  };
 
   async loadTracks(tracks: LoadedTrack[], startIndex = 0): Promise<void> {
     this.tracks = tracks;
@@ -464,10 +485,13 @@ export class MediaController extends EventTarget {
       !this._segmentEndDispatched &&
       this.mediaElement.currentTime >= segment.endTime - LOOP_EPSILON
     ) {
-      console.log('dispatch segment-ended');
       this.dispatchEvent(
-        new CustomEvent('segment-ended', {
+        new CustomEvent('segment-end', {
           detail: { segmentIndex: this.currentSegmentIndex, segment },
+          // bubbles: false,
+          // composed: false,
+          bubbles: true,
+          composed: true,
         }),
       );
       this._segmentEndDispatched = true;
@@ -495,7 +519,22 @@ export class MediaController extends EventTarget {
   private _updateCurrentSegment(): void {
     const nextIndex = findSegmentIndex(this.segments, this.currentTime);
     if (nextIndex !== this.currentSegmentIndex) {
+      const previousIndex = this.currentSegmentIndex;
       this.currentSegmentIndex = nextIndex;
+      this.dispatchEvent(
+        new CustomEvent('segment-change', {
+          detail: {
+            currentIndex: nextIndex,
+            currentSegment: this.segments[nextIndex] ?? null,
+            previousIndex,
+            previousSegment: this.segments[previousIndex] ?? null,
+          },
+          // bubbles: false,
+          // composed: false,
+          bubbles: true,
+          composed: true,
+        }),
+      );
     }
   }
 

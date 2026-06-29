@@ -226,7 +226,7 @@ export class PracticeView extends LitElement {
   }
 
   disconnectedCallback(): void {
-    this._controller.removeEventListener('segment-ended', this._onSegmentEnded);
+    this._controller.removeEventListener('segment-end', this._onSegmentEnded);
     this._controller.removeEventListener('state-change', this._onRecordingControllerStateChange);
     this._stopRecording().catch(() => undefined);
     this._clearSegmentRepeatTimer();
@@ -437,7 +437,24 @@ export class PracticeView extends LitElement {
           : null}
 
         <div class="layout">
-          <media-player .controller="${this._controller}" ?disabled="${isSpeaking}"></media-player>
+          <media-player
+            .controller="${this._controller}"
+            ?disabled="${isSpeaking}"
+            mode=""
+            .controlsConfig="${{
+              loopMode: true,
+              sleepMode: true,
+              playPause: true,
+              volume: true,
+              playbackRate: true,
+              progress: true,
+              previousNextTrack: true,
+              previousNextSegment: true,
+            }}"
+            @segment-change="${(e: CustomEvent) => console.log('当前播放句改变:', e.detail)}"
+            @segment-end="${(e: CustomEvent) => console.log('句子播放结束:', e.detail)}"
+          >
+          </media-player>
           <subtitle-panel .controller="${this._controller}"></subtitle-panel>
         </div>
       </section>
@@ -463,7 +480,7 @@ export class PracticeView extends LitElement {
 
       await this._controller.loadTracks(playlist, startIndex);
       await this._refreshRecordings();
-      this._controller.addEventListener('segment-ended', this._onSegmentEnded);
+      this._controller.addEventListener('segment-end', this._onSegmentEnded);
     } catch {
       this._error = msg('加载媒体失败，请重试。');
     } finally {
@@ -517,7 +534,7 @@ export class PracticeView extends LitElement {
   }
 
   private _onSegmentEnded = (event: Event): void => {
-    console.log('on segment-ended', event);
+    console.log('on segment-end', event);
     if (this._practiceType !== 'speaking' || this._speakingMode !== 'repeat') {
       return;
     }

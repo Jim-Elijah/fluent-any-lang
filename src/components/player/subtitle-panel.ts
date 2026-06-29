@@ -27,6 +27,21 @@ export class SubtitlePanel extends LitElement {
       font-size: 0.9375rem;
       font-weight: 600;
     }
+    .title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .title {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 600;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
 
     .list {
       max-height: 360px;
@@ -116,6 +131,14 @@ export class SubtitlePanel extends LitElement {
     }
   }
 
+  private _toggleSubtitles(): void {
+    const snapshot = this._controllerHost?.snapshot;
+    if (!snapshot) {
+      return;
+    }
+    this.controller?.setSubtitlesVisible(!snapshot.subtitlesVisible);
+  }
+
   render() {
     const snapshot = this._controllerHost?.snapshot;
 
@@ -131,31 +154,32 @@ export class SubtitlePanel extends LitElement {
       `;
     }
 
-    if (!snapshot.subtitlesVisible) {
-      return html`
-        <div class="surface">
-          <div class="hidden-note">${msg('字幕已隐藏')}</div>
-        </div>
-      `;
-    }
-
     return html`
       <div class="surface">
-        <div class="header">${msg('字幕')}</div>
-        <ul class="list">
-          ${snapshot.segments.map(
-            (segment, index) => html`
-              <li
-                class="segment ${index === snapshot.currentSegmentIndex ? 'active' : ''}"
-                data-segment-index="${index}"
-                @click="${() => this._handleSegmentClick(index)}"
-              >
-                <span class="time">${formatTime(segment.startTime)}</span>
-                <p class="text">${segment.text}</p>
-              </li>
-            `,
-          )}
-        </ul>
+        <div class="header title-row">
+          <h3 class="title">${msg('字幕')}</h3>
+          ${snapshot.hasSubtitles
+            ? html`<ui-button variant="ghost" @click="${this._toggleSubtitles}">
+                ${snapshot.subtitlesVisible ? msg('隐藏字幕') : msg('显示字幕')}
+              </ui-button>`
+            : ''}
+        </div>
+        ${!snapshot.subtitlesVisible
+          ? html`<div class="hidden-note">${msg('字幕已隐藏')}</div>`
+          : html`<ul class="list">
+              ${snapshot.segments.map(
+                (segment, index) => html`
+                  <li
+                    class="segment ${index === snapshot.currentSegmentIndex ? 'active' : ''}"
+                    data-segment-index="${index}"
+                    @click="${() => this._handleSegmentClick(index)}"
+                  >
+                    <span class="time">${formatTime(segment.startTime)}</span>
+                    <p class="text">${segment.text}</p>
+                  </li>
+                `,
+              )}
+            </ul>`}
       </div>
     `;
   }

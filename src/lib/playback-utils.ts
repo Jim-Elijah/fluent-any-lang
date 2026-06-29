@@ -4,6 +4,56 @@ export const PLAYBACK_RATES = [0.5, 0.75, 1, 1.25, 1.5, 2] as const;
 
 export const MAX_SLEEP_MINUTES = 90;
 
+/**
+ * 从 HTMLMediaElement 转发给外部监听者的原生事件列表。
+ * MediaController 会将这些事件重新包装为 CustomEvent 并向上 dispatch。
+ */
+export const FORWARDED_MEDIA_EVENTS = [
+  'play',
+  'pause',
+  'ended',
+  'timeupdate',
+  'volumechange',
+  'ratechange',
+  'seeking',
+  'seeked',
+  'waiting',
+  'playing',
+  'error',
+  'loadedmetadata',
+  'canplay',
+  'canplaythrough',
+] as const;
+
+/**
+ * 从 HTMLMediaElement 转发给外部监听者的原生事件列表。
+ */
+export const MEDIA_EVENTS = [
+  'loadstart', // 客户端开始请求数据
+  'progress', // 客户端正在请求/加载媒体数据
+  'suspend', // 媒体数据加载被挂起/暂停
+  'abort', // 客户端主动终止下载（非错误引起）
+  'error', // 在获取媒体数据过程中发生错误
+  'emptied', // 媒体变为空（例如，已加载但调用了 .load() 重新加载）
+  'stalled', // 尝试获取媒体数据，但数据意外不可用
+  'loadedmetadata', // 媒体的元数据（时长、尺寸等）已加载完成
+  'loadeddata', // 媒体的第一帧已加载完成
+  'canplay', // 浏览器可以开始播放媒体，但估计不足以无缓冲播放完毕
+  'canplaythrough', // 浏览器估计可以顺利播放到底，无需再次缓冲停顿
+  'playing', // 播放已开始（在暂停或因缺乏数据延迟后准备就绪）
+  'waiting', // 播放由于暂时缺乏数据而停止/等待
+  'play', // 播放已开始（调用了 play() 方法或设置了 autoplay）
+  'pause', // 播放已暂停
+  'seeking', // 正在进行定位/跳转操作（开始）
+  'seeked', // 定位/跳转操作已完成
+  'timeupdate', // currentTime 属性指示的时间已更新
+  'ended', // 播放到达媒体结束位置，停止播放
+  'ratechange', // 播放速率发生改变
+  'durationchange', // duration 属性（媒体总时长）被更新
+  'volumechange', // 音量发生改变（静音设置也触发此事件）
+  'encrypted', // 加密媒体初始化（通常用于受版权保护的内容，如DRM）
+];
+
 export function formatStorageUsage(usage: number): string {
   return (usage / 1024 / 1024).toFixed(1) + ' MB';
 }

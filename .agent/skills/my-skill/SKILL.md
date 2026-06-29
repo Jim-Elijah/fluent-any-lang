@@ -1,4 +1,9 @@
-# Cursor Rules for Lit + IndexedDB + TypeScript Audio/Video Practice Web App
+---
+name: my-skill
+description: Guidelines for Lit Components, IndexedDB (idb), and Audio/Video Playback/Recording Practice Web App
+---
+
+# my-skill
 
 # Project Context
 This is an online audio/video listening and speaking practice web platform.
@@ -7,7 +12,6 @@ This is an online audio/video listening and speaking practice web platform.
 - **Language**: TypeScript (Strict Mode)
 - **Key Features**: Content import (video/audio + subtitles/SRT), pronunciation recording and export, interactive audio/video playback (segment repeating, speed control, play/pause syncing with subtitles), speaking practice with microphone recording.
 
----
 
 ## 1. Lit & Web Components Guidelines
 
