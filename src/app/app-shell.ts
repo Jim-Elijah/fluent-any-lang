@@ -11,7 +11,7 @@ import type { MediaList } from '../components/library/media-list.js';
 
 type AppView = 'library' | 'practice';
 
-@customElement('app-shell')
+@customElement('app-shell-original')
 export class AppShell extends LitElement {
   static styles = css`
     :host {
@@ -118,6 +118,6 @@ export class AppShell extends LitElement {
 
 declare global {
   interface HTMLElementTagNameMap {
-    'app-shell': AppShell;
+    'app-shell-original': AppShell;
   }
 }

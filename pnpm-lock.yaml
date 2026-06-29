@@ -216,6 +216,9 @@ importers:
       lit:
         specifier: ^3.3.3
         version: 3.3.3
+      lit-element-router:
+        specifier: ^2.0.3
+        version: 2.0.3
     devDependencies:
       '@commitlint/cli':
         specifier: ^21.0.2
@@ -1140,6 +1143,9 @@ packages:
   listr2@10.2.2:
     resolution: {integrity: sha512-JtNtbZj8q5BnDMR7trpwvwk3RIrANtIVzEUm8w7amp6xelLgyuq+4WZoTH913XaQAoH/cNdYhaNzBPA2U3xbDw==}
     engines: {node: '>=22.13.0'}
+
+  lit-element-router@2.0.3:
+    resolution: {integrity: sha512-ASaFeB5E4hsd2LYH3keY3ImuaW1+Dc3BcjauTRZhVcYmEIYDkIs/ci7Vfv/SroHhbyQ5nF/nPFBcOFipYsGwXg==}
 
   lit-element@4.2.2:
     resolution: {integrity: sha512-aFKhNToWxoyhkNDmWZwEva2SlQia+jfG0fjIWV//YeTaWrVnOxD89dPKfigCUspXFmjzOEUQpOkejH5Ly6sG0w==}
@@ -2319,6 +2325,8 @@ snapshots:
       log-update: 6.1.0
       rfdc: 1.4.1
       wrap-ansi: 10.0.0
+
+  lit-element-router@2.0.3: {}
 
   lit-element@4.2.2:
     dependencies:
