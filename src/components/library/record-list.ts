@@ -11,7 +11,9 @@ import {
 import { exportRecording } from '../../lib/export-content.js';
 import '../ui/alert.js';
 import '../ui/button.js';
-import type { PracticeRecord } from '../../types/models.js';
+import '../ui/modal.js';
+import '../ui/popconfirm.js';
+import type { PracticeRecord, SortDirection } from '../../types/models.js';
 import { formatDate, formatTime } from '../../lib/playback-utils.js';
 
 @customElement('record-list')
@@ -115,6 +117,15 @@ export class RecordList extends LitElement {
   `;
 
   @property({ type: String })
+  keyword?: string;
+
+  @property({ type: String })
+  sortBy?: string = 'date';
+
+  @property({ type: String })
+  sortDirection?: SortDirection = 'desc';
+
+  @property({ type: String })
   mediaId?: string;
 
   @property({ type: Boolean })
@@ -131,6 +142,15 @@ export class RecordList extends LitElement {
 
   @state()
   private _deletingId = '';
+
+  @state()
+  private _deleteConfirmId = '';
+
+  @state()
+  private _modalOpen = false;
+
+  @state()
+  private _modalAudioUrl = '';
 
   constructor() {
     super();
@@ -152,10 +172,13 @@ export class RecordList extends LitElement {
     this._loading = true;
     this._error = '';
     try {
+      console.log('refresh', this.mediaId);
       if (this.mediaId && this.mediaId.length > 0) {
         this._items = await findRecordings(this.mediaId);
+        console.log('findRecordings', this.mediaId, this._items);
       } else {
         this._items = (await getRecordingList()) || [];
+        console.log('getRecordingList', this._items);
       }
       // sort newest first
       this._items.sort((a, b) => b.createdAt - a.createdAt);
@@ -170,21 +193,43 @@ export class RecordList extends LitElement {
   render() {
     console.log('record-list render', this._items);
 
+    let renderedItems = this._items;
+    if (this.keyword) {
+      renderedItems = renderedItems.filter((item: PracticeRecord) =>
+        item.mediaTitle.toLowerCase().includes(this.keyword!.toLowerCase()),
+      );
+    }
+    if (this.sortBy && this.sortDirection) {
+      renderedItems = renderedItems.sort((a: PracticeRecord, b: PracticeRecord) => {
+        if (this.sortBy === 'date') {
+          return this.sortDirection === 'asc'
+            ? a.createdAt - b.createdAt
+            : b.createdAt - a.createdAt;
+        }
+        if (this.sortBy === 'title') {
+          return this.sortDirection === 'asc'
+            ? a.mediaTitle.localeCompare(b.mediaTitle)
+            : b.mediaTitle.localeCompare(a.mediaTitle);
+        }
+        return 0;
+      });
+    }
+
     return html`
       <section>
         ${this.showHeader
           ? html`<div class="header">
               <h2>${msg('录音库')}</h2>
-              <span class="count">${this._items.length} ${msg('项')}</span>
+              <span class="count">${renderedItems.length} ${msg('项')}</span>
             </div>`
           : null}
         ${this._error ? html`<ui-alert variant="error">${this._error}</ui-alert>` : null}
         ${this._loading
           ? html`<div class="empty">${msg('加载中…')}</div>`
-          : this._items.length === 0
+          : renderedItems.length === 0
             ? html`<div class="empty">${msg('暂无录音')}</div>`
             : html`<div class="list">
-                ${this._items.map(
+                ${renderedItems.map(
                   (item) => html`
                 <div class="item">
                   <div class="meta">
@@ -197,15 +242,46 @@ export class RecordList extends LitElement {
                   <div class="actions">
                     <ui-button variant="primary" @click="${() => this._handleView(item)}">${msg('查看')}</ui-button>
                     <ui-button variant="secondary" @click="${() => this._handleExport(item)}">${msg('导出')}</ui-button>
-                    <ui-button variant="danger" ?disabled="${this._deletingId === item.id}" @click="${() => this._handleDelete(item)}">${msg('删除')}</ui-button>
+                    <ui-popconfirm
+                      title=${msg('确定删除该录音吗？')}
+                      ?open=${this._deleteConfirmId === item.id}
+                      placement="bottom"
+                      ?confirm-loading=${this._deletingId === item.id}
+                      @update:open=${(e: CustomEvent<{ open: boolean }>) =>
+                        this._handleDeleteConfirmOpen(item.id, e)}
+                      @confirm=${() => this._handleDelete(item)}
+                    >
+                      <ui-button variant="danger" ?disabled="${this._deletingId === item.id}">${msg('删除')}</ui-button>
+                    </ui-popconfirm>
                   </div>
                 </div>
                </div>
               `,
                 )}
               </div>`}
+        <ui-modal
+          title="录音预览"
+          @close="${() => this._handleModalClose()}"
+          ?open=${this._modalOpen}
+          width="400px"
+          centered
+          ?mask=${true}
+          ?mask-closable=${true}
+          ?keyboard=${true}
+          ?closable=${true}
+          .footer=${false}
+          ?destroy-on-close=${true}
+          zIndex="1000"
+        >
+          <audio controls src="${this._modalAudioUrl}"></audio>
+        </ui-modal>
       </section>
     `;
+  }
+
+  private _handleModalClose(): void {
+    this._modalOpen = false;
+    this._modalAudioUrl = '';
   }
 
   /**
@@ -220,29 +296,15 @@ export class RecordList extends LitElement {
       return;
     }
 
+    // const audioUrl = URL.createObjectURL(blob);
+    // console.log('录音地址:', audioUrl);
+    // const audio = new Audio(audioUrl);
+    // audio.play();
+
     const url = URL.createObjectURL(blob);
-    const win = window.open('', '_blank');
-    if (!win) {
-      // fallback: prompt download
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'recording';
-      a.click();
-      URL.revokeObjectURL(url);
-      return;
-    }
-    // write a minimal player
-    win.document.title = '录音预览';
-    win.document.body.style.margin = '12px';
-    const audio = win.document.createElement('audio');
-    audio.controls = true;
-    audio.src = url;
-    audio.autoplay = false;
-    win.document.body.appendChild(audio);
-    // revoke when window unloads
-    win.addEventListener('unload', () => {
-      URL.revokeObjectURL(url);
-    });
+    console.log('录音地址:', url);
+    this._modalAudioUrl = url;
+    this._modalOpen = true;
   }
 
   private async _handleExport(recording: PracticeRecord): Promise<void> {
@@ -253,9 +315,11 @@ export class RecordList extends LitElement {
     }
   }
 
+  private _handleDeleteConfirmOpen(id: string, e: CustomEvent<{ open: boolean }>): void {
+    this._deleteConfirmId = e.detail.open ? id : '';
+  }
+
   private async _handleDelete(recording: PracticeRecord): Promise<void> {
-    const ok = window.confirm(msg('确定删除该录音吗？'));
-    if (!ok) return;
     this._deletingId = recording.id;
     try {
       await deleteRecording(recording.id);
@@ -271,6 +335,7 @@ export class RecordList extends LitElement {
       this._error = msg('删除失败，请重试。');
     } finally {
       this._deletingId = '';
+      this._deleteConfirmId = '';
     }
   }
 }

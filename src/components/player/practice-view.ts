@@ -1,20 +1,28 @@
 import { msg, updateWhenLocaleChanges } from '@lit/localize';
 import { css, html, LitElement } from 'lit';
-import { customElement, property, state } from 'lit/decorators.js';
+import { customElement, property, query, state } from 'lit/decorators.js';
 
 import '../library/record-list.js';
 import { MediaController } from '../../controllers/media-controller.js';
+import { AudioRecorderController } from '../../lib/audio-recorder.js';
 import { loadPlaylistForPlayback } from '../../lib/media-loader.js';
-import { countRecording, getMedia, saveRecording } from '../../db/service.js';
+import { countRecording, saveRecording } from '../../db/service.js';
 import { estimateStorage } from '../../lib/export-content.js';
 import { getMediaDuration } from '../../lib/file-validation.js';
-import type { PracticeMode, PracticeRecord, SubtitleSegment } from '../../types/models.js';
+import type {
+  MediaItem,
+  PracticeMode,
+  PracticeRecord,
+  RouteContext,
+  SubtitleSegment,
+} from '../../types/models.js';
 import { DEFAULT_SETTINGS } from '../../types/models.js';
 import { formatStorageUsage } from '../../lib/playback-utils.js';
 import '../ui/alert.js';
 import '../ui/button.js';
 import './media-player.js';
 import './subtitle-panel.js';
+import { RecordList } from '../library/record-list.js';
 
 type PracticeType = 'listening' | 'speaking';
 
@@ -166,8 +174,16 @@ export class PracticeView extends LitElement {
     }
   `;
 
-  @property({ type: String })
-  mediaId = '';
+  @property({ type: Object })
+  routeContext: RouteContext = {
+    route: '',
+    params: {},
+    query: {},
+    data: {},
+  };
+
+  @state()
+  private _mediaId = '';
 
   @state()
   private _loading = true;
@@ -202,16 +218,41 @@ export class PracticeView extends LitElement {
   @state()
   private _recordingSaved = false;
 
-  // @state()
-  // private _recordings: PracticeRecord[] = [];
-
   @state()
   private _storageEstimate: StorageEstimate | null = null;
 
+  @query('record-list')
+  private _recordList?: RecordList;
+
   private readonly _controller = new MediaController();
-  private _mediaRecorder: MediaRecorder | null = null;
-  private _recordingStream: MediaStream | null = null;
-  private _recordingChunks: Blob[] = [];
+  private readonly _audioRecorder = new AudioRecorderController({
+    onStart: () => {
+      this._recordingError = '';
+      this._recordingSaved = false;
+      this._attachEndedListener();
+
+      // start playing media when recording starts (after seek to the beginning if needed)
+      // if you want to play at the beginning, use below code
+      // void this._controller.seek(0);
+      void this._controller.play();
+    },
+    onStop: (blob) => {
+      // save recording to db when recording stopped
+      void this._handleRecordingStopped(blob);
+      void this._controller.pause();
+    },
+    onError: (error) => {
+      this._detachEndedListener();
+      this._recording = false;
+      this._recordingError =
+        error.name === 'NotAllowedError'
+          ? msg('未能开启麦克风，请检查权限。')
+          : msg('录音失败，请重试。');
+    },
+    onStateChange: (state) => {
+      this._recording = state === 'recording' || state === 'paused';
+    },
+  });
   private _segmentRepeatTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly _recordingLimit = DEFAULT_SETTINGS.maxRecordingsPerMedia;
   private readonly _recordingSupported =
@@ -226,26 +267,44 @@ export class PracticeView extends LitElement {
   }
 
   disconnectedCallback(): void {
+    console.log('disconnectedCallback practice-view');
     this._controller.removeEventListener('segment-end', this._onSegmentEnded);
-    this._controller.removeEventListener('state-change', this._onRecordingControllerStateChange);
-    this._stopRecording().catch(() => undefined);
+    this._controller.removeEventListener('track-change', this._onTrackChange);
+    this._detachEndedListener();
+    if (this._audioRecorder.getState() !== 'inactive') {
+      void this._audioRecorder.stop().catch(() => this._audioRecorder.destroy());
+    } else {
+      this._audioRecorder.destroy();
+    }
     this._clearSegmentRepeatTimer();
     this._controller.destroy();
     super.disconnectedCallback();
   }
 
   protected updated(changed: Map<PropertyKey, unknown>): void {
-    if (changed.has('mediaId') && this.mediaId) {
+    if (
+      changed.has('routeContext') &&
+      this.routeContext.params.id !== (changed.get('routeContext') as RouteContext).params.id
+    ) {
+      if (this._mediaId !== this.routeContext.params.id) {
+        this._mediaId = this.routeContext.params.id;
+      }
       void this._loadPractice();
     }
   }
 
   connectedCallback(): void {
     super.connectedCallback();
-    if (this.mediaId) {
-      void this._loadPractice();
-    }
+    this._controller.addEventListener('segment-end', this._onSegmentEnded);
+    this._controller.addEventListener('track-change', this._onTrackChange);
+    void this._loadPractice();
   }
+
+  // track-change 处理：
+  private _onTrackChange = (): void => {
+    this._syncMediaIdFromController();
+    void this._refreshRecordings();
+  };
 
   render() {
     console.log('practice-view render');
@@ -265,9 +324,6 @@ export class PracticeView extends LitElement {
       <section>
         <div class="header">
           <h2>${headerTitle}</h2>
-          <ui-button variant="secondary" @click="${this._handleBack}">
-            ${msg('返回内容库')}
-          </ui-button>
         </div>
 
         <div class="mode-tabs">
@@ -383,9 +439,7 @@ export class PracticeView extends LitElement {
                         <div class="recording-controls">
                           <ui-button
                             variant="primary"
-                            ?disabled="${this._recording ||
-                            !this._recordingSupported ||
-                            remaining <= 0}"
+                            ?disabled="${!this._recordingSupported || remaining <= 0}"
                             @click="${this._toggleRecording}"
                           >
                             ${this._recording ? msg('停止录音') : msg('开始录音')}
@@ -426,8 +480,9 @@ export class PracticeView extends LitElement {
                         <div class="settings-group">
                           <h3>${msg('已保存录音')}</h3>
                           <record-list
-                            .mediaId="${this.mediaId}"
+                            .mediaId="${this._mediaId}"
                             .showHeader="${false}"
+                            @recording-deleted="${this._refreshRecordings}"
                           ></record-list>
                         </div>
                       </div>
@@ -453,12 +508,18 @@ export class PracticeView extends LitElement {
             }}"
             @segment-change="${(e: CustomEvent) => console.log('当前播放句改变:', e.detail)}"
             @segment-end="${(e: CustomEvent) => console.log('句子播放结束:', e.detail)}"
+            @track-change="${(e: CustomEvent) => console.log('当前播放媒体改变:', e.detail)}"
           >
           </media-player>
           <subtitle-panel .controller="${this._controller}"></subtitle-panel>
         </div>
       </section>
     `;
+  }
+
+  private _syncMediaIdFromController(): void {
+    const { playlist, currentIndex } = this._controller.getSnapshot();
+    this._mediaId = playlist[currentIndex]?.id ?? '';
   }
 
   private async _loadPractice(): Promise<void> {
@@ -472,15 +533,18 @@ export class PracticeView extends LitElement {
         this._error = msg('内容库为空，请先导入媒体。');
         return;
       }
-
+      // if mediaId is not in playlist, use the first media
       const startIndex = Math.max(
         0,
-        playlist.findIndex((entry) => entry.item.id === this.mediaId),
+        playlist.findIndex((entry) => entry.item.id === this._mediaId),
       );
 
+      console.log('mediaId', this._mediaId);
+      console.log('startIndex', startIndex);
+
       await this._controller.loadTracks(playlist, startIndex);
+      this._syncMediaIdFromController();
       await this._refreshRecordings();
-      this._controller.addEventListener('segment-end', this._onSegmentEnded);
     } catch {
       this._error = msg('加载媒体失败，请重试。');
     } finally {
@@ -580,18 +644,9 @@ export class PracticeView extends LitElement {
     await this._startRecording();
   }
 
-  private _onRecordingControllerStateChange = (event: Event): void => {
-    const snapshot = (event as CustomEvent).detail;
-    if (!snapshot) return;
-    const epsilon = 0.2;
-    const isEnded =
-      Number.isFinite(snapshot.duration) &&
-      snapshot.duration > 0 &&
-      snapshot.currentTime >= snapshot.duration - epsilon &&
-      !snapshot.isPlaying;
-    if (this._recording && isEnded) {
-      void this._stopRecording();
-    }
+  private _onEnded = (): void => {
+    // stop recording (and save recording to db which is done through onStop callback) when media ended
+    void this._stopRecording({ save: true });
   };
   private async _startRecording(): Promise<void> {
     if (!this._recordingSupported) {
@@ -604,79 +659,68 @@ export class PracticeView extends LitElement {
       return;
     }
 
+    this._recordingError = '';
+    this._recordingSaved = false;
+
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      this._recordingStream = stream;
-      this._recordingChunks = [];
-
-      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-        ? 'audio/webm;codecs=opus'
-        : MediaRecorder.isTypeSupported('audio/webm')
-          ? 'audio/webm'
-          : 'audio/ogg';
-
-      const recorder = new MediaRecorder(stream, { mimeType });
-      this._mediaRecorder = recorder;
-
-      recorder.addEventListener('dataavailable', (event: BlobEvent) => {
-        if (event.data && event.data.size > 0) {
-          this._recordingChunks.push(event.data);
-        }
-      });
-
-      recorder.addEventListener('stop', async () => {
-        const blob = new Blob(this._recordingChunks, { type: recorder.mimeType });
-        const mediaItem = await getMedia(this.mediaId);
-        const mediaTitle = mediaItem?.title;
-        void this._saveRecording(blob, mediaTitle || '');
-      });
-
-      recorder.start();
-      this._recording = true;
-
-      this._recordingError = '';
-      this._recordingSaved = false;
-
-      // 在 recorder.start(); this._recording = true; 之后添加：
-      this._controller.addEventListener('state-change', this._onRecordingControllerStateChange);
-
-      console.log('_startRecording');
-
-      if (this._controller) {
-        void this._controller.play();
-      }
+      await this._audioRecorder.start();
     } catch {
-      this._recordingError = msg('未能开启麦克风，请检查权限。');
+      if (!this._recordingError) {
+        this._recordingError = msg('未能开启麦克风，请检查权限。');
+      }
     }
   }
 
-  private async _stopRecording(): Promise<void> {
-    if (!this._recording || !this._mediaRecorder) {
+  private async _stopRecording(options: { save?: boolean } = {}): Promise<void> {
+    if (this._audioRecorder.getState() === 'inactive') {
       return;
     }
 
-    const recorder = this._mediaRecorder;
-    const stopped = new Promise<void>((resolve) => {
-      recorder.addEventListener('stop', () => resolve(), { once: true });
-    });
+    this._detachEndedListener();
 
-    recorder.stop();
-    await stopped;
-    this._recording = false;
-    this._mediaRecorder = null;
-    // 在 await stopped; this._recording = false; 之后添加：
-    this._controller.removeEventListener('state-change', this._onRecordingControllerStateChange);
-    this._disposeRecordingStream();
+    if (options.save === false) {
+      this._audioRecorder.destroy();
+      this._recording = false;
+      return;
+    }
+
+    try {
+      await this._audioRecorder.stop();
+    } catch {
+      this._audioRecorder.destroy();
+      this._recording = false;
+    }
   }
 
-  private async _saveRecording(blob: Blob, mediaTitle: string): Promise<void> {
+  private async _handleRecordingStopped(blob: Blob): Promise<void> {
+    this._detachEndedListener();
+    this._recording = false;
+    this._audioRecorder.destroy();
+
+    const snapshot = this._controller.getSnapshot();
+    const currentItem = snapshot.currentItem;
+    if (!currentItem) {
+      return;
+    }
+    await this._saveRecording(blob, currentItem);
+  }
+
+  private _attachEndedListener(): void {
+    this._controller.addEventListener('ended', this._onEnded);
+  }
+
+  private _detachEndedListener(): void {
+    this._controller.removeEventListener('ended', this._onEnded);
+  }
+
+  private async _saveRecording(blob: Blob, media: MediaItem): Promise<void> {
     try {
       const snapshot = this._controller.getSnapshot();
       const duration = await getMediaDuration(blob, blob.type);
       const record: PracticeRecord = {
         id: crypto.randomUUID(),
-        mediaId: this.mediaId,
-        mediaTitle,
+        mediaId: media.id,
+        mediaTitle: media.title,
         mode: 'shadowing',
         mimeType: blob.type || 'audio/webm',
         duration,
@@ -685,50 +729,28 @@ export class PracticeView extends LitElement {
       };
 
       await saveRecording(record, blob);
-      // fixme 没有刷新录音列表
       await this._refreshRecordings();
+      // fixme 没有刷新录音列表
+      await this._recordList?.refresh();
       this._recordingSaved = true;
     } catch {
       this._recordingError = msg('保存录音失败，请重试。');
     }
   }
 
-  private _disposeRecordingStream(): void {
-    if (!this._recordingStream) {
-      return;
-    }
-
-    for (const track of this._recordingStream.getTracks()) {
-      track.stop();
-    }
-
-    this._recordingStream = null;
-  }
-
   private async _refreshRecordings(): Promise<void> {
-    if (!this.mediaId) {
-      // this._recordings = [];
+    if (!this._mediaId) {
       this._recordingCount = 0;
       this._storageEstimate = null;
       return;
     }
 
     try {
-      // this._recordings = await (this.mediaId);
-      this._recordingCount = await countRecording(this.mediaId);
+      this._recordingCount = await countRecording(this._mediaId);
       this._storageEstimate = await estimateStorage();
     } catch {
       this._storageEstimate = null;
     }
-  }
-
-  private _handleBack(): void {
-    this.dispatchEvent(
-      new CustomEvent('practice-close', {
-        bubbles: true,
-        composed: true,
-      }),
-    );
   }
 }
 

@@ -282,7 +282,6 @@ export class MediaPlayer extends LitElement {
   render() {
     const snapshot = this._controllerHost?.snapshot;
 
-    console.log('media player render');
     // if (snapshot) {
     //   // const notLogKeys = ['playlist', 'currentItem', 'segments'];
     //   const logKeys = ['currentTime', 'currentSegmentIndex'];

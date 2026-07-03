@@ -83,6 +83,18 @@ export interface MediaControlsConfig {
   sleepMode?: boolean;
 }
 
+/** 路由上下文， 参考 lit-element-router/lit-element-router.d.ts */
+export interface RouteContext {
+  route: string; // 路由名称
+  params: {
+    [key: string]: string;
+  }; // 路由参数
+  query: {
+    [key: string]: string;
+  }; // 路由查询参数
+  data: object; // 路由数据
+}
+
 export type AppSettings = {
   maxRecordingsPerMedia: number;
   maxStorageMB: number;
@@ -106,3 +118,5 @@ export type ImportResult = {
   imported: Array<MediaItem | SubtitleTrack>;
   errors: ImportError[];
 };
+
+export type SortDirection = 'asc' | 'desc';

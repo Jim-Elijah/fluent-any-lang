@@ -1,4 +1,9 @@
-import { findSegmentIndex, FORWARDED_MEDIA_EVENTS, shuffleIndices } from '../lib/playback-utils.js';
+import {
+  findSegmentIndex,
+  NATIVE_MEDIA_EVENTS,
+  shuffleIndices,
+  ExtendedMediaEventType,
+} from '../lib/playback-utils.js';
 import type { LoopMode, MediaItem, SleepMode, SubtitleSegment } from '../types/models.js';
 
 export type MediaControllerSnapshot = {
@@ -72,7 +77,7 @@ export class MediaController extends EventTarget {
     element.addEventListener('loadedmetadata', this._handleLoadedMetadata);
 
     // 转发原生 media 事件
-    for (const evtName of FORWARDED_MEDIA_EVENTS) {
+    for (const evtName of NATIVE_MEDIA_EVENTS) {
       element.addEventListener(evtName, this._handleNativeEvent);
     }
 
@@ -92,7 +97,7 @@ export class MediaController extends EventTarget {
     this.mediaElement.removeEventListener('loadedmetadata', this._handleLoadedMetadata);
 
     // 移除原生事件转发
-    for (const evtName of FORWARDED_MEDIA_EVENTS) {
+    for (const evtName of NATIVE_MEDIA_EVENTS) {
       this.mediaElement.removeEventListener(evtName, this._handleNativeEvent);
     }
 
@@ -134,6 +139,9 @@ export class MediaController extends EventTarget {
       return;
     }
 
+    const previousIndex = this.currentIndex;
+    const previousItem = this.playlist[previousIndex] ?? null;
+
     this.currentIndex = trackIndex;
     this.segments = track.segments;
     this.currentSegmentIndex = this.segments.length > 0 ? 0 : -1;
@@ -173,7 +181,7 @@ export class MediaController extends EventTarget {
       this.currentTime = 0;
 
       // console.log('this.currentSegmentIndex', this.currentSegmentIndex);
-      // delete below to make sure new track always start from
+      // delete below to make sure new track always start from first segment
       // if (this.currentSegmentIndex >= 0) {
       //   this.seekToSegment(this.currentSegmentIndex, false);
       // }
@@ -184,6 +192,21 @@ export class MediaController extends EventTarget {
     } else {
       this.duration = track.item.duration;
       this.currentTime = 0;
+    }
+
+    if (trackIndex !== previousIndex) {
+      this.dispatchEvent(
+        new CustomEvent(ExtendedMediaEventType.TRACK_CHANGE, {
+          detail: {
+            currentIndex: trackIndex,
+            currentItem: track.item,
+            previousIndex,
+            previousItem,
+          },
+          bubbles: true,
+          composed: true,
+        }),
+      );
     }
 
     this._emitChange();
@@ -252,14 +275,15 @@ export class MediaController extends EventTarget {
     this._emitChange();
   }
 
-  seekToSegment(index: number, autoPlay = true): void {
+  seekToSegment(index: number, autoPlay = false): void {
     // console.log('seekToSegment', index, autoPlay);
     const segment = this.segments[index];
     if (!segment) {
       return;
     }
 
-    this.currentSegmentIndex = index;
+    // uncomment below to make sure currentSegmentIndex is updated through _updateCurrentSegment()
+    // this.currentSegmentIndex = index;
     this.seek(segment.startTime);
 
     if (autoPlay) {
@@ -486,10 +510,8 @@ export class MediaController extends EventTarget {
       this.mediaElement.currentTime >= segment.endTime - LOOP_EPSILON
     ) {
       this.dispatchEvent(
-        new CustomEvent('segment-end', {
+        new CustomEvent(ExtendedMediaEventType.SEGMENT_END, {
           detail: { segmentIndex: this.currentSegmentIndex, segment },
-          // bubbles: false,
-          // composed: false,
           bubbles: true,
           composed: true,
         }),
@@ -522,15 +544,13 @@ export class MediaController extends EventTarget {
       const previousIndex = this.currentSegmentIndex;
       this.currentSegmentIndex = nextIndex;
       this.dispatchEvent(
-        new CustomEvent('segment-change', {
+        new CustomEvent(ExtendedMediaEventType.SEGMENT_CHANGE, {
           detail: {
             currentIndex: nextIndex,
             currentSegment: this.segments[nextIndex] ?? null,
             previousIndex,
             previousSegment: this.segments[previousIndex] ?? null,
           },
-          // bubbles: false,
-          // composed: false,
           bubbles: true,
           composed: true,
         }),

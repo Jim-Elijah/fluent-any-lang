@@ -1,12 +1,13 @@
-import { msg, str, updateWhenLocaleChanges } from '@lit/localize';
+import { msg, updateWhenLocaleChanges } from '@lit/localize';
 import { css, html, LitElement } from 'lit';
-import { customElement, state } from 'lit/decorators.js';
+import { customElement, property, state } from 'lit/decorators.js';
 
 import { deleteMedia, getMediaList, deleteSubtitle } from '../../db/service.js';
 import { formatTime, formatDate } from '../../lib/playback-utils.js';
-import type { MediaItem } from '../../types/models.js';
+import type { MediaItem, SortDirection } from '../../types/models.js';
 import '../ui/alert.js';
 import '../ui/button.js';
+import '../ui/popconfirm.js';
 
 @customElement('media-list')
 export class MediaList extends LitElement {
@@ -112,6 +113,15 @@ export class MediaList extends LitElement {
     }
   `;
 
+  @property({ type: String })
+  keyword?: string;
+
+  @property({ type: String })
+  sortBy?: string = 'date';
+
+  @property({ type: String })
+  sortDirection?: SortDirection = 'desc';
+
   @state()
   private _items: MediaItem[] = [];
 
@@ -123,6 +133,9 @@ export class MediaList extends LitElement {
 
   @state()
   private _deletingId = '';
+
+  @state()
+  private _deleteConfirmId = '';
 
   constructor() {
     super();
@@ -150,11 +163,34 @@ export class MediaList extends LitElement {
 
   render() {
     console.log('media list render');
+
+    let renderedItems = this._items;
+    if (this.keyword) {
+      renderedItems = renderedItems.filter((item: MediaItem) =>
+        item.title.toLowerCase().includes(this.keyword!.toLowerCase()),
+      );
+    }
+    if (this.sortBy && this.sortDirection) {
+      renderedItems = renderedItems.sort((a: MediaItem, b: MediaItem) => {
+        if (this.sortBy === 'date') {
+          return this.sortDirection === 'asc'
+            ? a.createdAt - b.createdAt
+            : b.createdAt - a.createdAt;
+        }
+        if (this.sortBy === 'title') {
+          return this.sortDirection === 'asc'
+            ? a.title.localeCompare(b.title)
+            : b.title.localeCompare(a.title);
+        }
+        return 0;
+      });
+    }
+
     return html`
       <section>
         <div class="header">
           <h2>${msg('资源库')}</h2>
-          <span class="count">${this._items.length} ${msg('项')}</span>
+          <span class="count">${renderedItems.length} ${msg('项')}</span>
         </div>
 
         ${this._error
@@ -162,11 +198,11 @@ export class MediaList extends LitElement {
           : null}
         ${this._loading
           ? html`<div class="empty">${msg('加载中…')}</div>`
-          : this._items.length === 0
+          : renderedItems.length === 0
             ? html`<div class="empty">${msg('暂无内容，请先导入音视频和字幕')}</div>`
             : html`
                 <ul class="list">
-                  ${this._items.map(
+                  ${renderedItems.map(
                     (item) => html`
                       <li class="item">
                         <div class="meta">
@@ -186,13 +222,19 @@ export class MediaList extends LitElement {
                           <ui-button variant="primary" @click="${() => this._handlePractice(item)}">
                             ${msg('练习')}
                           </ui-button>
-                          <ui-button
-                            variant="danger"
-                            ?disabled="${this._deletingId === item.id}"
-                            @click="${() => this._handleDelete(item)}"
+                          <ui-popconfirm
+                            title=${msg('确定删除该资源吗？')}
+                            ?open=${this._deleteConfirmId === item.id}
+                            placement="bottom"
+                            ?confirm-loading=${this._deletingId === item.id}
+                            @update:open=${(e: CustomEvent<{ open: boolean }>) =>
+                              this._handleDeleteConfirmOpen(item.id, e)}
+                            @confirm=${() => this._handleDelete(item)}
                           >
-                            ${msg('删除')}
-                          </ui-button>
+                            <ui-button variant="danger" ?disabled="${this._deletingId === item.id}"
+                              >${msg('删除')}</ui-button
+                            >
+                          </ui-popconfirm>
                         </div>
                       </li>
                     `,
@@ -213,12 +255,11 @@ export class MediaList extends LitElement {
     );
   }
 
-  private async _handleDelete(item: MediaItem): Promise<void> {
-    const confirmed = window.confirm(msg(str`确定删除「${item.title}」吗？`));
-    if (!confirmed) {
-      return;
-    }
+  private _handleDeleteConfirmOpen(id: string, e: CustomEvent<{ open: boolean }>): void {
+    this._deleteConfirmId = e.detail.open ? id : '';
+  }
 
+  private async _handleDelete(item: MediaItem): Promise<void> {
     this._deletingId = item.id;
 
     try {
@@ -235,6 +276,7 @@ export class MediaList extends LitElement {
       this._error = msg('删除失败，请重试');
     } finally {
       this._deletingId = '';
+      this._deleteConfirmId = '';
     }
   }
 }
