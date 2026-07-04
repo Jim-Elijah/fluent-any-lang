@@ -190,15 +190,6 @@ export class PracticeView extends LitElement {
   private _practiceType: PracticeType = 'listening';
 
   @state()
-  private _repeatPauseMode: 'seconds' | 'percentage' = 'seconds';
-
-  @state()
-  private _repeatPauseSeconds = 1;
-
-  @state()
-  private _repeatPausePercent = 100;
-
-  @state()
   private _recording = false;
 
   @state()
@@ -251,7 +242,6 @@ export class PracticeView extends LitElement {
       this._recording = state === 'recording' || state === 'paused';
     },
   });
-  private _segmentRepeatTimer: ReturnType<typeof setTimeout> | null = null;
   private _practiceSegments: PracticeSegment[] = [];
   private _recordingStartedAt = 0;
   private _lastRecordingEndTime = 0;
@@ -278,7 +268,6 @@ export class PracticeView extends LitElement {
     } else {
       this._audioRecorder.destroy();
     }
-    this._clearSegmentRepeatTimer();
     this._controller.destroy();
     super.disconnectedCallback();
   }
@@ -350,55 +339,6 @@ export class PracticeView extends LitElement {
                 <h3>${msg('Speaking 设置')}</h3>
 
                 <div class="settings-group">
-                  <label>
-                    ${msg('暂停方式')}
-                    <select
-                      .value="${this._repeatPauseMode}"
-                      @change="${this._handleRepeatPauseModeChange}"
-                    >
-                      <option value="off">${msg('关闭')}</option>
-                      <option value="seconds">${msg('固定秒数')}</option>
-                      <option value="percentage">${msg('句长百分比')}</option>
-                    </select>
-                  </label>
-                </div>
-
-                ${this._repeatPauseMode === 'seconds'
-                  ? html`
-                      <div class="settings-group">
-                        <label>
-                          ${msg('暂停时间（秒）')}
-                          <input
-                            type="number"
-                            min="1"
-                            max="30"
-                            .value="${String(this._repeatPauseSeconds)}"
-                            @change="${this._handleRepeatPauseSecondsChange}"
-                          />
-                        </label>
-                      </div>
-                    `
-                  : html`
-                      <div class="settings-group">
-                        <label>
-                          ${msg('暂停比例（%）')}
-                          <input
-                            type="number"
-                            min="100"
-                            max="500"
-                            step="10"
-                            .value="${String(this._repeatPausePercent)}"
-                            @change="${this._handleRepeatPausePercentChange}"
-                          />
-                        </label>
-                      </div>
-                    `}
-
-                <p class="info-text">
-                  ${msg('每句话播放完毕后会自动暂停，您可在暂停期间进行跟读。')}
-                </p>
-
-                <div class="settings-group">
                   <div class="info-text">
                     <div>${msg('已保存录音')}：${this._recordingCount}/${this._recordingLimit}</div>
                     <div>
@@ -468,6 +408,7 @@ export class PracticeView extends LitElement {
             .controlsConfig="${{
               loopMode: true,
               sleepMode: true,
+              pauseMode: true,
               playPause: true,
               volume: true,
               playbackRate: true,
@@ -529,29 +470,7 @@ export class PracticeView extends LitElement {
     this._practiceType = type;
     this._recordingError = '';
     this._recordingSaved = false;
-    this._clearSegmentRepeatTimer();
     void this._stopRecording();
-  }
-
-  private _handleRepeatPauseModeChange(event: Event): void {
-    const target = event.target as HTMLSelectElement;
-    this._repeatPauseMode = target.value as 'seconds' | 'percentage';
-  }
-
-  private _handleRepeatPauseSecondsChange(event: Event): void {
-    const target = event.target as HTMLInputElement;
-    const value = parseInt(target.value, 10);
-    if (!Number.isNaN(value) && value >= 1 && value <= 30) {
-      this._repeatPauseSeconds = value;
-    }
-  }
-
-  private _handleRepeatPausePercentChange(event: Event): void {
-    const target = event.target as HTMLInputElement;
-    const value = parseInt(target.value, 10);
-    if (!Number.isNaN(value) && value >= 100) {
-      this._repeatPausePercent = value;
-    }
   }
 
   private _onSegmentEnded = (event: Event): void => {
@@ -572,35 +491,7 @@ export class PracticeView extends LitElement {
       });
       this._lastRecordingEndTime = recordingEndTime;
     }
-
-    if (this._practiceType !== 'speaking') {
-      return;
-    }
-
-    this._clearSegmentRepeatTimer();
-    const pauseDuration =
-      this._repeatPauseMode === 'seconds'
-        ? this._repeatPauseSeconds * 1000
-        : (((segment.endTime - segment.startTime) * this._repeatPausePercent) / 100) * 1000;
-
-    this._controller.pause();
-    this._recordingError = '';
-    this._recordingSaved = false;
-
-    // @fixme 单据循环时，不会等待
-    this._segmentRepeatTimer = setTimeout(() => {
-      if (this._practiceType === 'speaking') {
-        void this._controller.play();
-      }
-    }, pauseDuration);
   };
-
-  private _clearSegmentRepeatTimer(): void {
-    if (this._segmentRepeatTimer !== null) {
-      clearTimeout(this._segmentRepeatTimer);
-      this._segmentRepeatTimer = null;
-    }
-  }
 
   private _getRecordingElapsedSeconds(): number {
     if (this._recordingStartedAt === 0) {

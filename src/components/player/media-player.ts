@@ -20,6 +20,7 @@ import { MediaControlsConfig, MediaPlayerMode } from '../../types/index.js';
 const defaultControlConfig: MediaControlsConfig = {
   loopMode: true,
   sleepMode: true,
+  pauseMode: true,
   playPause: true,
   volume: true,
   playbackRate: true,
@@ -184,6 +185,18 @@ export class MediaPlayer extends LitElement {
       gap: 12px;
       align-items: end;
     }
+
+    .pause-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px;
+      align-items: end;
+    }
+
+    .pause-info {
+      font-size: 0.8125rem;
+      color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
+    }
   `;
 
   @property({ type: String, reflect: true })
@@ -312,6 +325,7 @@ export class MediaPlayer extends LitElement {
 
     const showSegments = this.controlsConfig.previousNextSegment && snapshot.hasSubtitles;
     const showLoopMode = this.controlsConfig.loopMode;
+    const showPauseMode = this.controlsConfig.pauseMode && snapshot.hasSubtitles;
 
     return html`
       <div class="surface">
@@ -427,6 +441,50 @@ export class MediaPlayer extends LitElement {
                 </label>`
               : ''}
           </div>
+
+          ${showPauseMode
+            ? html`
+                <div class="pause-row">
+                  <label>
+                    ${msg('暂停方式')}
+                    <select .value="${snapshot.pauseMode}" @change="${this._handlePauseModeChange}">
+                      <option value="off">${msg('关闭')}</option>
+                      <option value="seconds">${msg('固定秒数')}</option>
+                      <option value="percentage">${msg('句长百分比')}</option>
+                    </select>
+                  </label>
+                  ${snapshot.pauseMode === 'seconds'
+                    ? html`
+                        <label>
+                          ${msg('暂停时间（秒）')}
+                          <input
+                            type="number"
+                            min="1"
+                            max="30"
+                            .value="${String(snapshot.pauseSeconds)}"
+                            @change="${this._handlePauseSecondsChange}"
+                          />
+                        </label>
+                      `
+                    : null}
+                  ${snapshot.pauseMode === 'percentage'
+                    ? html`
+                        <label>
+                          ${msg('暂停比例（%）')}
+                          <input
+                            type="number"
+                            min="100"
+                            max="500"
+                            step="10"
+                            .value="${String(snapshot.pausePercent)}"
+                            @change="${this._handlePausePercentChange}"
+                          />
+                        </label>
+                      `
+                    : null}
+                </div>
+              `
+            : null}
 
           <div class="sleep-row">
             ${this.controlsConfig.sleepMode
@@ -567,6 +625,27 @@ export class MediaPlayer extends LitElement {
 
   private _cancelSleep(): void {
     this.controller?.cancelSleep();
+  }
+
+  private _handlePauseModeChange(event: Event): void {
+    const select = event.target as HTMLSelectElement;
+    this.controller?.setPauseMode(select.value as 'off' | 'seconds' | 'percentage');
+  }
+
+  private _handlePauseSecondsChange(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const value = parseInt(input.value, 10);
+    if (!Number.isNaN(value)) {
+      this.controller?.setPauseSeconds(value);
+    }
+  }
+
+  private _handlePausePercentChange(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const value = parseInt(input.value, 10);
+    if (!Number.isNaN(value)) {
+      this.controller?.setPausePercent(value);
+    }
   }
 }
 

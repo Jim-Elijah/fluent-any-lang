@@ -4,7 +4,14 @@ import {
   shuffleIndices,
   ExtendedMediaEventType,
 } from '../lib/playback-utils.js';
-import type { LoopMode, MediaItem, SleepMode, SubtitleSegment } from '../types/models.js';
+import type {
+  LoopMode,
+  MediaItem,
+  PauseMode,
+  SleepMode,
+  SubtitleSegment,
+} from '../types/models.js';
+import { DEFAULT_SETTINGS } from '../types/models.js';
 
 export type MediaControllerSnapshot = {
   playlist: MediaItem[];
@@ -24,6 +31,10 @@ export type MediaControllerSnapshot = {
   sleepMinutes: number;
   sleepRemainingSeconds: number;
   sleepActive: boolean;
+  pauseMode: PauseMode;
+  pauseSeconds: number;
+  pausePercent: number;
+  segmentPausePending: boolean;
   canPreviousTrack: boolean;
   canNextTrack: boolean;
   canPreviousSegment: boolean;
@@ -61,8 +72,12 @@ export class MediaController extends EventTarget {
   sleepMode: SleepMode = 'off';
   sleepMinutes = 30;
   sleepRemainingSeconds = 0;
+  pauseMode: PauseMode = 'off';
+  pauseSeconds = 1;
+  pausePercent = DEFAULT_SETTINGS.repeatPausePercent;
 
   private sleepTimerId: ReturnType<typeof setInterval> | null = null;
+  private _segmentPauseTimerId: ReturnType<typeof setTimeout> | null = null;
 
   attachMediaElement(element: HTMLMediaElement): void {
     if (this.mediaElement === element) {
@@ -145,6 +160,10 @@ export class MediaController extends EventTarget {
     this.currentIndex = trackIndex;
     this.segments = track.segments;
     this.currentSegmentIndex = this.segments.length > 0 ? 0 : -1;
+    if (this.segments.length === 0) {
+      this.pauseMode = 'off';
+      this._clearSegmentPauseTimer();
+    }
     this._revokeObjectUrl();
 
     const nextUrl = URL.createObjectURL(track.blob);
@@ -233,6 +252,10 @@ export class MediaController extends EventTarget {
       sleepMinutes: this.sleepMinutes,
       sleepRemainingSeconds: this.sleepRemainingSeconds,
       sleepActive: this.sleepMode !== 'off',
+      pauseMode: this.pauseMode,
+      pauseSeconds: this.pauseSeconds,
+      pausePercent: this.pausePercent,
+      segmentPausePending: this._segmentPauseTimerId !== null,
       canPreviousTrack: this.playlist.length > 1,
       canNextTrack: this.playlist.length > 1,
       canPreviousSegment: this.segments.length > 0 && this.currentSegmentIndex > 0,
@@ -398,6 +421,37 @@ export class MediaController extends EventTarget {
     this.setSleepMode('off');
   }
 
+  setPauseMode(mode: PauseMode): void {
+    if (mode !== 'off' && this.segments.length === 0) {
+      return;
+    }
+
+    this.pauseMode = mode;
+
+    if (mode === 'off') {
+      this._clearSegmentPauseTimer();
+    }
+
+    this._emitChange();
+  }
+
+  setPauseSeconds(seconds: number): void {
+    const clamped = Math.max(1, Math.min(seconds, 30));
+    this.pauseSeconds = clamped;
+    this._emitChange();
+  }
+
+  setPausePercent(percent: number): void {
+    const clamped = Math.max(100, Math.min(percent, 500));
+    this.pausePercent = clamped;
+    this._emitChange();
+  }
+
+  cancelSegmentPause(): void {
+    this._clearSegmentPauseTimer();
+    this._emitChange();
+  }
+
   setSubtitlesVisible(visible: boolean): void {
     this.subtitlesVisible = visible;
     this._emitChange();
@@ -405,6 +459,7 @@ export class MediaController extends EventTarget {
 
   destroy(): void {
     this._clearSleepTimer();
+    this._clearSegmentPauseTimer();
     this.detachMediaElement();
     this._revokeObjectUrl();
     this.tracks = [];
@@ -517,12 +572,17 @@ export class MediaController extends EventTarget {
         }),
       );
       this._segmentEndDispatched = true;
+      this._applySegmentPause(segment);
     } else if (this.mediaElement.currentTime < segment.endTime - LOOP_EPSILON) {
       this._segmentEndDispatched = false;
     }
   }
 
   private _applySegmentLoop(): void {
+    if (this._segmentPauseTimerId !== null) {
+      return;
+    }
+
     if (this.loopMode !== 'segment' || this.currentSegmentIndex < 0 || !this.mediaElement) {
       return;
     }
@@ -587,6 +647,8 @@ export class MediaController extends EventTarget {
     this.currentTime = 0;
     this.duration = 0;
     this.isPlaying = false;
+    this.pauseMode = 'off';
+    this._clearSegmentPauseTimer();
   }
 
   private _revokeObjectUrl(): void {
@@ -624,6 +686,38 @@ export class MediaController extends EventTarget {
     if (this.sleepTimerId !== null) {
       clearInterval(this.sleepTimerId);
       this.sleepTimerId = null;
+    }
+  }
+
+  private _applySegmentPause(segment: SubtitleSegment): void {
+    if (this.pauseMode === 'off' || this.segments.length === 0) {
+      return;
+    }
+
+    const pauseDuration =
+      this.pauseMode === 'seconds'
+        ? this.pauseSeconds * 1000
+        : (((segment.endTime - segment.startTime) * this.pausePercent) / 100) * 1000;
+
+    this._clearSegmentPauseTimer();
+    this.pause();
+
+    this._segmentPauseTimerId = setTimeout(() => {
+      this._segmentPauseTimerId = null;
+      if (this.loopMode === 'segment' && this.currentSegmentIndex >= 0) {
+        this.seekToSegment(this.currentSegmentIndex);
+      }
+      void this.play();
+      this._emitChange();
+    }, pauseDuration);
+
+    this._emitChange();
+  }
+
+  private _clearSegmentPauseTimer(): void {
+    if (this._segmentPauseTimerId !== null) {
+      clearTimeout(this._segmentPauseTimerId);
+      this._segmentPauseTimerId = null;
     }
   }
 

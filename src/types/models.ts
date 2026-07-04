@@ -75,6 +75,8 @@ export type LoopMode = 'none' | 'single' | 'segment' | 'list' | 'shuffle';
 
 export type SleepMode = 'off' | 'minutes' | 'until-end';
 
+export type PauseMode = 'off' | 'seconds' | 'percentage';
+
 /** 播放器布局模式 */
 export type MediaPlayerMode = 'normal' | 'fixed' | 'mini';
 
@@ -100,6 +102,8 @@ export interface MediaControlsConfig {
   volume?: boolean;
   /** 睡眠模式 */
   sleepMode?: boolean;
+  /** 句间暂停（需同时有字幕才生效） */
+  pauseMode?: boolean;
 }
 
 /** 路由上下文， 参考 lit-element-router/lit-element-router.d.ts */
