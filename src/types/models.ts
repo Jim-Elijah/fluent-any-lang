@@ -1,10 +1,14 @@
+/** 字幕/歌词片段，时间单位为秒 */
 export type SubtitleSegment = {
   id: string;
   startTime: number;
   endTime: number;
+  /** 原文 */
   text: string;
+  /** 译文（双语字幕/歌词时存在） */
   translation?: string;
 };
+export type SubtitleType = 'srt' | 'lrc';
 
 export type MediaType = 'audio' | 'video';
 
@@ -12,6 +16,8 @@ export type MediaType = 'audio' | 'video';
 export type MediaItem = {
   id: string; // 根据filename生成hash，上传时判重
   title: string; // basename
+  filename: string; // filename
+  size: number;
   type: MediaType;
   mimeType: string;
   duration: number;
@@ -28,22 +34,35 @@ export type MediaBlob = {
 export type SubtitleTrack = {
   id: string; // 根据filename生成hash，上传时判重
   title: string; // basename
+  filename: string; // filename
+  type: SubtitleType; // srt or lrc
   // TODO whether or not to add more metadata
   segments: SubtitleSegment[];
 };
 
 export type PracticeMode = 'repeat' | 'shadowing';
 
+// 录音与原始音频每一片段的对应关系，用于对比回放（时间单位为秒）
+export type PracticeSegment = {
+  id: string; // segment_id
+  sourceStartTime: number; // 原始音频起始时间（秒）
+  sourceEndTime: number; // 原始音频结束时间（秒）
+  recordingStartTime: number; // 录音起始时间（秒）
+  recordingEndTime: number; // 录音结束时间（秒）
+};
+
 // 录音的metadata
 export type PracticeRecord = {
   id: string; // UUID
   mediaId: string;
   mediaTitle: string;
+  mediaFilename: string;
   mode: 'shadowing';
   mimeType: string;
-  duration: number;
   createdAt: number;
-  segmentIndex?: number; // 从哪一句开始录音
+  sourceDuration: number; // 原始音频时长
+  recordingDuration: number; // 录音时长
+  segments: PracticeSegment[];
 };
 
 // 录音的Blob
@@ -110,7 +129,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
 };
 
 export type ImportError = {
-  fileName: string;
+  filename: string;
   message: string;
 };
 

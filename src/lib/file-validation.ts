@@ -1,20 +1,13 @@
+import { msg, str } from '@lit/localize';
 import type { MediaType } from '../types/models.js';
 
-const MEDIA_EXTENSIONS = new Set([
-  'mp3',
-  'wav',
-  'ogg',
-  'webm',
-  'm4a',
-  'aac',
-  'flac',
-  'mp4',
-  'mov',
-  'mkv',
-  'ogv',
-]);
+const AUDIO_EXTENSIONS = new Set(['mp3', 'wav', 'ogg', 'webm', 'm4a', 'aac', 'flac']);
 
-const MIME_BY_EXTENSION: Record<string, string> = {
+const VIDEO_EXTENSIONS = new Set(['mp4', 'mov', 'mkv', 'ogv']);
+
+const MEDIA_EXTENSIONS = new Set([...AUDIO_EXTENSIONS, ...VIDEO_EXTENSIONS]);
+
+const AUDIO_MIME_BY_EXTENSION: Record<string, string> = {
   mp3: 'audio/mpeg',
   wav: 'audio/wav',
   ogg: 'audio/ogg',
@@ -22,10 +15,18 @@ const MIME_BY_EXTENSION: Record<string, string> = {
   m4a: 'audio/mp4',
   aac: 'audio/aac',
   flac: 'audio/flac',
+};
+
+const VIDEO_MIME_BY_EXTENSION: Record<string, string> = {
   mp4: 'video/mp4',
   mov: 'video/quicktime',
   mkv: 'video/x-matroska',
   ogv: 'video/ogg',
+};
+
+const MIME_BY_EXTENSION: Record<string, string> = {
+  ...AUDIO_MIME_BY_EXTENSION,
+  ...VIDEO_MIME_BY_EXTENSION,
 };
 
 export function getFileExtension(fileName: string): string {
@@ -62,8 +63,24 @@ export function isMediaFile(file: File): boolean {
   return MEDIA_EXTENSIONS.has(getFileExtension(file.name));
 }
 
+export function isAudioFile(file: File): boolean {
+  return (
+    resolveMimeType(file).startsWith('audio/') || AUDIO_EXTENSIONS.has(getFileExtension(file.name))
+  );
+}
+
+export function isVideoFile(file: File): boolean {
+  return (
+    resolveMimeType(file).startsWith('video/') || VIDEO_EXTENSIONS.has(getFileExtension(file.name))
+  );
+}
+
 export function isSrtFile(file: File): boolean {
   return getFileExtension(file.name) === 'srt';
+}
+
+export function isLrcFile(file: File): boolean {
+  return getFileExtension(file.name) === 'lrc';
 }
 
 export function getMediaType(mimeType: string): MediaType {
@@ -140,13 +157,7 @@ export function getMediaDuration(file: Blob, mimeType: string): Promise<number> 
 
 export function validateMediaFile(file: File): { valid: boolean; error?: string } {
   if (!isMediaFile(file)) {
-    return { valid: false, error: 'Unsupported media format' };
+    return { valid: false, error: msg(str`Unsupported media format`) };
   }
-
-  const mimeType = resolveMimeType(file);
-  if (!mimeType.startsWith('audio/') && !mimeType.startsWith('video/')) {
-    return { valid: false, error: 'Unsupported media format' };
-  }
-
   return { valid: true };
 }

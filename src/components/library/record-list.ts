@@ -2,6 +2,7 @@ import { msg, updateWhenLocaleChanges } from '@lit/localize';
 import { css, html, LitElement } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 
+import { getMediaBlob } from '../../db/media.js';
 import {
   findRecordings,
   deleteRecording,
@@ -13,6 +14,7 @@ import '../ui/alert.js';
 import '../ui/button.js';
 import '../ui/modal.js';
 import '../ui/popconfirm.js';
+import './recording-preview.js';
 import type { PracticeRecord, SortDirection } from '../../types/models.js';
 import { formatDate, formatTime } from '../../lib/playback-utils.js';
 
@@ -150,7 +152,13 @@ export class RecordList extends LitElement {
   private _modalOpen = false;
 
   @state()
-  private _modalAudioUrl = '';
+  private _modalRecording: PracticeRecord | null = null;
+
+  @state()
+  private _modalRecordingBlob: Blob | null = null;
+
+  @state()
+  private _modalSourceBlob: Blob | null = null;
 
   constructor() {
     super();
@@ -223,7 +231,7 @@ export class RecordList extends LitElement {
               <span class="count">${renderedItems.length} ${msg('项')}</span>
             </div>`
           : null}
-        ${this._error ? html`<ui-alert variant="error">${this._error}</ui-alert>` : null}
+        ${this._error ? html`<ui-alert type="error">${this._error}</ui-alert>` : null}
         ${this._loading
           ? html`<div class="empty">${msg('加载中…')}</div>`
           : renderedItems.length === 0
@@ -233,9 +241,9 @@ export class RecordList extends LitElement {
                   (item) => html`
                 <div class="item">
                   <div class="meta">
-                      <p class="title">${item.mediaTitle} ${item.segmentIndex !== undefined ? `${msg('句子')} ${item.segmentIndex + 1}` : msg('完整录音')}</p>
+                      <p class="title">${item.mediaTitle}</p>
                       <p class="details">
-                        <span>${formatTime(item.duration)}</span>
+                        <span>${formatTime(item.recordingDuration)}</span>
                         <span>${formatDate(item.createdAt, true)}</span>
                       </p>
                   </div>
@@ -260,10 +268,10 @@ export class RecordList extends LitElement {
                 )}
               </div>`}
         <ui-modal
-          title="录音预览"
+          title="${this._modalRecording?.mediaTitle ?? msg('录音预览')}"
           @close="${() => this._handleModalClose()}"
           ?open=${this._modalOpen}
-          width="400px"
+          width="520px"
           centered
           ?mask=${true}
           ?mask-closable=${true}
@@ -273,7 +281,13 @@ export class RecordList extends LitElement {
           ?destroy-on-close=${true}
           zIndex="1000"
         >
-          <audio controls src="${this._modalAudioUrl}"></audio>
+          ${this._modalOpen && this._modalRecordingBlob
+            ? html`<recording-preview
+                .sourceBlob=${this._modalSourceBlob}
+                .recordingBlob=${this._modalRecordingBlob}
+                .segments=${this._modalRecording?.segments ?? []}
+              ></recording-preview>`
+            : null}
         </ui-modal>
       </section>
     `;
@@ -281,29 +295,25 @@ export class RecordList extends LitElement {
 
   private _handleModalClose(): void {
     this._modalOpen = false;
-    this._modalAudioUrl = '';
+    this._modalRecording = null;
+    this._modalRecordingBlob = null;
+    this._modalSourceBlob = null;
   }
 
-  /**
-   * @todo use media player
-   * @param recording
-   * @returns
-   */
   private async _handleView(recording: PracticeRecord): Promise<void> {
-    const blob = await getRecordingBlob(recording.id);
-    if (!blob) {
+    const [recordingBlob, sourceBlob] = await Promise.all([
+      getRecordingBlob(recording.id),
+      getMediaBlob(recording.mediaId),
+    ]);
+
+    if (!recordingBlob) {
       this._error = msg('录音文件不存在');
       return;
     }
 
-    // const audioUrl = URL.createObjectURL(blob);
-    // console.log('录音地址:', audioUrl);
-    // const audio = new Audio(audioUrl);
-    // audio.play();
-
-    const url = URL.createObjectURL(blob);
-    console.log('录音地址:', url);
-    this._modalAudioUrl = url;
+    this._modalRecording = recording;
+    this._modalRecordingBlob = recordingBlob;
+    this._modalSourceBlob = sourceBlob ?? null;
     this._modalOpen = true;
   }
 

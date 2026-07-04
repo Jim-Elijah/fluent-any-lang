@@ -6,6 +6,7 @@ import { importContentFiles } from '../../lib/import-content.js';
 import type { ImportError, MediaItem, SubtitleTrack } from '../../types/models.js';
 import '../ui/alert.js';
 import '../ui/button.js';
+import { Message } from '../ui/message.js';
 
 @customElement('content-importer')
 export class ContentImporter extends LitElement {
@@ -84,7 +85,24 @@ export class ContentImporter extends LitElement {
   }
 
   render() {
-    const errorMessages = this._errors.map((error) => `${error.fileName}: ${error.message}`);
+    const errorMessages = this._errors.map((error) => `${error.filename}: ${error.message}`);
+    console.log('errorMessages', errorMessages);
+    // ${this._successMessage || this._errors.length > 0
+    //   ? html`
+    //       <div class="messages">
+    //         ${this._successMessage
+    //           ? html`<ui-alert variant="success">${this._successMessage}</ui-alert>`
+    //           : null}
+    //         ${this._errors.length > 0
+    //           ? html`
+    //               <ui-alert variant="error" .items="${errorMessages}">
+    //                 ${msg('部分文件导入失败：')}
+    //               </ui-alert>
+    //             `
+    //           : null}
+    //       </div>
+    //     `
+    //   : null}
 
     return html`
       <div
@@ -95,38 +113,32 @@ export class ContentImporter extends LitElement {
         @drop="${this._handleDrop}"
       >
         <p class="title">${msg('导入练习内容')}</p>
-        <p class="hint">
-          ${msg('拖拽或选择音视频文件与 .srt 字幕（文件名需一致，或一次仅导入一对文件）')}
-        </p>
+        <p class="hint">${msg('拖拽或选择音频与字幕（字幕支持.srt与.lrc）')}</p>
         <div class="actions">
           <ui-button variant="primary" ?disabled="${this._importing}" @click="${this._openPicker}">
             ${msg('选择文件')}
           </ui-button>
         </div>
-        <input
-          type="file"
-          multiple
-          accept="audio/*,video/*,.srt"
-          @change="${this._handleFileInput}"
-        />
+        <!-- @TODO 支持 video/* -->
+        <input type="file" multiple accept="audio/*,.srt,.lrc" @change="${this._handleFileInput}" />
+        ${this._successMessage || this._errors.length > 0
+          ? html`
+              <div class="messages">
+                ${this._successMessage
+                  ? html`<ui-alert type="success">${this._successMessage}</ui-alert>`
+                  : null}
+                ${this._errors.length > 0
+                  ? html`
+                      <ui-alert type="error">
+                        <span slot="title">${msg(str`部分文件导入失败：`)}</span>
+                        ${errorMessages.map((error) => html`<p>${error}</p>`)}
+                      </ui-alert>
+                    `
+                  : null}
+              </div>
+            `
+          : null}
       </div>
-
-      ${this._successMessage || this._errors.length > 0
-        ? html`
-            <div class="messages">
-              ${this._successMessage
-                ? html`<ui-alert variant="success">${this._successMessage}</ui-alert>`
-                : null}
-              ${this._errors.length > 0
-                ? html`
-                    <ui-alert variant="error" .items="${errorMessages}">
-                      ${msg('部分文件导入失败：')}
-                    </ui-alert>
-                  `
-                : null}
-            </div>
-          `
-        : null}
     `;
   }
 
@@ -179,11 +191,18 @@ export class ContentImporter extends LitElement {
       this._errors = result.errors;
 
       if (result.imported.length > 0) {
-        this._successMessage = msg(str`${result.imported.length} 个内容已导入`);
+        // this._successMessage = msg(str`${result.imported.length} 个内容已导入`);
+        Message.success({ message: msg(str`${result.imported.length} 个内容已导入`) });
         this._dispatchImported(result.imported);
       }
+      if (this._errors.length > 0) {
+        this._errors.forEach((error) => {
+          Message.error({ message: msg(str`${error.filename}: ${error.message}`) });
+        });
+      }
     } catch {
-      this._errors = [{ fileName: msg('导入'), message: msg('导入过程中发生未知错误') }];
+      // this._errors = [{ filename: msg('导入'), message: msg('导入过程中发生未知错误') }];
+      Message.error({ message: msg(str`导入过程中发生未知错误`) });
     } finally {
       this._importing = false;
     }

@@ -13,6 +13,7 @@ import type {
   MediaItem,
   PracticeMode,
   PracticeRecord,
+  PracticeSegment,
   RouteContext,
   SubtitleSegment,
 } from '../../types/models.js';
@@ -229,12 +230,18 @@ export class PracticeView extends LitElement {
     onStart: () => {
       this._recordingError = '';
       this._recordingSaved = false;
+      this._practiceSegments = [];
+      this._recordingStartedAt = performance.now();
+      this._lastRecordingEndTime = 0;
+      this._isCollectingSegments =
+        this._practiceType === 'speaking' && this._speakingMode === 'shadowing';
       this._attachEndedListener();
 
       // start playing media when recording starts (after seek to the beginning if needed)
       // if you want to play at the beginning, use below code
       // void this._controller.seek(0);
       void this._controller.play();
+      // @fixme if not start at a segment.startTime，segments in recording will be incorrect
     },
     onStop: (blob) => {
       // save recording to db when recording stopped
@@ -243,6 +250,7 @@ export class PracticeView extends LitElement {
     },
     onError: (error) => {
       this._detachEndedListener();
+      this._isCollectingSegments = false;
       this._recording = false;
       this._recordingError =
         error.name === 'NotAllowedError'
@@ -254,6 +262,10 @@ export class PracticeView extends LitElement {
     },
   });
   private _segmentRepeatTimer: ReturnType<typeof setTimeout> | null = null;
+  private _practiceSegments: PracticeSegment[] = [];
+  private _recordingStartedAt = 0;
+  private _lastRecordingEndTime = 0;
+  private _isCollectingSegments = false;
   private readonly _recordingLimit = DEFAULT_SETTINGS.maxRecordingsPerMedia;
   private readonly _recordingSupported =
     typeof window !== 'undefined' &&
@@ -307,6 +319,7 @@ export class PracticeView extends LitElement {
   };
 
   render() {
+    // @fixme 离开本页面，音频没有暂停，会继续播放
     console.log('practice-view render');
     // const snapshot = this._controller.getSnapshot();
     // const currentSegment = snapshot.segments[snapshot.currentSegmentIndex];
@@ -342,9 +355,9 @@ export class PracticeView extends LitElement {
         </div>
 
         ${this._error
-          ? html`<ui-alert class="messages" variant="error">${this._error}</ui-alert>`
+          ? html`<ui-alert class="messages" type="error">${this._error}</ui-alert>`
           : null}
-        ${this._loading ? html`<ui-alert variant="info">${msg('加载媒体中…')}</ui-alert>` : null}
+        ${this._loading ? html`<ui-alert type="info">${msg('加载媒体中…')}</ui-alert>` : null}
         ${isSpeaking
           ? html`
               <div class="settings-panel">
@@ -448,10 +461,10 @@ export class PracticeView extends LitElement {
                             ? html`<span class="recording-status">${msg('正在录音…')}</span>`
                             : null}
                           ${this._recordingSaved
-                            ? html`<ui-alert variant="success">${msg('录音已保存')}</ui-alert>`
+                            ? html`<ui-alert type="success">${msg('录音已保存')}</ui-alert>`
                             : null}
                           ${this._recordingError
-                            ? html`<ui-alert variant="error">${this._recordingError}</ui-alert>`
+                            ? html`<ui-alert type="error">${this._recordingError}</ui-alert>`
                             : null}
                         </div>
 
@@ -472,7 +485,7 @@ export class PracticeView extends LitElement {
                         ${this._storageEstimate &&
                         this._storageEstimate.remainingPercent <=
                           DEFAULT_SETTINGS.lowStorageThresholdPercent
-                          ? html`<ui-alert variant="warning">
+                          ? html`<ui-alert type="warning">
                               ${msg('磁盘存储空间不足，建议导出或删除旧录音。')}
                             </ui-alert>`
                           : null}
@@ -598,15 +611,25 @@ export class PracticeView extends LitElement {
   }
 
   private _onSegmentEnded = (event: Event): void => {
-    console.log('on segment-end', event);
-    if (this._practiceType !== 'speaking' || this._speakingMode !== 'repeat') {
+    const customEvent = event as CustomEvent<{ segmentIndex: number; segment: SubtitleSegment }>;
+    const segment = customEvent.detail?.segment;
+    if (!segment) {
       return;
     }
 
-    const customEvent = event as CustomEvent<{ segmentIndex: number; segment: SubtitleSegment }>;
-    const detail = customEvent.detail;
-    const segment = detail?.segment;
-    if (!segment) {
+    if (this._isCollectingSegments && this._audioRecorder.getState() === 'recording') {
+      const recordingEndTime = this._getRecordingElapsedSeconds();
+      this._practiceSegments.push({
+        id: segment.id,
+        sourceStartTime: segment.startTime,
+        sourceEndTime: segment.endTime,
+        recordingStartTime: this._lastRecordingEndTime,
+        recordingEndTime,
+      });
+      this._lastRecordingEndTime = recordingEndTime;
+    }
+
+    if (this._practiceType !== 'speaking' || this._speakingMode !== 'repeat') {
       return;
     }
 
@@ -633,6 +656,41 @@ export class PracticeView extends LitElement {
       clearTimeout(this._segmentRepeatTimer);
       this._segmentRepeatTimer = null;
     }
+  }
+
+  private _getRecordingElapsedSeconds(): number {
+    if (this._recordingStartedAt === 0) {
+      return 0;
+    }
+    return (performance.now() - this._recordingStartedAt) / 1000;
+  }
+
+  /** 提前停止录音时，补录当前未触发 SEGMENT_END 的句子 */
+  private _finalizeOpenSegment(): void {
+    if (!this._isCollectingSegments) {
+      return;
+    }
+
+    const snapshot = this._controller.getSnapshot();
+    const segment = snapshot.segments[snapshot.currentSegmentIndex];
+    if (!segment) {
+      return;
+    }
+
+    const last = this._practiceSegments[this._practiceSegments.length - 1];
+    if (last?.id === segment.id) {
+      return;
+    }
+
+    const recordingEndTime = this._getRecordingElapsedSeconds();
+    this._practiceSegments.push({
+      id: segment.id,
+      sourceStartTime: segment.startTime,
+      sourceEndTime: segment.endTime,
+      recordingStartTime: this._lastRecordingEndTime,
+      recordingEndTime,
+    });
+    this._lastRecordingEndTime = recordingEndTime;
   }
 
   private async _toggleRecording(): Promise<void> {
@@ -679,10 +737,13 @@ export class PracticeView extends LitElement {
     this._detachEndedListener();
 
     if (options.save === false) {
+      this._isCollectingSegments = false;
       this._audioRecorder.destroy();
       this._recording = false;
       return;
     }
+
+    this._finalizeOpenSegment();
 
     try {
       await this._audioRecorder.stop();
@@ -702,7 +763,11 @@ export class PracticeView extends LitElement {
     if (!currentItem) {
       return;
     }
-    await this._saveRecording(blob, currentItem);
+
+    const segments = this._practiceSegments;
+    this._isCollectingSegments = false;
+    this._recordingStartedAt = 0;
+    await this._saveRecording(blob, currentItem, segments);
   }
 
   private _attachEndedListener(): void {
@@ -713,19 +778,24 @@ export class PracticeView extends LitElement {
     this._controller.removeEventListener('ended', this._onEnded);
   }
 
-  private async _saveRecording(blob: Blob, media: MediaItem): Promise<void> {
+  private async _saveRecording(
+    blob: Blob,
+    media: MediaItem,
+    segments: PracticeSegment[],
+  ): Promise<void> {
     try {
-      const snapshot = this._controller.getSnapshot();
       const duration = await getMediaDuration(blob, blob.type);
       const record: PracticeRecord = {
         id: crypto.randomUUID(),
         mediaId: media.id,
         mediaTitle: media.title,
+        mediaFilename: media.filename,
         mode: 'shadowing',
         mimeType: blob.type || 'audio/webm',
-        duration,
+        recordingDuration: duration,
+        sourceDuration: media.duration,
         createdAt: Date.now(),
-        segmentIndex: snapshot.currentSegmentIndex >= 0 ? snapshot.currentSegmentIndex : undefined,
+        segments,
       };
 
       await saveRecording(record, blob);

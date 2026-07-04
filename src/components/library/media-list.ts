@@ -1,4 +1,4 @@
-import { msg, updateWhenLocaleChanges } from '@lit/localize';
+import { msg, str, updateWhenLocaleChanges } from '@lit/localize';
 import { css, html, LitElement } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 
@@ -154,7 +154,7 @@ export class MediaList extends LitElement {
     try {
       this._items = await getMediaList();
     } catch {
-      this._error = msg('无法加载内容库');
+      this._error = msg(str`无法加载媒体库`);
       this._items = [];
     } finally {
       this._loading = false;
@@ -189,17 +189,15 @@ export class MediaList extends LitElement {
     return html`
       <section>
         <div class="header">
-          <h2>${msg('资源库')}</h2>
+          <h2>${msg('媒体库')}</h2>
           <span class="count">${renderedItems.length} ${msg('项')}</span>
         </div>
 
-        ${this._error
-          ? html`<ui-alert class="error" variant="error">${this._error}</ui-alert>`
-          : null}
+        ${this._error ? html`<ui-alert class="error" type="error">${this._error}</ui-alert>` : null}
         ${this._loading
           ? html`<div class="empty">${msg('加载中…')}</div>`
           : renderedItems.length === 0
-            ? html`<div class="empty">${msg('暂无内容，请先导入音视频和字幕')}</div>`
+            ? html`<div class="empty">${msg('暂无内容，请先导入音频和字幕')}</div>`
             : html`
                 <ul class="list">
                   ${renderedItems.map(

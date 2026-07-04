@@ -76,7 +76,7 @@ export class HomePage extends LitElement {
     return html`
       <div class="home">
         <p class="intro">
-          ${msg('任意语言的听说练习平台。导入音视频与字幕，开始 Listening / Speaking 练习。')}
+          ${msg('任意语言的听说练习平台。导入音频与字幕，开始 Listening / Speaking 练习。')}
         </p>
         <div class="stack">
           <content-importer @content-imported="${this._handleContentImported}"></content-importer>

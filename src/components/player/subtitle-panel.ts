@@ -41,6 +41,7 @@ export class SubtitlePanel extends LitElement {
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      margin-right: auto;
     }
 
     .list {
@@ -52,23 +53,30 @@ export class SubtitlePanel extends LitElement {
     }
 
     .segment {
-      display: grid;
-      grid-template-columns: auto 1fr;
-      gap: 12px;
-      align-items: start;
-      padding: 10px 16px;
+      display: flex;
+      gap: 4px;
+      align-items: center;
+      padding: 6px 16px;
       cursor: pointer;
       transition: background-color 0.15s ease;
     }
 
     .segment:hover {
       background: rgba(22, 119, 255, 0.04);
+      text-decoration: underline;
     }
 
     .segment.active {
       background: rgba(22, 119, 255, 0.1);
       border-left: 3px solid var(--color-primary, #1677ff);
       padding-left: 13px;
+    }
+
+    .content {
+      display: flex;
+      align-items: center;
+      flex-direction: column;
+      flex: 1;
     }
 
     .time {
@@ -80,8 +88,15 @@ export class SubtitlePanel extends LitElement {
 
     .text {
       margin: 0;
-      line-height: 1.6;
-      white-space: pre-wrap;
+      font-weight: 600;
+    }
+
+    .translation {
+      font-weight: 400;
+    }
+
+    .translation.hidden {
+      display: none;
     }
 
     .empty {
@@ -105,6 +120,9 @@ export class SubtitlePanel extends LitElement {
 
   @state()
   private _lastScrolledIndex = -1;
+
+  @state()
+  private _translationVisible = false;
 
   private _boundController: MediaController | null = null;
 
@@ -154,6 +172,8 @@ export class SubtitlePanel extends LitElement {
       `;
     }
 
+    const hasTranslation = snapshot.segments.some((segment) => segment.translation);
+
     return html`
       <div class="surface">
         <div class="header title-row">
@@ -161,6 +181,11 @@ export class SubtitlePanel extends LitElement {
           ${snapshot.hasSubtitles
             ? html`<ui-button variant="ghost" @click="${this._toggleSubtitles}">
                 ${snapshot.subtitlesVisible ? msg('隐藏字幕') : msg('显示字幕')}
+              </ui-button>`
+            : ''}
+          ${snapshot.hasSubtitles && hasTranslation
+            ? html`<ui-button variant="ghost" @click="${this._toggleTranslationVisible}">
+                ${this._translationVisible ? msg('隐藏翻译') : msg('显示翻译')}
               </ui-button>`
             : ''}
         </div>
@@ -175,13 +200,26 @@ export class SubtitlePanel extends LitElement {
                     @click="${() => this._handleSegmentClick(index)}"
                   >
                     <span class="time">${formatTime(segment.startTime)}</span>
-                    <p class="text">${segment.text}</p>
+                    <div class="content">
+                      <p class="text">${segment.text}</p>
+                      ${segment.translation
+                        ? html`<p
+                            class="text translation ${!this._translationVisible ? 'hidden' : ''}"
+                          >
+                            ${segment.translation}
+                          </p>`
+                        : ''}
+                    </div>
                   </li>
                 `,
               )}
             </ul>`}
       </div>
     `;
+  }
+
+  private _toggleTranslationVisible(): void {
+    this._translationVisible = !this._translationVisible;
   }
 
   private _handleSegmentClick(index: number): void {
