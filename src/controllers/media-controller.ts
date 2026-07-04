@@ -49,6 +49,18 @@ export type LoadedTrack = {
 
 const LOOP_EPSILON = 0.05;
 
+const DEFAULT_PLAYER_SETTINGS = {
+  playbackRate: 1,
+  volume: 1,
+  loopMode: 'none' as LoopMode,
+  subtitlesVisible: true,
+  sleepMode: 'off' as SleepMode,
+  sleepMinutes: 30,
+  pauseMode: 'off' as PauseMode,
+  pauseSeconds: 1,
+  pausePercent: DEFAULT_SETTINGS.repeatPausePercent,
+};
+
 export class MediaController extends EventTarget {
   private mediaElement: HTMLMediaElement | null = null;
   private objectUrl: string | null = null;
@@ -65,16 +77,16 @@ export class MediaController extends EventTarget {
   currentTime = 0;
   duration = 0;
   isPlaying = false;
-  playbackRate = 1;
-  volume = 1;
-  loopMode: LoopMode = 'none';
-  subtitlesVisible = true;
-  sleepMode: SleepMode = 'off';
-  sleepMinutes = 30;
+  playbackRate = DEFAULT_PLAYER_SETTINGS.playbackRate;
+  volume = DEFAULT_PLAYER_SETTINGS.volume;
+  loopMode: LoopMode = DEFAULT_PLAYER_SETTINGS.loopMode;
+  subtitlesVisible = DEFAULT_PLAYER_SETTINGS.subtitlesVisible;
+  sleepMode: SleepMode = DEFAULT_PLAYER_SETTINGS.sleepMode;
+  sleepMinutes = DEFAULT_PLAYER_SETTINGS.sleepMinutes;
   sleepRemainingSeconds = 0;
-  pauseMode: PauseMode = 'off';
-  pauseSeconds = 1;
-  pausePercent = DEFAULT_SETTINGS.repeatPausePercent;
+  pauseMode: PauseMode = DEFAULT_PLAYER_SETTINGS.pauseMode;
+  pauseSeconds = DEFAULT_PLAYER_SETTINGS.pauseSeconds;
+  pausePercent = DEFAULT_PLAYER_SETTINGS.pausePercent;
 
   private sleepTimerId: ReturnType<typeof setInterval> | null = null;
   private _segmentPauseTimerId: ReturnType<typeof setTimeout> | null = null;
@@ -449,6 +461,30 @@ export class MediaController extends EventTarget {
 
   cancelSegmentPause(): void {
     this._clearSegmentPauseTimer();
+    this._emitChange();
+  }
+
+  /** Reset all player settings (loop, pause, sleep, rate, volume, etc.) to defaults. */
+  resetSettings(): void {
+    this._clearSegmentPauseTimer();
+    this._clearSleepTimer();
+
+    this.playbackRate = DEFAULT_PLAYER_SETTINGS.playbackRate;
+    this.volume = DEFAULT_PLAYER_SETTINGS.volume;
+    this.loopMode = DEFAULT_PLAYER_SETTINGS.loopMode;
+    this.subtitlesVisible = DEFAULT_PLAYER_SETTINGS.subtitlesVisible;
+    this.sleepMode = DEFAULT_PLAYER_SETTINGS.sleepMode;
+    this.sleepMinutes = DEFAULT_PLAYER_SETTINGS.sleepMinutes;
+    this.sleepRemainingSeconds = 0;
+    this.pauseMode = DEFAULT_PLAYER_SETTINGS.pauseMode;
+    this.pauseSeconds = DEFAULT_PLAYER_SETTINGS.pauseSeconds;
+    this.pausePercent = DEFAULT_PLAYER_SETTINGS.pausePercent;
+
+    if (this.mediaElement) {
+      this.mediaElement.playbackRate = this.playbackRate;
+      this.mediaElement.volume = this.volume;
+    }
+
     this._emitChange();
   }
 

@@ -1,7 +1,5 @@
 import type { SubtitleSegment } from '../types/models.js';
 
-export const PLAYBACK_RATES = [0.5, 0.75, 1, 1.25, 1.5, 2] as const;
-
 export const MAX_SLEEP_MINUTES = 90;
 
 export enum MediaEventType {

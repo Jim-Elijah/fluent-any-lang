@@ -218,6 +218,8 @@ export class PracticeView extends LitElement {
       this._isCollectingSegments = this._practiceType === 'speaking';
       this._attachEndedListener();
 
+      this._resetSettingsForPractice();
+
       // start playing media when recording starts (after seek to the beginning if needed)
       // if you want to play at the beginning, use below code
       // void this._controller.seek(0);
@@ -300,8 +302,6 @@ export class PracticeView extends LitElement {
   render() {
     // @fixme 离开本页面，音频没有暂停，会继续播放
     console.log('practice-view render');
-    // const snapshot = this._controller.getSnapshot();
-    // const currentSegment = snapshot.segments[snapshot.currentSegmentIndex];
     const remaining = Math.max(this._recordingLimit - this._recordingCount, 0);
     const isSpeaking = this._practiceType === 'speaking';
 
@@ -336,15 +336,15 @@ export class PracticeView extends LitElement {
         ${isSpeaking
           ? html`
               <div class="settings-panel">
-                <h3>${msg('Speaking 设置')}</h3>
-
                 <div class="settings-group">
                   <div class="info-text">
-                    <div>${msg('已保存录音')}：${this._recordingCount}/${this._recordingLimit}</div>
                     <div>
                       ${this._recordingSupported
                         ? remaining > 0
-                          ? msg('点击"开始录音"并跟随播放语音，录音会自动保存。')
+                          ? msg(
+                              `采用Shadowing模式练习，点击"开始录音"并跟随播放语音，停止录音后会自动保存。
+                              温馨提示：1. 建议使用耳机练习 2. 如果跟不上原音，可以设置倍速、暂停方式 3. 录音前可以操作播放器设置，录音开始后播放器不可操作 4. 除了倍速、音量、暂停方式，Shadowing模式会忽略其他的播放器设置。`,
+                            )
                           : msg('录音已达上限，删除旧录音后可继续。')
                         : msg('当前浏览器不支持录音。')}
                     </div>
@@ -403,7 +403,7 @@ export class PracticeView extends LitElement {
         <div class="layout">
           <media-player
             .controller="${this._controller}"
-            ?disabled="${isSpeaking}"
+            ?disabled="${isSpeaking && this._recording}"
             mode=""
             .controlsConfig="${{
               loopMode: true,
@@ -541,6 +541,19 @@ export class PracticeView extends LitElement {
     // stop recording (and save recording to db which is done through onStop callback) when media ended
     void this._stopRecording({ save: true });
   };
+
+  /** Reset loop/sleep for shadowing practice; only keeps rate, volume, and pause settings. */
+  private _resetSettingsForPractice(): void {
+    const snapshot = this._controller.getSnapshot();
+    this._controller.resetSettings();
+
+    this._controller.setVolume(snapshot.volume);
+    this._controller.setPlaybackRate(snapshot.playbackRate);
+    this._controller.setPauseMode(snapshot.pauseMode);
+    this._controller.setPauseSeconds(snapshot.pauseSeconds);
+    this._controller.setPausePercent(snapshot.pausePercent);
+  }
+
   private async _startRecording(): Promise<void> {
     if (!this._recordingSupported) {
       this._recordingError = msg('当前浏览器不支持录音。');

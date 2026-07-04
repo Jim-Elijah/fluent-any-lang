@@ -7,14 +7,13 @@ import type {
   MediaController,
   MediaControllerSnapshot,
 } from '../../controllers/media-controller.js';
-import {
-  formatTime,
-  FORWARDED_MEDIA_EVENTS,
-  MAX_SLEEP_MINUTES,
-  PLAYBACK_RATES,
-} from '../../lib/playback-utils.js';
+import { formatTime, FORWARDED_MEDIA_EVENTS, MAX_SLEEP_MINUTES } from '../../lib/playback-utils.js';
 import '../ui/button.js';
+import '../ui/slider.js';
+import '../ui/tooltip.js';
+import '../ui/select.js';
 import { MediaControlsConfig, MediaPlayerMode } from '../../types/index.js';
+import { SelectChangeDetail } from '../ui/select.js';
 
 // @TODO apply default config
 const defaultControlConfig: MediaControlsConfig = {
@@ -143,7 +142,7 @@ export class MediaPlayer extends LitElement {
     .settings {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-      gap: 12px;
+      gap: 16px;
     }
 
     label {
@@ -177,20 +176,6 @@ export class MediaPlayer extends LitElement {
       background: rgba(22, 119, 255, 0.06);
       color: var(--color-primary, #1677ff);
       font-size: 0.8125rem;
-    }
-
-    .sleep-row {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-      gap: 12px;
-      align-items: end;
-    }
-
-    .pause-row {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-      gap: 12px;
-      align-items: end;
     }
 
     .pause-info {
@@ -234,6 +219,10 @@ export class MediaPlayer extends LitElement {
   disconnectedCallback(): void {
     this.controller?.detachMediaElement();
     super.disconnectedCallback();
+  }
+
+  resetSettings(): void {
+    this.controller?.resetSettings();
   }
 
   // protected willUpdate(changed: Map<PropertyKey, unknown>): void {
@@ -341,14 +330,17 @@ export class MediaPlayer extends LitElement {
           </div>
 
           <div class="progress">
-            <input
-              type="range"
+            <ui-slider
+              ?disabled="${this.disabled}"
+              .value="${String(snapshot.currentTime)}"
               min="0"
               max="${progressMax}"
               step="0.1"
-              .value="${String(snapshot.currentTime)}"
-              @input="${this._handleSeekInput}"
-            />
+              .tooltip=${{
+                open: false,
+              }}
+              @change=${this._handleSeekInput}
+            ></ui-slider>
             <div class="time">
               <span>${formatTime(snapshot.currentTime)}</span>
               <span>${formatTime(snapshot.duration)}</span>
@@ -375,7 +367,11 @@ export class MediaPlayer extends LitElement {
                 </ui-button>`
               : ''}
             ${this.controlsConfig.playPause
-              ? html` <ui-button variant="primary" @click="${this._togglePlay}">
+              ? html` <ui-button
+                  variant="primary"
+                  ?disabled="${this.disabled}"
+                  @click="${this._togglePlay}"
+                >
                   ${snapshot.isPlaying ? msg('暂停') : msg('播放')}
                 </ui-button>`
               : ''}
@@ -403,113 +399,190 @@ export class MediaPlayer extends LitElement {
             ${showLoopMode
               ? html`<label>
                   ${msg('循环模式')}
-                  <select .value="${snapshot.loopMode}" @change="${this._handleLoopModeChange}">
-                    <option value="none">${msg('不循环')}</option>
-                    <option value="single">${msg('单曲循环')}</option>
-                    <option value="segment" ?disabled="${!snapshot.hasSubtitles}">
-                      ${msg('单句循环')}
-                    </option>
-                    <option value="list">${msg('列表循环')}</option>
-                    <option value="shuffle">${msg('随机播放')}</option>
-                  </select>
+                  <ui-select
+                    ?disabled="${this.disabled}"
+                    .value=${snapshot.loopMode}
+                    .options=${[
+                      { value: 'none', label: msg('关闭') },
+                      { value: 'single', label: msg('单曲循环') },
+                      {
+                        value: 'segment',
+                        label: msg('单句循环'),
+                        disabled: !snapshot.hasSubtitles,
+                      },
+                      { value: 'list', label: msg('列表循环') },
+                      { value: 'shuffle', label: msg('随机播放') },
+                    ]}
+                    placeholder="循环模式"
+                    @change=${this._handleLoopModeChange}
+                  ></ui-select>
                 </label>`
               : ''}
             ${this.controlsConfig.playbackRate
               ? html`<label>
-                  ${msg('倍速')}
-                  <select
-                    .value="${String(snapshot.playbackRate)}"
-                    @change="${this._handleRateChange}"
-                  >
-                    ${PLAYBACK_RATES.map(
-                      (rate) => html` <option value="${rate}">${rate}x</option> `,
-                    )}
-                  </select>
+                  ${msg(str`倍速（${Number(snapshot.playbackRate).toFixed(1)}x）`)}
+                  <ui-slider
+                    ?disabled="${this.disabled}"
+                    .value=${Number(snapshot.playbackRate)}
+                    min="0.1"
+                    max="4"
+                    step="0.1"
+                    .marks=${{
+                      0.5: '0.5',
+                      1: '1',
+                      1.5: '1.5',
+                      2: '2',
+                      3: '3',
+                      4: '4',
+                    }}
+                    .tooltip=${{
+                      formatter: (v: number) => `${v.toFixed(1)}x`,
+                      placement: 'top',
+                    }}
+                    @change=${this._handleRateChange}
+                  ></ui-slider>
                 </label>`
               : ''}
             ${this.controlsConfig.volume
-              ? html`<label class="volume">
-                  ${msg('音量')}
-                  <input
-                    type="range"
+              ? html`<label>
+                  ${msg(str`音量（${Number(snapshot.volume * 100).toFixed(0)}%）`)}
+                  <ui-slider
+                    ?disabled="${this.disabled}"
+                    .value=${Number(snapshot.volume)}
                     min="0"
                     max="1"
                     step="0.01"
-                    .value="${String(snapshot.volume)}"
-                    @input="${this._handleVolumeChange}"
-                  />
+                    .marks=${{
+                      0: '0',
+                      0.2: '20',
+                      0.5: '50',
+                      0.8: '80',
+                      1: '100',
+                    }}
+                    .tooltip=${{
+                      formatter: (v: number) => `${Number((v * 100).toFixed(0))}%`,
+                      placement: 'top',
+                    }}
+                    @change=${this._handleVolumeChange}
+                  ></ui-slider>
                 </label>`
               : ''}
           </div>
 
-          ${showPauseMode
-            ? html`
-                <div class="pause-row">
+          <div class="settings">
+            ${showPauseMode
+              ? html`
                   <label>
                     ${msg('暂停方式')}
-                    <select .value="${snapshot.pauseMode}" @change="${this._handlePauseModeChange}">
-                      <option value="off">${msg('关闭')}</option>
-                      <option value="seconds">${msg('固定秒数')}</option>
-                      <option value="percentage">${msg('句长百分比')}</option>
-                    </select>
+                    <ui-select
+                      ?disabled="${this.disabled}"
+                      .value=${snapshot.pauseMode}
+                      .options=${[
+                        { value: 'off', label: msg('关闭') },
+                        { value: 'seconds', label: msg('固定时长') },
+                        {
+                          value: 'percentage',
+                          label: msg('句长百分比'),
+                        },
+                      ]}
+                      placeholder="暂停方式"
+                      @change=${this._handlePauseModeChange}
+                    ></ui-select>
                   </label>
                   ${snapshot.pauseMode === 'seconds'
                     ? html`
                         <label>
-                          ${msg('暂停时间（秒）')}
-                          <input
-                            type="number"
+                          ${msg(str`固定时长（${Number(snapshot.pauseSeconds)}秒）`)}
+                          <ui-slider
+                            ?disabled="${this.disabled}"
+                            .value=${Number(snapshot.pauseSeconds)}
                             min="1"
                             max="30"
-                            .value="${String(snapshot.pauseSeconds)}"
-                            @change="${this._handlePauseSecondsChange}"
-                          />
+                            step="1"
+                            .marks=${{
+                              1: '1',
+                              3: '3',
+                              5: '5',
+                              10: '10',
+                              30: '30',
+                            }}
+                            .tooltip=${{
+                              formatter: (v: number) => `${v} ${msg('秒')}`,
+                              placement: 'top',
+                            }}
+                            @change=${this._handlePauseSecondsChange}
+                          ></ui-slider>
                         </label>
                       `
                     : null}
                   ${snapshot.pauseMode === 'percentage'
                     ? html`
                         <label>
-                          ${msg('暂停比例（%）')}
-                          <input
-                            type="number"
+                          ${msg(str`句长百分比（${Number(snapshot.pausePercent)}%）`)}
+                          <ui-slider
+                            ?disabled="${this.disabled}"
+                            .value=${Number(snapshot.pausePercent)}
                             min="100"
                             max="500"
                             step="10"
-                            .value="${String(snapshot.pausePercent)}"
-                            @change="${this._handlePausePercentChange}"
-                          />
+                            .marks=${{
+                              100: '100',
+                              200: '200',
+                              300: '300',
+                              400: '400',
+                              500: '500',
+                            }}
+                            .tooltip=${{
+                              formatter: (v: number) => `${v} ${msg('%')}`,
+                              placement: 'top',
+                            }}
+                            @change=${this._handlePausePercentChange}
+                          ></ui-slider>
                         </label>
                       `
                     : null}
-                </div>
-              `
-            : null}
-
-          <div class="sleep-row">
+                `
+              : null}
             ${this.controlsConfig.sleepMode
               ? html`<label>
                   ${msg('睡眠模式')}
-                  <select .value="${snapshot.sleepMode}" @change="${this._handleSleepModeChange}">
-                    <option value="off">${msg('关闭')}</option>
-                    <option value="minutes">${msg('定时暂停')}</option>
-                    <option value="until-end">${msg('播完本集暂停')}</option>
-                  </select>
+                  <ui-select
+                    ?disabled="${this.disabled}"
+                    .value=${snapshot.sleepMode}
+                    .options=${[
+                      { value: 'off', label: msg('关闭') },
+                      { value: 'minutes', label: msg('定时暂停') },
+                      { value: 'until-end', label: msg('播完本集暂停') },
+                    ]}
+                    placeholder="睡眠模式"
+                    @change=${this._handleSleepModeChange}
+                  ></ui-select>
                 </label>`
               : ''}
             ${snapshot.sleepMode === 'minutes'
               ? html`
                   <label>
-                    ${msg(str`定时（0–${MAX_SLEEP_MINUTES} 分钟）`)}
-                    <input
-                      type="range"
-                      min="0"
+                    ${msg(str`定时关闭（${Number(snapshot.sleepMinutes)}分钟）`)}
+                    <ui-slider
+                      ?disabled="${this.disabled}"
+                      .value=${Number(snapshot.sleepMinutes)}
+                      min="1"
                       max="${MAX_SLEEP_MINUTES}"
                       step="1"
-                      .value="${String(snapshot.sleepMinutes)}"
-                      @input="${this._handleSleepMinutesChange}"
-                    />
-                    <span>${snapshot.sleepMinutes} ${msg('分钟')}</span>
+                      .marks=${{
+                        0: '0',
+                        10: '10',
+                        20: '20',
+                        30: '30',
+                        60: '60',
+                        [MAX_SLEEP_MINUTES]: `${MAX_SLEEP_MINUTES}`,
+                      }}
+                      .tooltip=${{
+                        formatter: (v: number) => `${v} ${msg('分钟')}`,
+                        placement: 'top',
+                      }}
+                      @change=${this._handleSleepMinutesChange}
+                    ></ui-slider>
                   </label>
                 `
               : null}
@@ -552,10 +625,9 @@ export class MediaPlayer extends LitElement {
     `;
   }
 
-  private _handleLoopModeChange(event: Event): void {
-    const select = event.target as HTMLSelectElement;
+  private _handleLoopModeChange(event: CustomEvent<SelectChangeDetail>): void {
     this.controller?.setLoopMode(
-      select.value as 'none' | 'single' | 'segment' | 'list' | 'shuffle',
+      event.detail.value as 'none' | 'single' | 'segment' | 'list' | 'shuffle',
     );
   }
 
@@ -590,62 +662,40 @@ export class MediaPlayer extends LitElement {
     this.controller?.nextSegment();
   }
 
-  // private _toggleSubtitles(): void {
-  //   const snapshot = this._controllerHost?.snapshot;
-  //   if (!snapshot) {
-  //     return;
-  //   }
-  //   this.controller?.setSubtitlesVisible(!snapshot.subtitlesVisible);
-  // }
-
-  private _handleSeekInput(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    this.controller?.seek(Number(input.value));
+  private _handleSeekInput(event: CustomEvent<{ value: number }>): void {
+    this.controller?.seek(Number(event.detail.value));
   }
 
-  private _handleRateChange(event: Event): void {
-    const select = event.target as HTMLSelectElement;
-    this.controller?.setPlaybackRate(Number(select.value));
+  private _handleRateChange(event: CustomEvent<{ value: number }>): void {
+    this.controller?.setPlaybackRate(Number(event.detail.value));
   }
 
-  private _handleVolumeChange(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    this.controller?.setVolume(Number(input.value));
+  private _handleVolumeChange(event: CustomEvent<{ value: number }>): void {
+    this.controller?.setVolume(Number(event.detail.value));
   }
 
-  private _handleSleepModeChange(event: Event): void {
-    const select = event.target as HTMLSelectElement;
-    this.controller?.setSleepMode(select.value as 'off' | 'minutes' | 'until-end');
+  private _handleSleepModeChange(event: CustomEvent<SelectChangeDetail>): void {
+    this.controller?.setSleepMode(event.detail.value as 'off' | 'minutes' | 'until-end');
   }
 
-  private _handleSleepMinutesChange(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    this.controller?.setSleepMinutes(Number(input.value));
+  private _handleSleepMinutesChange(event: CustomEvent<{ value: number }>): void {
+    this.controller?.setSleepMinutes(Number(event.detail.value));
   }
 
   private _cancelSleep(): void {
     this.controller?.cancelSleep();
   }
 
-  private _handlePauseModeChange(event: Event): void {
-    const select = event.target as HTMLSelectElement;
-    this.controller?.setPauseMode(select.value as 'off' | 'seconds' | 'percentage');
+  private _handlePauseModeChange(event: CustomEvent<SelectChangeDetail>): void {
+    this.controller?.setPauseMode(event.detail.value as 'off' | 'seconds' | 'percentage');
   }
 
-  private _handlePauseSecondsChange(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const value = parseInt(input.value, 10);
-    if (!Number.isNaN(value)) {
-      this.controller?.setPauseSeconds(value);
-    }
+  private _handlePauseSecondsChange(event: CustomEvent<{ value: number }>): void {
+    this.controller?.setPauseSeconds(Number(event.detail.value));
   }
 
-  private _handlePausePercentChange(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const value = parseInt(input.value, 10);
-    if (!Number.isNaN(value)) {
-      this.controller?.setPausePercent(value);
-    }
+  private _handlePausePercentChange(event: CustomEvent<{ value: number }>): void {
+    this.controller?.setPausePercent(Number(event.detail.value));
   }
 }
 
