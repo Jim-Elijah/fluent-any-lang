@@ -11,7 +11,6 @@ import { estimateStorage } from '../../lib/export-content.js';
 import { getMediaDuration } from '../../lib/file-validation.js';
 import type {
   MediaItem,
-  PracticeMode,
   PracticeRecord,
   PracticeSegment,
   RouteContext,
@@ -168,11 +167,6 @@ export class PracticeView extends LitElement {
       font-size: 0.875rem;
       color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
     }
-
-    .mode-buttons {
-      display: flex;
-      gap: 10px;
-    }
   `;
 
   @property({ type: Object })
@@ -194,9 +188,6 @@ export class PracticeView extends LitElement {
 
   @state()
   private _practiceType: PracticeType = 'listening';
-
-  @state()
-  private _speakingMode: PracticeMode = 'repeat';
 
   @state()
   private _repeatPauseMode: 'seconds' | 'percentage' = 'seconds';
@@ -233,8 +224,7 @@ export class PracticeView extends LitElement {
       this._practiceSegments = [];
       this._recordingStartedAt = performance.now();
       this._lastRecordingEndTime = 0;
-      this._isCollectingSegments =
-        this._practiceType === 'speaking' && this._speakingMode === 'shadowing';
+      this._isCollectingSegments = this._practiceType === 'speaking';
       this._attachEndedListener();
 
       // start playing media when recording starts (after seek to the beginning if needed)
@@ -327,11 +317,7 @@ export class PracticeView extends LitElement {
     const isSpeaking = this._practiceType === 'speaking';
 
     const headerTitle =
-      this._practiceType === 'listening'
-        ? msg('Listening 练习')
-        : this._speakingMode === 'repeat'
-          ? msg('Speaking - Repeat 练习')
-          : msg('Speaking - Shadowing 练习');
+      this._practiceType === 'listening' ? msg('Listening 练习') : msg('Speaking 练习');
 
     return html`
       <section>
@@ -365,141 +351,111 @@ export class PracticeView extends LitElement {
 
                 <div class="settings-group">
                   <label>
-                    ${msg('练习模式')}
-                    <div class="mode-buttons">
-                      <ui-button
-                        variant="${this._speakingMode === 'repeat' ? 'primary' : 'secondary'}"
-                        @click="${() => this._setSpeakingMode('repeat')}"
-                      >
-                        ${msg('Repeat')}
-                      </ui-button>
-                      <ui-button
-                        variant="${this._speakingMode === 'shadowing' ? 'primary' : 'secondary'}"
-                        @click="${() => this._setSpeakingMode('shadowing')}"
-                      >
-                        ${msg('Shadowing')}
-                      </ui-button>
-                    </div>
+                    ${msg('暂停方式')}
+                    <select
+                      .value="${this._repeatPauseMode}"
+                      @change="${this._handleRepeatPauseModeChange}"
+                    >
+                      <option value="off">${msg('关闭')}</option>
+                      <option value="seconds">${msg('固定秒数')}</option>
+                      <option value="percentage">${msg('句长百分比')}</option>
+                    </select>
                   </label>
                 </div>
 
-                ${this._speakingMode === 'repeat'
+                ${this._repeatPauseMode === 'seconds'
                   ? html`
                       <div class="settings-group">
                         <label>
-                          ${msg('暂停方式')}
-                          <select
-                            .value="${this._repeatPauseMode}"
-                            @change="${this._handleRepeatPauseModeChange}"
-                          >
-                            <option value="seconds">${msg('固定秒数')}</option>
-                            <option value="percentage">${msg('句长百分比')}</option>
-                          </select>
+                          ${msg('暂停时间（秒）')}
+                          <input
+                            type="number"
+                            min="1"
+                            max="30"
+                            .value="${String(this._repeatPauseSeconds)}"
+                            @change="${this._handleRepeatPauseSecondsChange}"
+                          />
                         </label>
                       </div>
-
-                      ${this._repeatPauseMode === 'seconds'
-                        ? html`
-                            <div class="settings-group">
-                              <label>
-                                ${msg('暂停时间（秒）')}
-                                <input
-                                  type="number"
-                                  min="1"
-                                  max="30"
-                                  .value="${String(this._repeatPauseSeconds)}"
-                                  @change="${this._handleRepeatPauseSecondsChange}"
-                                />
-                              </label>
-                            </div>
-                          `
-                        : html`
-                            <div class="settings-group">
-                              <label>
-                                ${msg('暂停比例（%）')}
-                                <input
-                                  type="number"
-                                  min="100"
-                                  max="500"
-                                  step="10"
-                                  .value="${String(this._repeatPausePercent)}"
-                                  @change="${this._handleRepeatPausePercentChange}"
-                                />
-                              </label>
-                            </div>
-                          `}
-
-                      <p class="info-text">
-                        ${msg(
-                          '每句话播放完毕后会自动暂停，您可在暂停期间进行跟读。该模式下的录音不会保存。',
-                        )}
-                      </p>
                     `
                   : html`
                       <div class="settings-group">
-                        <div class="info-text">
-                          <div>
-                            ${msg('已保存录音')}：${this._recordingCount}/${this._recordingLimit}
-                          </div>
-                          <div>
-                            ${this._recordingSupported
-                              ? remaining > 0
-                                ? msg('点击"开始录音"并跟随播放语音，录音会自动保存。')
-                                : msg('录音已达上限，删除旧录音后可继续。')
-                              : msg('当前浏览器不支持录音。')}
-                          </div>
-                        </div>
-                        <div class="recording-controls">
-                          <ui-button
-                            variant="primary"
-                            ?disabled="${!this._recordingSupported || remaining <= 0}"
-                            @click="${this._toggleRecording}"
-                          >
-                            ${this._recording ? msg('停止录音') : msg('开始录音')}
-                          </ui-button>
-                          ${this._recording
-                            ? html`<span class="recording-status">${msg('正在录音…')}</span>`
-                            : null}
-                          ${this._recordingSaved
-                            ? html`<ui-alert type="success">${msg('录音已保存')}</ui-alert>`
-                            : null}
-                          ${this._recordingError
-                            ? html`<ui-alert type="error">${this._recordingError}</ui-alert>`
-                            : null}
-                        </div>
-
-                        ${this._storageEstimate
-                          ? html`
-                              <div class="storage-info">
-                                <div>
-                                  ${msg('当前存储')}：${formatStorageUsage(
-                                    this._storageEstimate.usage,
-                                  )}
-                                  / ${formatStorageUsage(this._storageEstimate.quota)}
-                                  (${Math.round(this._storageEstimate.remainingPercent)}%
-                                  ${msg('剩余')})
-                                </div>
-                              </div>
-                            `
-                          : null}
-                        ${this._storageEstimate &&
-                        this._storageEstimate.remainingPercent <=
-                          DEFAULT_SETTINGS.lowStorageThresholdPercent
-                          ? html`<ui-alert type="warning">
-                              ${msg('磁盘存储空间不足，建议导出或删除旧录音。')}
-                            </ui-alert>`
-                          : null}
-
-                        <div class="settings-group">
-                          <h3>${msg('已保存录音')}</h3>
-                          <record-list
-                            .mediaId="${this._mediaId}"
-                            .showHeader="${false}"
-                            @recording-deleted="${this._refreshRecordings}"
-                          ></record-list>
-                        </div>
+                        <label>
+                          ${msg('暂停比例（%）')}
+                          <input
+                            type="number"
+                            min="100"
+                            max="500"
+                            step="10"
+                            .value="${String(this._repeatPausePercent)}"
+                            @change="${this._handleRepeatPausePercentChange}"
+                          />
+                        </label>
                       </div>
                     `}
+
+                <p class="info-text">
+                  ${msg('每句话播放完毕后会自动暂停，您可在暂停期间进行跟读。')}
+                </p>
+
+                <div class="settings-group">
+                  <div class="info-text">
+                    <div>${msg('已保存录音')}：${this._recordingCount}/${this._recordingLimit}</div>
+                    <div>
+                      ${this._recordingSupported
+                        ? remaining > 0
+                          ? msg('点击"开始录音"并跟随播放语音，录音会自动保存。')
+                          : msg('录音已达上限，删除旧录音后可继续。')
+                        : msg('当前浏览器不支持录音。')}
+                    </div>
+                  </div>
+                  <div class="recording-controls">
+                    <ui-button
+                      variant="primary"
+                      ?disabled="${!this._recordingSupported || remaining <= 0}"
+                      @click="${this._toggleRecording}"
+                    >
+                      ${this._recording ? msg('停止录音') : msg('开始录音')}
+                    </ui-button>
+                    ${this._recording
+                      ? html`<span class="recording-status">${msg('正在录音…')}</span>`
+                      : null}
+                    ${this._recordingSaved
+                      ? html`<ui-alert type="success">${msg('录音已保存')}</ui-alert>`
+                      : null}
+                    ${this._recordingError
+                      ? html`<ui-alert type="error">${this._recordingError}</ui-alert>`
+                      : null}
+                  </div>
+
+                  ${this._storageEstimate
+                    ? html`
+                        <div class="storage-info">
+                          <div>
+                            ${msg('当前存储')}：${formatStorageUsage(this._storageEstimate.usage)} /
+                            ${formatStorageUsage(this._storageEstimate.quota)}
+                            (${Math.round(this._storageEstimate.remainingPercent)}% ${msg('剩余')})
+                          </div>
+                        </div>
+                      `
+                    : null}
+                  ${this._storageEstimate &&
+                  this._storageEstimate.remainingPercent <=
+                    DEFAULT_SETTINGS.lowStorageThresholdPercent
+                    ? html`<ui-alert type="warning">
+                        ${msg('磁盘存储空间不足，建议导出或删除旧录音。')}
+                      </ui-alert>`
+                    : null}
+
+                  <div class="settings-group">
+                    <h3>${msg('已保存录音')}</h3>
+                    <record-list
+                      .mediaId="${this._mediaId}"
+                      .showHeader="${false}"
+                      @recording-deleted="${this._refreshRecordings}"
+                    ></record-list>
+                  </div>
+                </div>
               </div>
             `
           : null}
@@ -577,18 +533,6 @@ export class PracticeView extends LitElement {
     void this._stopRecording();
   }
 
-  private _setSpeakingMode(mode: PracticeMode): void {
-    if (this._speakingMode === mode) {
-      return;
-    }
-
-    this._speakingMode = mode;
-    this._recordingError = '';
-    this._recordingSaved = false;
-    this._clearSegmentRepeatTimer();
-    void this._stopRecording();
-  }
-
   private _handleRepeatPauseModeChange(event: Event): void {
     const target = event.target as HTMLSelectElement;
     this._repeatPauseMode = target.value as 'seconds' | 'percentage';
@@ -629,7 +573,7 @@ export class PracticeView extends LitElement {
       this._lastRecordingEndTime = recordingEndTime;
     }
 
-    if (this._practiceType !== 'speaking' || this._speakingMode !== 'repeat') {
+    if (this._practiceType !== 'speaking') {
       return;
     }
 
@@ -645,7 +589,7 @@ export class PracticeView extends LitElement {
 
     // @fixme 单据循环时，不会等待
     this._segmentRepeatTimer = setTimeout(() => {
-      if (this._practiceType === 'speaking' && this._speakingMode === 'repeat') {
+      if (this._practiceType === 'speaking') {
         void this._controller.play();
       }
     }, pauseDuration);
