@@ -1,5 +1,5 @@
 import { css, html, LitElement } from 'lit';
-import { customElement, query, state } from 'lit/decorators.js';
+import { customElement, state } from 'lit/decorators.js';
 import { updateWhenLocaleChanges } from '@lit/localize';
 import { navigator } from 'lit-element-router';
 
@@ -11,14 +11,15 @@ import '../../components/ui/locale-switcher.js';
 import '../../components/ui/select.js';
 import '../../components/ui/input.js';
 import type { SelectChangeDetail } from '../../components/ui/select.js';
-import type { MediaList } from '../../components/library/media-list.js';
-import type { RecordList } from '../../components/library/record-list.js';
 import { InputChangeDetail } from '../../components/ui/input.js';
 import { SortDirection } from '../../types/models.js';
 
+// @customElement('library-page')
+// @navigator
+// export class LibraryPage extends LitElement {
+const NavigatorElement = navigator(LitElement);
 @customElement('library-page')
-@navigator
-export class LibraryPage extends LitElement {
+export class LibraryPage extends NavigatorElement {
   static styles = css`
     :host {
       display: block;
@@ -82,12 +83,6 @@ export class LibraryPage extends LitElement {
     { value: 'asc', label: '升序' },
     { value: 'desc', label: '降序' },
   ];
-
-  @query('media-list')
-  private _mediaList?: MediaList;
-
-  @query('record-list')
-  private _recordList?: RecordList;
 
   constructor() {
     super();

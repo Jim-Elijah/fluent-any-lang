@@ -6,9 +6,12 @@ import '../../components/player/audio-recorder.js';
 
 const COUNTDOWN_TIME = 3;
 
+// @customElement('not-found-page')
+// @navigator
+// export class NotFoundPage extends LitElement {
+const NavigatorElement = navigator(LitElement);
 @customElement('not-found-page')
-@navigator
-export class NotFoundPage extends LitElement {
+export class NotFoundPage extends NavigatorElement {
   @property({ type: Boolean }) active = false;
   @state()
   private _countdown = COUNTDOWN_TIME;

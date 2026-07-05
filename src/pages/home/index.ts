@@ -1,5 +1,5 @@
 import { css, html, LitElement } from 'lit';
-import { customElement, query, state } from 'lit/decorators.js';
+import { customElement, query } from 'lit/decorators.js';
 import { msg, updateWhenLocaleChanges } from '@lit/localize';
 import { navigator } from 'lit-element-router';
 
@@ -9,11 +9,14 @@ import '../../components/library/record-list.js';
 import '../../components/player/practice-view.js';
 import '../../components/ui/locale-switcher.js';
 import type { MediaList } from '../../components/library/media-list.js';
-import type { RecordList } from '../../components/library/record-list.js';
 
+// @customElement('home-page')
+// @navigator
+// export class HomePage extends LitElement {
+
+const NavigatorElement = navigator(LitElement);
 @customElement('home-page')
-@navigator
-export class HomePage extends LitElement {
+export class HomePage extends NavigatorElement {
   static styles = css`
     :host {
       display: block;
@@ -59,13 +62,8 @@ export class HomePage extends LitElement {
     }
   `;
 
-  @state()
-  private _selectedMediaId = '';
   @query('media-list')
   private _mediaList?: MediaList;
-
-  @query('record-list')
-  private _recordList?: RecordList;
 
   constructor() {
     super();

@@ -17,10 +17,14 @@ import { MenuItem, MenuOpenChangeDetail, MenuSelectDetail } from '../components/
 // import { Loading } from '../components/ui/loading';
 // import { Message } from '../components/ui/message.js';
 
+// @customElement('app-shell')
+// @router
+// @navigator
+// export class MyApp extends LitElement {
+
+const RouterNavigatorApp = navigator(router(LitElement));
 @customElement('app-shell')
-@router
-@navigator
-export class MyApp extends LitElement {
+export class MyApp extends RouterNavigatorApp {
   static styles = css`
     :host {
       display: block;

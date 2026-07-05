@@ -1,5 +1,5 @@
 import { msg, str } from '@lit/localize';
-import type { SubtitleFormat, SubtitleSegment } from '../types/models.js';
+import type { SubtitleType, SubtitleSegment } from '../types/models.js';
 
 const SRT_TIMESTAMP =
   /(\d{2}):(\d{2}):(\d{2})[,.](\d{3})\s*-->\s*(\d{2}):(\d{2}):(\d{2})[,.](\d{3})/;
@@ -79,7 +79,7 @@ function validateSegments(segments: SubtitleSegment[]): {
   return { segments };
 }
 
-export function detectSubtitleFormat(content: string): SubtitleFormat | null {
+export function detectSubtitleFormat(content: string): SubtitleType | null {
   const normalized = normalizeLineEndings(content.trim());
   if (!normalized) {
     return null;
@@ -197,7 +197,7 @@ export function parseLrc(content: string): SubtitleSegment[] {
   return segments;
 }
 
-export function parseSubtitle(content: string, format?: SubtitleFormat): SubtitleSegment[] {
+export function parseSubtitle(content: string, format?: SubtitleType): SubtitleSegment[] {
   const resolvedFormat = format ?? detectSubtitleFormat(content);
   if (resolvedFormat === 'lrc') {
     return parseLrc(content);
@@ -224,7 +224,7 @@ export function validateLrcContent(content: string): {
 
 export function validateSubtitleContent(
   content: string,
-  format?: SubtitleFormat,
+  format?: SubtitleType,
 ): {
   segments: SubtitleSegment[] | null;
   error?: string;
