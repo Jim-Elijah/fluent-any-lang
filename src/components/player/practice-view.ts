@@ -413,7 +413,7 @@ export class PracticeView extends LitElement {
           <media-player
             .controller="${this._controller}"
             ?disabled="${isSpeaking && this._recording}"
-            mode=""
+            mode="normal"
             .controlsConfig="${{
               loopMode: true,
               sleepMode: true,
@@ -424,6 +424,7 @@ export class PracticeView extends LitElement {
               progress: true,
               previousNextTrack: true,
               previousNextSegment: true,
+              switchMode: false,
             }}"
             @segment-change="${(e: CustomEvent) => console.log('当前播放句改变:', e.detail)}"
             @segment-end="${(e: CustomEvent) => console.log('句子播放结束:', e.detail)}"

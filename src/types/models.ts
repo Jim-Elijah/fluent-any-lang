@@ -23,6 +23,7 @@ export type MediaItem = {
   duration: number;
   createdAt: number;
   hasSubtitles: boolean; // 字幕是否上传，取决于与title同名的SubtitleTrack是否有segments
+  cover?: string; // 封面图片url
 };
 
 // 音视频的Blob
@@ -104,6 +105,8 @@ export interface MediaControlsConfig {
   sleepMode?: boolean;
   /** 句间暂停（需同时有字幕才生效） */
   pauseMode?: boolean;
+  /** 切换模式 normal fixed mini */
+  switchMode?: boolean;
 }
 
 /** 路由上下文， 参考 lit-element-router/lit-element-router.d.ts */

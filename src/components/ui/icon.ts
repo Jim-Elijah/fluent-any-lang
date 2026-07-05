@@ -78,13 +78,16 @@ export class UIIcon extends LitElement {
     `;
   }
 
+  /** @fixme 是否要阻断事件冒泡 */
   private _handleClick(event: MouseEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
     if (this.disabled) {
-      event.preventDefault();
-      event.stopPropagation();
       return;
     }
-    this.dispatchEvent(new CustomEvent('click', { detail: this.name }));
+    this.dispatchEvent(
+      new CustomEvent('click', { detail: this.name, bubbles: true, composed: true }),
+    );
   }
 
   private async _loadRegistry(): Promise<void> {
