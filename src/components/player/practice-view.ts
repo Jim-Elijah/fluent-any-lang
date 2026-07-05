@@ -1,4 +1,4 @@
-import { msg, updateWhenLocaleChanges } from '@lit/localize';
+import { msg, str, updateWhenLocaleChanges } from '@lit/localize';
 import { css, html, LitElement } from 'lit';
 import { customElement, property, query, state } from 'lit/decorators.js';
 
@@ -20,9 +20,11 @@ import { DEFAULT_SETTINGS } from '../../types/models.js';
 import { formatStorageUsage } from '../../lib/playback-utils.js';
 import '../ui/alert.js';
 import '../ui/button.js';
+import '../ui/icon.js';
 import './media-player.js';
 import './subtitle-panel.js';
 import { RecordList } from '../library/record-list.js';
+import { Message } from '../ui/message.js';
 
 type PracticeType = 'listening' | 'speaking';
 
@@ -164,6 +166,8 @@ export class PracticeView extends LitElement {
     }
 
     .info-text {
+      display: grid;
+      gap: 8px;
       font-size: 0.875rem;
       color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
     }
@@ -199,10 +203,17 @@ export class PracticeView extends LitElement {
   private _recordingCount = 0;
 
   @state()
-  private _recordingSaved = false;
+  private _storageEstimate: StorageEstimate | null = null;
 
   @state()
-  private _storageEstimate: StorageEstimate | null = null;
+  private _shadowingTips: string[] = [
+    msg(`采用Shadowing模式练习，点击以下"麦克风图标"并跟随播放语音，停止录音后会自动保存。`),
+    msg('温馨提示：'),
+    msg('1. 建议使用耳机练习。'),
+    msg('2. 如果跟不上原音，可以设置倍速、暂停方式。'),
+    msg('3. 录音前可以操作播放器设置，录音开始后播放器不可操作。'),
+    msg('4. 除了倍速、音量、暂停方式，Shadowing模式会忽略其他的播放器设置。'),
+  ];
 
   @query('record-list')
   private _recordList?: RecordList;
@@ -211,7 +222,6 @@ export class PracticeView extends LitElement {
   private readonly _audioRecorder = new AudioRecorderController({
     onStart: () => {
       this._recordingError = '';
-      this._recordingSaved = false;
       this._practiceSegments = [];
       this._recordingStartedAt = performance.now();
       this._lastRecordingEndTime = 0;
@@ -338,62 +348,61 @@ export class PracticeView extends LitElement {
               <div class="settings-panel">
                 <div class="settings-group">
                   <div class="info-text">
-                    <div>
+                    <div class="info-text">
                       ${this._recordingSupported
                         ? remaining > 0
-                          ? msg(
-                              `采用Shadowing模式练习，点击"开始录音"并跟随播放语音，停止录音后会自动保存。
-                              温馨提示：1. 建议使用耳机练习 2. 如果跟不上原音，可以设置倍速、暂停方式 3. 录音前可以操作播放器设置，录音开始后播放器不可操作 4. 除了倍速、音量、暂停方式，Shadowing模式会忽略其他的播放器设置。`,
+                          ? html`${this._shadowingTips.map((tip) => html`<div>${tip}</div>`)}`
+                          : msg(
+                              str`当前音频的录音已达上限（${this._recordingLimit}条），删除旧录音后可继续。`,
                             )
-                          : msg('录音已达上限，删除旧录音后可继续。')
                         : msg('当前浏览器不支持录音。')}
                     </div>
-                  </div>
-                  <div class="recording-controls">
-                    <ui-button
-                      variant="primary"
-                      ?disabled="${!this._recordingSupported || remaining <= 0}"
-                      @click="${this._toggleRecording}"
-                    >
-                      ${this._recording ? msg('停止录音') : msg('开始录音')}
-                    </ui-button>
-                    ${this._recording
-                      ? html`<span class="recording-status">${msg('正在录音…')}</span>`
-                      : null}
-                    ${this._recordingSaved
-                      ? html`<ui-alert type="success">${msg('录音已保存')}</ui-alert>`
-                      : null}
-                    ${this._recordingError
-                      ? html`<ui-alert type="error">${this._recordingError}</ui-alert>`
-                      : null}
-                  </div>
 
-                  ${this._storageEstimate
-                    ? html`
-                        <div class="storage-info">
-                          <div>
-                            ${msg('当前存储')}：${formatStorageUsage(this._storageEstimate.usage)} /
-                            ${formatStorageUsage(this._storageEstimate.quota)}
-                            (${Math.round(this._storageEstimate.remainingPercent)}% ${msg('剩余')})
+                    <div class="recording-controls">
+                      <ui-icon
+                        style="margin-top: 8px;"
+                        title="${this._recording ? msg('停止录音') : msg('开始录音')}"
+                        name="${this._recording ? 'stop-recording' : 'micro-on'}"
+                        size="20px"
+                        ?disabled="${!this._recordingSupported || remaining <= 0}"
+                        @click="${this._toggleRecording}"
+                      ></ui-icon>
+                      ${this._recording
+                        ? html`<span class="recording-status">${msg('正在录音…')}</span>`
+                        : null}
+                      ${this._recordingError
+                        ? html`<ui-alert type="error">${this._recordingError}</ui-alert>`
+                        : null}
+                    </div>
+
+                    ${this._storageEstimate
+                      ? html`
+                          <div class="storage-info">
+                            <div>
+                              ${msg('当前存储')}：${formatStorageUsage(this._storageEstimate.usage)}
+                              / ${formatStorageUsage(this._storageEstimate.quota)}
+                              (${Math.round(this._storageEstimate.remainingPercent)}%
+                              ${msg('剩余')})
+                            </div>
                           </div>
-                        </div>
-                      `
-                    : null}
-                  ${this._storageEstimate &&
-                  this._storageEstimate.remainingPercent <=
-                    DEFAULT_SETTINGS.lowStorageThresholdPercent
-                    ? html`<ui-alert type="warning">
-                        ${msg('磁盘存储空间不足，建议导出或删除旧录音。')}
-                      </ui-alert>`
-                    : null}
+                        `
+                      : null}
+                    ${this._storageEstimate &&
+                    this._storageEstimate.remainingPercent <=
+                      DEFAULT_SETTINGS.lowStorageThresholdPercent
+                      ? html`<ui-alert type="warning">
+                          ${msg('磁盘存储空间不足，建议导出或删除旧录音。')}
+                        </ui-alert>`
+                      : null}
 
-                  <div class="settings-group">
-                    <h3>${msg('已保存录音')}</h3>
-                    <record-list
-                      .mediaId="${this._mediaId}"
-                      .showHeader="${false}"
-                      @recording-deleted="${this._refreshRecordings}"
-                    ></record-list>
+                    <div class="settings-group">
+                      <h3>${msg('当前音频的已保存录音')}</h3>
+                      <record-list
+                        .mediaId="${this._mediaId}"
+                        .showHeader="${false}"
+                        @recording-deleted="${this._refreshRecordings}"
+                      ></record-list>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -435,7 +444,6 @@ export class PracticeView extends LitElement {
   private async _loadPractice(): Promise<void> {
     this._loading = true;
     this._error = '';
-    this._recordingSaved = false;
 
     try {
       const playlist = await loadPlaylistForPlayback();
@@ -469,7 +477,6 @@ export class PracticeView extends LitElement {
 
     this._practiceType = type;
     this._recordingError = '';
-    this._recordingSaved = false;
     void this._stopRecording();
   }
 
@@ -566,7 +573,6 @@ export class PracticeView extends LitElement {
     }
 
     this._recordingError = '';
-    this._recordingSaved = false;
 
     try {
       await this._audioRecorder.start();
@@ -650,7 +656,7 @@ export class PracticeView extends LitElement {
       await this._refreshRecordings();
       // fixme 没有刷新录音列表
       await this._recordList?.refresh();
-      this._recordingSaved = true;
+      Message.success(msg('录音已保存'));
     } catch {
       this._recordingError = msg('保存录音失败，请重试。');
     }

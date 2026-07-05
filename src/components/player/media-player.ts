@@ -12,6 +12,7 @@ import '../ui/button.js';
 import '../ui/slider.js';
 import '../ui/tooltip.js';
 import '../ui/select.js';
+import '../ui/icon.js';
 import { MediaControlsConfig, MediaPlayerMode } from '../../types/index.js';
 import { SelectChangeDetail } from '../ui/select.js';
 
@@ -349,49 +350,49 @@ export class MediaPlayer extends LitElement {
 
           <div class="transport">
             ${this.controlsConfig.previousNextTrack
-              ? html` <ui-button
-                  variant="secondary"
+              ? html` <ui-icon
+                  name="previous"
+                  title="${msg('上一首')}"
+                  size="20px"
                   ?disabled="${!snapshot.canPreviousTrack || this.disabled}"
                   @click="${this._previousTrack}"
-                >
-                  ${msg('上一首')}
-                </ui-button>`
+                ></ui-icon>`
               : ''}
             ${showSegments && snapshot.hasSubtitles
-              ? html` <ui-button
-                  variant="secondary"
+              ? html`<ui-icon
+                  name="backward"
+                  title="${msg('上一句')}"
+                  size="20px"
                   ?disabled="${!snapshot.canPreviousSegment || this.disabled}"
                   @click="${this._previousSegment}"
-                >
-                  ${msg('上一句')}
-                </ui-button>`
+                ></ui-icon>`
               : ''}
             ${this.controlsConfig.playPause
-              ? html` <ui-button
-                  variant="primary"
+              ? html`<ui-icon
+                  name="${snapshot.isPlaying ? 'pause' : 'play'}"
+                  title="${msg(str`${snapshot.isPlaying ? '暂停' : '播放'}`)}"
+                  size="20px"
                   ?disabled="${this.disabled}"
                   @click="${this._togglePlay}"
-                >
-                  ${snapshot.isPlaying ? msg('暂停') : msg('播放')}
-                </ui-button>`
+                ></ui-icon>`
               : ''}
             ${showSegments && snapshot.hasSubtitles
-              ? html`<ui-button
-                  variant="secondary"
+              ? html`<ui-icon
+                  name="forward"
+                  title="${msg('下一句')}"
+                  size="20px"
                   ?disabled="${!snapshot.canNextSegment || this.disabled}"
                   @click="${this._nextSegment}"
-                >
-                  ${msg('下一句')}
-                </ui-button>`
+                ></ui-icon>`
               : ''}
             ${this.controlsConfig.previousNextTrack
-              ? html`<ui-button
-                  variant="secondary"
+              ? html`<ui-icon
+                  name="next"
+                  title="${msg('下一首')}"
+                  size="20px"
                   ?disabled="${!snapshot.canNextTrack || this.disabled}"
                   @click="${this._nextTrack}"
-                >
-                  ${msg('下一首')}
-                </ui-button>`
+                ></ui-icon>`
               : ''}
           </div>
 

@@ -123,10 +123,11 @@ export class MyApp extends LitElement {
   openKeys: string[] = [];
 
   private readonly _menuItems: Array<MenuItem & { link: string }> = [
-    { key: 'home', label: 'Home', link: '/' },
-    { key: 'practice', label: 'Practice', link: '/practice' },
-    { key: 'library', label: 'Library', link: '/library' },
-    { key: 'not-found', label: 'Not Found', link: '/not-found' },
+    { key: 'home', label: msg('首页'), link: '/', icon: 'home' },
+    { key: 'practice', label: msg('练习'), link: '/practice', icon: 'practice' },
+    { key: 'library', label: msg('库'), link: '/library', icon: 'media' },
+    // { key: 'settings', label: 'Settings', link: '/settings', icon: 'settings' },
+    // { key: 'not-found', label: 'Not Found', link: '/not-found', icon: 'not-found' },
   ];
 
   private readonly _menuLinks = new Map(this._menuItems.map((item) => [item.key, item.link]));
@@ -213,6 +214,7 @@ export class MyApp extends LitElement {
   }
 
   private _handleMenuSelect(event: CustomEvent<MenuSelectDetail>) {
+    console.log('handleMenuSelect', event.detail);
     this.selectedKeys = event.detail.selectedKeys;
     const link = this._menuLinks.get(event.detail.key);
     if (link) {

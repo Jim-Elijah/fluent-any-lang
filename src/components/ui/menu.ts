@@ -348,7 +348,7 @@ export class UiMenu extends LitElement {
                   aria-expanded=${isOpen}
                   @click=${(e: Event) => this._handleSubmenuClick(item, e)}
                 >
-                  ${item.icon ? html`<span class="icon">${item.icon}</span>` : nothing}
+                  ${item.icon ? html`<ui-icon name=${item.icon} size="20px"></ui-icon>` : nothing}
                   <span>${item.label}</span>
                   <span class="chevron ${isOpen ? 'open' : ''}">›</span>
                 </div>
@@ -386,7 +386,9 @@ export class UiMenu extends LitElement {
                       aria-current=${childSelected ? 'page' : 'false'}
                       @click=${(e: Event) => this._handleSelect(child, e)}
                     >
-                      ${child.icon ? html`<span class="icon">${child.icon}</span>` : nothing}
+                      ${child.icon
+                        ? html`<ui-icon name=${child.icon} size="20px"></ui-icon>`
+                        : nothing}
                       <span>${child.label}</span>
                     </div>
                   `;
@@ -404,7 +406,7 @@ export class UiMenu extends LitElement {
             role="menuitem"
             @click=${(e: Event) => this._handleSelect(item, e)}
           >
-            ${item.icon ? html`<span class="icon">${item.icon}</span>` : nothing}
+            ${item.icon ? html`<ui-icon name=${item.icon} size="20px"></ui-icon>` : nothing}
             <span>${item.label}</span>
           </div>
         `;
