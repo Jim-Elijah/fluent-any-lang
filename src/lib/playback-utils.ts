@@ -1,4 +1,5 @@
 import type { SubtitleSegment } from '../types/models.js';
+import { getLocale } from '../i18n/localization.js';
 
 export const MAX_SLEEP_MINUTES = 90;
 
@@ -50,46 +51,43 @@ export const EXPANDED_MEDIA_EVENTS = Object.values(ExtendedMediaEventType);
  */
 
 export const FORWARDED_MEDIA_EVENTS = [...NATIVE_MEDIA_EVENTS, ...EXPANDED_MEDIA_EVENTS] as const;
-// export const FORWARDED_MEDIA_EVENTS = [
-//   'play',
-//   'pause',
-//   'ended',
-//   'timeupdate',
-//   'volumechange',
-//   'ratechange',
-//   'seeking',
-//   'seeked',
-//   'waiting',
-//   'playing',
-//   'error',
-//   'loadedmetadata',
-//   'canplay',
-//   'canplaythrough',
-// ] as const;
 
 export function formatStorageUsage(usage: number): string {
   return (usage / 1024 / 1024).toFixed(1) + ' MB';
 }
 
+/**
+ * 格式化日期时间
+ * @param timestamp - 时间戳
+ * @param useLocal - 是否使用本地时间
+ * @returns 格式化后的日期时间
+ */
 export function formatDate(timestamp: number, useLocal: boolean): string {
-  if (useLocal) {
-    return new Intl.DateTimeFormat(undefined, {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    }).format(new Date(timestamp));
-  }
   const date = new Date(timestamp);
-  const formatter = new Intl.DateTimeFormat('en', {
+  if (!useLocal) {
+    return formatExportDate(date);
+  }
+  return formatDisplayDate(date);
+}
+
+function formatExportDate(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}-${pad(date.getMinutes())}-${pad(date.getSeconds())}`;
+}
+
+function formatDisplayDate(date: Date): string {
+  const locale = getLocale();
+  console.log('locale', locale);
+  // 英文用 12 小时制更符合习惯，其他 locale 用 24 小时
+  const hour12 = locale === 'en';
+  return new Intl.DateTimeFormat(locale, {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
-    second: '2-digit',
-  });
-
-  const parts = formatter.formatToParts(date);
-  return `${parts[4].value}-${parts[0].value}-${parts[2].value} ${parts[6].value}:${parts[8].value}`;
+    hour12,
+  }).format(date);
 }
 
 export function formatTime(seconds: number): string {

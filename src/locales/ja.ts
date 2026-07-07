@@ -5,7 +5,6 @@ import { html } from 'lit';
 import { str } from '@lit/localize';
 
 export const templates = {
-  h878d12933208521e: html`セグメントを同期再生中 <strong>${0} / ${1}</strong>`,
   s0113509f303fe7f5: `現在のストレージ`,
   s05cfc6cafa28b482: `2. 原音に追いつかない場合、速度と単一文の一時停止モードを設定できます。`,
   s0608efee9a487d9b: `録音停止`,
@@ -58,7 +57,7 @@ export const templates = {
   s738aaee75681f360: str`速度（${0}x）`,
   s747f0ac7d07a0726: `現在の曲が終了した後に一時停止します`,
   s7990b4a1eb25ee6c: `原音を再生`,
-  s7a3a550815a6de71: `表示`,
+  s7a3a550815a6de71: `チェック`,
   s7d282808180601fb: `一時停止`,
   s802eb52e99fdac92: `この録音を削除してもよろしいですか？`,
   s815a69081bfc0e6d: `日付`,
@@ -130,4 +129,5 @@ export const templates = {
   sf963b9095b733075: `降順`,
   sf9d9e3b381776b16: `字幕あり`,
   sfc80b5c79424583c: `メディアが選択されていません`,
+  h5ca3162680bccfa8: html`正在同步播放片段 <strong>${0} / ${1}</strong>`,
 };

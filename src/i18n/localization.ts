@@ -4,7 +4,7 @@ import { allLocales, sourceLocale, targetLocales } from '../locales/locale-codes
 
 export type Locale = (typeof allLocales)[number];
 
-const LOCALE_STORAGE_KEY = 'fluent-any-lang:locale';
+export const LOCALE_STORAGE_KEY = 'fluent-any-lang:locale';
 
 const localization = configureLocalization({
   sourceLocale,
@@ -29,6 +29,6 @@ export async function changeLocale(locale: Locale): Promise<void> {
   document.documentElement.lang = locale;
 }
 
-function isLocale(value: string): value is Locale {
+export function isLocale(value: string): value is Locale {
   return value === sourceLocale || (targetLocales as readonly string[]).includes(value);
 }

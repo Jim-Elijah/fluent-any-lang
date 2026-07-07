@@ -8,7 +8,6 @@ import { str } from '@lit/localize';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 export const templates = {
-  h878d12933208521e: html`Syncing segment <strong>${0} / ${1}</strong>`,
   s0113509f303fe7f5: `Current Storage`,
   s05cfc6cafa28b482: `2. If you can't follow the original audio, you can set the speed and single sentence pause mode.`,
   s0608efee9a487d9b: `Stop Recording`,
@@ -133,4 +132,5 @@ export const templates = {
   sf963b9095b733075: `Descending`,
   sf9d9e3b381776b16: `With subtitles`,
   sfc80b5c79424583c: `No media selected`,
+  h5ca3162680bccfa8: html`正在同步播放片段 <strong>${0} / ${1}</strong>`,
 };

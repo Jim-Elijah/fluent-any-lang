@@ -4,7 +4,9 @@ import { customElement, property } from 'lit/decorators.js';
 
 import { changeLocale } from '../../i18n/localization.js';
 import type { Locale } from '../../i18n/localization.js';
-import { sourceLocale, targetLocales } from '../../locales/locale-codes.js';
+import { allLocales, sourceLocale } from '../../locales/locale-codes.js';
+import './select.js';
+import { SelectChangeDetail } from './select.js';
 
 @customElement('locale-switcher')
 @localized()
@@ -43,25 +45,24 @@ export class LocaleSwitcher extends LitElement {
     ja: '日本語',
   };
 
-  private _handleChange(event: Event): void {
-    const select = event.target as HTMLSelectElement;
-    const locale = select.value as Locale;
-    console.log('locale-switcher _handleChange', locale);
+  private _handleChange(event: CustomEvent<SelectChangeDetail>): void {
+    const locale = event.detail.value as Locale;
     void changeLocale(locale).then(() => {
       this.value = locale;
     });
   }
 
   render() {
-    const locales: Locale[] = [sourceLocale, ...targetLocales];
-
-    return html`
-      <select .value="${this.value}" @change="${this._handleChange}" aria-label="${msg('语言')}">
-        ${locales.map(
-          (locale) => html` <option value="${locale}">${this._localeLabels[locale]}</option> `,
-        )}
-      </select>
-    `;
+    const options = allLocales.map((locale) => ({
+      value: locale,
+      label: this._localeLabels[locale],
+    }));
+    return html` <ui-select
+      aria-label="${msg('语言')}"
+      .value=${this.value}
+      .options=${options}
+      @change=${this._handleChange}
+    ></ui-select>`;
   }
 }
 

@@ -14,8 +14,7 @@ import '../pages/recording/index.js';
 import '../components/ui/locale-switcher.js';
 import '../components/ui/menu.js';
 import { MenuItem, MenuOpenChangeDetail, MenuSelectDetail } from '../components/ui/menu.js';
-// import { Loading } from '../components/ui/loading';
-// import { Message } from '../components/ui/message.js';
+import { getLocale, isLocale, Locale, LOCALE_STORAGE_KEY } from '../i18n/localization.js';
 
 // @customElement('app-shell')
 // @router
@@ -103,12 +102,6 @@ export class MyApp extends RouterNavigatorApp {
   @property({ type: String })
   route: string = '';
 
-  // @state()
-  // params: object = {};
-
-  // @state()
-  // query: object = {};
-
   @state()
   private _isMobile = false;
   private _mq?: MediaQueryList;
@@ -126,6 +119,9 @@ export class MyApp extends RouterNavigatorApp {
 
   @state()
   openKeys: string[] = [];
+
+  @state()
+  locale: Locale;
 
   private _getMenuItems(): Array<MenuItem & { link: string }> {
     return [
@@ -163,6 +159,19 @@ export class MyApp extends RouterNavigatorApp {
     ];
   }
 
+  constructor() {
+    super();
+    const currentLocale = getLocale();
+    const savedLocale = localStorage.getItem(LOCALE_STORAGE_KEY);
+    // console.log('savedLocale', savedLocale);
+    // console.log('currentLocale', currentLocale);
+    if (savedLocale && isLocale(savedLocale)) {
+      this.locale = savedLocale;
+    } else {
+      this.locale = currentLocale as Locale;
+    }
+  }
+
   connectedCallback() {
     super.connectedCallback();
     this._mq = window.matchMedia('(max-width: 767px)');
@@ -176,27 +185,6 @@ export class MyApp extends RouterNavigatorApp {
   private _onMediaChange = (e: MediaQueryListEvent) => {
     this._isMobile = e.matches;
   };
-
-  firstUpdated() {
-    // console.log('firstUpdated', Message);
-    // Message.config({ max: 5, duration: 2000, grouping: true, showClose: true });
-    // Message('Saved');
-    // Message({ message: 'Done0', type: 'success', duration: 0 });
-    // Message({ message: 'Done1', type: 'success' });
-    // Message({ message: 'Done', type: 'success', duration: 5000 });
-    // Message({ message: 'Done', type: 'success', duration: 5000 });
-    // Message({ message: 'Done', type: 'success', duration: 5000 });
-    // Message.error({ message: 'Failed', showClose: true });
-    // const inst = Message.info('Loading...');
-    // inst.close();
-    // Message.closeAll();
-    // const loadingInstance = Loading.service({
-    //   text: 'Loading',
-    //   background: 'rgba(0, 0, 0, 0.8)',
-    //   // lock: true,
-    // });
-    // setTimeout(() => loadingInstance.close(), 2000);
-  }
 
   router(
     route: string,
@@ -247,7 +235,7 @@ export class MyApp extends RouterNavigatorApp {
         <div class="main-content">
           <header>
             <h1 class="brand">${msg('FluentAnyLang')}</h1>
-            <locale-switcher></locale-switcher>
+            <locale-switcher .value=${this.locale}></locale-switcher>
           </header>
           <app-main active-route=${this.route}>
             <div route="home"><home-page></home-page></div>

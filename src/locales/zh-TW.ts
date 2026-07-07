@@ -5,7 +5,6 @@ import { html } from 'lit';
 import { str } from '@lit/localize';
 
 export const templates = {
-  h878d12933208521e: html`正在同步播放片段 <strong>${0} / ${1}</strong>`,
   s0113509f303fe7f5: `目前儲存`,
   s05cfc6cafa28b482: `2. 如果跟不上原音，可以設置倍速、單句暫停模式。`,
   s0608efee9a487d9b: `停止錄音`,
@@ -130,4 +129,5 @@ export const templates = {
   sf963b9095b733075: `降序`,
   sf9d9e3b381776b16: `含字幕`,
   sfc80b5c79424583c: `未選擇媒體`,
+  h5ca3162680bccfa8: html`正在同步播放片段 <strong>${0} / ${1}</strong>`,
 };

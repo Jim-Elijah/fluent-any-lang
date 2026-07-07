@@ -206,7 +206,7 @@ export class MediaList extends LitElement {
                               ${item.type === 'video' ? msg('视频') : msg('音频')}
                             </span>
                             <span>${formatTime(item.duration)}</span>
-                            <span>${formatDate(item.createdAt, false)}</span>
+                            <span>${formatDate(item.createdAt, true)}</span>
                             <span class="badge ${item.hasSubtitles ? '' : 'muted'}">
                               ${item.hasSubtitles ? msg('含字幕') : msg('无字幕')}
                             </span>

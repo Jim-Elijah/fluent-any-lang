@@ -7,7 +7,6 @@ import '../../components/import/content-importer.js';
 import '../../components/library/media-list.js';
 import '../../components/library/record-list.js';
 import '../../components/player/practice-view.js';
-import '../../components/ui/locale-switcher.js';
 import type { MediaList } from '../../components/library/media-list.js';
 
 // @customElement('home-page')
