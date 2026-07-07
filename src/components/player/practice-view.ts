@@ -25,6 +25,7 @@ import './media-player.js';
 import './subtitle-panel.js';
 import { RecordList } from '../library/record-list.js';
 import { Message } from '../ui/message.js';
+import { Loading } from '../ui/loading.js';
 
 type PracticeType = 'listening' | 'speaking';
 
@@ -174,6 +175,9 @@ export class PracticeView extends LitElement {
     }
   `;
 
+  @property({ type: String })
+  route: string = '';
+
   @property({ type: Object })
   routeContext: RouteContext = {
     route: '',
@@ -184,9 +188,6 @@ export class PracticeView extends LitElement {
 
   @state()
   private _mediaId = '';
-
-  @state()
-  private _loading = true;
 
   @state()
   private _error = '';
@@ -268,7 +269,6 @@ export class PracticeView extends LitElement {
     typeof MediaRecorder !== 'undefined';
 
   disconnectedCallback(): void {
-    console.log('disconnectedCallback practice-view');
     this._controller.removeEventListener('segment-end', this._onSegmentEnded);
     this._controller.removeEventListener('track-change', this._onTrackChange);
     this._detachEndedListener();
@@ -282,21 +282,28 @@ export class PracticeView extends LitElement {
   }
 
   protected updated(changed: Map<PropertyKey, unknown>): void {
-    if (
-      changed.has('routeContext') &&
-      this.routeContext.params.id !== (changed.get('routeContext') as RouteContext).params.id
-    ) {
-      if (this._mediaId !== this.routeContext.params.id) {
-        this._mediaId = this.routeContext.params.id;
-      }
-      void this._loadPractice();
+    if (!changed.has('routeContext')) {
+      return;
     }
+    const prevContext = changed.get('routeContext') as RouteContext | undefined;
+    const prevId = prevContext?.params?.id;
+    const nextId = this.routeContext.params.id;
+    if (prevId === nextId) {
+      return;
+    }
+    // 有 id 时用路由 id；无 id 时清空，让 _loadPractice 走第一首
+    this._mediaId = nextId ?? '';
+    void this._loadPractice();
   }
 
   connectedCallback(): void {
     super.connectedCallback();
     this._controller.addEventListener('segment-end', this._onSegmentEnded);
     this._controller.addEventListener('track-change', this._onTrackChange);
+
+    if (this.routeContext.params?.id) {
+      this._mediaId = this.routeContext.params.id;
+    }
     void this._loadPractice();
   }
 
@@ -308,7 +315,6 @@ export class PracticeView extends LitElement {
 
   render() {
     // @fixme 离开本页面，音频没有暂停，会继续播放
-    console.log('practice-view render');
     const remaining = Math.max(this._recordingLimit - this._recordingCount, 0);
     const isSpeaking = this._practiceType === 'speaking';
 
@@ -334,11 +340,6 @@ export class PracticeView extends LitElement {
             ${msg('口语')}
           </ui-button>
         </div>
-
-        ${this._error
-          ? html`<ui-alert class="messages" type="error">${this._error}</ui-alert>`
-          : null}
-        ${this._loading ? html`<ui-alert type="info">${msg('加载媒体中…')}</ui-alert>` : null}
         ${isSpeaking
           ? html`
               <div class="settings-panel">
@@ -439,31 +440,29 @@ export class PracticeView extends LitElement {
   }
 
   private async _loadPractice(): Promise<void> {
-    this._loading = true;
-    this._error = '';
-
+    const loadingInstance = Loading.service({ text: msg('加载媒体中…') });
     try {
       const playlist = await loadPlaylistForPlayback();
       if (playlist.length === 0) {
-        this._error = msg('内容库为空，请先导入媒体。');
+        Message.error(msg('内容库为空，请先导入媒体。'));
         return;
       }
       // if mediaId is not in playlist, use the first media
-      const startIndex = Math.max(
-        0,
-        playlist.findIndex((entry) => entry.item.id === this._mediaId),
-      );
-
-      console.log('mediaId', this._mediaId);
-      console.log('startIndex', startIndex);
-
+      let startIndex = 0;
+      if (this._mediaId) {
+        startIndex = playlist.findIndex((entry) => entry.item.id === this._mediaId);
+        if (startIndex === -1) {
+          Message.info(msg(str`媒体 "${this._mediaId}" 不存在，回退到第一首媒体。`));
+          startIndex = 0;
+        }
+      }
       await this._controller.loadTracks(playlist, startIndex);
       this._syncMediaIdFromController();
       await this._refreshRecordings();
     } catch {
-      this._error = msg('加载媒体失败，请重试。');
+      Message.error(msg('加载媒体失败，请重试。'));
     } finally {
-      this._loading = false;
+      loadingInstance.close();
     }
   }
 

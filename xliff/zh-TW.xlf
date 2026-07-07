@@ -146,10 +146,6 @@
   <source>正在播放录音…</source>
 <target>正在播放錄音…</target>
   </trans-unit>
-<trans-unit id="h878d12933208521e">
-  <source>正在同步播放片段 <x id="0" equiv-text="&lt;strong&gt;${this._syncSegmentIndex + 1}"/> / <x id="1" equiv-text="${this.segments.length}&lt;/strong&gt;"/></source>
-<target>正在同步播放片段 <x id="0" equiv-text="&lt;strong&gt;${this._syncSegmentIndex + 1}"/> / <x id="1" equiv-text="${this.segments.length}&lt;/strong&gt;"/></target>
-  </trans-unit>
 <trans-unit id="sfc80b5c79424583c">
   <source>未选择媒体</source>
 <target>未選擇媒體</target>
@@ -501,6 +497,15 @@
 <trans-unit id="sd6b69523824af28a">
   <source>4. 除了倍速、音量、单句暂停模式，跟读模式会忽略其他的播放器设置。</source>
 <target>4. 除了倍速、音量、單句暫停模式，跟讀模式會忽略其他的播放器設置。</target>
+</trans-unit>
+<trans-unit id="h5ca3162680bccfa8">
+  <source>正在同步播放片段
+            <x id="0" equiv-text="&lt;strong&gt;${this._syncSegmentIndex + 1}"/> / <x id="1" equiv-text="${this.segments.length}&lt;/strong&gt;"/></source>
+<target>正在同步播放片段 <x id="0" equiv-text="&lt;strong&gt;${this._syncSegmentIndex + 1}"/> / <x id="1" equiv-text="${this.segments.length}&lt;/strong&gt;"/></target>
+</trans-unit>
+<trans-unit id="s83f5e5b64fb28eac">
+  <source>媒体 "<x id="0" equiv-text="${this._mediaId}"/>" 不存在，回退到第一首媒体。</source>
+<target>媒體 "<x id="0" equiv-text="${this._mediaId}"/>" 不存在，回退到第一首媒體。</target>
 </trans-unit>
 </body>
 </file>

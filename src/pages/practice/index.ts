@@ -14,7 +14,7 @@ export class PracticePage extends LitElement {
   };
 
   render() {
-    return html` <practice-view .routeContext="${this.routeContext}"></practice-view> `;
+    return html` <practice-view .routeContext=${this.routeContext}></practice-view> `;
   }
 }
 

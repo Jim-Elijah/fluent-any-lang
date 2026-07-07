@@ -24,7 +24,6 @@ export function initializeLocalization(): Promise<void> {
 
 export async function changeLocale(locale: Locale): Promise<void> {
   await setLocale(locale);
-  console.log('locale', locale);
   localStorage.setItem(LOCALE_STORAGE_KEY, locale);
   document.documentElement.lang = locale;
 }

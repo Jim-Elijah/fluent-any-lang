@@ -1,19 +1,14 @@
-import { LitElement, PropertyValues, html } from 'lit';
-import { customElement, property, state } from 'lit/decorators.js';
+import { LitElement, html } from 'lit';
+import { customElement, state } from 'lit/decorators.js';
 import { navigator } from 'lit-element-router';
 import { msg, str, localized } from '@lit/localize';
-import '../../components/player/audio-recorder.js';
 
 const COUNTDOWN_TIME = 3;
 
-// @customElement('not-found-page')
-// @navigator
-// export class NotFoundPage extends LitElement {
 const NavigatorElement = navigator(LitElement);
 @customElement('not-found-page')
 @localized()
 export class NotFoundPage extends NavigatorElement {
-  @property({ type: Boolean }) active = false;
   @state()
   private _countdown = COUNTDOWN_TIME;
 
@@ -36,16 +31,12 @@ export class NotFoundPage extends NavigatorElement {
       this.timer = null;
     }
   }
-  protected updated(changed: PropertyValues) {
-    console.log('not-found-page updated', changed);
-    if (changed.has('active')) {
-      if (this.active) {
-        this._startCountdown();
-      } else {
-        this._stopCountdown();
-      }
-    }
+
+  connectedCallback() {
+    super.connectedCallback();
+    this._startCountdown();
   }
+
   disconnectedCallback() {
     this._stopCountdown();
     super.disconnectedCallback();

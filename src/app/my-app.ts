@@ -1,25 +1,30 @@
-import { LitElement, css, html } from 'lit';
+import { LitElement, css, html, nothing, TemplateResult } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { msg, localized } from '@lit/localize';
 import { RouteContext } from '../types/models.js';
 import { router, navigator, Routes } from 'lit-element-router';
 
-import './app-link.js';
-import './app-main.js';
 import '../pages/home/index.js';
 import '../pages/library/index.js';
 import '../pages/practice/index.js';
 import '../pages/not-found/index.js';
-import '../pages/recording/index.js';
 import '../components/ui/locale-switcher.js';
 import '../components/ui/menu.js';
 import { MenuItem, MenuOpenChangeDetail, MenuSelectDetail } from '../components/ui/menu.js';
 import { getLocale, isLocale, Locale, LOCALE_STORAGE_KEY } from '../i18n/localization.js';
 
-// @customElement('app-shell')
-// @router
-// @navigator
-// export class MyApp extends LitElement {
+type AppRoute = 'home' | 'practice' | 'library' | 'not-found';
+type RouteRenderContext = {
+  routeContext: RouteContext;
+};
+
+const ROUTE_PAGES: Record<AppRoute, (ctx: RouteRenderContext) => TemplateResult> = {
+  home: () => html`<home-page></home-page>`,
+  practice: ({ routeContext }) =>
+    html`<practice-page .routeContext=${routeContext}></practice-page>`,
+  library: () => html`<library-page></library-page>`,
+  'not-found': () => html`<not-found-page></not-found-page>`,
+};
 
 const RouterNavigatorApp = navigator(router(LitElement));
 @customElement('app-shell')
@@ -100,7 +105,7 @@ export class MyApp extends RouterNavigatorApp {
   `;
 
   @property({ type: String })
-  route: string = '';
+  activeRoute: string = 'home';
 
   @state()
   private _isMobile = false;
@@ -163,8 +168,6 @@ export class MyApp extends RouterNavigatorApp {
     super();
     const currentLocale = getLocale();
     const savedLocale = localStorage.getItem(LOCALE_STORAGE_KEY);
-    // console.log('savedLocale', savedLocale);
-    // console.log('currentLocale', currentLocale);
     if (savedLocale && isLocale(savedLocale)) {
       this.locale = savedLocale;
     } else {
@@ -192,7 +195,7 @@ export class MyApp extends RouterNavigatorApp {
     query: { [key: string]: string },
     data: object,
   ) {
-    this.route = route;
+    this.activeRoute = route;
     this.routeContext = {
       route,
       params,
@@ -203,7 +206,6 @@ export class MyApp extends RouterNavigatorApp {
   }
 
   private _handleMenuSelect(event: CustomEvent<MenuSelectDetail>) {
-    console.log('handleMenuSelect', event.detail);
     this.selectedKeys = event.detail.selectedKeys;
     const link = this._menuLinks.get(event.detail.key);
     if (link) {
@@ -213,6 +215,13 @@ export class MyApp extends RouterNavigatorApp {
 
   private _handleOpenChange(event: CustomEvent<MenuOpenChangeDetail>) {
     this.openKeys = event.detail.openKeys;
+  }
+
+  private _renderActivePage() {
+    const route = (this.activeRoute || 'home') as AppRoute;
+    // 渲染当前active的路由页面，非active的路由页面会销毁（原来的是display: none）
+    const render = ROUTE_PAGES[route];
+    return render ? render({ routeContext: this.routeContext }) : nothing;
   }
 
   render() {
@@ -237,16 +246,7 @@ export class MyApp extends RouterNavigatorApp {
             <h1 class="brand">${msg('FluentAnyLang')}</h1>
             <locale-switcher .value=${this.locale}></locale-switcher>
           </header>
-          <app-main active-route=${this.route}>
-            <div route="home"><home-page></home-page></div>
-            <div route="practice">
-              <practice-page .routeContext=${this.routeContext}></practice-page>
-            </div>
-            <div route="library"><library-page></library-page></div>
-            <div route="not-found">
-              <not-found-page .active=${this.route === 'not-found'}></not-found-page>
-            </div>
-          </app-main>
+          <main>${this._renderActivePage()}</main>
         </div>
       </div>
     `;

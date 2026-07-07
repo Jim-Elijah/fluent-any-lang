@@ -8,6 +8,7 @@ import { str } from '@lit/localize';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 export const templates = {
+  h5ca3162680bccfa8: html`Syncing segment <strong>${0} / ${1}</strong>`,
   s0113509f303fe7f5: `Current Storage`,
   s05cfc6cafa28b482: `2. If you can't follow the original audio, you can set the speed and single sentence pause mode.`,
   s0608efee9a487d9b: `Stop Recording`,
@@ -65,6 +66,7 @@ export const templates = {
   s802eb52e99fdac92: `Are you sure you want to delete this recording?`,
   s815a69081bfc0e6d: `Date`,
   s82dd5322c6b3c31c: `Advanced Settings`,
+  s83f5e5b64fb28eac: str`Media "${0}" does not exist. Returning to the first media.`,
   s842eb140d4fd3e83: `FluentAnyLang`,
   s843808081e992b92: `Play`,
   s89e73eb8d61a748a: `Unsupported media format`,
@@ -132,5 +134,4 @@ export const templates = {
   sf963b9095b733075: `Descending`,
   sf9d9e3b381776b16: `With subtitles`,
   sfc80b5c79424583c: `No media selected`,
-  h5ca3162680bccfa8: html`正在同步播放片段 <strong>${0} / ${1}</strong>`,
 };

@@ -381,10 +381,6 @@
   <source>任意语言的听说练习平台。导入音频与字幕，即可开始练习。</source>
 <target>A listening and speaking practice platform for any language. Import audio and subtitles to get started.</target>
   </trans-unit>
-<trans-unit id="h878d12933208521e">
-  <source>正在同步播放片段 <x id="0" equiv-text="&lt;strong&gt;${this._syncSegmentIndex + 1}"/> / <x id="1" equiv-text="${this.segments.length}&lt;/strong&gt;"/></source>
-<target>Syncing segment <x id="0" equiv-text="&lt;strong&gt;${this._syncSegmentIndex + 1}"/> / <x id="1" equiv-text="${this.segments.length}&lt;/strong&gt;"/></target>
-  </trans-unit>
 <trans-unit id="sef6c4f94212fe9f2">
   <source>采用跟读模式练习，点击以下「麦克风图标」并跟随播放语音，停止录音后会自动保存。</source>
 <target>Practice in shadowing mode: click the microphone icon below, shadow the audio, and the recording will save automatically when stopped.</target>
@@ -500,6 +496,15 @@
 <trans-unit id="sd6b69523824af28a">
   <source>4. 除了倍速、音量、单句暂停模式，跟读模式会忽略其他的播放器设置。</source>
 <target>4. Apart from playback speed, volume, and the single-sentence pause mode, the shadowing mode ignores other player settings..</target>
+</trans-unit>
+<trans-unit id="h5ca3162680bccfa8">
+  <source>正在同步播放片段
+            <x id="0" equiv-text="&lt;strong&gt;${this._syncSegmentIndex + 1}"/> / <x id="1" equiv-text="${this.segments.length}&lt;/strong&gt;"/></source>
+<target>Syncing segment <x id="0" equiv-text="&lt;strong&gt;${this._syncSegmentIndex + 1}"/> / <x id="1" equiv-text="${this.segments.length}&lt;/strong&gt;"/></target>
+</trans-unit>
+<trans-unit id="s83f5e5b64fb28eac">
+  <source>媒体 "<x id="0" equiv-text="${this._mediaId}"/>" 不存在，回退到第一首媒体。</source>
+<target>Media "<x id="0" equiv-text="${this._mediaId}"/>" does not exist. Returning to the first media.</target>
 </trans-unit>
 </body>
 </file>

@@ -77,7 +77,6 @@ function formatExportDate(date: Date): string {
 
 function formatDisplayDate(date: Date): string {
   const locale = getLocale();
-  console.log('locale', locale);
   // 英文用 12 小时制更符合习惯，其他 locale 用 24 小时
   const hour12 = locale === 'en';
   return new Intl.DateTimeFormat(locale, {
