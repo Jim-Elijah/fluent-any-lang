@@ -17,7 +17,7 @@ import type {
   SubtitleSegment,
 } from '../../types/models.js';
 import { DEFAULT_SETTINGS } from '../../types/models.js';
-import { formatStorageUsage } from '../../lib/playback-utils.js';
+import { ExtendedMediaEventType, formatStorageUsage } from '../../lib/playback-utils.js';
 import '../ui/alert.js';
 import '../ui/button.js';
 import '../ui/icon.js';
@@ -269,8 +269,8 @@ export class PracticeView extends LitElement {
     typeof MediaRecorder !== 'undefined';
 
   disconnectedCallback(): void {
-    this._controller.removeEventListener('segment-end', this._onSegmentEnded);
-    this._controller.removeEventListener('track-change', this._onTrackChange);
+    this._controller.removeEventListener(ExtendedMediaEventType.SEGMENT_END, this._onSegmentEnded);
+    this._controller.removeEventListener(ExtendedMediaEventType.TRACK_CHANGE, this._onTrackChange);
     this._detachEndedListener();
     if (this._audioRecorder.getState() !== 'inactive') {
       void this._audioRecorder.stop().catch(() => this._audioRecorder.destroy());
@@ -298,8 +298,8 @@ export class PracticeView extends LitElement {
 
   connectedCallback(): void {
     super.connectedCallback();
-    this._controller.addEventListener('segment-end', this._onSegmentEnded);
-    this._controller.addEventListener('track-change', this._onTrackChange);
+    this._controller.addEventListener(ExtendedMediaEventType.SEGMENT_END, this._onSegmentEnded);
+    this._controller.addEventListener(ExtendedMediaEventType.TRACK_CHANGE, this._onTrackChange);
 
     if (this.routeContext.params?.id) {
       this._mediaId = this.routeContext.params.id;

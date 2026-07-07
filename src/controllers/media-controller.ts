@@ -1,9 +1,13 @@
 import {
+  computeSegmentPauseMs,
+  findCrossedSegmentEnd,
   findSegmentIndex,
+  MAX_SLEEP_MINUTES,
   NATIVE_MEDIA_EVENTS,
   shuffleIndices,
   ExtendedMediaEventType,
 } from '../lib/playback-utils.js';
+import { throttle } from '../lib/util.js';
 import type {
   LoopMode,
   MediaItem,
@@ -48,6 +52,7 @@ export type LoadedTrack = {
 };
 
 const LOOP_EPSILON = 0.05;
+const TIMEUPDATE_THROTTLE_MS = 250;
 
 const DEFAULT_PLAYER_SETTINGS = {
   playbackRate: 1,
@@ -67,8 +72,8 @@ export class MediaController extends EventTarget {
   private tracks: LoadedTrack[] = [];
   private shuffleOrder: number[] = [];
   private shuffleCursor = 0;
-  private timeUpdateFrame: number | null = null;
-  private _segmentEndDispatched: boolean | null = null;
+  private _previousPlaybackTime = 0;
+  private _visibilityListenerAttached = false;
 
   playlist: MediaItem[] = [];
   segments: SubtitleSegment[] = [];
@@ -89,7 +94,9 @@ export class MediaController extends EventTarget {
   pausePercent = DEFAULT_PLAYER_SETTINGS.pausePercent;
 
   private sleepTimerId: ReturnType<typeof setInterval> | null = null;
-  private _segmentPauseTimerId: ReturnType<typeof setTimeout> | null = null;
+  private sleepEndsAt: number | null = null;
+  private _segmentPauseResumeAt: number | null = null;
+  private _segmentPausePollId: ReturnType<typeof setInterval> | null = null;
 
   attachMediaElement(element: HTMLMediaElement): void {
     if (this.mediaElement === element) {
@@ -102,6 +109,8 @@ export class MediaController extends EventTarget {
     element.addEventListener('pause', this._handlePause);
     element.addEventListener('ended', this._handleEnded);
     element.addEventListener('loadedmetadata', this._handleLoadedMetadata);
+    element.addEventListener('timeupdate', this._handleTimeUpdate);
+    this._ensureVisibilityListener();
 
     // 转发原生 media 事件
     for (const evtName of NATIVE_MEDIA_EVENTS) {
@@ -117,11 +126,11 @@ export class MediaController extends EventTarget {
       return;
     }
 
-    this._stopRafLoop();
     this.mediaElement.removeEventListener('play', this._handlePlay);
     this.mediaElement.removeEventListener('pause', this._handlePause);
     this.mediaElement.removeEventListener('ended', this._handleEnded);
     this.mediaElement.removeEventListener('loadedmetadata', this._handleLoadedMetadata);
+    this.mediaElement.removeEventListener('timeupdate', this._handleTimeUpdate);
 
     // 移除原生事件转发
     for (const evtName of NATIVE_MEDIA_EVENTS) {
@@ -210,6 +219,7 @@ export class MediaController extends EventTarget {
 
       this.duration = this.mediaElement.duration || track.item.duration;
       this.currentTime = 0;
+      this._previousPlaybackTime = 0;
 
       // console.log('this.currentSegmentIndex', this.currentSegmentIndex);
       // delete below to make sure new track always start from first segment
@@ -223,6 +233,7 @@ export class MediaController extends EventTarget {
     } else {
       this.duration = track.item.duration;
       this.currentTime = 0;
+      this._previousPlaybackTime = 0;
     }
 
     if (trackIndex !== previousIndex) {
@@ -267,7 +278,7 @@ export class MediaController extends EventTarget {
       pauseMode: this.pauseMode,
       pauseSeconds: this.pauseSeconds,
       pausePercent: this.pausePercent,
-      segmentPausePending: this._segmentPauseTimerId !== null,
+      segmentPausePending: this._segmentPauseResumeAt !== null,
       canPreviousTrack: this.playlist.length > 1,
       canNextTrack: this.playlist.length > 1,
       canPreviousSegment: this.segments.length > 0 && this.currentSegmentIndex > 0,
@@ -285,7 +296,10 @@ export class MediaController extends EventTarget {
     await this.mediaElement.play();
   }
 
-  pause(): void {
+  pause(options?: { reason?: 'user' | 'segment' }): void {
+    if (options?.reason !== 'segment') {
+      this._clearSegmentPauseTimer();
+    }
     this.mediaElement?.pause();
   }
 
@@ -298,27 +312,26 @@ export class MediaController extends EventTarget {
   }
 
   seek(time: number): void {
-    // console.log('seek', time);
     if (!this.mediaElement) {
       return;
     }
 
     const clamped = Math.max(0, Math.min(time, this.duration || this.mediaElement.duration || 0));
+    this._clearSegmentPauseTimer();
     this.mediaElement.currentTime = clamped;
     this.currentTime = clamped;
-    this._updateCurrentSegment();
+    this._previousPlaybackTime = clamped;
+    this._updateCurrentSegment({ allowForward: true });
     this._emitChange();
   }
 
   seekToSegment(index: number, autoPlay = false): void {
-    // console.log('seekToSegment', index, autoPlay);
     const segment = this.segments[index];
     if (!segment) {
       return;
     }
 
-    // uncomment below to make sure currentSegmentIndex is updated through _updateCurrentSegment()
-    // this.currentSegmentIndex = index;
+    this._setCurrentSegmentIndex(index);
     this.seek(segment.startTime);
 
     if (autoPlay) {
@@ -398,7 +411,12 @@ export class MediaController extends EventTarget {
     }
 
     this.loopMode = mode;
-    if (mode === 'shuffle') {
+    if (mode === 'segment') {
+      const idx = findSegmentIndex(this.segments, this.currentTime);
+      if (idx >= 0) {
+        this._setCurrentSegmentIndex(idx);
+      }
+    } else if (mode === 'shuffle') {
       this._resetShuffleOrder(this.currentIndex);
     }
     this._emitChange();
@@ -418,8 +436,7 @@ export class MediaController extends EventTarget {
   }
 
   setSleepMinutes(minutes: number): void {
-    /** @fixme why max is 90? */
-    const clamped = Math.max(0, Math.min(minutes, 90));
+    const clamped = Math.max(0, Math.min(minutes, MAX_SLEEP_MINUTES));
     this.sleepMinutes = clamped;
 
     if (this.sleepMode === 'minutes') {
@@ -494,8 +511,10 @@ export class MediaController extends EventTarget {
   }
 
   destroy(): void {
+    this._throttledEmitChange.cancel();
     this._clearSleepTimer();
     this._clearSegmentPauseTimer();
+    this._removeVisibilityListener();
     this.detachMediaElement();
     this._revokeObjectUrl();
     this.tracks = [];
@@ -503,34 +522,76 @@ export class MediaController extends EventTarget {
     this.segments = [];
   }
 
-  private _rafLoop = (): void => {
-    this._syncFromMedia();
-    this.timeUpdateFrame = requestAnimationFrame(this._rafLoop);
-  };
-
-  private _startRafLoop(): void {
-    if (this.timeUpdateFrame !== null) {
+  private _handleTimeUpdate = (): void => {
+    if (!this.mediaElement || this.mediaElement.paused) {
       return;
     }
-    this.timeUpdateFrame = requestAnimationFrame(this._rafLoop);
+
+    this._onPlaybackTick(false);
+  };
+
+  /** Shared playback tick: detect segment end, apply loop, update highlight index. */
+  private _onPlaybackTick(emitImmediately: boolean): void {
+    if (!this.mediaElement) {
+      return;
+    }
+
+    this.currentTime = this.mediaElement.currentTime;
+    this.duration = this.mediaElement.duration || this.duration;
+
+    this._detectSegmentEnd();
+    this._applySegmentLoop();
+    this._updateCurrentSegment({ allowForward: this.loopMode !== 'segment' });
+
+    this._previousPlaybackTime = this.currentTime;
+
+    if (emitImmediately) {
+      this._emitChange();
+    } else {
+      this._throttledEmitChange();
+    }
   }
 
-  private _stopRafLoop(): void {
-    if (this.timeUpdateFrame !== null) {
-      cancelAnimationFrame(this.timeUpdateFrame);
-      this.timeUpdateFrame = null;
+  private _throttledEmitChange = throttle(function (this: MediaController) {
+    this._emitChange();
+  }, TIMEUPDATE_THROTTLE_MS);
+
+  private _handleVisibilityChange = (): void => {
+    if (document.visibilityState !== 'visible') {
+      return;
     }
+
+    this._checkSegmentPauseResume();
+    this._updateSleepRemaining();
+
+    if (this.mediaElement && !this.mediaElement.paused) {
+      this._syncFromMedia();
+    }
+  };
+
+  private _ensureVisibilityListener(): void {
+    if (this._visibilityListenerAttached) {
+      return;
+    }
+    document.addEventListener('visibilitychange', this._handleVisibilityChange);
+    this._visibilityListenerAttached = true;
+  }
+
+  private _removeVisibilityListener(): void {
+    if (!this._visibilityListenerAttached) {
+      return;
+    }
+    document.removeEventListener('visibilitychange', this._handleVisibilityChange);
+    this._visibilityListenerAttached = false;
   }
 
   private _handlePlay = (): void => {
     this.isPlaying = true;
-    this._startRafLoop();
     this._emitChange();
   };
 
   private _handlePause = (): void => {
     this.isPlaying = false;
-    this._stopRafLoop();
     this._emitChange();
   };
 
@@ -559,14 +620,16 @@ export class MediaController extends EventTarget {
       case 'shuffle':
         this.nextTrack(true);
         break;
-      case 'segment':
-        if (this.currentSegmentIndex >= 0) {
-          this.seekToSegment(this.currentSegmentIndex);
+      case 'segment': {
+        const loopIndex = this._resolveLoopSegmentIndex();
+        if (loopIndex >= 0) {
+          this.seekToSegment(loopIndex, true);
         } else {
           this.seek(0);
           void this.play();
         }
         break;
+      }
       default:
         this.isPlaying = false;
         this._emitChange();
@@ -579,52 +642,85 @@ export class MediaController extends EventTarget {
       return;
     }
 
-    this.currentTime = this.mediaElement.currentTime;
-    this.duration = this.mediaElement.duration || this.duration;
-    this._detectSegmentEnd();
-    this._applySegmentLoop();
-    this._updateCurrentSegment();
-    this._emitChange();
+    this._onPlaybackTick(true);
+  }
+
+  /** Segment index used for loop/end detection; falls back to last segment when past its end. */
+  private _resolveLoopSegmentIndex(): number {
+    if (this.currentSegmentIndex >= 0) {
+      return this.currentSegmentIndex;
+    }
+
+    if (this.loopMode !== 'segment' || this.segments.length === 0) {
+      return -1;
+    }
+
+    const lastIdx = this.segments.length - 1;
+    const last = this.segments[lastIdx];
+    if (last && this.currentTime >= last.endTime - LOOP_EPSILON) {
+      return lastIdx;
+    }
+
+    return -1;
+  }
+
+  /** Segment loop rewinds unless until-end is active on the last subtitle. */
+  private _shouldLoopSegment(segmentIndex: number): boolean {
+    const isLastSegment = segmentIndex === this.segments.length - 1;
+    return !(this.sleepMode === 'until-end' && isLastSegment);
   }
 
   private _detectSegmentEnd(): void {
-    if (this.currentSegmentIndex < 0 || !this.mediaElement) {
+    if (!this.mediaElement || this.segments.length === 0) {
       return;
     }
-    const segment = this.segments[this.currentSegmentIndex];
+
+    const segmentIndex = findCrossedSegmentEnd(
+      this.segments,
+      this._previousPlaybackTime,
+      this.currentTime,
+      LOOP_EPSILON,
+    );
+    if (segmentIndex < 0) {
+      return;
+    }
+
+    const segment = this.segments[segmentIndex];
     if (!segment) {
       return;
     }
 
-    if (
-      !this._segmentEndDispatched &&
-      this.mediaElement.currentTime >= segment.endTime - LOOP_EPSILON
-    ) {
-      this.dispatchEvent(
-        new CustomEvent(ExtendedMediaEventType.SEGMENT_END, {
-          detail: { segmentIndex: this.currentSegmentIndex, segment },
-          bubbles: true,
-          composed: true,
-        }),
-      );
-      this._segmentEndDispatched = true;
-      this._applySegmentPause(segment);
-    } else if (this.mediaElement.currentTime < segment.endTime - LOOP_EPSILON) {
-      this._segmentEndDispatched = false;
-    }
+    this._setCurrentSegmentIndex(segmentIndex);
+    this.dispatchEvent(
+      new CustomEvent(ExtendedMediaEventType.SEGMENT_END, {
+        detail: { segmentIndex, segment },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+    this._applySegmentPause(segment);
   }
 
   private _applySegmentLoop(): void {
-    if (this._segmentPauseTimerId !== null) {
+    if (this._segmentPauseResumeAt !== null) {
       return;
     }
 
-    if (this.loopMode !== 'segment' || this.currentSegmentIndex < 0 || !this.mediaElement) {
+    if (this.loopMode !== 'segment' || !this.mediaElement) {
       return;
     }
 
-    const segment = this.segments[this.currentSegmentIndex];
+    const segmentIndex = this._resolveLoopSegmentIndex();
+    if (segmentIndex < 0) {
+      return;
+    }
+
+    const segment = this.segments[segmentIndex];
     if (!segment) {
+      return;
+    }
+
+    if (!this._shouldLoopSegment(segmentIndex)) {
       return;
     }
 
@@ -634,24 +730,40 @@ export class MediaController extends EventTarget {
     }
   }
 
-  private _updateCurrentSegment(): void {
-    const nextIndex = findSegmentIndex(this.segments, this.currentTime);
-    if (nextIndex !== this.currentSegmentIndex) {
-      const previousIndex = this.currentSegmentIndex;
-      this.currentSegmentIndex = nextIndex;
-      this.dispatchEvent(
-        new CustomEvent(ExtendedMediaEventType.SEGMENT_CHANGE, {
-          detail: {
-            currentIndex: nextIndex,
-            currentSegment: this.segments[nextIndex] ?? null,
-            previousIndex,
-            previousSegment: this.segments[previousIndex] ?? null,
-          },
-          bubbles: true,
-          composed: true,
-        }),
-      );
+  private _setCurrentSegmentIndex(index: number): void {
+    if (index === this.currentSegmentIndex) {
+      return;
     }
+
+    const previousIndex = this.currentSegmentIndex;
+    this.currentSegmentIndex = index;
+    this.dispatchEvent(
+      new CustomEvent(ExtendedMediaEventType.SEGMENT_CHANGE, {
+        detail: {
+          currentIndex: index,
+          currentSegment: this.segments[index] ?? null,
+          previousIndex,
+          previousSegment: this.segments[previousIndex] ?? null,
+        },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+  }
+
+  private _updateCurrentSegment(options: { allowForward?: boolean } = {}): void {
+    const allowForward = options.allowForward ?? true;
+    const nextIndex = findSegmentIndex(this.segments, this.currentTime);
+
+    if (nextIndex === this.currentSegmentIndex) {
+      return;
+    }
+
+    if (!allowForward && this.currentSegmentIndex >= 0 && nextIndex > this.currentSegmentIndex) {
+      return;
+    }
+
+    this._setCurrentSegmentIndex(nextIndex);
   }
 
   private _resetShuffleOrder(currentIndex: number): void {
@@ -683,6 +795,7 @@ export class MediaController extends EventTarget {
     this.currentTime = 0;
     this.duration = 0;
     this.isPlaying = false;
+    this._previousPlaybackTime = 0;
     this.pauseMode = 'off';
     this._clearSegmentPauseTimer();
   }
@@ -700,22 +813,33 @@ export class MediaController extends EventTarget {
 
     if (this.sleepRemainingSeconds <= 0) {
       this.sleepMode = 'off';
+      this._clearSegmentPauseTimer();
       this.pause();
       this._emitChange();
       return;
     }
 
+    this.sleepEndsAt = Date.now() + this.sleepRemainingSeconds * 1000;
     this.sleepTimerId = setInterval(() => {
-      this.sleepRemainingSeconds = Math.max(0, this.sleepRemainingSeconds - 1);
-
-      if (this.sleepRemainingSeconds <= 0) {
-        this._clearSleepTimer();
-        this.sleepMode = 'off';
-        this.pause();
-      }
-
-      this._emitChange();
+      this._updateSleepRemaining();
     }, 1000);
+  }
+
+  private _updateSleepRemaining(): void {
+    if (this.sleepEndsAt === null) {
+      return;
+    }
+
+    this.sleepRemainingSeconds = Math.max(0, Math.ceil((this.sleepEndsAt - Date.now()) / 1000));
+
+    if (this.sleepRemainingSeconds <= 0) {
+      this._clearSleepTimer();
+      this.sleepMode = 'off';
+      this._clearSegmentPauseTimer();
+      this.pause();
+    }
+
+    this._emitChange();
   }
 
   private _clearSleepTimer(): void {
@@ -723,37 +847,64 @@ export class MediaController extends EventTarget {
       clearInterval(this.sleepTimerId);
       this.sleepTimerId = null;
     }
+    this.sleepEndsAt = null;
   }
 
   private _applySegmentPause(segment: SubtitleSegment): void {
-    if (this.pauseMode === 'off' || this.segments.length === 0) {
+    const pauseDuration = computeSegmentPauseMs(
+      segment,
+      this.pauseMode,
+      this.pauseSeconds,
+      this.pausePercent,
+    );
+    if (pauseDuration === null) {
       return;
     }
 
-    const pauseDuration =
-      this.pauseMode === 'seconds'
-        ? this.pauseSeconds * 1000
-        : (((segment.endTime - segment.startTime) * this.pausePercent) / 100) * 1000;
+    this._clearSegmentPauseTimer();
+    this.pause({ reason: 'segment' });
+    this._segmentPauseResumeAt = Date.now() + pauseDuration;
+    this._startSegmentPausePoll();
+    this._emitChange();
+  }
+
+  private _startSegmentPausePoll(): void {
+    if (this._segmentPausePollId !== null) {
+      return;
+    }
+
+    this._segmentPausePollId = setInterval(() => {
+      this._checkSegmentPauseResume();
+    }, 250);
+  }
+
+  private _checkSegmentPauseResume(): void {
+    if (this._segmentPauseResumeAt === null) {
+      return;
+    }
+
+    if (Date.now() < this._segmentPauseResumeAt) {
+      return;
+    }
 
     this._clearSegmentPauseTimer();
-    this.pause();
 
-    this._segmentPauseTimerId = setTimeout(() => {
-      this._segmentPauseTimerId = null;
-      if (this.loopMode === 'segment' && this.currentSegmentIndex >= 0) {
-        this.seekToSegment(this.currentSegmentIndex);
+    if (this.loopMode === 'segment') {
+      const loopIndex = this._resolveLoopSegmentIndex();
+      if (loopIndex >= 0 && this._shouldLoopSegment(loopIndex)) {
+        this.seekToSegment(loopIndex);
       }
-      void this.play();
-      this._emitChange();
-    }, pauseDuration);
-
+    }
+    void this.play();
     this._emitChange();
   }
 
   private _clearSegmentPauseTimer(): void {
-    if (this._segmentPauseTimerId !== null) {
-      clearTimeout(this._segmentPauseTimerId);
-      this._segmentPauseTimerId = null;
+    this._segmentPauseResumeAt = null;
+
+    if (this._segmentPausePollId !== null) {
+      clearInterval(this._segmentPausePollId);
+      this._segmentPausePollId = null;
     }
   }
 

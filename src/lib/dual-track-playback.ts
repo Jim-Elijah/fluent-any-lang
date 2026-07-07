@@ -1,4 +1,5 @@
 import type { PracticeSegment } from '../types/models.js';
+import { throttle } from './util.js';
 
 export type DualTrackMode = 'idle' | 'source' | 'recording' | 'sync';
 
@@ -9,11 +10,13 @@ export type DualTrackPlaybackState = {
 
 const SYNC_END_EPSILON = 0.05;
 const SYNC_DRIFT_THRESHOLD = 0.12;
+const SYNC_DRIFT_THROTTLE_MS = 100;
 
 export class DualTrackPlayback {
   private mode: DualTrackMode = 'idle';
   private syncSegmentIndex = 0;
-  private syncFrameId: number | null = null;
+  private _syncSegment: PracticeSegment | null = null;
+  private _syncSegmentIndex = -1;
   private readonly onStateChange: (state: DualTrackPlaybackState) => void;
 
   constructor(
@@ -25,6 +28,8 @@ export class DualTrackPlayback {
     this.onStateChange = onStateChange;
     sourceAudio.addEventListener('ended', this._handleSourceEnded);
     recordingAudio.addEventListener('ended', this._handleRecordingEnded);
+    sourceAudio.addEventListener('timeupdate', this._handleSyncTimeUpdate);
+    document.addEventListener('visibilitychange', this._handleVisibilityChange);
   }
 
   getState(): DualTrackPlaybackState {
@@ -76,9 +81,12 @@ export class DualTrackPlayback {
   }
 
   destroy(): void {
+    this._throttledCorrectSyncDrift.cancel();
     this.stop();
     this.sourceAudio.removeEventListener('ended', this._handleSourceEnded);
     this.recordingAudio.removeEventListener('ended', this._handleRecordingEnded);
+    this.sourceAudio.removeEventListener('timeupdate', this._handleSyncTimeUpdate);
+    document.removeEventListener('visibilitychange', this._handleVisibilityChange);
   }
 
   private _handleSourceEnded = (): void => {
@@ -93,6 +101,21 @@ export class DualTrackPlayback {
     }
   };
 
+  private _handleVisibilityChange = (): void => {
+    if (document.visibilityState === 'visible') {
+      this._tickSyncSegment();
+    }
+  };
+
+  private _handleSyncTimeUpdate = (): void => {
+    this._checkSyncSegmentBoundary();
+    this._throttledCorrectSyncDrift();
+  };
+
+  private _throttledCorrectSyncDrift = throttle(function (this: DualTrackPlayback) {
+    this._correctSyncDrift();
+  }, SYNC_DRIFT_THROTTLE_MS);
+
   private _startSyncSegment(index: number): void {
     const segment = this.segments[index];
     if (!segment) {
@@ -101,55 +124,66 @@ export class DualTrackPlayback {
     }
 
     this.syncSegmentIndex = index;
+    this._syncSegment = segment;
+    this._syncSegmentIndex = index;
     this._emitState();
     this.sourceAudio.currentTime = segment.sourceStartTime;
     this.recordingAudio.currentTime = segment.recordingStartTime;
 
     void this.sourceAudio.play();
     void this.recordingAudio.play();
-    this._monitorSyncSegment(segment, index);
   }
 
-  private _monitorSyncSegment(segment: PracticeSegment, index: number): void {
-    this._stopSyncMonitor();
+  private _tickSyncSegment(): void {
+    this._checkSyncSegmentBoundary();
+    this._correctSyncDrift();
+  }
 
-    const tick = (): void => {
-      if (this.mode !== 'sync') {
-        return;
+  private _checkSyncSegmentBoundary(): void {
+    if (this.mode !== 'sync' || !this._syncSegment) {
+      return;
+    }
+
+    const segment = this._syncSegment;
+    const index = this._syncSegmentIndex;
+    const sourceTime = this.sourceAudio.currentTime;
+
+    if (sourceTime >= segment.sourceEndTime - SYNC_END_EPSILON) {
+      this.sourceAudio.pause();
+      this.recordingAudio.pause();
+
+      const nextIndex = index + 1;
+      if (nextIndex < this.segments.length) {
+        this._startSyncSegment(nextIndex);
+      } else {
+        this.stop();
       }
+    }
+  }
 
-      const sourceTime = this.sourceAudio.currentTime;
-      if (sourceTime >= segment.sourceEndTime - SYNC_END_EPSILON) {
-        this.sourceAudio.pause();
-        this.recordingAudio.pause();
+  private _correctSyncDrift(): void {
+    if (this.mode !== 'sync' || !this._syncSegment) {
+      return;
+    }
 
-        const nextIndex = index + 1;
-        if (nextIndex < this.segments.length) {
-          this._startSyncSegment(nextIndex);
-        } else {
-          this.stop();
-        }
-        return;
-      }
+    const segment = this._syncSegment;
+    const sourceTime = this.sourceAudio.currentTime;
 
-      const sourceElapsed = sourceTime - segment.sourceStartTime;
-      const expectedRecordingTime = segment.recordingStartTime + sourceElapsed;
-      const drift = Math.abs(this.recordingAudio.currentTime - expectedRecordingTime);
-      if (drift > SYNC_DRIFT_THRESHOLD) {
-        this.recordingAudio.currentTime = expectedRecordingTime;
-      }
+    if (sourceTime >= segment.sourceEndTime - SYNC_END_EPSILON) {
+      return;
+    }
 
-      this.syncFrameId = requestAnimationFrame(tick);
-    };
-
-    this.syncFrameId = requestAnimationFrame(tick);
+    const sourceElapsed = sourceTime - segment.sourceStartTime;
+    const expectedRecordingTime = segment.recordingStartTime + sourceElapsed;
+    const drift = Math.abs(this.recordingAudio.currentTime - expectedRecordingTime);
+    if (drift > SYNC_DRIFT_THRESHOLD) {
+      this.recordingAudio.currentTime = expectedRecordingTime;
+    }
   }
 
   private _stopSyncMonitor(): void {
-    if (this.syncFrameId !== null) {
-      cancelAnimationFrame(this.syncFrameId);
-      this.syncFrameId = null;
-    }
+    this._syncSegment = null;
+    this._syncSegmentIndex = -1;
   }
 
   private _emitState(): void {

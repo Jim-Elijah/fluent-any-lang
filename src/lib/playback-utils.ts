@@ -1,4 +1,4 @@
-import type { SubtitleSegment } from '../types/models.js';
+import type { PauseMode, SubtitleSegment } from '../types/models.js';
 import { getLocale } from '../i18n/localization.js';
 
 export const MAX_SLEEP_MINUTES = 90;
@@ -104,6 +104,50 @@ export function formatTime(seconds: number): string {
   }
 
   return `${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+}
+
+/**
+ * Finds the rightmost segment whose end boundary was crossed between two playback times.
+ * Returns -1 when no segment end was crossed (including seek backward or empty segments).
+ */
+export function findCrossedSegmentEnd(
+  segments: SubtitleSegment[],
+  previousTime: number,
+  currentTime: number,
+  epsilon = 0.05,
+): number {
+  if (segments.length === 0 || currentTime <= previousTime) {
+    return -1;
+  }
+
+  let crossedIndex = -1;
+
+  for (let index = 0; index < segments.length; index++) {
+    const threshold = segments[index].endTime - epsilon;
+    if (previousTime < threshold && currentTime >= threshold) {
+      crossedIndex = index;
+    }
+  }
+
+  return crossedIndex;
+}
+
+/** Pause duration in milliseconds for inter-segment pause; null when pause mode is off. */
+export function computeSegmentPauseMs(
+  segment: SubtitleSegment,
+  pauseMode: PauseMode,
+  pauseSeconds: number,
+  pausePercent: number,
+): number | null {
+  if (pauseMode === 'off') {
+    return null;
+  }
+
+  if (pauseMode === 'seconds') {
+    return pauseSeconds * 1000;
+  }
+
+  return (((segment.endTime - segment.startTime) * pausePercent) / 100) * 1000;
 }
 
 export function findSegmentIndex(segments: SubtitleSegment[], time: number): number {

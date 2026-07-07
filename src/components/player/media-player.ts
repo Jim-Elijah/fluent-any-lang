@@ -456,7 +456,7 @@ export class MediaPlayer extends LitElement {
 
   private _unbindControllerEvents(ctrl: MediaController) {
     for (const evtName of FORWARDED_MEDIA_EVENTS) {
-      ctrl.addEventListener(evtName, this._forwardEvent);
+      ctrl.removeEventListener(evtName, this._forwardEvent);
     }
   }
 
