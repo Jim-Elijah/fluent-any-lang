@@ -1,6 +1,6 @@
 import { LitElement, css, html } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import { msg } from '@lit/localize';
+import { msg, localized } from '@lit/localize';
 import { RouteContext } from '../types/models.js';
 import { router, navigator, Routes } from 'lit-element-router';
 
@@ -24,6 +24,7 @@ import { MenuItem, MenuOpenChangeDetail, MenuSelectDetail } from '../components/
 
 const RouterNavigatorApp = navigator(router(LitElement));
 @customElement('app-shell')
+@localized()
 export class MyApp extends RouterNavigatorApp {
   static styles = css`
     :host {
@@ -126,15 +127,15 @@ export class MyApp extends RouterNavigatorApp {
   @state()
   openKeys: string[] = [];
 
-  private readonly _menuItems: Array<MenuItem & { link: string }> = [
-    { key: 'home', label: msg('首页'), link: '/', icon: 'home' },
-    { key: 'practice', label: msg('练习'), link: '/practice', icon: 'practice' },
-    { key: 'library', label: msg('库'), link: '/library', icon: 'media' },
-    // { key: 'settings', label: 'Settings', link: '/settings', icon: 'settings' },
-    // { key: 'not-found', label: 'Not Found', link: '/not-found', icon: 'not-found' },
-  ];
+  private _getMenuItems(): Array<MenuItem & { link: string }> {
+    return [
+      { key: 'home', label: msg('首页'), link: '/', icon: 'home' },
+      { key: 'practice', label: msg('练习'), link: '/practice', icon: 'practice' },
+      { key: 'library', label: msg('库'), link: '/library', icon: 'media' },
+    ];
+  }
 
-  private readonly _menuLinks = new Map(this._menuItems.map((item) => [item.key, item.link]));
+  private _menuLinks = new Map<string, string>();
 
   static get routes(): Routes {
     return [
@@ -160,10 +161,6 @@ export class MyApp extends RouterNavigatorApp {
         pattern: '*',
       },
     ];
-  }
-
-  constructor() {
-    super();
   }
 
   connectedCallback() {
@@ -231,11 +228,14 @@ export class MyApp extends RouterNavigatorApp {
   }
 
   render() {
+    const menuItems = this._getMenuItems();
+    this._menuLinks = new Map(menuItems.map((item) => [item.key, item.link]));
+
     return html`
       <div class="layout">
         <div class="navigation">
           <ui-menu
-            .items=${this._menuItems}
+            .items=${menuItems}
             .selectedKeys=${this.selectedKeys}
             .openKeys=${this.openKeys}
             mode=${this._isMobile ? 'horizontal' : 'vertical'}

@@ -1,4 +1,4 @@
-import { msg, str, updateWhenLocaleChanges } from '@lit/localize';
+import { msg, str, localized } from '@lit/localize';
 import { css, html, LitElement } from 'lit';
 import { customElement, property, query, state } from 'lit/decorators.js';
 
@@ -36,6 +36,7 @@ type StorageEstimate = {
 };
 
 @customElement('practice-view')
+@localized()
 export class PracticeView extends LitElement {
   static styles = css`
     :host {
@@ -205,15 +206,16 @@ export class PracticeView extends LitElement {
   @state()
   private _storageEstimate: StorageEstimate | null = null;
 
-  @state()
-  private _shadowingTips: string[] = [
-    msg(`采用Shadowing模式练习，点击以下"麦克风图标"并跟随播放语音，停止录音后会自动保存。`),
-    msg('温馨提示：'),
-    msg('1. 建议使用耳机练习。'),
-    msg('2. 如果跟不上原音，可以设置倍速、暂停方式。'),
-    msg('3. 录音前可以操作播放器设置，录音开始后播放器不可操作。'),
-    msg('4. 除了倍速、音量、暂停方式，Shadowing模式会忽略其他的播放器设置。'),
-  ];
+  private _getShadowingTips(): string[] {
+    return [
+      msg('采用跟读模式练习，点击以下「麦克风图标」并跟随播放语音，停止录音后会自动保存。'),
+      msg('温馨提示：'),
+      msg('1. 建议使用耳机练习。'),
+      msg('2. 如果跟不上原音，可以设置倍速、单句暂停模式。'),
+      msg('3. 录音前可以操作播放器设置，录音开始后播放器不可操作。'),
+      msg('4. 除了倍速、音量、单句暂停模式，跟读模式会忽略其他的播放器设置。'),
+    ];
+  }
 
   @query('record-list')
   private _recordList?: RecordList;
@@ -265,11 +267,6 @@ export class PracticeView extends LitElement {
     'mediaDevices' in navigator &&
     typeof MediaRecorder !== 'undefined';
 
-  constructor() {
-    super();
-    updateWhenLocaleChanges(this);
-  }
-
   disconnectedCallback(): void {
     console.log('disconnectedCallback practice-view');
     this._controller.removeEventListener('segment-end', this._onSegmentEnded);
@@ -315,8 +312,7 @@ export class PracticeView extends LitElement {
     const remaining = Math.max(this._recordingLimit - this._recordingCount, 0);
     const isSpeaking = this._practiceType === 'speaking';
 
-    const headerTitle =
-      this._practiceType === 'listening' ? msg('Listening 练习') : msg('Speaking 练习');
+    const headerTitle = this._practiceType === 'listening' ? msg('听力练习') : msg('口语练习');
 
     return html`
       <section>
@@ -329,13 +325,13 @@ export class PracticeView extends LitElement {
             variant="${this._practiceType === 'listening' ? 'primary' : 'secondary'}"
             @click="${() => this._setPracticeType('listening')}"
           >
-            ${msg('Listening')}
+            ${msg('听力')}
           </ui-button>
           <ui-button
             variant="${this._practiceType === 'speaking' ? 'primary' : 'secondary'}"
             @click="${() => this._setPracticeType('speaking')}"
           >
-            ${msg('Speaking')}
+            ${msg('口语')}
           </ui-button>
         </div>
 
@@ -351,7 +347,7 @@ export class PracticeView extends LitElement {
                     <div class="info-text">
                       ${this._recordingSupported
                         ? remaining > 0
-                          ? html`${this._shadowingTips.map((tip) => html`<div>${tip}</div>`)}`
+                          ? html`${this._getShadowingTips().map((tip) => html`<div>${tip}</div>`)}`
                           : msg(
                               str`当前音频的录音已达上限（${this._recordingLimit}条），删除旧录音后可继续。`,
                             )

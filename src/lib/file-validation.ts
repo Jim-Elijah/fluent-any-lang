@@ -1,4 +1,4 @@
-import { msg, str } from '@lit/localize';
+import { msg } from '@lit/localize';
 import type { MediaType } from '../types/models.js';
 
 const AUDIO_EXTENSIONS = new Set(['mp3', 'wav', 'ogg', 'webm', 'm4a', 'aac', 'flac']);
@@ -157,7 +157,7 @@ export function getMediaDuration(file: Blob, mimeType: string): Promise<number> 
 
 export function validateMediaFile(file: File): { valid: boolean; error?: string } {
   if (!isMediaFile(file)) {
-    return { valid: false, error: msg(str`Unsupported media format`) };
+    return { valid: false, error: msg('不支持的媒体格式') };
   }
   return { valid: true };
 }

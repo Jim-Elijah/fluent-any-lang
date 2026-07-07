@@ -1,4 +1,4 @@
-import { msg, str, updateWhenLocaleChanges } from '@lit/localize';
+import { msg, localized } from '@lit/localize';
 import { css, html, LitElement } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 
@@ -10,6 +10,7 @@ import '../ui/button.js';
 import '../ui/popconfirm.js';
 
 @customElement('media-list')
+@localized()
 export class MediaList extends LitElement {
   static styles = css`
     :host {
@@ -137,11 +138,6 @@ export class MediaList extends LitElement {
   @state()
   private _deleteConfirmId = '';
 
-  constructor() {
-    super();
-    updateWhenLocaleChanges(this);
-  }
-
   connectedCallback(): void {
     super.connectedCallback();
     void this.refresh();
@@ -154,7 +150,7 @@ export class MediaList extends LitElement {
     try {
       this._items = await getMediaList();
     } catch {
-      this._error = msg(str`无法加载媒体库`);
+      this._error = msg('无法加载媒体库');
       this._items = [];
     } finally {
       this._loading = false;
@@ -210,7 +206,7 @@ export class MediaList extends LitElement {
                               ${item.type === 'video' ? msg('视频') : msg('音频')}
                             </span>
                             <span>${formatTime(item.duration)}</span>
-                            <span>${formatDate(item.createdAt, true)}</span>
+                            <span>${formatDate(item.createdAt, false)}</span>
                             <span class="badge ${item.hasSubtitles ? '' : 'muted'}">
                               ${item.hasSubtitles ? msg('含字幕') : msg('无字幕')}
                             </span>

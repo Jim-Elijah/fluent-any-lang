@@ -1,4 +1,4 @@
-import { msg, str, updateWhenLocaleChanges } from '@lit/localize';
+import { msg, str, localized } from '@lit/localize';
 import { css, html, LitElement } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 
@@ -9,6 +9,7 @@ import '../ui/button.js';
 import { Message } from '../ui/message.js';
 
 @customElement('content-importer')
+@localized()
 export class ContentImporter extends LitElement {
   static styles = css`
     :host {
@@ -79,31 +80,9 @@ export class ContentImporter extends LitElement {
   @state()
   private _errors: ImportError[] = [];
 
-  constructor() {
-    super();
-    updateWhenLocaleChanges(this);
-  }
-
   render() {
     const errorMessages = this._errors.map((error) => `${error.filename}: ${error.message}`);
     console.log('errorMessages', errorMessages);
-    // ${this._successMessage || this._errors.length > 0
-    //   ? html`
-    //       <div class="messages">
-    //         ${this._successMessage
-    //           ? html`<ui-alert variant="success">${this._successMessage}</ui-alert>`
-    //           : null}
-    //         ${this._errors.length > 0
-    //           ? html`
-    //               <ui-alert variant="error" .items="${errorMessages}">
-    //                 ${msg('部分文件导入失败：')}
-    //               </ui-alert>
-    //             `
-    //           : null}
-    //       </div>
-    //     `
-    //   : null}
-
     return html`
       <div
         class="dropzone ${this._dragOver ? 'dragover' : ''} ${this._importing ? 'busy' : ''}"
@@ -130,7 +109,7 @@ export class ContentImporter extends LitElement {
                 ${this._errors.length > 0
                   ? html`
                       <ui-alert type="error">
-                        <span slot="title">${msg(str`部分文件导入失败：`)}</span>
+                        <span slot="title">${msg('部分文件导入失败：')}</span>
                         ${errorMessages.map((error) => html`<p>${error}</p>`)}
                       </ui-alert>
                     `
@@ -197,12 +176,12 @@ export class ContentImporter extends LitElement {
       }
       if (this._errors.length > 0) {
         this._errors.forEach((error) => {
-          Message.error({ message: msg(str`${error.filename}: ${error.message}`) });
+          Message.error({ message: `${error.filename}: ${error.message}` });
         });
       }
     } catch {
       // this._errors = [{ filename: msg('导入'), message: msg('导入过程中发生未知错误') }];
-      Message.error({ message: msg(str`导入过程中发生未知错误`) });
+      Message.error({ message: '导入过程中发生未知错误' });
     } finally {
       this._importing = false;
     }

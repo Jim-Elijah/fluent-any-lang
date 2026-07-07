@@ -1,6 +1,6 @@
 import { css, html, LitElement } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
-import { updateWhenLocaleChanges } from '@lit/localize';
+import { msg, localized } from '@lit/localize';
 import { navigator } from 'lit-element-router';
 
 import '../../components/import/content-importer.js';
@@ -19,6 +19,7 @@ import { SortDirection } from '../../types/models.js';
 // export class LibraryPage extends LitElement {
 const NavigatorElement = navigator(LitElement);
 @customElement('library-page')
+@localized()
 export class LibraryPage extends NavigatorElement {
   static styles = css`
     :host {
@@ -74,19 +75,18 @@ export class LibraryPage extends NavigatorElement {
   @state()
   private _sortDirection: SortDirection = 'desc';
 
-  private _sortByOptions = [
-    { value: 'title', label: '名称' },
-    { value: 'date', label: '日期' },
-  ];
+  private _getSortByOptions() {
+    return [
+      { value: 'title', label: msg('名称') },
+      { value: 'date', label: msg('日期') },
+    ];
+  }
 
-  private _sortDirectionOptions = [
-    { value: 'asc', label: '升序' },
-    { value: 'desc', label: '降序' },
-  ];
-
-  constructor() {
-    super();
-    updateWhenLocaleChanges(this);
+  private _getSortDirectionOptions() {
+    return [
+      { value: 'asc', label: msg('升序') },
+      { value: 'desc', label: msg('降序') },
+    ];
   }
 
   render() {
@@ -99,7 +99,7 @@ export class LibraryPage extends NavigatorElement {
             .value=${this._keyword}
             style="flex: 1;"
             allow-clear
-            placeholder="请输入"
+            placeholder="${msg('请输入关键词')}"
             @change=${(e: CustomEvent<InputChangeDetail>) => {
               console.log('change', e.detail);
               this._keyword = (e.detail.value || '').trim();
@@ -109,8 +109,8 @@ export class LibraryPage extends NavigatorElement {
           <ui-select
             style="flex: 1;"
             .value=${this._sortBy}
-            .options=${this._sortByOptions}
-            placeholder="排序方式"
+            .options=${this._getSortByOptions()}
+            placeholder="${msg('排序方式')}"
             @change=${(e: CustomEvent<SelectChangeDetail>) => {
               console.log('change', e.detail);
               this._sortBy = e.detail.value as string;
@@ -120,8 +120,8 @@ export class LibraryPage extends NavigatorElement {
           <ui-select
             style="flex: 1;"
             .value=${this._sortDirection}
-            .options=${this._sortDirectionOptions}
-            placeholder="排序方向"
+            .options=${this._getSortDirectionOptions()}
+            placeholder="${msg('排序方向')}"
             @change=${(e: CustomEvent<SelectChangeDetail>) => {
               console.log('change', e.detail);
               this._sortDirection = e.detail.value as SortDirection;

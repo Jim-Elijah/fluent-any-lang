@@ -1,7 +1,7 @@
 import { LitElement, PropertyValues, html } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { navigator } from 'lit-element-router';
-import { msg, str } from '@lit/localize';
+import { msg, str, localized } from '@lit/localize';
 import '../../components/player/audio-recorder.js';
 
 const COUNTDOWN_TIME = 3;
@@ -11,6 +11,7 @@ const COUNTDOWN_TIME = 3;
 // export class NotFoundPage extends LitElement {
 const NavigatorElement = navigator(LitElement);
 @customElement('not-found-page')
+@localized()
 export class NotFoundPage extends NavigatorElement {
   @property({ type: Boolean }) active = false;
   @state()
@@ -52,8 +53,8 @@ export class NotFoundPage extends NavigatorElement {
 
   render() {
     return html`
-      <h1>Not Found</h1>
-      <p>${msg(str`Returning to home in ${this._countdown} seconds...`)}</p>
+      <h1>${msg('页面未找到')}</h1>
+      <p>${msg(str`${this._countdown} 秒后返回首页…`)}</p>
     `;
   }
 }

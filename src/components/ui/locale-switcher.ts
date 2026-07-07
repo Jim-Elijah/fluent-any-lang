@@ -1,4 +1,4 @@
-import { msg, updateWhenLocaleChanges } from '@lit/localize';
+import { msg, localized } from '@lit/localize';
 import { css, html, LitElement } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 
@@ -7,6 +7,7 @@ import type { Locale } from '../../i18n/localization.js';
 import { sourceLocale, targetLocales } from '../../locales/locale-codes.js';
 
 @customElement('locale-switcher')
+@localized()
 export class LocaleSwitcher extends LitElement {
   static styles = css`
     :host {
@@ -35,14 +36,11 @@ export class LocaleSwitcher extends LitElement {
   @property({ type: String })
   value: Locale = sourceLocale;
 
-  constructor() {
-    super();
-    updateWhenLocaleChanges(this);
-  }
-
   private readonly _localeLabels: Record<Locale, string> = {
-    'zh-CN': '中文',
+    'zh-CN': '简体中文',
+    'zh-TW': '繁體中文',
     en: 'English',
+    ja: '日本語',
   };
 
   private _handleChange(event: Event): void {

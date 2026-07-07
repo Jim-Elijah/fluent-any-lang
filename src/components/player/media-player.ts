@@ -1,4 +1,4 @@
-import { msg, str, updateWhenLocaleChanges } from '@lit/localize';
+import { msg, str, localized } from '@lit/localize';
 import { css, html, LitElement } from 'lit';
 import { customElement, property, query, state } from 'lit/decorators.js';
 
@@ -31,6 +31,7 @@ const defaultControlConfig: MediaControlsConfig = {
 };
 
 @customElement('media-player')
+@localized()
 export class MediaPlayer extends LitElement {
   static styles = css`
     :host {
@@ -423,11 +424,6 @@ export class MediaPlayer extends LitElement {
   private _boundController: MediaController | null = null;
   private _lastVolume = 1;
 
-  constructor() {
-    super();
-    updateWhenLocaleChanges(this);
-  }
-
   disconnectedCallback(): void {
     this.controller?.detachMediaElement();
     super.disconnectedCallback();
@@ -685,7 +681,7 @@ export class MediaPlayer extends LitElement {
                 ${this.controlsConfig.playPause
                   ? html`<ui-icon
                       name="${snapshot.isPlaying ? 'pause' : 'play'}"
-                      title="${msg(snapshot.isPlaying ? '暂停' : '播放')}"
+                      title="${snapshot.isPlaying ? msg('暂停') : msg('播放')}"
                       size="20px"
                       ?disabled="${this.disabled}"
                       @click="${this._togglePlay}"
@@ -793,7 +789,6 @@ export class MediaPlayer extends LitElement {
                       { value: 'list', label: msg('列表循环') },
                       { value: 'shuffle', label: msg('随机播放') },
                     ]}
-                    placeholder="循环模式"
                     @change=${this._handleLoopModeChange}
                   ></ui-select>
                 </div>`
@@ -828,7 +823,7 @@ export class MediaPlayer extends LitElement {
             ${showPauseMode
               ? html`
                   <div class="setting-item">
-                    <span class="setting-label">${msg('暂停方式')}</span>
+                    <span class="setting-label">${msg('单句暂停模式')}</span>
                     <ui-select
                       ?disabled="${this.disabled}"
                       .value=${snapshot.pauseMode}
@@ -840,7 +835,6 @@ export class MediaPlayer extends LitElement {
                           label: msg('句长百分比'),
                         },
                       ]}
-                      placeholder="暂停方式"
                       @change=${this._handlePauseModeChange}
                     ></ui-select>
                   </div>
@@ -892,7 +886,7 @@ export class MediaPlayer extends LitElement {
                               500: '500',
                             }}
                             .tooltip=${{
-                              formatter: (v: number) => `${v} ${msg('%')}`,
+                              formatter: (v: number) => `${v}%`,
                               placement: 'top',
                             }}
                             @change=${this._handlePausePercentChange}
@@ -913,7 +907,6 @@ export class MediaPlayer extends LitElement {
                       { value: 'minutes', label: msg('定时暂停') },
                       { value: 'until-end', label: msg('播完本集暂停') },
                     ]}
-                    placeholder="睡眠模式"
                     @change=${this._handleSleepModeChange}
                   ></ui-select>
                 </div>`

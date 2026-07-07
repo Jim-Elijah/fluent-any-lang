@@ -1,4 +1,4 @@
-import { msg } from '@lit/localize';
+import { msg, updateWhenLocaleChanges } from '@lit/localize';
 import { css, html, LitElement, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 
@@ -77,6 +77,11 @@ export class RecordingPreview extends LitElement {
   private _recordingObjectUrl = '';
   private _pendingPlaybackInit = false;
 
+  constructor() {
+    super();
+    updateWhenLocaleChanges(this);
+  }
+
   protected updated(changed: Map<PropertyKey, unknown>): void {
     if (changed.has('sourceBlob') || changed.has('recordingBlob')) {
       this._revokeUrls();
@@ -152,8 +157,10 @@ export class RecordingPreview extends LitElement {
       case 'recording':
         return html`${msg('正在播放录音…')}`;
       case 'sync':
-        return html`${msg('正在同步播放片段')}
-          <strong>${this._syncSegmentIndex + 1} / ${this.segments.length}</strong>`;
+        return msg(
+          html`正在同步播放片段
+            <strong>${this._syncSegmentIndex + 1} / ${this.segments.length}</strong>`,
+        );
       default:
         return nothing;
     }

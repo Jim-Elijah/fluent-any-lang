@@ -1,6 +1,6 @@
 import { LitElement, html, css, nothing, render, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import { msg } from '@lit/localize';
+import { msg, localized } from '@lit/localize';
 import { classMap } from 'lit/directives/class-map.js';
 import { styleMap } from 'lit/directives/style-map.js';
 
@@ -184,6 +184,7 @@ const POPUP_PORTAL_STYLES = css`
 `.cssText;
 
 @customElement('ui-popconfirm')
+@localized()
 export class UiPopconfirm extends LitElement {
   static styles = css`
     :host {
@@ -197,10 +198,10 @@ export class UiPopconfirm extends LitElement {
 
   @property({ type: Boolean, reflect: true }) open = false;
   @property({ type: Boolean, reflect: true }) visible?: boolean;
-  @property() title: string = msg('Are you sure?');
+  @property() title = '';
 
-  @property() okText: string = msg('Ok');
-  @property() cancelText: string = msg('Cancel');
+  @property() okText = '';
+  @property() cancelText = '';
 
   @property({ type: String }) placement: PopconfirmPlacement = 'top';
   @property({ type: String }) trigger: PopconfirmTriggerType = 'click';
@@ -439,21 +440,23 @@ export class UiPopconfirm extends LitElement {
           class=${classMap({ arrow: true, [`placement-${this.placement}`]: true })}
           style=${styleMap(this._arrowStyle)}
         ></div>
-        <div class="title" id=${this._titleId}>${this.title}</div>
+        <div class="title" id=${this._titleId}>${this.title || msg('确定要执行此操作吗？')}</div>
         <div class="actions">
           <button
             class="btn ghost"
             ?disabled=${this.confirmLoading}
             @click=${() => this._onCancel()}
           >
-            ${this.cancelText}
+            ${this.cancelText || msg('取消')}
           </button>
           <button
             class="btn primary"
             ?disabled=${this.confirmLoading || this.disabled}
             @click=${() => this._onConfirm()}
           >
-            ${this.confirmLoading ? html`<span class="spin"></span>${this.okText}` : this.okText}
+            ${this.confirmLoading
+              ? html`<span class="spin"></span>${this.okText || msg('确定')}`
+              : this.okText || msg('确定')}
           </button>
         </div>
       </div>

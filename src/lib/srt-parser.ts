@@ -1,4 +1,4 @@
-import { msg, str } from '@lit/localize';
+import { msg } from '@lit/localize';
 import type { SubtitleType, SubtitleSegment } from '../types/models.js';
 
 const SRT_TIMESTAMP =
@@ -67,12 +67,12 @@ function validateSegments(segments: SubtitleSegment[]): {
 } {
   console.log('validateSegments', segments);
   if (segments.length === 0) {
-    return { segments: null, error: msg(str`No valid subtitle cues found`) };
+    return { segments: null, error: msg('未找到有效的字幕条目') };
   }
 
   for (const segment of segments) {
     if (segment.endTime <= segment.startTime) {
-      return { segments: null, error: msg(str`Invalid subtitle timing`) };
+      return { segments: null, error: msg('字幕时间轴无效') };
     }
   }
 

@@ -58,7 +58,7 @@ function groupFiles(files: File[]): { groups: FileGroup[]; errors: ImportError[]
       if (group.audio) {
         errors.push({
           filename: file.name,
-          message: msg(str`Duplicate audio file for the same title '${baseName}'`),
+          message: msg(str`同一标题「${baseName}」已存在重复的音频文件`),
         });
         continue;
       }
@@ -74,7 +74,7 @@ function groupFiles(files: File[]): { groups: FileGroup[]; errors: ImportError[]
       if (group[subtitleType]) {
         errors.push({
           filename: file.name,
-          message: msg(str`Duplicate ${subtitleType} file for the same title '${baseName}'`),
+          message: msg(str`同一标题「${baseName}」已存在重复的 ${subtitleType} 文件`),
         });
         continue;
       }
@@ -85,7 +85,7 @@ function groupFiles(files: File[]): { groups: FileGroup[]; errors: ImportError[]
 
     errors.push({
       filename: file.name,
-      message: msg(str`Unsupported file type`),
+      message: msg('不支持的文件类型'),
     });
   }
 
@@ -109,7 +109,7 @@ async function importGroup(
     console.log('none exist');
     retResult.errors.push({
       filename: group.baseName,
-      message: msg(str`Missing media file and .srt/.lrc file`),
+      message: msg('缺少媒体文件及 .srt/.lrc 字幕文件'),
     });
     return retResult;
   }
@@ -124,7 +124,7 @@ async function importGroup(
       if (!srtValidation.segments) {
         retResult.errors.push({
           filename: srtFile.name,
-          message: srtValidation.error ?? msg(str`Invalid SRT file`),
+          message: srtValidation.error ?? msg('无效的 SRT/LRC 文件'),
         });
       } else {
         const segments: SubtitleSegment[] = srtValidation.segments;
@@ -148,7 +148,7 @@ async function importGroup(
       if (!lrcValidation.segments) {
         retResult.errors.push({
           filename: lrcFile.name,
-          message: lrcValidation.error ?? msg(str`Invalid LRC file`),
+          message: lrcValidation.error ?? msg('无效的 SRT/LRC 文件'),
         });
       } else {
         const segments: SubtitleSegment[] = lrcValidation.segments;
@@ -175,7 +175,7 @@ async function importGroup(
     if (!mediaValidation.valid) {
       retResult.errors.push({
         filename: mediaFile.name,
-        message: mediaValidation.error ?? msg(str`Invalid media file`),
+        message: mediaValidation.error ?? msg('无效的媒体文件'),
       });
     } else {
       const mimeType = resolveMimeType(mediaFile);
@@ -186,7 +186,7 @@ async function importGroup(
       } catch {
         retResult.errors.push({
           filename: mediaFile.name,
-          message: msg(str`Unable to read media duration`),
+          message: msg('无法读取媒体时长'),
         });
         return retResult;
       }
