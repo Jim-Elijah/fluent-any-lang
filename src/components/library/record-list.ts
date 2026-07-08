@@ -15,6 +15,7 @@ import '../ui/button.js';
 import '../ui/modal.js';
 import '../ui/popconfirm.js';
 import './recording-preview.js';
+import '../ui/icon.js';
 import type { PracticeRecord, SortDirection } from '../../types/models.js';
 import { formatDate, formatTime } from '../../lib/playback-utils.js';
 
@@ -248,8 +249,12 @@ export class RecordList extends LitElement {
                       </p>
                   </div>
                   <div class="actions">
-                    <ui-button variant="primary" @click="${() => this._handleView(item)}">${msg('查看')}</ui-button>
-                    <ui-button variant="secondary" @click="${() => this._handleExport(item)}">${msg('导出')}</ui-button>
+                    <ui-button variant="primary" @click="${() => this._handleView(item)}">
+                      <ui-icon name="play" title="${msg('查看')}"></ui-icon>
+                    </ui-button>
+                    <ui-button variant="secondary" @click="${() => this._handleExport(item)}">
+                      <ui-icon name="download" title="${msg('导出')}"></ui-icon>
+                    </ui-button>
                     <ui-popconfirm
                       title=${msg('确定删除该录音吗？')}
                       ?open=${this._deleteConfirmId === item.id}
@@ -259,7 +264,9 @@ export class RecordList extends LitElement {
                         this._handleDeleteConfirmOpen(item.id, e)}
                       @confirm=${() => this._handleDelete(item)}
                     >
-                      <ui-button variant="danger" ?disabled="${this._deletingId === item.id}">${msg('删除')}</ui-button>
+                      <ui-button variant="danger" ?disabled="${this._deletingId === item.id}">
+                        <ui-icon name="delete" title="${msg('删除')}"></ui-icon>
+                      </ui-button>
                     </ui-popconfirm>
                   </div>
                 </div>

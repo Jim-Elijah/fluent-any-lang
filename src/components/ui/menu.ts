@@ -195,6 +195,16 @@ export class UiMenu extends LitElement {
       background: rgba(22, 119, 255, 0.12);
     }
 
+    /* 侧边栏 / 内嵌：去掉外框 */
+    :host([inline]) .menu {
+      border: none;
+      border-radius: 0;
+    }
+
+    :host([inline]) .menu.vertical {
+      width: 100%;
+    }
+
     /* 底部 tab bar */
     :host([bottom-nav]) .menu.horizontal {
       border: none;
@@ -237,6 +247,7 @@ export class UiMenu extends LitElement {
   `;
 
   @property({ type: Boolean, reflect: true }) bottomNav = false;
+  @property({ type: Boolean, reflect: true }) inline = false;
 
   @property({ type: String }) mode: MenuMode = 'vertical';
   @property({ type: Array }) items: MenuItem[] = [];

@@ -22,6 +22,7 @@ export class UIIcon extends LitElement {
       fill: currentColor;
       overflow: hidden;
       cursor: pointer;
+      cursor: var(--ui-icon-cursor, pointer);
     }
 
     svg :is(path, circle, rect, polygon, polyline) {

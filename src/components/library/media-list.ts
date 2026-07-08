@@ -8,6 +8,7 @@ import type { MediaItem, SortDirection } from '../../types/models.js';
 import '../ui/alert.js';
 import '../ui/button.js';
 import '../ui/popconfirm.js';
+import '../ui/icon.js';
 
 @customElement('media-list')
 @localized()
@@ -81,7 +82,7 @@ export class MediaList extends LitElement {
     .badge {
       display: inline-flex;
       align-items: center;
-      padding: 2px 8px;
+      padding: 4px;
       border-radius: 999px;
       background: rgba(22, 119, 255, 0.08);
       color: var(--color-primary, #1677ff);
@@ -89,6 +90,9 @@ export class MediaList extends LitElement {
       font-weight: 500;
     }
 
+    .badge ui-icon {
+      --ui-icon-cursor: auto;
+    }
     .badge.muted {
       background: rgba(0, 0, 0, 0.04);
       color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
@@ -203,18 +207,29 @@ export class MediaList extends LitElement {
                           <p class="title">${item.title}</p>
                           <p class="details">
                             <span class="badge">
-                              ${item.type === 'video' ? msg('视频') : msg('音频')}
+                              <ui-icon
+                                name="${item.type === 'video' ? 'video' : 'music'}"
+                                size="16px"
+                                title="${item.type === 'video' ? msg('视频') : msg('音频')}"
+                              ></ui-icon>
                             </span>
                             <span>${formatTime(item.duration)}</span>
                             <span>${formatDate(item.createdAt, true)}</span>
                             <span class="badge ${item.hasSubtitles ? '' : 'muted'}">
-                              ${item.hasSubtitles ? msg('含字幕') : msg('无字幕')}
+                              <ui-icon
+                                name="${item.hasSubtitles ? 'subtitle' : 'subtitle-off'}"
+                                size="16px"
+                                title="${item.hasSubtitles ? msg('含字幕') : msg('无字幕')}"
+                              ></ui-icon>
                             </span>
                           </p>
                         </div>
                         <div class="actions">
-                          <ui-button variant="primary" @click="${() => this._handlePractice(item)}">
-                            ${msg('练习')}
+                          <ui-button
+                            variant="secondary"
+                            @click="${() => this._handlePractice(item)}"
+                          >
+                            <ui-icon name="practice" title="${msg('练习')}"></ui-icon>
                           </ui-button>
                           <ui-popconfirm
                             title=${msg('确定删除该资源吗？')}
@@ -225,9 +240,9 @@ export class MediaList extends LitElement {
                               this._handleDeleteConfirmOpen(item.id, e)}
                             @confirm=${() => this._handleDelete(item)}
                           >
-                            <ui-button variant="danger" ?disabled="${this._deletingId === item.id}"
-                              >${msg('删除')}</ui-button
-                            >
+                            <ui-button variant="danger" ?disabled="${this._deletingId === item.id}">
+                              <ui-icon name="delete" title="${msg('删除')}"></ui-icon>
+                            </ui-button>
                           </ui-popconfirm>
                         </div>
                       </li>

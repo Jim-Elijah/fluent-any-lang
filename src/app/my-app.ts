@@ -34,56 +34,49 @@ export class MyApp extends RouterNavigatorApp {
     :host {
       display: block;
       min-height: 100vh;
+      --nav-width: 200px;
+      --nav-height: 56px;
     }
 
     .layout {
-      max-width: 960px;
+      display: flex;
       min-height: 100vh;
+      max-width: calc(960px + 48px);
       margin: 0 auto;
-      padding: 24px 16px 48px;
+      padding: 0 16px;
+    }
+    .navigation {
+      width: fit-content;
+      height: fit-content;
+      flex-shrink: 0;
+      position: sticky;
+      top: 50%;
+      transform: translateY(-50%); /* 滚动时保持在视口垂直中央 */
+      align-self: center;
+      /* 去掉 height: 100vh、border-right 全高样式，按需改成卡片式 */
+      padding: 0;
+      background: transparent;
+      border: none;
+      overflow: visible;
+    }
+    .navigation ui-menu {
+      height: auto; /* 不要 height: 100% */
+    }
+    .main-content {
+      flex: 1;
+      min-width: 0;
+      padding: 24px 0 48px 0; /* 间距交给 gap */
     }
 
-    /* 桌面：左侧固定 */
-    .navigation {
-      position: fixed;
-      top: 50%;
-      transform: translate(-100%);
-      /* top: 0;
-      left: 0;
-      bottom: 0;
-      width: var(--nav-width, 220px); */
-      z-index: 100;
-      background: #fff;
-      border-right: 1px solid var(--color-border, #d9d9d9);
-      overflow-y: auto;
+    .navigation ui-menu {
+      display: block;
+      height: 100%;
     }
 
     .main-content {
-      /* margin-left: var(--nav-width, 220px); */
-      padding: 24px 16px 48px;
-      max-width: 960px;
-    }
-
-    /* 移动：底部固定 */
-    @media (max-width: 767px) {
-      .navigation {
-        top: auto;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        width: 100%;
-        height: auto;
-        border-right: none;
-        transform: none;
-        border-top: 1px solid var(--color-border, #d9d9d9);
-        padding-bottom: env(safe-area-inset-bottom, 0);
-      }
-      .main-content {
-        margin-left: 0;
-        margin-bottom: calc(var(--nav-height, 56px) + env(safe-area-inset-bottom, 0));
-        padding: 16px 16px 24px;
-        max-width: none;
-      }
+      flex: 1;
+      min-width: 0;
+      padding: 24px 0 48px 24px;
     }
 
     header {
@@ -101,6 +94,46 @@ export class MyApp extends RouterNavigatorApp {
       font-size: 1.5rem;
       font-weight: 600;
       color: var(--color-primary, #1677ff);
+    }
+
+    /* 移动：固定在底部 */
+    @media (max-width: 767px) {
+      .layout {
+        flex-direction: column;
+        max-width: none;
+        padding: 0;
+      }
+
+      .navigation {
+        position: fixed;
+        top: auto;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: 100%;
+        height: auto;
+        padding: 0;
+        transform: none;
+        align-self: auto;
+        padding-bottom: env(safe-area-inset-bottom, 0);
+        border-right: none;
+        border-top: 1px solid var(--color-border, #d9d9d9);
+        box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.06);
+        z-index: 100;
+      }
+
+      .main-content {
+        padding: 16px 16px calc(var(--nav-height) + env(safe-area-inset-bottom, 0) + 16px);
+      }
+
+      header {
+        margin-bottom: 24px;
+        padding-bottom: 12px;
+      }
+
+      .brand {
+        font-size: 1.25rem;
+      }
     }
   `;
 
@@ -230,17 +263,18 @@ export class MyApp extends RouterNavigatorApp {
 
     return html`
       <div class="layout">
-        <div class="navigation">
+        <nav class="navigation">
           <ui-menu
             .items=${menuItems}
             .selectedKeys=${this.selectedKeys}
             .openKeys=${this.openKeys}
             mode=${this._isMobile ? 'horizontal' : 'vertical'}
             ?bottom-nav=${this._isMobile}
+            ?inline=${!this._isMobile}
             @select=${this._handleMenuSelect}
             @open-change=${this._handleOpenChange}
           ></ui-menu>
-        </div>
+        </nav>
         <div class="main-content">
           <header>
             <h1 class="brand">${msg('FluentAnyLang')}</h1>

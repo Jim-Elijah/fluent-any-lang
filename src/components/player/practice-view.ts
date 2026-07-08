@@ -328,13 +328,13 @@ export class PracticeView extends LitElement {
             variant="${this._practiceType === 'listening' ? 'primary' : 'secondary'}"
             @click="${() => this._setPracticeType('listening')}"
           >
-            ${msg('听力')}
+            <ui-icon name="listen" size="20px" title="${msg('听力')}"></ui-icon> ${msg('听力')}
           </ui-button>
           <ui-button
             variant="${this._practiceType === 'speaking' ? 'primary' : 'secondary'}"
             @click="${() => this._setPracticeType('speaking')}"
           >
-            ${msg('口语')}
+            <ui-icon name="speak" size="20px" title="${msg('口语')}"></ui-icon> ${msg('口语')}
           </ui-button>
         </div>
         ${isSpeaking

@@ -506,6 +506,10 @@
   <source>媒体 "<x id="0" equiv-text="${this._mediaId}"/>" 不存在，回退到第一首媒体。</source>
 <target>Media "<x id="0" equiv-text="${this._mediaId}"/>" does not exist. Returning to the first media.</target>
 </trans-unit>
+<trans-unit id="sf7e0d9095a875b37">
+  <source>音量</source>
+  <target>Volume</target>
+  </trans-unit>
 </body>
 </file>
 </xliff>

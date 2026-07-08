@@ -130,6 +130,7 @@ export const templates = {
   sf1a27dc6ca25c837: `No subtitles`,
   sf46edeb7a1287c99: `Invalid SRT/LRC file`,
   sf573da5a178fd0d6: `Delete failed. Please try again.`,
+  sf7e0d9095a875b37: `Volume`,
   sf7e99f095a9643a9: `Audio`,
   sf963b9095b733075: `Descending`,
   sf9d9e3b381776b16: `With subtitles`,

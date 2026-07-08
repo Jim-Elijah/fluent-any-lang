@@ -127,6 +127,7 @@ export const templates = {
   sf1a27dc6ca25c837: `字幕なし`,
   sf46edeb7a1287c99: `無効な SRT/LRC ファイル`,
   sf573da5a178fd0d6: `削除に失敗しました。やり直してください。`,
+  sf7e0d9095a875b37: `音量`,
   sf7e99f095a9643a9: `音声`,
   sf963b9095b733075: `降順`,
   sf9d9e3b381776b16: `字幕あり`,

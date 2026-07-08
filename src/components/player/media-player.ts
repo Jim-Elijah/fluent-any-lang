@@ -713,6 +713,7 @@ export class MediaPlayer extends LitElement {
                   ? html`
                       <div class="volume-control">
                         <ui-icon
+                          title="${msg('音量')}"
                           name="${snapshot.volume === 0 ? 'volume-close' : 'volume'}"
                           size="16px"
                           @click="${this._toggleMute}"

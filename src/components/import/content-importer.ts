@@ -6,6 +6,7 @@ import { importContentFiles } from '../../lib/import-content.js';
 import type { ImportError, MediaItem, SubtitleTrack } from '../../types/models.js';
 import '../ui/alert.js';
 import '../ui/button.js';
+import '../ui/icon.js';
 import { Message } from '../ui/message.js';
 
 @customElement('content-importer')
@@ -95,7 +96,7 @@ export class ContentImporter extends LitElement {
         <p class="hint">${msg('拖拽或选择音频与字幕（字幕支持.srt与.lrc）')}</p>
         <div class="actions">
           <ui-button variant="primary" ?disabled="${this._importing}" @click="${this._openPicker}">
-            ${msg('选择文件')}
+            <ui-icon name="upload" size="20px" title="${msg('选择文件')}"></ui-icon>
           </ui-button>
         </div>
         <!-- @TODO 支持 video/* -->

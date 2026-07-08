@@ -5,6 +5,7 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { MediaControllerHost } from '../../controllers/media-controller-host.js';
 import type { MediaController } from '../../controllers/media-controller.js';
 import { formatTime } from '../../lib/playback-utils.js';
+import '../ui/icon.js';
 
 @customElement('subtitle-panel')
 export class SubtitlePanel extends LitElement {
@@ -63,6 +64,9 @@ export class SubtitlePanel extends LitElement {
 
     .segment:hover {
       background: rgba(22, 119, 255, 0.04);
+    }
+
+    .segment:hover .text {
       text-decoration: underline;
     }
 
@@ -109,6 +113,12 @@ export class SubtitlePanel extends LitElement {
       padding: 24px 16px;
       text-align: center;
       color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
+    }
+
+    @media (max-width: 767px) {
+      .content {
+        align-items: flex-start;
+      }
     }
   `;
 
@@ -180,12 +190,20 @@ export class SubtitlePanel extends LitElement {
           <h3 class="title">${msg('字幕')}</h3>
           ${snapshot.hasSubtitles
             ? html`<ui-button variant="ghost" @click="${this._toggleSubtitles}">
-                ${snapshot.subtitlesVisible ? msg('隐藏字幕') : msg('显示字幕')}
+                <ui-icon
+                  size="20px"
+                  name="${snapshot.subtitlesVisible ? 'subtitle-off' : 'subtitle'}"
+                  title="${snapshot.subtitlesVisible ? msg('隐藏字幕') : msg('显示字幕')}"
+                ></ui-icon>
               </ui-button>`
             : ''}
-          ${snapshot.hasSubtitles && hasTranslation
+          ${snapshot.hasSubtitles && snapshot.subtitlesVisible && hasTranslation
             ? html`<ui-button variant="ghost" @click="${this._toggleTranslationVisible}">
-                ${this._translationVisible ? msg('隐藏翻译') : msg('显示翻译')}
+                <ui-icon
+                  size="20px"
+                  name="translate"
+                  title="${this._translationVisible ? msg('隐藏翻译') : msg('显示翻译')}"
+                ></ui-icon>
               </ui-button>`
             : ''}
         </div>
@@ -199,8 +217,8 @@ export class SubtitlePanel extends LitElement {
                     data-segment-index="${index}"
                     @click="${() => this._handleSegmentClick(index)}"
                   >
-                    <span class="time">${formatTime(segment.startTime)}</span>
                     <div class="content">
+                      <span class="time">${formatTime(segment.startTime)}</span>
                       <p class="text">${segment.text}</p>
                       ${segment.translation
                         ? html`<p
