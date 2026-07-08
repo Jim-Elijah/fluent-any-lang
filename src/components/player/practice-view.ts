@@ -190,9 +190,6 @@ export class PracticeView extends LitElement {
   private _mediaId = '';
 
   @state()
-  private _error = '';
-
-  @state()
   private _practiceType: PracticeType = 'listening';
 
   @state()

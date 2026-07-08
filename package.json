@@ -7,11 +7,15 @@
   "scripts": {
     "dev": "vite",
     "build": "lit-localize build && tsc && vite build",
-    "preview": "vite preview",
+    "preview": "vite preview --host 127.0.0.1 --port 4173",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
     "format": "prettier --write \"src/**/*.{ts,css,html}\"",
     "format:check": "prettier --check \"src/**/*.{ts,css,html}\"",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest",
+    "test:e2e": "pnpm run build && playwright test",
     "localize:extract": "lit-localize extract",
     "localize:build": "lit-localize build",
     "prepare": "husky"
@@ -42,18 +46,23 @@
     "@commitlint/config-conventional": "^21.0.2",
     "@eslint/js": "^10.0.1",
     "@lit/localize-tools": "^0.8.2",
+    "@playwright/test": "^1.61.1",
     "@types/node": "^26.0.0",
     "@typescript-eslint/eslint-plugin": "^8.61.1",
     "@typescript-eslint/parser": "^8.61.1",
+    "@vitest/coverage-v8": "^4.1.10",
     "eslint": "^10.5.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-lit": "^2.3.1",
+    "fake-indexeddb": "^6.2.5",
     "globals": "^17.6.0",
+    "happy-dom": "^20.10.6",
     "husky": "^9.1.7",
     "lint-staged": "^17.0.8",
     "prettier": "^3.8.4",
     "typescript": "^6.0.3",
-    "vite": "^8.0.16"
+    "vite": "^8.0.16",
+    "vitest": "^4.1.10"
   },
   "packageManager": "pnpm@11.9.0"
 }
