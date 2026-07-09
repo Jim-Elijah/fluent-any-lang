@@ -84,6 +84,10 @@ export class PortalHost {
     this._unbindLayoutListeners();
   }
 
+  getHostElement(): HTMLDivElement | null {
+    return this._host;
+  }
+
   getShadowRoot(): ShadowRoot | null {
     return this._shadow;
   }

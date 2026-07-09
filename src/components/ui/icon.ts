@@ -47,6 +47,9 @@ export class UIIcon extends LitElement {
   @property({ type: Boolean })
   disabled = false;
 
+  @property({ type: Boolean })
+  arrow = true;
+
   @state()
   private _loaded = false;
 
@@ -64,7 +67,7 @@ export class UIIcon extends LitElement {
     const sizeStyle = this.size ? `--ui-icon-size:${this.size};` : '';
 
     return html`
-      <ui-tooltip title=${this.title || this.name}>
+      <ui-tooltip title=${this.title || this.name} .arrow=${this.arrow}>
         <svg
           class=${this.disabled ? 'disabled' : ''}
           style="${sizeStyle}"

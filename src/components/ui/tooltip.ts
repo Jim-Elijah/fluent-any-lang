@@ -1,8 +1,11 @@
-import { LitElement, html, css, nothing, render, type PropertyValues } from 'lit';
+import { LitElement, html, css, nothing, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
 import { styleMap } from 'lit/directives/style-map.js';
+import { arrowStyles } from './internal/arrow-styles.js';
 import { isControlledOpen } from './internal/controlled-state.js';
+import { OverlayController } from './internal/overlay-controller.js';
+import { computePlacement4, arrowSideForPlacement } from './internal/placement.js';
 
 export type TooltipTriggerType = 'click' | 'hover';
 
@@ -16,12 +19,10 @@ export type TooltipOpenChangeDetail = {
   reason?: TooltipCloseReason;
 };
 
-const ARROW_HALF = 5;
 const DEFAULT_ENTER_DELAY_S = 0.1;
 const DEFAULT_LEAVE_DELAY_S = 0.1;
 
-/** Portal 内 popup 样式（渲染在 light DOM，需独立注入） */
-const POPUP_PORTAL_STYLES = css`
+const POPUP_PORTAL_STYLES = `
   .popup {
     position: fixed;
     z-index: var(--tooltip-z, 1070);
@@ -43,68 +44,13 @@ const POPUP_PORTAL_STYLES = css`
     position: absolute;
   }
 
-  .arrow {
-    position: absolute;
-    overflow: hidden;
-    background: transparent;
-    pointer-events: none;
-  }
-
-  .arrow::before {
-    content: '';
-    position: absolute;
-    width: 8px;
-    height: 8px;
-    background: var(--tooltip-bg, rgba(0, 0, 0, 0.85));
-    box-sizing: border-box;
-    transform: rotate(45deg);
-  }
-
-  .arrow.placement-bottom {
-    width: 10px;
-    height: 5px;
-  }
-  .arrow.placement-bottom::before {
-    left: 50%;
-    margin-left: -4px;
-    top: 0;
-  }
-
-  .arrow.placement-top {
-    width: 10px;
-    height: 5px;
-  }
-  .arrow.placement-top::before {
-    left: 50%;
-    margin-left: -4px;
-    top: -4px;
-  }
-
-  .arrow.placement-left {
-    width: 5px;
-    height: 10px;
-  }
-  .arrow.placement-left::before {
-    top: 50%;
-    margin-top: -4px;
-    left: 0;
-  }
-
-  .arrow.placement-right {
-    width: 5px;
-    height: 10px;
-  }
-  .arrow.placement-right::before {
-    top: 50%;
-    margin-top: -4px;
-    left: -4px;
-  }
+  ${arrowStyles({ backgroundVar: '--tooltip-bg', backgroundFallback: 'rgba(0, 0, 0, 0.85)' })}
 
   .content {
     position: relative;
     z-index: 1;
   }
-`.cssText;
+`;
 
 @customElement('ui-tooltip')
 export class UiTooltip extends LitElement {
@@ -151,24 +97,11 @@ export class UiTooltip extends LitElement {
   private readonly _tooltipId = `ui-tooltip-${Math.random().toString(36).slice(2, 9)}`;
 
   private _triggerEl: HTMLElement | null = null;
-  private _popupEl: HTMLDivElement | null = null;
-
-  private _portalHost: HTMLDivElement | null = null;
-  private _portalShadow: ShadowRoot | null = null;
-  private _portalMount: HTMLDivElement | null = null;
-  private _portalStyleEl: HTMLStyleElement | null = null;
-  private _positionPatchedContainer: HTMLElement | null = null;
-
+  private _overlay: OverlayController | null = null;
   private _globalBound = false;
   private _prevIsOpen = false;
-  private _scrollContainer: HTMLElement | null = null;
   private _hoverOpenTimer: ReturnType<typeof setTimeout> | null = null;
   private _hoverCloseTimer: ReturnType<typeof setTimeout> | null = null;
-
-  private readonly _captureOptions = { capture: true };
-  private _docMouseDown = (e: MouseEvent) => this._onDocumentMouseDown(e);
-  private _docKeyDown = (e: KeyboardEvent) => this._onDocumentKeyDown(e);
-  private _onScrollOrResize = () => this._updatePosition();
 
   connectedCallback(): void {
     super.connectedCallback();
@@ -177,14 +110,39 @@ export class UiTooltip extends LitElement {
     }
   }
 
-  private _isOpen(): boolean {
-    return isControlledOpen(this.open) ? this.open : this._internalOpen;
+  private _getOverlay(): OverlayController {
+    if (!this._overlay) {
+      this._overlay = new OverlayController({
+        host: this,
+        portal: {
+          dataAttr: 'data-ui-tooltip-portal',
+          styleText: POPUP_PORTAL_STYLES,
+          zIndex: this.zIndex,
+          popupContainer: this.popupContainer,
+        },
+        isControlledOpen: () => isControlledOpen(this.open),
+        readOpen: () => this._isOpen(),
+        writeOpen: (next) => {
+          this._internalOpen = next;
+        },
+        emitOptions: {
+          detail: (next, meta) =>
+            next
+              ? { open: true, trigger: meta.trigger as TooltipTriggerType | 'manual' | undefined }
+              : {
+                  open: false,
+                  trigger: meta.trigger as TooltipTriggerType | 'manual' | undefined,
+                  reason: meta.reason as TooltipCloseReason | undefined,
+                },
+        },
+      });
+      this._overlay.onLayoutChange(() => this._updatePosition());
+    }
+    return this._overlay;
   }
 
-  private _assignOpen(next: boolean): void {
-    if (!isControlledOpen(this.open)) {
-      this._internalOpen = next;
-    }
+  private _isOpen(): boolean {
+    return isControlledOpen(this.open) ? this.open! : this._internalOpen;
   }
 
   private _isDisabled(): boolean {
@@ -196,23 +154,21 @@ export class UiTooltip extends LitElement {
     this.dispatchEvent(new CustomEvent(name, { detail, bubbles: true, composed: true }));
   }
 
-  private _getContainer(): HTMLElement {
-    const c = this.popupContainer;
-    if (!c) return document.body;
-    if (typeof c === 'string') {
-      if (c === 'body') return document.body;
-      return (document.querySelector(c) as HTMLElement | null) ?? document.body;
-    }
-    return c;
-  }
-
-  private _emitOpenChange(
+  private _setOpen(
     next: boolean,
     meta: {
       trigger?: TooltipTriggerType | 'manual';
       reason?: TooltipCloseReason;
     } = {},
   ) {
+    if (this._isOpen() === next) return;
+
+    if (next && this._isDisabled()) return;
+
+    if (!isControlledOpen(this.open)) {
+      this._internalOpen = next;
+    }
+
     const detail: TooltipOpenChangeDetail = next
       ? { open: true, trigger: meta.trigger }
       : { open: false, trigger: meta.trigger, reason: meta.reason };
@@ -225,23 +181,6 @@ export class UiTooltip extends LitElement {
     } else {
       this._dispatch('close', { reason: meta.reason });
     }
-  }
-
-  private _setOpen(
-    next: boolean,
-    meta: {
-      trigger?: TooltipTriggerType | 'manual';
-      reason?: TooltipCloseReason;
-    } = {},
-  ) {
-    if (this._isOpen() === next) return;
-
-    if (next) {
-      if (this._isDisabled()) return;
-    }
-
-    this._assignOpen(next);
-    this._emitOpenChange(next, meta);
   }
 
   private _show(trigger?: TooltipTriggerType | 'manual') {
@@ -277,90 +216,27 @@ export class UiTooltip extends LitElement {
   private _computePopupPosition() {
     if (!this._triggerEl) return;
 
-    const triggerRect = this._triggerEl.getBoundingClientRect();
-    const container = this._getContainer();
-    const inContainer = container !== document.body;
-    const containerRect = container.getBoundingClientRect();
-
-    const popupRect = this._popupEl?.getBoundingClientRect();
+    const overlay = this._getOverlay();
+    const popupEl = overlay.getPopupEl('.popup');
+    const popupRect = popupEl?.getBoundingClientRect();
     const width = popupRect?.width ?? 120;
     const height = popupRect?.height ?? 32;
-    const gap = 8;
-    const { placement } = this;
 
-    let top: number;
-    let left: number;
-    let arrow: Record<string, string>;
+    const placed = computePlacement4({
+      placement: this.placement,
+      triggerRect: this._triggerEl.getBoundingClientRect(),
+      popupWidth: width,
+      popupHeight: height,
+      container: overlay.portal.getContainer(),
+    });
 
-    if (placement === 'top') {
-      top = triggerRect.top - height - gap;
-      left = triggerRect.left + triggerRect.width / 2 - width / 2;
-      arrow = {
-        left: `${width / 2 - ARROW_HALF}px`,
-        top: `${height - ARROW_HALF}px`,
-      };
-    } else if (placement === 'bottom') {
-      top = triggerRect.bottom + gap;
-      left = triggerRect.left + triggerRect.width / 2 - width / 2;
-      arrow = {
-        left: `${width / 2 - ARROW_HALF}px`,
-        top: `-${ARROW_HALF}px`,
-      };
-    } else if (placement === 'left') {
-      top = triggerRect.top + triggerRect.height / 2 - height / 2;
-      left = triggerRect.left - width - gap;
-      arrow = {
-        top: `${height / 2 - ARROW_HALF}px`,
-        left: `${width - ARROW_HALF}px`,
-      };
-    } else {
-      top = triggerRect.top + triggerRect.height / 2 - height / 2;
-      left = triggerRect.right + gap;
-      arrow = {
-        top: `${height / 2 - ARROW_HALF}px`,
-        left: `-${ARROW_HALF}px`,
-      };
-    }
-
-    const clampLeft = inContainer ? containerRect.left : 0;
-    const clampTop = inContainer ? containerRect.top : 0;
-    const clampWidth = inContainer ? container.clientWidth : window.innerWidth;
-    const clampHeight = inContainer ? container.clientHeight : window.innerHeight;
-
-    const minLeft = clampLeft + 8;
-    const maxLeft = clampLeft + clampWidth - width - 8;
-    const clampedLeft = Math.max(minLeft, Math.min(maxLeft, left));
-
-    const minTop = clampTop + 8;
-    const maxTop = clampTop + clampHeight - height - 8;
-    const clampedTop = Math.max(minTop, Math.min(maxTop, top));
-
-    if (this.arrow) {
-      if (placement === 'top' || placement === 'bottom') {
-        const triggerCenterX = triggerRect.left + triggerRect.width / 2;
-        const arrowLeft = triggerCenterX - clampedLeft - 5;
-        arrow.left = `${Math.max(12, Math.min(width - 22, arrowLeft))}px`;
-      } else {
-        const triggerCenterY = triggerRect.top + triggerRect.height / 2;
-        const arrowTop = triggerCenterY - clampedTop - 5;
-        arrow.top = `${Math.max(12, Math.min(height - 22, arrowTop))}px`;
-      }
-    }
-
-    if (inContainer) {
-      left = clampedLeft - containerRect.left + container.scrollLeft;
-      top = clampedTop - containerRect.top + container.scrollTop;
-    } else {
-      left = clampedLeft;
-      top = clampedTop;
-    }
-
-    this._positionInContainer = inContainer;
-    this._pos = { top, left };
-    this._arrowStyle = arrow;
+    this._positionInContainer = placed.inContainer;
+    this._pos = { top: placed.top, left: placed.left };
+    this._arrowStyle = this.arrow ? placed.arrow : {};
   }
 
   private _popupTemplate() {
+    const arrowPlacement = arrowSideForPlacement(this.placement);
     return html`
       <div
         class=${classMap({ popup: true, 'in-container': this._positionInContainer })}
@@ -375,7 +251,7 @@ export class UiTooltip extends LitElement {
         ${this.arrow
           ? html`
               <div
-                class=${classMap({ arrow: true, [`placement-${this.placement}`]: true })}
+                class=${classMap({ arrow: true, [`placement-${arrowPlacement}`]: true })}
                 style=${styleMap(this._arrowStyle)}
               ></div>
             `
@@ -385,83 +261,14 @@ export class UiTooltip extends LitElement {
     `;
   }
 
-  private _ensurePortal(): HTMLDivElement {
-    const container = this._getContainer();
-
-    if (!this._portalHost) {
-      this._portalHost = document.createElement('div');
-      this._portalHost.setAttribute('data-ui-tooltip-portal', '');
-      this._portalHost.style.pointerEvents = 'none';
-
-      this._portalShadow = this._portalHost.attachShadow({ mode: 'open' });
-      this._portalStyleEl = document.createElement('style');
-      this._portalStyleEl.textContent = POPUP_PORTAL_STYLES;
-      this._portalShadow.appendChild(this._portalStyleEl);
-
-      this._portalMount = document.createElement('div');
-      this._portalShadow.appendChild(this._portalMount);
-    }
-
-    this._syncPortalHostLayout(container);
-
-    if (!this._portalHost.isConnected || this._portalHost.parentElement !== container) {
-      container.appendChild(this._portalHost);
-    }
-
-    return this._portalMount!;
-  }
-
-  private _syncPortalHostLayout(container: HTMLElement) {
-    if (!this._portalHost) return;
-
-    const inContainer = container !== document.body;
-    if (inContainer) {
-      this._portalHost.style.position = 'absolute';
-      this._portalHost.style.inset = '0';
-      this._portalHost.style.width = '100%';
-      this._portalHost.style.height = '100%';
-      this._portalHost.style.zIndex = String(this.zIndex);
-
-      if (getComputedStyle(container).position === 'static') {
-        container.style.position = 'relative';
-        this._positionPatchedContainer = container;
-      }
-    } else {
-      this._portalHost.style.position = 'fixed';
-      this._portalHost.style.inset = '0';
-      this._portalHost.style.width = 'auto';
-      this._portalHost.style.height = 'auto';
-      this._portalHost.style.zIndex = String(this.zIndex);
-    }
-  }
-
   private _syncPortal() {
+    const overlay = this._getOverlay();
     if (!this._isOpen() || this._isDisabled()) {
-      this._hidePortalContent();
+      overlay.hideContent();
       return;
     }
-
-    const mount = this._ensurePortal();
-    render(this._popupTemplate(), mount);
-    this._popupEl = this._portalShadow?.querySelector('.popup') as HTMLDivElement | null;
-  }
-
-  private _hidePortalContent() {
-    if (this._portalMount) render(nothing, this._portalMount);
-    this._popupEl = null;
-  }
-
-  private _destroyPortal() {
-    this._hidePortalContent();
-    this._portalHost?.remove();
-    this._portalHost = null;
-    this._portalShadow = null;
-    this._portalMount = null;
-    this._portalStyleEl = null;
-    if (this._positionPatchedContainer) {
-      this._positionPatchedContainer.style.position = '';
-      this._positionPatchedContainer = null;
-    }
+    overlay.updatePortalOptions({ zIndex: this.zIndex, popupContainer: this.popupContainer });
+    overlay.syncContent(this._popupTemplate());
   }
 
   protected render() {
@@ -509,7 +316,8 @@ export class UiTooltip extends LitElement {
       this._unbindGlobal();
       this._globalBound = false;
     }
-    this._destroyPortal();
+    this._overlay?.destroy();
+    this._overlay = null;
     super.disconnectedCallback();
   }
 
@@ -546,11 +354,12 @@ export class UiTooltip extends LitElement {
       this._unbindGlobal();
       this._globalBound = false;
     }
+    this._getOverlay().triggers.clearHoverTimers();
     this._clearHoverTimers();
     if (this.destroyOnClose) {
-      this._destroyPortal();
+      this._overlay?.destroyPortal();
     } else {
-      this._hidePortalContent();
+      this._overlay?.hideContent();
     }
   }
 
@@ -579,30 +388,16 @@ export class UiTooltip extends LitElement {
   }
 
   private _bindGlobal() {
-    window.addEventListener('mousedown', this._docMouseDown, this._captureOptions);
-    window.addEventListener('keydown', this._docKeyDown, this._captureOptions);
-    window.addEventListener('scroll', this._onScrollOrResize, { capture: true });
-    window.addEventListener('resize', this._onScrollOrResize);
-
-    const container = this._getContainer();
-    if (container !== document.body) {
-      this._scrollContainer = container;
-      container.addEventListener('scroll', this._onScrollOrResize, { capture: true });
-    }
+    const overlay = this._getOverlay();
+    overlay.triggers.bindGlobal({
+      onOutside: (e) => this._onDocumentMouseDown(e),
+      onEsc: (e) => this._onDocumentKeyDown(e),
+      onScrollResize: () => overlay.updatePosition(),
+    });
   }
 
   private _unbindGlobal() {
-    window.removeEventListener('mousedown', this._docMouseDown, this._captureOptions);
-    window.removeEventListener('keydown', this._docKeyDown, this._captureOptions);
-    window.removeEventListener('scroll', this._onScrollOrResize, { capture: true });
-    window.removeEventListener('resize', this._onScrollOrResize);
-
-    if (this._scrollContainer) {
-      this._scrollContainer.removeEventListener('scroll', this._onScrollOrResize, {
-        capture: true,
-      });
-      this._scrollContainer = null;
-    }
+    this._overlay?.triggers.unbindGlobal();
   }
 
   private _updatePosition() {
@@ -646,13 +441,6 @@ export class UiTooltip extends LitElement {
     }
   }
 
-  private _isEventInside(e: Event): boolean {
-    const path = e.composedPath();
-    if (path.includes(this)) return true;
-    if (this._portalHost && path.includes(this._portalHost)) return true;
-    return false;
-  }
-
   private _onTriggerClick = () => {
     if (this.trigger !== 'click') return;
     if (this._isDisabled()) return;
@@ -693,7 +481,7 @@ export class UiTooltip extends LitElement {
 
   private _onDocumentMouseDown(e: MouseEvent) {
     if (!this._isOpen()) return;
-    if (this._isEventInside(e)) return;
+    if (this._getOverlay().isEventInside(e)) return;
     if (this.trigger === 'click') {
       this._hide('clickOutside');
     }

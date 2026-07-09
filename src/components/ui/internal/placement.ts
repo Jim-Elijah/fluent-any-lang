@@ -23,6 +23,29 @@ export type Placement4Result = {
 };
 
 const DEFAULT_GAP = 8;
+const ARROW_EDGE_MIN = 12;
+const ARROW_EDGE_MAX_OFFSET = 22;
+
+function adjustArrowToTrigger(
+  side: PlacementSide,
+  triggerRect: DOMRect,
+  left: number,
+  top: number,
+  popupWidth: number,
+  popupHeight: number,
+  arrowHalf: number,
+  arrow: Record<string, string>,
+): void {
+  if (side === 'top' || side === 'bottom') {
+    const triggerCenterX = triggerRect.left + triggerRect.width / 2;
+    const arrowLeft = triggerCenterX - left - arrowHalf;
+    arrow.left = `${Math.max(ARROW_EDGE_MIN, Math.min(popupWidth - ARROW_EDGE_MAX_OFFSET, arrowLeft))}px`;
+  } else {
+    const triggerCenterY = triggerRect.top + triggerRect.height / 2;
+    const arrowTop = triggerCenterY - top - arrowHalf;
+    arrow.top = `${Math.max(ARROW_EDGE_MIN, Math.min(popupHeight - ARROW_EDGE_MAX_OFFSET, arrowTop))}px`;
+  }
+}
 
 /** 4-direction placement with optional container-relative coordinates. */
 export function computePlacement4(opts: ComputePlacement4Options): Placement4Result {
@@ -59,13 +82,13 @@ export function computePlacement4(opts: ComputePlacement4Options): Placement4Res
   const placeTop = () => {
     top = triggerRect.top - popupHeight - gap;
     left = triggerRect.left + triggerRect.width / 2 - popupWidth / 2;
-    arrow = { left: `${popupWidth / 2 - arrowHalf}px`, top: `${popupHeight - arrowHalf}px` };
+    arrow = { left: `${popupWidth / 2 - arrowHalf}px`, top: `${popupHeight}px` };
   };
 
   const placeLeft = () => {
     top = triggerRect.top + triggerRect.height / 2 - popupHeight / 2;
     left = triggerRect.left - popupWidth - gap;
-    arrow = { top: `${popupHeight / 2 - arrowHalf}px`, left: `${popupWidth - arrowHalf}px` };
+    arrow = { top: `${popupHeight / 2 - arrowHalf}px`, left: `${popupWidth}px` };
   };
 
   const placeRight = () => {
@@ -106,15 +129,16 @@ export function computePlacement4(opts: ComputePlacement4Options): Placement4Res
   const maxTop = viewportBottom - popupHeight - 8;
   top = Math.max(minTop, Math.min(maxTop, top!));
 
-  if (effectivePlacement === 'top' || effectivePlacement === 'bottom') {
-    const triggerCenterX = triggerRect.left + triggerRect.width / 2;
-    const arrowLeft = triggerCenterX - left! - arrowHalf;
-    arrow.left = `${Math.max(12, Math.min(popupWidth - 22, arrowLeft))}px`;
-  } else {
-    const triggerCenterY = triggerRect.top + triggerRect.height / 2;
-    const arrowTop = triggerCenterY - top! - arrowHalf;
-    arrow.top = `${Math.max(12, Math.min(popupHeight - 22, arrowTop))}px`;
-  }
+  adjustArrowToTrigger(
+    effectivePlacement,
+    triggerRect,
+    left!,
+    top!,
+    popupWidth,
+    popupHeight,
+    arrowHalf,
+    arrow,
+  );
 
   if (inContainer) {
     left = left! - containerRect.left + container.scrollLeft;
@@ -183,6 +207,10 @@ export function parsePlacement(placement: DropdownPlacement): {
   };
 }
 
+export function arrowSideForPlacement(side: PlacementSide): PlacementSide {
+  return flipSide(side);
+}
+
 export function flipSide(side: PlacementSide): PlacementSide {
   const map: Record<PlacementSide, PlacementSide> = {
     top: 'bottom',
@@ -219,7 +247,6 @@ export function computePlacement12(opts: ComputePlacement12Options): Placement12
     container,
     autoAdjustOverflow = true,
     arrowHalf = 5,
-    arrowPointAtCenter = false,
   } = opts;
 
   const inContainer = container !== document.body;
@@ -244,13 +271,13 @@ export function computePlacement12(opts: ComputePlacement12Options): Placement12
       if (align === 'start') left = triggerRect.left;
       else if (align === 'end') left = triggerRect.right - popupWidth;
       else left = triggerRect.left + triggerRect.width / 2 - popupWidth / 2;
-      arrow.top = `${popupHeight - arrowHalf}px`;
+      arrow.top = `${popupHeight}px`;
     } else if (side === 'left') {
       left = triggerRect.left - popupWidth - gap;
       if (align === 'start') top = triggerRect.top;
       else if (align === 'end') top = triggerRect.bottom - popupHeight;
       else top = triggerRect.top + triggerRect.height / 2 - popupHeight / 2;
-      arrow.left = `${popupWidth - arrowHalf}px`;
+      arrow.left = `${popupWidth}px`;
     } else {
       left = triggerRect.right + gap;
       if (align === 'start') top = triggerRect.top;
@@ -289,16 +316,8 @@ export function computePlacement12(opts: ComputePlacement12Options): Placement12
 
   let { top, left, arrow } = result;
 
-  if (arrowPointAtCenter) {
-    const { side } = parsePlacement(effectivePlacement);
-    if (side === 'top' || side === 'bottom') {
-      const triggerCenterX = triggerRect.left + triggerRect.width / 2;
-      arrow.left = `${triggerCenterX - left - arrowHalf}px`;
-    } else {
-      const triggerCenterY = triggerRect.top + triggerRect.height / 2;
-      arrow.top = `${triggerCenterY - top - arrowHalf}px`;
-    }
-  }
+  const { side } = parsePlacement(effectivePlacement);
+  adjustArrowToTrigger(side, triggerRect, left, top, popupWidth, popupHeight, arrowHalf, arrow);
 
   if (inContainer) {
     left = left - containerRect.left + container.scrollLeft;

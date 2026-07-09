@@ -676,7 +676,7 @@ export class UiSelect extends LitElement {
     if (!this._portal) {
       this._portal = new PortalHost({
         dataAttr: 'data-ui-select-portal',
-        styleText: DROPDOWN_PORTAL_STYLES.cssText,
+        styleText: DROPDOWN_PORTAL_STYLES,
         zIndex: this.zIndex,
         popupContainer: this.popupContainer,
       });
@@ -868,7 +868,8 @@ export class UiSelect extends LitElement {
     if (path.includes(this)) {
       return true;
     }
-    if (this._portalHost && path.includes(this._portalHost)) {
+    const portalHost = this._portal?.getHostElement();
+    if (portalHost && path.includes(portalHost)) {
       return true;
     }
     return false;
