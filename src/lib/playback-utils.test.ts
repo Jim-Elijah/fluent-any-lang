@@ -1,11 +1,36 @@
 import { describe, expect, it } from 'vitest';
 
-import type { SubtitleSegment } from '../types/models.js';
+import type { PracticeSegment, SubtitleSegment } from '../types/models.js';
 import {
   computeSegmentPauseMs,
   findCrossedSegmentEnd,
+  findPracticeSegmentIndex,
   findSegmentIndex,
 } from './playback-utils.js';
+
+const samplePracticeSegments: PracticeSegment[] = [
+  {
+    id: 'p0',
+    sourceStartTime: 0,
+    sourceEndTime: 5,
+    recordingStartTime: 0,
+    recordingEndTime: 4.5,
+  },
+  {
+    id: 'p1',
+    sourceStartTime: 5,
+    sourceEndTime: 10,
+    recordingStartTime: 4.5,
+    recordingEndTime: 9,
+  },
+  {
+    id: 'p2',
+    sourceStartTime: 12,
+    sourceEndTime: 15,
+    recordingStartTime: 9,
+    recordingEndTime: 11.5,
+  },
+];
 
 const sampleSegments: SubtitleSegment[] = [
   { id: 's0', startTime: 0, endTime: 5, text: 'one' },
@@ -44,6 +69,20 @@ describe('findCrossedSegmentEnd', () => {
 
   it('does not re-trigger when already past the end threshold', () => {
     expect(findCrossedSegmentEnd(sampleSegments, 5.1, 5.2)).toBe(-1);
+  });
+});
+
+describe('findPracticeSegmentIndex', () => {
+  it('finds the source segment for a click within its range', () => {
+    expect(findPracticeSegmentIndex(samplePracticeSegments, 7, 'source')).toBe(1);
+  });
+
+  it('finds the recording segment for a click within its range', () => {
+    expect(findPracticeSegmentIndex(samplePracticeSegments, 8, 'recording')).toBe(1);
+  });
+
+  it('keeps the previous segment active in a source gap', () => {
+    expect(findPracticeSegmentIndex(samplePracticeSegments, 11, 'source')).toBe(1);
   });
 });
 

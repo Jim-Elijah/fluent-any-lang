@@ -4,6 +4,7 @@ import { customElement, property, query, state } from 'lit/decorators.js';
 
 import '../library/record-list.js';
 import { MediaController } from '../../controllers/media-controller.js';
+import { WaveformController } from '../../controllers/waveform-controller.js';
 import { AudioRecorderController } from '../../lib/audio-recorder.js';
 import { loadPlaylistForPlayback } from '../../lib/media-loader.js';
 import { countRecording, saveRecording } from '../../db/service.js';
@@ -23,6 +24,7 @@ import '../ui/button.js';
 import '../ui/icon.js';
 import './media-player.js';
 import './subtitle-panel.js';
+import './waveform-player.js';
 import { RecordList } from '../library/record-list.js';
 import { Message } from '../ui/message.js';
 import { Loading } from '../ui/loading.js';
@@ -117,15 +119,8 @@ export class PracticeView extends LitElement {
       align-items: center;
     }
 
-    .recording-status {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 12px;
-      border-radius: var(--radius-full, 999px);
-      background: rgba(255, 77, 79, 0.08);
-      color: var(--color-danger, #ff4d4f);
-      font-size: 0.875rem;
+    .recording-waveform {
+      margin-top: 8px;
     }
 
     .current-segment {
@@ -204,6 +199,9 @@ export class PracticeView extends LitElement {
   @state()
   private _storageEstimate: StorageEstimate | null = null;
 
+  @state()
+  private _hasWaveform = false;
+
   private _getShadowingTips(): string[] {
     return [
       msg('采用跟读模式练习，点击以下「麦克风图标」并跟随播放语音，停止录音后会自动保存。'),
@@ -219,6 +217,11 @@ export class PracticeView extends LitElement {
   private _recordList?: RecordList;
 
   private readonly _controller = new MediaController();
+  private readonly _waveformController = new WaveformController();
+  private _liveTrackId: string | null = null;
+  private _livePeaks: number[] = [];
+  private _liveAnalysisDetach: (() => void) | null = null;
+  private _liveStartedAt = 0;
   private readonly _audioRecorder = new AudioRecorderController({
     onStart: () => {
       this._recordingError = '';
@@ -230,6 +233,11 @@ export class PracticeView extends LitElement {
 
       this._resetSettingsForPractice();
 
+      this._waveformController.clearTracks();
+      this._liveTrackId = this._waveformController.prepareLiveTrack(msg('录音'));
+      this._hasWaveform = true;
+      this._startLiveAnalysis();
+
       // start playing media when recording starts (after seek to the beginning if needed)
       // if you want to play at the beginning, use below code
       // void this._controller.seek(0);
@@ -237,6 +245,12 @@ export class PracticeView extends LitElement {
       // @fixme if not start at a segment.startTime，segments in recording will be incorrect
     },
     onStop: (blob) => {
+      this._stopLiveAnalysis();
+      const trackId = this._liveTrackId;
+      this._liveTrackId = null;
+      if (trackId) {
+        void this._waveformController.finalizeLiveTrack(trackId, blob);
+      }
       // save recording to db when recording stopped
       void this._handleRecordingStopped(blob);
       void this._controller.pause();
@@ -245,6 +259,10 @@ export class PracticeView extends LitElement {
       this._detachEndedListener();
       this._isCollectingSegments = false;
       this._recording = false;
+      this._stopLiveAnalysis();
+      this._waveformController.clearTracks();
+      this._hasWaveform = false;
+      this._liveTrackId = null;
       this._recordingError =
         error.name === 'NotAllowedError'
           ? msg('未能开启麦克风，请检查权限。')
@@ -269,11 +287,13 @@ export class PracticeView extends LitElement {
     this._controller.removeEventListener(ExtendedMediaEventType.SEGMENT_END, this._onSegmentEnded);
     this._controller.removeEventListener(ExtendedMediaEventType.TRACK_CHANGE, this._onTrackChange);
     this._detachEndedListener();
+    this._stopLiveAnalysis();
     if (this._audioRecorder.getState() !== 'inactive') {
       void this._audioRecorder.stop().catch(() => this._audioRecorder.destroy());
     } else {
       this._audioRecorder.destroy();
     }
+    this._waveformController.destroy();
     this._controller.destroy();
     super.disconnectedCallback();
   }
@@ -361,14 +381,22 @@ export class PracticeView extends LitElement {
                         ?disabled="${!this._recordingSupported || remaining <= 0}"
                         @click="${this._toggleRecording}"
                       ></ui-icon>
-                      ${this._recording
-                        ? html`<span class="recording-status">${msg('正在录音…')}</span>`
-                        : null}
                       ${this._recordingError
                         ? html`<ui-alert type="error">${this._recordingError}</ui-alert>`
                         : null}
                     </div>
 
+                    ${this._hasWaveform
+                      ? html`
+                          <div class="recording-waveform">
+                            <waveform-player
+                              .controller=${this._waveformController}
+                              .canvasHeight=${120}
+                              .interactive=${!this._recording}
+                            ></waveform-player>
+                          </div>
+                        `
+                      : null}
                     ${this._storageEstimate
                       ? html`
                           <div class="storage-info">
@@ -470,6 +498,10 @@ export class PracticeView extends LitElement {
 
     this._practiceType = type;
     this._recordingError = '';
+    this._stopLiveAnalysis();
+    this._waveformController.clearTracks();
+    this._hasWaveform = false;
+    this._liveTrackId = null;
     void this._stopRecording();
   }
 
@@ -484,6 +516,7 @@ export class PracticeView extends LitElement {
       const recordingEndTime = this._getRecordingElapsedSeconds();
       this._practiceSegments.push({
         id: segment.id,
+        /** @fixeme 可能不是从segment.startTime开始录音 */
         sourceStartTime: segment.startTime,
         sourceEndTime: segment.endTime,
         recordingStartTime: this._lastRecordingEndTime,
@@ -585,6 +618,10 @@ export class PracticeView extends LitElement {
 
     if (options.save === false) {
       this._isCollectingSegments = false;
+      this._stopLiveAnalysis();
+      this._waveformController.clearTracks();
+      this._hasWaveform = false;
+      this._liveTrackId = null;
       this._audioRecorder.destroy();
       this._recording = false;
       return;
@@ -668,6 +705,29 @@ export class PracticeView extends LitElement {
     } catch {
       this._storageEstimate = null;
     }
+  }
+
+  private _startLiveAnalysis(): void {
+    this._livePeaks = [];
+    this._liveStartedAt = performance.now();
+    try {
+      this._liveAnalysisDetach = this._audioRecorder.attachWaveformAnalysis((peak) => {
+        this._livePeaks.push(peak);
+        const duration = (performance.now() - this._liveStartedAt) / 1000;
+        const peaks = new Float32Array(this._livePeaks);
+        if (this._liveTrackId) {
+          this._waveformController.updateLivePeaks(this._liveTrackId, peaks, duration);
+        }
+      });
+    } catch {
+      // stream may not be ready; ignore waveform errors
+    }
+  }
+
+  private _stopLiveAnalysis(): void {
+    this._liveAnalysisDetach?.();
+    this._liveAnalysisDetach = null;
+    this._audioRecorder.detachWaveformAnalysis();
   }
 }
 

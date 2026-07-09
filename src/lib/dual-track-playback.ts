@@ -59,16 +59,19 @@ export class DualTrackPlayback {
   }
 
   async playSync(): Promise<void> {
-    if (this.segments.length === 0) {
+    await this.playSyncFromSegment(0);
+  }
+
+  async playSyncFromSegment(index: number): Promise<void> {
+    if (index < 0 || index >= this.segments.length) {
       return;
     }
 
     this.sourceAudio.pause();
     this.recordingAudio.pause();
     this.mode = 'sync';
-    this.syncSegmentIndex = 0;
     this._emitState();
-    this._startSyncSegment(0);
+    this._startSyncSegment(index);
   }
 
   stop(): void {

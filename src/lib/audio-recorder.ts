@@ -1,4 +1,10 @@
+import { getAudioContext } from './audio-context.js';
+
 export type RecorderState = 'inactive' | 'recording' | 'paused';
+
+export interface WaveformAnalysisOptions {
+  intervalMs?: number;
+}
 
 export interface RecorderControllerOptions {
   mimeType?: string;
@@ -17,6 +23,10 @@ export class AudioRecorderController {
   private chunks: Blob[] = [];
   private state: RecorderState = 'inactive';
   private options: RecorderControllerOptions;
+  private sourceNode: MediaStreamAudioSourceNode | null = null;
+  private analyserNode: AnalyserNode | null = null;
+  private analysisIntervalId: ReturnType<typeof setInterval> | null = null;
+  private analysisData: Uint8Array<ArrayBuffer> | null = null;
 
   constructor(options: RecorderControllerOptions = {}) {
     this.options = options;
@@ -29,46 +39,15 @@ export class AudioRecorderController {
     return this.state;
   }
 
+  public getStream(): MediaStream | null {
+    return this.stream;
+  }
+
   public setState(state: RecorderState): void {
     if (this.state === state) return;
     this.state = state;
     this.options.onStateChange?.(state);
   }
-
-  // /**
-  //  * 是否可以开始录音
-  //  */
-  // public canStart(): boolean {
-  //   return this.getState() === 'inactive';
-  // }
-
-  // /**
-  //  * 是否可以暂停录音
-  //  */
-  // public canPause(): boolean {
-  //   return this.getState() === 'recording';
-  // }
-
-  // /**
-  //  * 是否可以继续录音
-  //  */
-  // public canResume(): boolean {
-  //   return this.getState() === 'paused';
-  // }
-
-  // /**
-  //  * 是否可以停止录音
-  //  */
-  // public canStop(): boolean {
-  //   return this.getState() === 'recording';
-  // }
-
-  // /**
-  //  * 是否可以销毁录音器
-  //  */
-  // public canDestroy(): boolean {
-  //   return this.getState() !== 'inactive';
-  // }
 
   /**
    * 初始化麦克风和 MediaRecorder
@@ -222,9 +201,65 @@ export class AudioRecorderController {
   }
 
   /**
+   * 从麦克风 stream 采样波形峰值，返回 detach 函数
+   */
+  public attachWaveformAnalysis(
+    onPeak: (peak: number) => void,
+    options: WaveformAnalysisOptions = {},
+  ): () => void {
+    if (!this.stream) {
+      throw new Error('录音流未就绪');
+    }
+
+    this.detachWaveformAnalysis();
+
+    const audioContext = getAudioContext();
+    void audioContext.resume();
+
+    this.analyserNode = audioContext.createAnalyser();
+    this.analyserNode.fftSize = 2048;
+    this.sourceNode = audioContext.createMediaStreamSource(this.stream);
+    this.sourceNode.connect(this.analyserNode);
+
+    this.analysisData = new Uint8Array(new ArrayBuffer(this.analyserNode.fftSize));
+    const intervalMs = options.intervalMs ?? 50;
+
+    this.analysisIntervalId = setInterval(() => {
+      if (!this.analyserNode || !this.analysisData) {
+        return;
+      }
+
+      this.analyserNode.getByteTimeDomainData(this.analysisData);
+      let max = 0;
+      for (let i = 0; i < this.analysisData.length; i++) {
+        const v = Math.abs(this.analysisData[i] - 128) / 128;
+        if (v > max) max = v;
+      }
+      onPeak(max);
+    }, intervalMs);
+
+    return () => this.detachWaveformAnalysis();
+  }
+
+  public detachWaveformAnalysis(): void {
+    if (this.analysisIntervalId !== null) {
+      clearInterval(this.analysisIntervalId);
+      this.analysisIntervalId = null;
+    }
+
+    this.sourceNode?.disconnect();
+    this.analyserNode?.disconnect();
+    this.sourceNode = null;
+    this.analyserNode = null;
+    this.analysisData = null;
+  }
+
+  /**
    * 销毁录音器，释放麦克风资源
    */
   public destroy(): void {
+    this.detachWaveformAnalysis();
+
     if (this.mediaRecorder && this.state !== 'inactive') {
       this.mediaRecorder.stop();
     }

@@ -1,4 +1,4 @@
-import { msg, updateWhenLocaleChanges } from '@lit/localize';
+import { msg, localized } from '@lit/localize';
 import { css, html, LitElement } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 
@@ -20,6 +20,7 @@ import type { PracticeRecord, SortDirection } from '../../types/models.js';
 import { formatDate, formatTime } from '../../lib/playback-utils.js';
 
 @customElement('record-list')
+@localized()
 export class RecordList extends LitElement {
   static styles = css`
     :host {
@@ -163,7 +164,6 @@ export class RecordList extends LitElement {
 
   constructor() {
     super();
-    updateWhenLocaleChanges(this);
   }
 
   connectedCallback(): void {
@@ -278,7 +278,7 @@ export class RecordList extends LitElement {
           title="${this._modalRecording?.mediaTitle ?? msg('录音预览')}"
           @close="${() => this._handleModalClose()}"
           ?open=${this._modalOpen}
-          width="520px"
+          width="600px"
           centered
           ?mask=${true}
           ?mask-closable=${true}

@@ -1,6 +1,6 @@
 import { css, html, LitElement } from 'lit';
 import { customElement, query } from 'lit/decorators.js';
-import { msg, updateWhenLocaleChanges } from '@lit/localize';
+import { msg, localized } from '@lit/localize';
 import { navigator } from 'lit-element-router';
 
 import '../../components/import/content-importer.js';
@@ -9,12 +9,9 @@ import '../../components/library/record-list.js';
 import '../../components/player/practice-view.js';
 import type { MediaList } from '../../components/library/media-list.js';
 
-// @customElement('home-page')
-// @navigator
-// export class HomePage extends LitElement {
-
 const NavigatorElement = navigator(LitElement);
 @customElement('home-page')
+@localized()
 export class HomePage extends NavigatorElement {
   static styles = css`
     :host {
@@ -63,11 +60,6 @@ export class HomePage extends NavigatorElement {
 
   @query('media-list')
   private _mediaList?: MediaList;
-
-  constructor() {
-    super();
-    updateWhenLocaleChanges(this);
-  }
 
   render() {
     return html`

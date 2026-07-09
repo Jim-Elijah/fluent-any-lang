@@ -1,4 +1,4 @@
-import { msg, updateWhenLocaleChanges } from '@lit/localize';
+import { msg, localized } from '@lit/localize';
 import { css, html, LitElement } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 
@@ -8,6 +8,7 @@ import { formatTime } from '../../lib/playback-utils.js';
 import '../ui/icon.js';
 
 @customElement('subtitle-panel')
+@localized()
 export class SubtitlePanel extends LitElement {
   static styles = css`
     :host {
@@ -135,11 +136,6 @@ export class SubtitlePanel extends LitElement {
   private _translationVisible = false;
 
   private _boundController: MediaController | null = null;
-
-  constructor() {
-    super();
-    updateWhenLocaleChanges(this);
-  }
 
   protected willUpdate(changed: Map<PropertyKey, unknown>): void {
     if (changed.has('controller') && this.controller !== this._boundController) {

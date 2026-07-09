@@ -1,4 +1,4 @@
-import type { PauseMode, SubtitleSegment } from '../types/models.js';
+import type { PauseMode, PracticeSegment, SubtitleSegment } from '../types/models.js';
 import { getLocale } from '../i18n/localization.js';
 
 export const MAX_SLEEP_MINUTES = 90;
@@ -148,6 +148,52 @@ export function computeSegmentPauseMs(
   }
 
   return (((segment.endTime - segment.startTime) * pausePercent) / 100) * 1000;
+}
+
+export function findPracticeSegmentIndex(
+  segments: PracticeSegment[],
+  time: number,
+  axis: 'source' | 'recording',
+): number {
+  const len = segments.length;
+  if (len === 0) {
+    return -1;
+  }
+
+  const startKey = axis === 'source' ? 'sourceStartTime' : 'recordingStartTime';
+  const endKey = axis === 'source' ? 'sourceEndTime' : 'recordingEndTime';
+
+  let low = 0;
+  let high = len - 1;
+  let candidate = -1;
+
+  while (low <= high) {
+    const mid = (low + high) >>> 1;
+    if (segments[mid][startKey] <= time) {
+      candidate = mid;
+      low = mid + 1;
+    } else {
+      high = mid - 1;
+    }
+  }
+
+  if (candidate < 0) {
+    return -1;
+  }
+
+  const seg = segments[candidate];
+  const isLast = candidate === len - 1;
+  const endTime = seg[endKey];
+
+  if (time < endTime || (isLast && time <= endTime)) {
+    return candidate;
+  }
+
+  if (isLast) {
+    return -1;
+  }
+
+  return candidate;
 }
 
 export function findSegmentIndex(segments: SubtitleSegment[], time: number): number {
