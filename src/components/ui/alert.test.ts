@@ -67,6 +67,15 @@ describe('ui-alert', () => {
     expect(el.shadowRoot?.querySelector('.alert')).toBeNull();
   });
 
+  it('dispatches update:open on close', async () => {
+    const el = await renderAlert();
+    const handler = vi.fn();
+    el.addEventListener('update:open', handler);
+    el.shadowRoot?.querySelector<HTMLButtonElement>('.close')?.click();
+    expect(handler).toHaveBeenCalledOnce();
+    expect(handler.mock.calls[0][0].detail.open).toBe(false);
+  });
+
   it('renders slot content for title and default slot', async () => {
     const el = await renderAlert(html`
       <ui-alert>

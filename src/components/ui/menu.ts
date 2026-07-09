@@ -1,5 +1,5 @@
-import { LitElement, html, css, nothing, TemplateResult } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { LitElement, html, css, nothing, TemplateResult, type PropertyValues } from 'lit';
+import { customElement, property, state } from 'lit/decorators.js';
 
 export type MenuItem = {
   key: string;
@@ -252,19 +252,55 @@ export class UiMenu extends LitElement {
   @property({ type: String }) mode: MenuMode = 'vertical';
   @property({ type: Array }) items: MenuItem[] = [];
 
-  // 受控
-  @property({ type: Array }) selectedKeys: string[] = [];
-  @property({ type: Array }) openKeys: string[] = [];
+  // 受控：undefined = 非受控；[] = 受控且空
+  @property({ type: Array }) selectedKeys?: string[];
+  @property({ type: Array }) openKeys?: string[];
+  @property({ type: Array, attribute: 'default-selected-keys' }) defaultSelectedKeys?: string[];
+  @property({ type: Array, attribute: 'default-open-keys' }) defaultOpenKeys?: string[];
+
+  @state() private _internalSelectedKeys: string[] = [];
+  @state() private _internalOpenKeys: string[] = [];
+  private _keysInitialized = false;
 
   // 可选：仅用于 vertical 的外观控制（这里不强制实现）
   @property({ type: Boolean, reflect: true }) collapsed = false;
 
+  connectedCallback(): void {
+    super.connectedCallback();
+    this._initKeys();
+  }
+
+  protected updated(changed: PropertyValues): void {
+    if (changed.has('defaultSelectedKeys') || changed.has('defaultOpenKeys')) {
+      this._initKeys();
+    }
+  }
+
+  private _initKeys(): void {
+    if (this._keysInitialized) return;
+    if (this.selectedKeys === undefined && this.defaultSelectedKeys !== undefined) {
+      this._internalSelectedKeys = [...this.defaultSelectedKeys];
+    }
+    if (this.openKeys === undefined && this.defaultOpenKeys !== undefined) {
+      this._internalOpenKeys = [...this.defaultOpenKeys];
+    }
+    this._keysInitialized = true;
+  }
+
+  private _getSelectedKeys(): string[] {
+    return this.selectedKeys ?? this._internalSelectedKeys;
+  }
+
+  private _getOpenKeys(): string[] {
+    return this.openKeys ?? this._internalOpenKeys;
+  }
+
   private _currentSelectedKey(): string | undefined {
-    return this.selectedKeys?.[0];
+    return this._getSelectedKeys()[0];
   }
 
   private _isOpen(key: string): boolean {
-    return this.openKeys?.includes(key) ?? false;
+    return this._getOpenKeys().includes(key);
   }
 
   private _findKeyPath(
@@ -295,6 +331,13 @@ export class UiMenu extends LitElement {
         composed: true,
       }),
     );
+    this.dispatchEvent(
+      new CustomEvent('update:openKeys', {
+        detail: { openKeys },
+        bubbles: true,
+        composed: true,
+      }),
+    );
   }
 
   private _dispatchMenuClick(item: MenuItem, domEvent: Event) {
@@ -315,9 +358,21 @@ export class UiMenu extends LitElement {
 
     const keyPath = this._findKeyPath(item.key) ?? [item.key];
     const selectedKeys = [item.key];
+
+    if (this.selectedKeys === undefined) {
+      this._internalSelectedKeys = selectedKeys;
+    }
+
     this.dispatchEvent(
       new CustomEvent('select', {
         detail: { key: item.key, keyPath, selectedKeys, item, domEvent } satisfies MenuSelectDetail,
+        bubbles: true,
+        composed: true,
+      }),
+    );
+    this.dispatchEvent(
+      new CustomEvent('update:selectedKeys', {
+        detail: { selectedKeys },
         bubbles: true,
         composed: true,
       }),
@@ -330,9 +385,12 @@ export class UiMenu extends LitElement {
     this._dispatchMenuClick(item, domEvent);
 
     const open = this._isOpen(item.key);
-    const next = open
-      ? (this.openKeys ?? []).filter((k) => k !== item.key)
-      : [...(this.openKeys ?? []), item.key];
+    const currentOpen = this._getOpenKeys();
+    const next = open ? currentOpen.filter((k) => k !== item.key) : [...currentOpen, item.key];
+
+    if (this.openKeys === undefined) {
+      this._internalOpenKeys = next;
+    }
     this._dispatchOpenChange(next);
   }
 

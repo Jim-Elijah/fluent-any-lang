@@ -170,8 +170,8 @@ export class UiModal extends LitElement {
     `,
   ];
 
-  @property({ type: Boolean, reflect: true }) open = false;
-  @property({ type: Boolean, reflect: true }) visible?: boolean; // 兼容
+  @property({ type: Boolean }) open?: boolean;
+  @property({ type: Boolean, attribute: 'default-open' }) defaultOpen = false;
   @property({ attribute: 'ok-text' }) okText = 'OK';
   @property({ attribute: 'cancel-text' }) cancelText = 'Cancel';
 
@@ -196,6 +196,7 @@ export class UiModal extends LitElement {
   @property({ type: Boolean }) footer = true;
 
   @state() private _rendered = false; // 控制是否渲染
+  @state() private _internalOpen = false;
   private _escHandler = (e: KeyboardEvent) => this._onKeyDown(e);
 
   // antd 事件语义：beforeClose 可阻止关闭；通过 dispatchEvent 返回值不适合，
@@ -204,6 +205,13 @@ export class UiModal extends LitElement {
     const evt = new CustomEvent(name, { detail, bubbles: true, composed: true, cancelable: true });
     this.dispatchEvent(evt);
     return evt;
+  }
+
+  connectedCallback() {
+    super.connectedCallback();
+    if (typeof this.open !== 'boolean') {
+      this._internalOpen = this.defaultOpen;
+    }
   }
 
   protected firstUpdated() {
@@ -248,10 +256,13 @@ export class UiModal extends LitElement {
   }
 
   private _isOpen() {
-    // antd: open/visible 二选一，兼容逻辑
-    const v = this.visible;
-    if (typeof v === 'boolean') return v;
-    return this.open;
+    return typeof this.open === 'boolean' ? this.open : this._internalOpen;
+  }
+
+  private _assignOpen(next: boolean) {
+    if (typeof this.open !== 'boolean') {
+      this._internalOpen = next;
+    }
   }
 
   private _bindGlobal() {
@@ -295,7 +306,22 @@ export class UiModal extends LitElement {
       this.dispatchEvent(new CustomEvent('cancel', { detail, bubbles: true, composed: true }));
     }
 
-    // 关闭：对外建议通过监听 close 事件去更新 open/visible
+    // 关闭：受控时由父组件更新 open；非受控写内部状态
+    this._assignOpen(false);
+    this.dispatchEvent(
+      new CustomEvent('open-change', {
+        detail: { open: false, ...detail },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+    this.dispatchEvent(
+      new CustomEvent('update:open', {
+        detail: { open: false, ...detail },
+        bubbles: true,
+        composed: true,
+      }),
+    );
     this.dispatchEvent(new CustomEvent('close', { detail, bubbles: true, composed: true }));
   }
 
@@ -335,7 +361,6 @@ export class UiModal extends LitElement {
   }
 
   render() {
-    console.log('modal render', this.footer);
     if (!this._rendered) return nothing;
 
     const isOpen = this._isOpen();
@@ -417,4 +442,15 @@ declare global {
   interface HTMLElementTagNameMap {
     'ui-modal': UiModal;
   }
+}
+
+export interface UiModalEventMap {
+  ok: CustomEvent<{ reason: string }>;
+  cancel: CustomEvent<{ reason: string }>;
+  close: CustomEvent<{ reason: string }>;
+  beforeClose: CustomEvent<{ reason: string }>;
+  beforeOk: CustomEvent<{ reason: string }>;
+  afterClose: CustomEvent<void>;
+  'open-change': CustomEvent<{ open: boolean; reason?: string }>;
+  'update:open': CustomEvent<{ open: boolean; reason?: string }>;
 }

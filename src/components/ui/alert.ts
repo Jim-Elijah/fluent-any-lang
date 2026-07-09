@@ -248,6 +248,10 @@ export class UiAlert extends LitElement {
   @property({ type: String })
   description = '';
 
+  /** 受控显隐；未传时为非受控 */
+  @property({ type: Boolean }) open?: boolean;
+  @property({ type: Boolean, attribute: 'default-open' }) defaultOpen = true;
+
   /** 是否可以关闭 */
   @property({ type: Boolean })
   closable = true;
@@ -269,7 +273,7 @@ export class UiAlert extends LitElement {
   effect: AlertEffect = 'light';
 
   @state()
-  private _closed = false;
+  private _internalOpen = true;
 
   @state()
   private _hasTitleSlot = false;
@@ -277,16 +281,24 @@ export class UiAlert extends LitElement {
   @state()
   private _hasDefaultSlot = false;
 
+  connectedCallback(): void {
+    super.connectedCallback();
+    if (typeof this.open !== 'boolean') {
+      this._internalOpen = this.defaultOpen;
+    }
+  }
+
+  private _isOpen(): boolean {
+    return typeof this.open === 'boolean' ? this.open : this._internalOpen;
+  }
+
   render() {
-    if (this._closed) {
+    if (!this._isOpen()) {
       return nothing;
     }
 
     const showTitle = Boolean(this.title) || this._hasTitleSlot;
     const showDescription = Boolean(this.description) || this._hasDefaultSlot;
-
-    console.log('showTitle', showTitle);
-    console.log('showDescription', showDescription);
 
     return html`
       <div
@@ -361,9 +373,25 @@ export class UiAlert extends LitElement {
   }
 
   private _handleClose = () => {
-    this._closed = true;
+    if (typeof this.open !== 'boolean') {
+      this._internalOpen = false;
+    }
     this.hidden = true;
     this.dispatchEvent(new CustomEvent('close', { bubbles: true, composed: true }));
+    this.dispatchEvent(
+      new CustomEvent('open-change', {
+        detail: { open: false },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+    this.dispatchEvent(
+      new CustomEvent('update:open', {
+        detail: { open: false },
+        bubbles: true,
+        composed: true,
+      }),
+    );
   };
 }
 
@@ -371,4 +399,10 @@ declare global {
   interface HTMLElementTagNameMap {
     'ui-alert': UiAlert;
   }
+}
+
+export interface UiAlertEventMap {
+  close: CustomEvent<void>;
+  'open-change': CustomEvent<{ open: boolean }>;
+  'update:open': CustomEvent<{ open: boolean }>;
 }

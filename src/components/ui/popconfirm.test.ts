@@ -63,7 +63,7 @@ describe('ui-popconfirm', () => {
     await el.updateComplete;
 
     expect(confirmHandler).toHaveBeenCalledOnce();
-    expect(el.open).toBe(false);
+    expect(getPopup() ?? null).toBeNull();
     vi.useRealTimers();
   });
 
@@ -82,7 +82,7 @@ describe('ui-popconfirm', () => {
     await el.updateComplete;
 
     expect(cancelHandler).toHaveBeenCalledOnce();
-    expect(el.open).toBe(false);
+    expect(getPopup() ?? null).toBeNull();
   });
 
   it('respects beforeOpen preventDefault', async () => {
@@ -92,7 +92,6 @@ describe('ui-popconfirm', () => {
       ?.querySelector('.trigger')
       ?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     await el.updateComplete;
-    expect(el.open).toBe(false);
     expect(getPopup() ?? null).toBeNull();
   });
 
@@ -109,14 +108,17 @@ describe('ui-popconfirm', () => {
 
   it('closes on Escape', async () => {
     const el = await renderPopconfirm();
-    el.open = true;
+    el.shadowRoot
+      ?.querySelector('.trigger')
+      ?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     await el.updateComplete;
     await flushUpdates();
+    expect(getPopup()).not.toBeNull();
 
     window.dispatchEvent(
       new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
     );
     await el.updateComplete;
-    expect(el.open).toBe(false);
+    expect(getPopup() ?? null).toBeNull();
   });
 });

@@ -148,24 +148,38 @@ describe('ui-input', () => {
       expect(el.shadowRoot?.querySelector('input.control')?.getAttribute('type')).toBe('password');
     });
 
-    it('toggles visibility and dispatches visible-change', async () => {
+    it('toggles visibility and dispatches password-visible-change', async () => {
       const el = await render<UiInputPassword>(
         html`<ui-input-password value="secret"></ui-input-password>`,
       );
       const handler = vi.fn();
-      el.addEventListener('visible-change', handler);
+      el.addEventListener('password-visible-change', handler);
       el.shadowRoot?.querySelector<HTMLButtonElement>('.icon-btn')?.click();
       await el.updateComplete;
       expect(el.shadowRoot?.querySelector('input.control')?.getAttribute('type')).toBe('text');
       expect(handler).toHaveBeenCalledOnce();
-      expect(handler.mock.calls[0][0].detail.visible).toBe(true);
+      expect(handler.mock.calls[0][0].detail.passwordVisible).toBe(true);
     });
 
-    it('respects controlled visible property', async () => {
+    it('respects controlled passwordVisible property', async () => {
       const el = await render<UiInputPassword>(
-        html`<ui-input-password value="secret" .visible=${true}></ui-input-password>`,
+        html`<ui-input-password value="secret" .passwordVisible=${true}></ui-input-password>`,
       );
       expect(el.shadowRoot?.querySelector('input.control')?.getAttribute('type')).toBe('text');
+    });
+
+    it('supports uncontrolled defaultValue', async () => {
+      const el = await render<UiInput>(html`<ui-input default-value="hello"></ui-input>`);
+      expect(el.shadowRoot?.querySelector('input.control')?.value).toBe('hello');
+      const handler = vi.fn();
+      el.addEventListener('update:value', handler);
+      const input = el.shadowRoot?.querySelector('input.control') as HTMLInputElement;
+      input.value = 'world';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      await el.updateComplete;
+      expect(handler).toHaveBeenCalledOnce();
+      expect(handler.mock.calls[0][0].detail.value).toBe('world');
+      expect(el.shadowRoot?.querySelector('input.control')?.value).toBe('world');
     });
   });
 });

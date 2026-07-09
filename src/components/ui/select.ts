@@ -1,7 +1,9 @@
-import { css, html, LitElement, nothing, render, type PropertyValues } from 'lit';
+import { css, html, LitElement, nothing, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
 import { styleMap } from 'lit/directives/style-map.js';
+import { PortalHost } from './internal/portal-host.js';
+import { computePlacement4 } from './internal/placement.js';
 
 export type SelectSize = 'small' | 'middle' | 'large';
 export type SelectMode = 'default' | 'multiple' | 'tags';
@@ -319,12 +321,8 @@ export class UiSelect extends LitElement {
   }
 
   private _dropdownEl: HTMLDivElement | null = null;
-
-  private _portalHost: HTMLDivElement | null = null;
-  private _portalShadow: ShadowRoot | null = null;
-  private _portalMount: HTMLDivElement | null = null;
-  private _portalStyleEl: HTMLStyleElement | null = null;
-  private _positionPatchedContainer: HTMLElement | null = null;
+  private _portal: PortalHost | null = null;
+  private _layoutListener = () => this._updatePosition();
 
   private _globalBound = false;
   private _prevIsOpen = false;
@@ -631,6 +629,10 @@ export class UiSelect extends LitElement {
   }
 
   private _getContainer(): HTMLElement {
+    return this._portal?.getContainer() ?? this._resolveContainer();
+  }
+
+  private _resolveContainer(): HTMLElement {
     const c = this.popupContainer;
     if (!c) {
       return document.body;
@@ -651,38 +653,57 @@ export class UiSelect extends LitElement {
 
     const triggerRect = this._selectorEl.getBoundingClientRect();
     const container = this._getContainer();
-    const inContainer = container !== document.body;
-    const containerRect = container.getBoundingClientRect();
-
-    const dropdownWidth = triggerRect.width;
     const popupRect = this._dropdownEl?.getBoundingClientRect();
     const height = popupRect?.height ?? 200;
 
-    let top = triggerRect.bottom + DROPDOWN_GAP;
-    let left = triggerRect.left;
+    const placed = computePlacement4({
+      placement: 'bottom',
+      triggerRect,
+      popupWidth: triggerRect.width,
+      popupHeight: height,
+      gap: DROPDOWN_GAP,
+      container,
+      alignTo: 'trigger-width',
+      flip: true,
+    });
 
-    const viewportBottom = inContainer ? containerRect.bottom : window.innerHeight;
-    const viewportTop = inContainer ? containerRect.top : 0;
+    this._dropdownWidth = placed.popupWidth;
+    this._positionInContainer = placed.inContainer;
+    this._pos = { top: placed.top, left: placed.left };
+  }
 
-    if (
-      top + height > viewportBottom - 8 &&
-      triggerRect.top - height - DROPDOWN_GAP > viewportTop + 8
-    ) {
-      top = triggerRect.top - height - DROPDOWN_GAP;
+  private _ensurePortal(): PortalHost {
+    if (!this._portal) {
+      this._portal = new PortalHost({
+        dataAttr: 'data-ui-select-portal',
+        styleText: DROPDOWN_PORTAL_STYLES.cssText,
+        zIndex: this.zIndex,
+        popupContainer: this.popupContainer,
+      });
+      this._portal.onLayoutChange(this._layoutListener);
+    } else {
+      this._portal.updateOptions({ zIndex: this.zIndex, popupContainer: this.popupContainer });
+    }
+    this._portal.ensureMount();
+    return this._portal;
+  }
+
+  private _syncPortal(): void {
+    if (!this._isOpen()) {
+      this._portal?.hide();
+      this._dropdownEl = null;
+      return;
     }
 
-    const minLeft = (inContainer ? containerRect.left : 0) + 8;
-    const maxLeft = (inContainer ? containerRect.right : window.innerWidth) - dropdownWidth - 8;
-    left = Math.max(minLeft, Math.min(maxLeft, left));
+    const portal = this._ensurePortal();
+    portal.render(this._dropdownTemplate());
+    this._dropdownEl = portal.getPopupEl('.dropdown') as HTMLDivElement | null;
+  }
 
-    if (inContainer) {
-      left = left - containerRect.left + container.scrollLeft;
-      top = top - containerRect.top + container.scrollTop;
-    }
-
-    this._dropdownWidth = dropdownWidth;
-    this._positionInContainer = inContainer;
-    this._pos = { top, left };
+  private _destroyPortal(): void {
+    this._portal?.destroy();
+    this._portal = null;
+    this._dropdownEl = null;
   }
 
   private _dropdownTemplate() {
@@ -751,89 +772,6 @@ export class UiSelect extends LitElement {
     `;
   }
 
-  private _ensurePortal(): HTMLDivElement {
-    const container = this._getContainer();
-
-    if (!this._portalHost) {
-      this._portalHost = document.createElement('div');
-      this._portalHost.setAttribute('data-ui-select-portal', '');
-      this._portalHost.style.pointerEvents = 'none';
-
-      this._portalShadow = this._portalHost.attachShadow({ mode: 'open' });
-      this._portalStyleEl = document.createElement('style');
-      this._portalStyleEl.textContent = DROPDOWN_PORTAL_STYLES;
-      this._portalShadow.appendChild(this._portalStyleEl);
-
-      this._portalMount = document.createElement('div');
-      this._portalShadow.appendChild(this._portalMount);
-    }
-
-    this._syncPortalHostLayout(container);
-
-    if (!this._portalHost.isConnected || this._portalHost.parentElement !== container) {
-      container.appendChild(this._portalHost);
-    }
-
-    return this._portalMount!;
-  }
-
-  private _syncPortalHostLayout(container: HTMLElement): void {
-    if (!this._portalHost) {
-      return;
-    }
-
-    const inContainer = container !== document.body;
-    if (inContainer) {
-      this._portalHost.style.position = 'absolute';
-      this._portalHost.style.inset = '0';
-      this._portalHost.style.width = '100%';
-      this._portalHost.style.height = '100%';
-      this._portalHost.style.zIndex = String(this.zIndex);
-
-      if (getComputedStyle(container).position === 'static') {
-        container.style.position = 'relative';
-        this._positionPatchedContainer = container;
-      }
-    } else {
-      this._portalHost.style.position = 'fixed';
-      this._portalHost.style.inset = '0';
-      this._portalHost.style.width = 'auto';
-      this._portalHost.style.height = 'auto';
-      this._portalHost.style.zIndex = String(this.zIndex);
-    }
-  }
-
-  private _syncPortal(): void {
-    if (!this._isOpen()) {
-      this._hidePortalContent();
-      return;
-    }
-
-    const mount = this._ensurePortal();
-    render(this._dropdownTemplate(), mount);
-    this._dropdownEl = this._portalShadow?.querySelector('.dropdown') as HTMLDivElement | null;
-  }
-
-  private _hidePortalContent(): void {
-    if (this._portalMount) {
-      render(nothing, this._portalMount);
-    }
-    this._dropdownEl = null;
-  }
-
-  private _destroyPortal(): void {
-    this._hidePortalContent();
-    this._portalHost?.remove();
-    this._portalHost = null;
-    this._portalShadow = null;
-    this._portalMount = null;
-    this._portalStyleEl = null;
-    if (this._positionPatchedContainer) {
-      this._positionPatchedContainer.style.position = '';
-      this._positionPatchedContainer = null;
-    }
-  }
-
   private _updatePosition(): void {
     if (!this._selectorEl || !this._isOpen()) {
       return;
@@ -853,7 +791,7 @@ export class UiSelect extends LitElement {
       return;
     }
     requestAnimationFrame(() => {
-      const input = this._portalShadow?.querySelector('.search-input') as HTMLInputElement | null;
+      const input = this._portal?.getPopupEl('.search-input') as HTMLInputElement | null;
       input?.focus();
     });
   }
@@ -880,7 +818,7 @@ export class UiSelect extends LitElement {
       this._unbindGlobal();
       this._globalBound = false;
     }
-    this._hidePortalContent();
+    this._portal?.hide();
   }
 
   private _onDropdownContentChanged(changed: PropertyValues): void {

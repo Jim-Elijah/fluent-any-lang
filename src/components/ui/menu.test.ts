@@ -86,6 +86,34 @@ describe('ui-menu', () => {
     expect(openHandler.mock.calls[0][0].detail.openKeys).toEqual(['more']);
   });
 
+  it('selects in uncontrolled mode without parent sync', async () => {
+    const el = await renderMenu(
+      html`<ui-menu .items=${ITEMS} .defaultSelectedKeys=${['home']}></ui-menu>`,
+    );
+
+    const settings = [...(el.shadowRoot?.querySelectorAll('.item') ?? [])].find((item) =>
+      item.textContent?.includes('Settings'),
+    );
+    expect(settings).toBeTruthy();
+
+    const home = [...(el.shadowRoot?.querySelectorAll('.item') ?? [])].find((item) =>
+      item.textContent?.includes('Home'),
+    );
+    expect(home?.getAttribute('aria-current')).toBe('page');
+  });
+
+  it('expands submenu in uncontrolled mode', async () => {
+    const el = await renderMenu(html`<ui-menu .items=${ITEMS} .defaultOpenKeys=${[]}></ui-menu>`);
+
+    const more = [...(el.shadowRoot?.querySelectorAll('.item') ?? [])].find((item) =>
+      item.textContent?.includes('More'),
+    );
+    more?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await el.updateComplete;
+
+    expect(el.shadowRoot?.querySelector('.children')).not.toBeNull();
+  });
+
   it('marks selected item with aria-current', async () => {
     const el = await renderMenu(
       html`<ui-menu .items=${ITEMS} .selectedKeys=${['home']}></ui-menu>`,

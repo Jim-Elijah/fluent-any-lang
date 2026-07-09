@@ -196,8 +196,8 @@ export class UiPopconfirm extends LitElement {
     }
   `;
 
-  @property({ type: Boolean, reflect: true }) open = false;
-  @property({ type: Boolean, reflect: true }) visible?: boolean;
+  @property({ type: Boolean }) open?: boolean;
+  @property({ type: Boolean, attribute: 'default-open' }) defaultOpen = false;
   @property() title = '';
 
   @property() okText = '';
@@ -216,6 +216,7 @@ export class UiPopconfirm extends LitElement {
   /** 类似 antd getPopupContainer：selector 或 HTMLElement，默认 body */
   @property() popupContainer: string | HTMLElement | null = 'body';
 
+  @state() private _internalOpen = false;
   @state() private _pos = { top: 0, left: 0 };
   @state() private _arrowStyle: Record<string, string> = {};
   @state() private _positionInContainer = false;
@@ -233,7 +234,6 @@ export class UiPopconfirm extends LitElement {
 
   private _globalBound = false;
   private _prevIsOpen = false;
-  private _internalOpenChange = false;
   private _scrollContainer: HTMLElement | null = null;
   private _hoverCloseTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -242,9 +242,15 @@ export class UiPopconfirm extends LitElement {
   private _docKeyDown = (e: KeyboardEvent) => this._onDocumentKeyDown(e);
   private _onScrollOrResize = () => this._updatePosition();
 
+  connectedCallback(): void {
+    super.connectedCallback();
+    if (typeof this.open !== 'boolean') {
+      this._internalOpen = this.defaultOpen;
+    }
+  }
+
   private _isOpen() {
-    if (typeof this.visible === 'boolean') return this.visible;
-    return this.open;
+    return typeof this.open === 'boolean' ? this.open : this._internalOpen;
   }
 
   private _dispatchCancelable(name: string, detail: unknown) {
@@ -287,11 +293,8 @@ export class UiPopconfirm extends LitElement {
   }
 
   private _assignOpen(next: boolean) {
-    this._internalOpenChange = true;
-    if (typeof this.visible === 'boolean') {
-      this.visible = next;
-    } else {
-      this.open = next;
+    if (typeof this.open !== 'boolean') {
+      this._internalOpen = next;
     }
   }
 
@@ -317,12 +320,10 @@ export class UiPopconfirm extends LitElement {
 
     if (next) {
       this._dispatch('update:open', { open: true, trigger: meta.trigger });
-      this._dispatch('update:visible', { visible: true, trigger: meta.trigger });
       this._dispatch('open', { trigger: meta.trigger });
     } else {
       this._dispatch('close', { reason: meta.reason });
       this._dispatch('update:open', { open: false, reason: meta.reason });
-      this._dispatch('update:visible', { visible: false, reason: meta.reason });
     }
   }
 
@@ -577,7 +578,6 @@ export class UiPopconfirm extends LitElement {
       this.style.setProperty('--popconfirm-z', String(this.zIndex));
     }
 
-    this._internalOpenChange = false;
     this._prevIsOpen = isOpen;
   }
 
@@ -592,8 +592,7 @@ export class UiPopconfirm extends LitElement {
   }
 
   private _handleControlledOpenEdge(changed: PropertyValues, isOpen: boolean, wasOpen: boolean) {
-    if (this._internalOpenChange) return;
-    if (!changed.has('open') && !changed.has('visible')) return;
+    if (!changed.has('open')) return;
 
     if (isOpen && !wasOpen) {
       if (!this._beforeOpen('manual')) {

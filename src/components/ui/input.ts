@@ -25,8 +25,8 @@ export type InputSearchDetail = {
   source: 'input' | 'clear';
 };
 
-export type InputVisibleChangeDetail = {
-  visible: boolean;
+export type InputPasswordVisibleChangeDetail = {
+  passwordVisible: boolean;
 };
 
 export type InputAutoSize = boolean | { minRows?: number; maxRows?: number };
@@ -255,7 +255,8 @@ const INPUT_BASE_STYLES = css`
 abstract class InputBase extends LitElement {
   static styles = INPUT_BASE_STYLES;
 
-  @property({ type: String }) value = '';
+  @property({ type: String }) value?: string;
+  @property({ type: String, attribute: 'default-value' }) defaultValue?: string;
   @property({ type: String }) placeholder = '';
   @property({ type: Boolean, reflect: true }) disabled = false;
   @property({ type: Boolean, attribute: 'allow-clear' }) allowClear = false;
@@ -268,17 +269,34 @@ abstract class InputBase extends LitElement {
   @property({ type: Boolean }) readonly = false;
 
   @state() protected _focused = false;
+  @state() protected _internalValue = '';
+
+  connectedCallback(): void {
+    super.connectedCallback();
+    if (this.value === undefined && this.defaultValue !== undefined) {
+      this._internalValue = this.defaultValue;
+    }
+  }
+
+  protected _displayValue(): string {
+    return this.value ?? this._internalValue;
+  }
+
+  protected _isControlledValue(): boolean {
+    return this.value !== undefined;
+  }
 
   protected _dispatch(name: string, detail: unknown): void {
     this.dispatchEvent(new CustomEvent(name, { detail, bubbles: true, composed: true }));
   }
 
   protected _showClear(): boolean {
-    return this.allowClear && !this.disabled && this.value.length > 0;
+    return this.allowClear && !this.disabled && this._displayValue().length > 0;
   }
 
   protected _emitChange(domEvent: Event, value = this._readControlValue()): void {
     this._dispatch('change', { value, domEvent } satisfies InputChangeDetail);
+    this._dispatch('update:value', { value });
   }
 
   protected _emitClear(domEvent?: Event): void {
@@ -286,7 +304,11 @@ abstract class InputBase extends LitElement {
   }
 
   protected _handleInput(domEvent: Event): void {
-    this._emitChange(domEvent);
+    const next = this._readControlValue();
+    if (!this._isControlledValue()) {
+      this._internalValue = next;
+    }
+    this._emitChange(domEvent, next);
   }
 
   protected _handleFocus(): void {
@@ -311,6 +333,9 @@ abstract class InputBase extends LitElement {
     domEvent.stopPropagation();
     if (this.disabled) {
       return;
+    }
+    if (!this._isControlledValue()) {
+      this._internalValue = '';
     }
     this._emitChange(domEvent, '');
     this._emitClear(domEvent);
@@ -398,7 +423,7 @@ export class UiInput extends InputBase {
   }
 
   protected _readControlValue(): string {
-    return this._inputEl?.value ?? this.value;
+    return this._inputEl?.value ?? this._displayValue();
   }
 
   protected _focusControl(): void {
@@ -414,7 +439,7 @@ export class UiInput extends InputBase {
       <input
         class="control"
         .type="${this.type}"
-        .value="${this.value}"
+        .value="${this._displayValue()}"
         placeholder="${this.placeholder}"
         ?disabled="${this.disabled}"
         ?readonly="${this.readonly}"
@@ -456,7 +481,7 @@ export class UiInputTextArea extends InputBase {
   }
 
   protected _readControlValue(): string {
-    return this._textareaEl?.value ?? this.value;
+    return this._textareaEl?.value ?? this._displayValue();
   }
 
   protected _focusControl(): void {
@@ -510,7 +535,7 @@ export class UiInputTextArea extends InputBase {
     if (!this.showCount) {
       return nothing;
     }
-    const count = this.value.length;
+    const count = this._displayValue().length;
     const text = this.maxLength !== undefined ? `${count} / ${this.maxLength}` : `${count}`;
     return html`<span class="count">${text}</span>`;
   }
@@ -520,7 +545,7 @@ export class UiInputTextArea extends InputBase {
     return html`
       <textarea
         class="control"
-        .value="${this.value}"
+        .value="${this._displayValue()}"
         placeholder="${this.placeholder}"
         ?disabled="${this.disabled}"
         ?readonly="${this.readonly}"
@@ -553,7 +578,7 @@ export class UiInputSearch extends InputBase {
   }
 
   protected _readControlValue(): string {
-    return this._inputEl?.value ?? this.value;
+    return this._inputEl?.value ?? this._displayValue();
   }
 
   protected _focusControl(): void {
@@ -627,7 +652,7 @@ export class UiInputSearch extends InputBase {
       <input
         class="control"
         type="search"
-        .value="${this.value}"
+        .value="${this._displayValue()}"
         placeholder="${this.placeholder}"
         ?disabled="${this.disabled}"
         ?readonly="${this.readonly}"
@@ -654,20 +679,22 @@ export class UiInputSearch extends InputBase {
 @customElement('ui-input-password')
 export class UiInputPassword extends InputBase {
   @property({ type: Boolean, attribute: 'visibility-toggle' }) visibilityToggle = true;
-  @property({ type: Boolean }) visible?: boolean;
+  @property({ type: Boolean, attribute: 'password-visible' }) passwordVisible?: boolean;
 
-  @state() private _internalVisible = false;
+  @state() private _internalPasswordVisible = false;
 
   private get _inputEl(): HTMLInputElement | null {
     return this.renderRoot.querySelector('.control') as HTMLInputElement | null;
   }
 
-  private get _isVisible(): boolean {
-    return typeof this.visible === 'boolean' ? this.visible : this._internalVisible;
+  private get _isPasswordVisible(): boolean {
+    return typeof this.passwordVisible === 'boolean'
+      ? this.passwordVisible
+      : this._internalPasswordVisible;
   }
 
   protected _readControlValue(): string {
-    return this._inputEl?.value ?? this.value;
+    return this._inputEl?.value ?? this._displayValue();
   }
 
   protected _focusControl(): void {
@@ -683,19 +710,21 @@ export class UiInputPassword extends InputBase {
     if (this.disabled || !this.visibilityToggle) {
       return;
     }
-    const next = !this._isVisible;
-    if (typeof this.visible !== 'boolean') {
-      this._internalVisible = next;
+    const next = !this._isPasswordVisible;
+    if (typeof this.passwordVisible !== 'boolean') {
+      this._internalPasswordVisible = next;
     }
-    this._dispatch('visible-change', { visible: next } satisfies InputVisibleChangeDetail);
+    this._dispatch('password-visible-change', {
+      passwordVisible: next,
+    } satisfies InputPasswordVisibleChangeDetail);
   }
 
   private _renderVisibilityToggle(): TemplateResult | typeof nothing {
     if (!this.visibilityToggle) {
       return nothing;
     }
-    const label = this._isVisible ? 'Hide password' : 'Show password';
-    const icon = this._isVisible ? '🙈' : '👁';
+    const label = this._isPasswordVisible ? 'Hide password' : 'Show password';
+    const icon = this._isPasswordVisible ? '🙈' : '👁';
     return html`
       <button
         type="button"
@@ -713,8 +742,8 @@ export class UiInputPassword extends InputBase {
     return html`
       <input
         class="control"
-        .type="${this._isVisible ? 'text' : 'password'}"
-        .value="${this.value}"
+        .type="${this._isPasswordVisible ? 'text' : 'password'}"
+        .value="${this._displayValue()}"
         placeholder="${this.placeholder}"
         ?disabled="${this.disabled}"
         ?readonly="${this.readonly}"
@@ -756,6 +785,7 @@ export interface UiInputEventMap {
   change: CustomEvent<InputChangeDetail>;
   'press-enter': CustomEvent<InputPressEnterDetail>;
   clear: CustomEvent<InputClearDetail>;
+  'update:value': CustomEvent<{ value: string }>;
 }
 
 export interface UiInputSearchEventMap extends UiInputEventMap {
@@ -763,5 +793,5 @@ export interface UiInputSearchEventMap extends UiInputEventMap {
 }
 
 export interface UiInputPasswordEventMap extends UiInputEventMap {
-  'visible-change': CustomEvent<InputVisibleChangeDetail>;
+  'password-visible-change': CustomEvent<InputPasswordVisibleChangeDetail>;
 }

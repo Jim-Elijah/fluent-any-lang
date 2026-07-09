@@ -93,13 +93,13 @@ describe('ui-modal', () => {
     expect(closeHandler.mock.calls[0][0].detail.reason).toBe('mask');
   });
 
-  it('uses visible property as open alias', async () => {
-    const result = mount(html`<ui-modal .visible=${true} title="Visible">Body</ui-modal>`);
-    cleanup = result.cleanup;
-    const el = result.container.querySelector('ui-modal') as UiModal;
-    await el.updateComplete;
-    await el.updateComplete;
-    expect(el.shadowRoot?.querySelector('.dialog')).not.toBeNull();
+  it('dispatches update:open on close', async () => {
+    const el = await renderModal();
+    const updateHandler = vi.fn();
+    el.addEventListener('update:open', updateHandler);
+    el.shadowRoot?.querySelector<HTMLButtonElement>('.btn.ghost')?.click();
+    expect(updateHandler).toHaveBeenCalledOnce();
+    expect(updateHandler.mock.calls[0][0].detail.open).toBe(false);
   });
 
   it('hides default footer when footer is false', async () => {

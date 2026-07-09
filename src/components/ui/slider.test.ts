@@ -106,6 +106,23 @@ describe('ui-slider', () => {
     expect(handler.mock.calls[0][0].detail.value).toBe(50);
   });
 
+  it('supports uncontrolled defaultValue on drag', async () => {
+    const el = await renderSlider(html`
+      <ui-slider default-value="20" min="0" max="100" step="10"></ui-slider>
+    `);
+    const handler = vi.fn();
+    el.addEventListener('change', handler);
+    el.shadowRoot
+      ?.querySelector('[role="slider"]')
+      ?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    await el.updateComplete;
+    expect(handler).toHaveBeenCalledOnce();
+    expect(handler.mock.calls[0][0].detail.value).toBe(30);
+    expect(el.shadowRoot?.querySelector('[role="slider"]')?.getAttribute('aria-valuenow')).toBe(
+      '30',
+    );
+  });
+
   it('focus() focuses the handle', async () => {
     const el = await renderSlider();
     el.focus();

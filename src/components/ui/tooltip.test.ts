@@ -30,12 +30,6 @@ describe('ui-tooltip', () => {
     const result = mount(template);
     cleanup = result.cleanup;
     const el = result.container.querySelector('ui-tooltip') as UiTooltip;
-    el.addEventListener('open-change', (e) => {
-      el.open = (e as CustomEvent<{ open: boolean }>).detail.open;
-    });
-    el.addEventListener('update:open', (e) => {
-      el.open = (e as CustomEvent<{ open: boolean }>).detail.open;
-    });
     await el.updateComplete;
     return el;
   }
@@ -51,6 +45,16 @@ describe('ui-tooltip', () => {
       .map((n) => n.textContent ?? '')
       .join('');
     expect(text).toContain('Trigger');
+  });
+
+  it('shows popup on hover without open-change listener (uncontrolled)', async () => {
+    const el = await renderTooltip();
+    const trigger = el.shadowRoot?.querySelector('.trigger');
+    trigger!.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+    vi.advanceTimersByTime(100);
+    await el.updateComplete;
+    await flushUpdates();
+    expect(getPopup()?.textContent).toContain('Hint');
   });
 
   it('shows popup on hover after enter delay', async () => {
@@ -109,17 +113,7 @@ describe('ui-tooltip', () => {
     window.dispatchEvent(
       new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
     );
-    el.open = false;
     await el.updateComplete;
     expect(closeHandler).toHaveBeenCalled();
-  });
-
-  it('uses visible as open alias', async () => {
-    const result = mount(html`<ui-tooltip visible title="Visible"><span>x</span></ui-tooltip>`);
-    cleanup = result.cleanup;
-    const el = result.container.querySelector('ui-tooltip') as UiTooltip;
-    await el.updateComplete;
-    await flushUpdates();
-    expect(getPopup()?.textContent).toContain('Visible');
   });
 });

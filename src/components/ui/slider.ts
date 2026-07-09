@@ -1,4 +1,4 @@
-import { css, html, LitElement, type TemplateResult } from 'lit';
+import { css, html, LitElement, type PropertyValues, type TemplateResult } from 'lit';
 import { customElement, property, query, state } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
 import { styleMap } from 'lit/directives/style-map.js';
@@ -373,8 +373,9 @@ export class UiSlider extends LitElement {
     }
   `;
 
-  /** 受控当前值 */
-  @property({ type: Number }) value = 0;
+  /** 受控当前值；未传时为非受控 */
+  @property({ type: Number }) value?: number;
+  @property({ type: Number, attribute: 'default-value' }) defaultValue = 0;
 
   @property({ type: Number }) min = 0;
   @property({ type: Number }) max = 100;
@@ -396,6 +397,8 @@ export class UiSlider extends LitElement {
   @state() private _dragging = false;
   @state() private _handleHovered = false;
   @state() private _focused = false;
+  @state() private _internalValue = 0;
+  private _defaultValueInitialized = false;
 
   @query('.rail') private _railEl!: HTMLElement;
   @query('.handle') private _handleEl!: HTMLElement;
@@ -473,8 +476,26 @@ export class UiSlider extends LitElement {
     return snapToStep(clamped, this.min, this.max, this.step);
   }
 
+  protected updated(changed: PropertyValues): void {
+    if (changed.has('defaultValue') || changed.has('value')) {
+      this._initDefaultValue();
+    }
+  }
+
+  private _initDefaultValue(): void {
+    if (!this._defaultValueInitialized && this.value === undefined) {
+      this._internalValue = this.defaultValue;
+      this._defaultValueInitialized = true;
+    }
+  }
+
+  private _isControlledValue(): boolean {
+    return this.value !== undefined;
+  }
+
   private _currentValue(): number {
-    return this._snapValue(this.value);
+    const raw = this._isControlledValue() ? this.value! : this._internalValue;
+    return this._snapValue(raw);
   }
 
   private _valueToPercent(value: number): number {
@@ -488,7 +509,12 @@ export class UiSlider extends LitElement {
 
   private _emitChange(next: number) {
     const value = this._snapValue(next);
-    if (value === this._currentValue()) return;
+    const prev = this._currentValue();
+    if (value === prev) return;
+
+    if (!this._isControlledValue()) {
+      this._internalValue = value;
+    }
 
     const detail = { value } satisfies SliderChangeDetail;
     this._dispatch('change', detail);
@@ -815,6 +841,7 @@ export class UiSlider extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
+    this._initDefaultValue();
     if (this._hasMarks()) {
       this.setAttribute('with-marks', '');
     }

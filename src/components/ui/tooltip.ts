@@ -2,6 +2,7 @@ import { LitElement, html, css, nothing, render, type PropertyValues } from 'lit
 import { customElement, property, state } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
 import { styleMap } from 'lit/directives/style-map.js';
+import { isControlledOpen } from './internal/controlled-state.js';
 
 export type TooltipTriggerType = 'click' | 'hover';
 
@@ -117,10 +118,9 @@ export class UiTooltip extends LitElement {
     }
   `;
 
-  /** 受控显隐（antd open） */
-  @property({ type: Boolean, reflect: true }) open = false;
-  /** antd visible 兼容别名 */
-  @property({ type: Boolean, reflect: true }) visible?: boolean;
+  /** 受控显隐；未传时为非受控 */
+  @property({ type: Boolean }) open?: boolean;
+  @property({ type: Boolean, attribute: 'default-open' }) defaultOpen = false;
 
   @property() title = '';
   @property({ type: String }) placement: TooltipPlacement = 'top';
@@ -143,6 +143,7 @@ export class UiTooltip extends LitElement {
   /** 类似 antd getPopupContainer：selector 或 HTMLElement，默认 body */
   @property() popupContainer: string | HTMLElement | null = 'body';
 
+  @state() private _internalOpen = false;
   @state() private _pos = { top: 0, left: 0 };
   @state() private _arrowStyle: Record<string, string> = {};
   @state() private _positionInContainer = false;
@@ -169,9 +170,21 @@ export class UiTooltip extends LitElement {
   private _docKeyDown = (e: KeyboardEvent) => this._onDocumentKeyDown(e);
   private _onScrollOrResize = () => this._updatePosition();
 
+  connectedCallback(): void {
+    super.connectedCallback();
+    if (!isControlledOpen(this.open)) {
+      this._internalOpen = this.defaultOpen;
+    }
+  }
+
   private _isOpen(): boolean {
-    if (typeof this.visible === 'boolean') return this.visible;
-    return this.open;
+    return isControlledOpen(this.open) ? this.open : this._internalOpen;
+  }
+
+  private _assignOpen(next: boolean): void {
+    if (!isControlledOpen(this.open)) {
+      this._internalOpen = next;
+    }
   }
 
   private _isDisabled(): boolean {
@@ -206,11 +219,6 @@ export class UiTooltip extends LitElement {
 
     this._dispatch('open-change', detail);
     this._dispatch('update:open', detail);
-    this._dispatch('update:visible', {
-      visible: next,
-      trigger: meta.trigger,
-      reason: meta.reason,
-    });
 
     if (next) {
       this._dispatch('open', { trigger: meta.trigger });
@@ -219,7 +227,7 @@ export class UiTooltip extends LitElement {
     }
   }
 
-  private _requestOpen(
+  private _setOpen(
     next: boolean,
     meta: {
       trigger?: TooltipTriggerType | 'manual';
@@ -232,15 +240,16 @@ export class UiTooltip extends LitElement {
       if (this._isDisabled()) return;
     }
 
+    this._assignOpen(next);
     this._emitOpenChange(next, meta);
   }
 
   private _show(trigger?: TooltipTriggerType | 'manual') {
-    this._requestOpen(true, { trigger });
+    this._setOpen(true, { trigger });
   }
 
   private _hide(reason: TooltipCloseReason) {
-    this._requestOpen(false, { reason });
+    this._setOpen(false, { reason });
   }
 
   private _enterDelayMs(): number {
@@ -505,7 +514,7 @@ export class UiTooltip extends LitElement {
   }
 
   private _handleControlledOpenEdge(changed: PropertyValues, isOpen: boolean, wasOpen: boolean) {
-    if (!changed.has('open') && !changed.has('visible')) return;
+    if (!changed.has('open')) return;
 
     if (isOpen && !wasOpen) {
       this._dispatch('open', { trigger: 'manual' });
@@ -709,11 +718,6 @@ declare global {
 export interface UiTooltipEventMap {
   'open-change': CustomEvent<TooltipOpenChangeDetail>;
   'update:open': CustomEvent<TooltipOpenChangeDetail>;
-  'update:visible': CustomEvent<{
-    visible: boolean;
-    trigger?: TooltipTriggerType | 'manual';
-    reason?: TooltipCloseReason;
-  }>;
   open: CustomEvent<{ trigger?: TooltipTriggerType | 'manual' }>;
   close: CustomEvent<{ reason?: TooltipCloseReason }>;
 }
