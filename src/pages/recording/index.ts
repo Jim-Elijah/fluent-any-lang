@@ -18,9 +18,11 @@ export class RecordingPage extends LitElement {
 
   /** @fixme this._mediaId = undefined */
   protected updated(changed: Map<PropertyKey, unknown>): void {
+    const previous = changed.get('routeContext') as RouteContext | undefined;
     if (
       changed.has('routeContext') &&
-      this.routeContext.params.id !== (changed.get('routeContext') as RouteContext).params.id
+      previous?.params &&
+      this.routeContext.params.id !== previous.params.id
     ) {
       if (this._mediaId !== this.routeContext.params.id) {
         this._mediaId = this.routeContext.params.id;

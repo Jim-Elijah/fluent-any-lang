@@ -25,10 +25,8 @@ export class SpeakingPage extends LitElement {
    * @param changed 变化的属性
    */
   updated(changed: Map<string, unknown>) {
-    if (
-      changed.has('routeContext') &&
-      this.routeContext.route !== (changed.get('routeContext') as RouteContext).route
-    ) {
+    const previous = changed.get('routeContext') as RouteContext | undefined;
+    if (changed.has('routeContext') && previous && this.routeContext.route !== previous.route) {
       this.shadowRoot?.querySelector('audio-recorder')?.handleDestroy();
     }
   }

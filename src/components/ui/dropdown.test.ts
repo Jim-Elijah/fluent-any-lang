@@ -82,4 +82,57 @@ describe('ui-dropdown', () => {
     await flushUpdates();
     expect(getOverlay()).not.toBeNull();
   });
+
+  it('opens on hover after delay', async () => {
+    const el = await renderDropdown(html`
+      <ui-dropdown .menu=${MENU} trigger="hover"><button>Menu</button></ui-dropdown>
+    `);
+    el.shadowRoot
+      ?.querySelector('.trigger')
+      ?.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+    vi.advanceTimersByTime(100);
+    await el.updateComplete;
+    await flushUpdates();
+    expect(getOverlay()).not.toBeNull();
+  });
+
+  it('does not open when disabled', async () => {
+    const el = await renderDropdown(html`
+      <ui-dropdown disabled .menu=${MENU} trigger="click"><button>Menu</button></ui-dropdown>
+    `);
+    el.shadowRoot
+      ?.querySelector('.trigger')
+      ?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await el.updateComplete;
+    await flushUpdates();
+    expect(getOverlay() ?? null).toBeNull();
+  });
+
+  it('closes on Escape when open', async () => {
+    const el = await renderDropdown();
+    el.shadowRoot
+      ?.querySelector('.trigger')
+      ?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await el.updateComplete;
+    await flushUpdates();
+    expect(getOverlay()).not.toBeNull();
+
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+    );
+    await el.updateComplete;
+    expect(getOverlay() ?? null).toBeNull();
+  });
+
+  it('opens on contextmenu trigger', async () => {
+    const el = await renderDropdown(html`
+      <ui-dropdown .menu=${MENU} trigger="contextMenu"><button>Menu</button></ui-dropdown>
+    `);
+    el.shadowRoot
+      ?.querySelector('.trigger')
+      ?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
+    await el.updateComplete;
+    await flushUpdates();
+    expect(getOverlay()).not.toBeNull();
+  });
 });
