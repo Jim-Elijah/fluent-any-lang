@@ -28,6 +28,7 @@ import './waveform-player.js';
 import { RecordList } from '../library/record-list.js';
 import { Message } from '../ui/message.js';
 import { Loading } from '../ui/loading.js';
+import { SubtitlePanelFullscreenChangeDetail } from './subtitle-panel.js';
 
 type PracticeType = 'listening' | 'speaking';
 
@@ -201,6 +202,9 @@ export class PracticeView extends LitElement {
 
   @state()
   private _hasWaveform = false;
+
+  @state()
+  private _subtitlePanelFullscreen = this._practiceType === 'listening' ? true : false;
 
   private _getShadowingTips(): string[] {
     return [
@@ -453,7 +457,14 @@ export class PracticeView extends LitElement {
             @track-change="${(e: CustomEvent) => console.log('当前播放媒体改变:', e.detail)}"
           >
           </media-player>
-          <subtitle-panel .controller="${this._controller}"></subtitle-panel>
+          <subtitle-panel
+            .controller="${this._controller}"
+            .fullscreen="${this._subtitlePanelFullscreen}"
+            showFullscreenIcon="${!this._subtitlePanelFullscreen}"
+            @update:fullscreen="${(e: CustomEvent<SubtitlePanelFullscreenChangeDetail>) => {
+              this._subtitlePanelFullscreen = e.detail.fullscreen;
+            }}"
+          ></subtitle-panel>
         </div>
       </section>
     `;
