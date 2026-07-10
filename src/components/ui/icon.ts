@@ -3,7 +3,6 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { unsafeSVG } from 'lit/directives/unsafe-svg.js';
 
 import { ensureIconRegistry, getIconSymbol } from './icon-registry.js';
-import './tooltip.js';
 
 @customElement('ui-icon')
 export class UIIcon extends LitElement {
@@ -21,17 +20,10 @@ export class UIIcon extends LitElement {
       height: var(--ui-icon-size, 1em);
       fill: currentColor;
       overflow: hidden;
-      cursor: pointer;
-      cursor: var(--ui-icon-cursor, pointer);
     }
 
     svg :is(path, circle, rect, polygon, polyline) {
       fill: currentColor;
-    }
-
-    .disabled {
-      cursor: not-allowed;
-      opacity: 0.5;
     }
   `;
 
@@ -39,16 +31,7 @@ export class UIIcon extends LitElement {
   name = '';
 
   @property({ type: String })
-  title = '';
-
-  @property({ type: String })
   size = '';
-
-  @property({ type: Boolean })
-  disabled = false;
-
-  @property({ type: Boolean })
-  arrow = true;
 
   @state()
   private _loaded = false;
@@ -67,31 +50,10 @@ export class UIIcon extends LitElement {
     const sizeStyle = this.size ? `--ui-icon-size:${this.size};` : '';
 
     return html`
-      <ui-tooltip title=${this.title || this.name} .arrow=${this.arrow}>
-        <svg
-          class=${this.disabled ? 'disabled' : ''}
-          style="${sizeStyle}"
-          viewBox="${symbol.viewBox}"
-          aria-hidden="true"
-          focusable="false"
-          @click=${this._handleClick.bind(this)}
-        >
-          ${unsafeSVG(symbol.innerHTML)}
-        </svg>
-      </ui-tooltip>
+      <svg style="${sizeStyle}" viewBox="${symbol.viewBox}" aria-hidden="true" focusable="false">
+        ${unsafeSVG(symbol.innerHTML)}
+      </svg>
     `;
-  }
-
-  /** @fixme 是否要阻断事件冒泡 */
-  private _handleClick(event: MouseEvent): void {
-    event.preventDefault();
-    event.stopPropagation();
-    if (this.disabled) {
-      return;
-    }
-    this.dispatchEvent(
-      new CustomEvent('click', { detail: this.name, bubbles: true, composed: true }),
-    );
   }
 
   private async _loadRegistry(): Promise<void> {

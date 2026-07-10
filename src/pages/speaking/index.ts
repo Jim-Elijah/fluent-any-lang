@@ -27,7 +27,7 @@ export class SpeakingPage extends LitElement {
   updated(changed: Map<string, unknown>) {
     const previous = changed.get('routeContext') as RouteContext | undefined;
     if (changed.has('routeContext') && previous && this.routeContext.route !== previous.route) {
-      this.shadowRoot?.querySelector('audio-recorder')?.handleDestroy();
+      this.shadowRoot?.querySelector('audio-recorder')?.destroy();
     }
   }
 }

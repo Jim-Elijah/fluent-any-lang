@@ -34,12 +34,13 @@ export type PopconfirmOpenChangeDetail = {
   reason?: PopconfirmCloseReason;
 };
 
-const HOVER_DELAY_MS = 100;
+const DEFAULT_ENTER_DELAY_S = 0.1;
+const DEFAULT_LEAVE_DELAY_S = 0.15;
 
 const POPUP_PORTAL_STYLES = `
   .popup {
     position: fixed;
-    z-index: var(--popconfirm-z, 1060);
+    z-index: var(--popconfirm-z, 1080);
     min-width: 160px;
     max-width: 260px;
     background: #fff;
@@ -161,7 +162,14 @@ export class UiPopconfirm extends LitElement {
   @property({ type: Boolean, attribute: 'auto-close' }) autoClose = true;
   @property({ type: Boolean, attribute: 'close-on-esc' }) closeOnEsc = true;
   @property({ type: Boolean, attribute: 'destroy-on-close' }) destroyOnClose = false;
-  @property({ type: Number, attribute: 'z-index' }) zIndex = 1060;
+  @property({ type: Number, attribute: 'z-index' }) zIndex = 1080;
+
+  /** 鼠标移入后延时显示，单位：秒（hover trigger） */
+  @property({ type: Number, attribute: 'mouse-enter-delay' }) mouseEnterDelay =
+    DEFAULT_ENTER_DELAY_S;
+  /** 鼠标移出后延时隐藏，单位：秒（hover trigger） */
+  @property({ type: Number, attribute: 'mouse-leave-delay' }) mouseLeaveDelay =
+    DEFAULT_LEAVE_DELAY_S;
 
   /** 类似 antd getPopupContainer：selector 或 HTMLElement，默认 body */
   @property() popupContainer: string | HTMLElement | null = 'body';
@@ -177,7 +185,10 @@ export class UiPopconfirm extends LitElement {
   private _overlay: OverlayController | null = null;
   private _globalBound = false;
   private _prevIsOpen = false;
+  private _hoverOpenTimer: ReturnType<typeof setTimeout> | null = null;
   private _hoverCloseTimer: ReturnType<typeof setTimeout> | null = null;
+  private _openingLock = false;
+  private _openingLockTimer: ReturnType<typeof setTimeout> | null = null;
 
   connectedCallback(): void {
     super.connectedCallback();
@@ -402,6 +413,7 @@ export class UiPopconfirm extends LitElement {
 
   disconnectedCallback() {
     this._clearHoverTimers();
+    this._clearOpeningLock();
     if (this._globalBound) {
       this._unbindGlobal();
       this._globalBound = false;
@@ -428,6 +440,7 @@ export class UiPopconfirm extends LitElement {
 
   private _onOpenStateChanged(isOpen: boolean) {
     if (isOpen) {
+      this._setOpeningLock();
       if (!this._globalBound) {
         this._bindGlobal();
         this._globalBound = true;
@@ -446,6 +459,7 @@ export class UiPopconfirm extends LitElement {
       this._globalBound = false;
     }
     this._clearHoverTimers();
+    this._clearOpeningLock();
     if (this.destroyOnClose) {
       this._overlay?.destroyPortal();
     } else {
@@ -497,11 +511,51 @@ export class UiPopconfirm extends LitElement {
     this._computePopupPosition();
   }
 
+  private _enterDelayMs(): number {
+    return Math.max(0, this.mouseEnterDelay) * 1000;
+  }
+
+  private _leaveDelayMs(): number {
+    return Math.max(0, this.mouseLeaveDelay) * 1000;
+  }
+
+  private _setOpeningLock() {
+    this._openingLock = true;
+    if (this._openingLockTimer) {
+      clearTimeout(this._openingLockTimer);
+    }
+    this._openingLockTimer = setTimeout(() => {
+      this._openingLock = false;
+      this._openingLockTimer = null;
+    }, 0);
+  }
+
+  private _clearOpeningLock() {
+    this._openingLock = false;
+    if (this._openingLockTimer) {
+      clearTimeout(this._openingLockTimer);
+      this._openingLockTimer = null;
+    }
+  }
+
   private _clearHoverTimers() {
+    if (this._hoverOpenTimer) {
+      clearTimeout(this._hoverOpenTimer);
+      this._hoverOpenTimer = null;
+    }
     if (this._hoverCloseTimer) {
       clearTimeout(this._hoverCloseTimer);
       this._hoverCloseTimer = null;
     }
+  }
+
+  private _scheduleHoverOpen() {
+    if (this.trigger !== 'hover') return;
+    this._clearHoverTimers();
+    this._hoverOpenTimer = setTimeout(() => {
+      this._hoverOpenTimer = null;
+      if (!this._isOpen()) this._show('hover');
+    }, this._enterDelayMs());
   }
 
   private _scheduleHoverClose() {
@@ -510,34 +564,37 @@ export class UiPopconfirm extends LitElement {
     this._hoverCloseTimer = setTimeout(() => {
       this._hoverCloseTimer = null;
       if (this._isOpen()) this._hide('trigger');
-    }, HOVER_DELAY_MS);
+    }, this._leaveDelayMs());
   }
 
   private _cancelHoverClose() {
-    this._clearHoverTimers();
+    if (this._hoverCloseTimer) {
+      clearTimeout(this._hoverCloseTimer);
+      this._hoverCloseTimer = null;
+    }
   }
 
   private _onTriggerClick = () => {
     if (this.trigger !== 'click') return;
     if (this.disabled) return;
-
-    if (this._isOpen()) {
-      this._hide('trigger');
-    } else {
-      this._show('click');
-    }
+    if (this._isOpen()) return;
+    this._show('click');
   };
 
   private _onTriggerMouseEnter = () => {
     if (this.trigger !== 'hover') return;
     if (this.disabled) return;
     this._cancelHoverClose();
-    if (!this._isOpen()) this._show('hover');
+    if (this._isOpen()) return;
+    this._scheduleHoverOpen();
   };
 
   private _onTriggerMouseLeave = () => {
     if (this.trigger !== 'hover') return;
-    if (!this._isOpen()) return;
+    if (!this._isOpen()) {
+      this._clearHoverTimers();
+      return;
+    }
     this._scheduleHoverClose();
   };
 
@@ -554,8 +611,10 @@ export class UiPopconfirm extends LitElement {
   private _onDocumentMouseDown(e: MouseEvent) {
     if (!this._isOpen()) return;
     if (this.confirmLoading) return;
+    if (this._openingLock) return;
     if (this._getOverlay().isEventInside(e)) return;
-    if (this.autoClose) this._hide('clickOutside');
+    if (!this.autoClose || this.trigger !== 'click') return;
+    this._hide('clickOutside');
   }
 
   private _onDocumentKeyDown(e: KeyboardEvent) {

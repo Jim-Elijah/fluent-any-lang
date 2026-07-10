@@ -16,6 +16,7 @@ import '../ui/modal.js';
 import '../ui/popconfirm.js';
 import './recording-preview.js';
 import '../ui/icon.js';
+import '../ui/tooltip.js';
 import type { PracticeRecord, SortDirection } from '../../types/models.js';
 import { formatDate, formatTime } from '../../lib/playback-utils.js';
 
@@ -148,9 +149,6 @@ export class RecordList extends LitElement {
   private _deletingId = '';
 
   @state()
-  private _deleteConfirmId = '';
-
-  @state()
   private _modalOpen = false;
 
   @state()
@@ -249,24 +247,37 @@ export class RecordList extends LitElement {
                       </p>
                   </div>
                   <div class="actions">
-                    <ui-button variant="primary" @click="${() => this._handleView(item)}">
-                      <ui-icon name="play" title="${msg('查看')}"></ui-icon>
-                    </ui-button>
-                    <ui-button variant="secondary" @click="${() => this._handleExport(item)}">
-                      <ui-icon name="download" title="${msg('导出')}"></ui-icon>
-                    </ui-button>
+                    <ui-tooltip title="${msg('查看')}">
+                      <ui-button
+                        variant="primary"
+                        aria-label="${msg('查看')}"
+                        @click="${() => this._handleView(item)}"
+                      >
+                        <ui-icon name="play"></ui-icon>
+                      </ui-button>
+                    </ui-tooltip>
+                    <ui-tooltip title="${msg('导出')}">
+                      <ui-button
+                        variant="secondary"
+                        aria-label="${msg('导出')}"
+                        @click="${() => this._handleExport(item)}"
+                      >
+                        <ui-icon name="download"></ui-icon>
+                      </ui-button>
+                    </ui-tooltip>
                     <ui-popconfirm
                       title=${msg('确定删除该录音吗？')}
-                      ?open=${this._deleteConfirmId === item.id}
                       placement="bottom"
                       ?confirm-loading=${this._deletingId === item.id}
-                      @update:open=${(e: CustomEvent<{ open: boolean }>) =>
-                        this._handleDeleteConfirmOpen(item.id, e)}
                       @confirm=${() => this._handleDelete(item)}
                     >
-                      <ui-button variant="danger" ?disabled="${this._deletingId === item.id}">
-                        <ui-icon name="delete" title="${msg('删除')}"></ui-icon>
-                      </ui-button>
+                        <ui-button
+                          variant="danger"
+                          aria-label="${msg('删除')}"
+                          ?disabled="${this._deletingId === item.id}"
+                        >
+                          <ui-icon name="delete"></ui-icon>
+                        </ui-button>
                     </ui-popconfirm>
                   </div>
                 </div>
@@ -332,10 +343,6 @@ export class RecordList extends LitElement {
     }
   }
 
-  private _handleDeleteConfirmOpen(id: string, e: CustomEvent<{ open: boolean }>): void {
-    this._deleteConfirmId = e.detail.open ? id : '';
-  }
-
   private async _handleDelete(recording: PracticeRecord): Promise<void> {
     this._deletingId = recording.id;
     try {
@@ -352,7 +359,6 @@ export class RecordList extends LitElement {
       this._error = msg('删除失败，请重试。');
     } finally {
       this._deletingId = '';
-      this._deleteConfirmId = '';
     }
   }
 }

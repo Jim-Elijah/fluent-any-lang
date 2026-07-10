@@ -158,7 +158,7 @@ export class WaveformPlayer extends LitElement {
         @mousemove=${this._handleMouseMove}
         @click=${this._handleClick}
       ></canvas>
-      ${tracks.length > 0
+      ${tracks.length > 1
         ? html`<div class="track-legend">
             ${tracks.map(
               (track) =>

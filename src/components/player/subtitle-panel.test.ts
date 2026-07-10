@@ -36,7 +36,13 @@ describe('subtitle-panel', () => {
     document.querySelector('[data-subtitle-fullscreen-portal]')?.remove();
   });
 
-  async function renderPanel(options: { fullscreen?: boolean; defaultFullscreen?: boolean } = {}) {
+  async function renderPanel(
+    options: {
+      fullscreen?: boolean;
+      defaultFullscreen?: boolean;
+      showFullscreenIcon?: boolean;
+    } = {},
+  ) {
     controller = new MediaController();
     const segments: SubtitleSegment[] = [
       { id: 's1', startTime: 0, endTime: 2, text: 'hello' },
@@ -49,6 +55,7 @@ describe('subtitle-panel', () => {
         .controller=${controller}
         .fullscreen=${options.fullscreen}
         ?default-fullscreen=${options.defaultFullscreen ?? false}
+        .showFullscreenIcon=${options.showFullscreenIcon ?? true}
       ></subtitle-panel>
     `);
     cleanup = result.cleanup;
@@ -63,16 +70,21 @@ describe('subtitle-panel', () => {
     expect(el.shadowRoot?.querySelector('.surface')).not.toBeNull();
   });
 
+  function clickShadowButton(el: SubtitlePanel, index: number): void {
+    const button = el.shadowRoot?.querySelectorAll('ui-button')[index];
+    button?.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
+  }
+
   it('opens fullscreen portal in uncontrolled mode', async () => {
     const el = await renderPanel();
-    const fullscreenBtn = el.shadowRoot?.querySelectorAll('ui-button')[1];
-    fullscreenBtn?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(el.shadowRoot?.querySelectorAll('ui-button').length).toBeGreaterThan(1);
+    clickShadowButton(el, 1);
     await el.updateComplete;
     await flushUpdates();
 
     const portal = getPortalShadow('[data-subtitle-fullscreen-portal]');
     expect(portal?.querySelector('.list.fullscreen')).not.toBeNull();
-    expect(portal?.textContent).toContain('hello');
+    expect(portal?.querySelector('.list.fullscreen')?.textContent).toContain('hello');
   });
 
   it('closes fullscreen when close icon is clicked', async () => {
@@ -114,8 +126,7 @@ describe('subtitle-panel', () => {
     const handler = vi.fn();
     el.addEventListener('update:fullscreen', handler);
 
-    const fullscreenBtn = el.shadowRoot?.querySelectorAll('ui-button')[1];
-    fullscreenBtn?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    clickShadowButton(el, 1);
     await el.updateComplete;
     await flushUpdates();
 

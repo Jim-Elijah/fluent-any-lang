@@ -9,6 +9,7 @@ import '../ui/alert.js';
 import '../ui/button.js';
 import '../ui/popconfirm.js';
 import '../ui/icon.js';
+import '../ui/tooltip.js';
 
 @customElement('media-list')
 @localized()
@@ -90,9 +91,6 @@ export class MediaList extends LitElement {
       font-weight: 500;
     }
 
-    .badge ui-icon {
-      --ui-icon-cursor: auto;
-    }
     .badge.muted {
       background: rgba(0, 0, 0, 0.04);
       color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
@@ -138,9 +136,6 @@ export class MediaList extends LitElement {
 
   @state()
   private _deletingId = '';
-
-  @state()
-  private _deleteConfirmId = '';
 
   connectedCallback(): void {
     super.connectedCallback();
@@ -207,41 +202,51 @@ export class MediaList extends LitElement {
                           <p class="title">${item.title}</p>
                           <p class="details">
                             <span class="badge">
-                              <ui-icon
-                                name="${item.type === 'video' ? 'video' : 'music'}"
-                                size="16px"
+                              <ui-tooltip
                                 title="${item.type === 'video' ? msg('视频') : msg('音频')}"
-                              ></ui-icon>
+                              >
+                                <ui-icon
+                                  name="${item.type === 'video' ? 'video' : 'music'}"
+                                  size="16px"
+                                ></ui-icon>
+                              </ui-tooltip>
                             </span>
                             <span>${formatTime(item.duration)}</span>
                             <span>${formatDate(item.createdAt, true)}</span>
                             <span class="badge ${item.hasSubtitles ? '' : 'muted'}">
-                              <ui-icon
-                                name="${item.hasSubtitles ? 'subtitle' : 'subtitle-off'}"
-                                size="16px"
+                              <ui-tooltip
                                 title="${item.hasSubtitles ? msg('含字幕') : msg('无字幕')}"
-                              ></ui-icon>
+                              >
+                                <ui-icon
+                                  name="${item.hasSubtitles ? 'subtitle' : 'subtitle-off'}"
+                                  size="16px"
+                                ></ui-icon>
+                              </ui-tooltip>
                             </span>
                           </p>
                         </div>
                         <div class="actions">
-                          <ui-button
-                            variant="secondary"
-                            @click="${() => this._handlePractice(item)}"
-                          >
-                            <ui-icon name="practice" title="${msg('练习')}"></ui-icon>
-                          </ui-button>
+                          <ui-tooltip title="${msg('练习')}">
+                            <ui-button
+                              variant="secondary"
+                              aria-label="${msg('练习')}"
+                              @click="${() => this._handlePractice(item)}"
+                            >
+                              <ui-icon name="practice"></ui-icon>
+                            </ui-button>
+                          </ui-tooltip>
                           <ui-popconfirm
                             title=${msg('确定删除该资源吗？')}
-                            ?open=${this._deleteConfirmId === item.id}
                             placement="bottom"
                             ?confirm-loading=${this._deletingId === item.id}
-                            @update:open=${(e: CustomEvent<{ open: boolean }>) =>
-                              this._handleDeleteConfirmOpen(item.id, e)}
                             @confirm=${() => this._handleDelete(item)}
                           >
-                            <ui-button variant="danger" ?disabled="${this._deletingId === item.id}">
-                              <ui-icon name="delete" title="${msg('删除')}"></ui-icon>
+                            <ui-button
+                              variant="danger"
+                              aria-label="${msg('删除')}"
+                              ?disabled="${this._deletingId === item.id}"
+                            >
+                              <ui-icon name="delete"></ui-icon>
                             </ui-button>
                           </ui-popconfirm>
                         </div>
@@ -264,10 +269,6 @@ export class MediaList extends LitElement {
     );
   }
 
-  private _handleDeleteConfirmOpen(id: string, e: CustomEvent<{ open: boolean }>): void {
-    this._deleteConfirmId = e.detail.open ? id : '';
-  }
-
   private async _handleDelete(item: MediaItem): Promise<void> {
     this._deletingId = item.id;
 
@@ -285,7 +286,6 @@ export class MediaList extends LitElement {
       this._error = msg('删除失败，请重试');
     } finally {
       this._deletingId = '';
-      this._deleteConfirmId = '';
     }
   }
 }

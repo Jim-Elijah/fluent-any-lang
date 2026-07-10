@@ -13,6 +13,7 @@ import '../ui/slider.js';
 import '../ui/tooltip.js';
 import '../ui/select.js';
 import '../ui/icon.js';
+import '../ui/icon-button.js';
 import { MediaControlsConfig, MediaPlayerMode } from '../../types/index.js';
 import { SelectChangeDetail } from '../ui/select.js';
 
@@ -564,11 +565,12 @@ export class MediaPlayer extends LitElement {
               ? html`<ui-icon name="${isVideo ? 'video' : 'audio'}" size="20px"></ui-icon>`
               : ''}
             <div class="mini-overlay">
-              <ui-icon
+              <ui-icon-button
                 name="${snapshot.isPlaying ? 'pause' : 'play'}"
                 size="18px"
+                title="${snapshot.isPlaying ? msg('暂停') : msg('播放')}"
                 @click="${this._togglePlay}"
-              ></ui-icon>
+              ></ui-icon-button>
               ${this.controlsConfig.switchMode
                 ? html`<div
                     class="mini-expand-btn"
@@ -661,49 +663,49 @@ export class MediaPlayer extends LitElement {
             <div class="control-row">
               <div class="nav-buttons">
                 ${this.controlsConfig.previousNextTrack
-                  ? html`<ui-icon
+                  ? html`<ui-icon-button
                       name="previous"
                       title="${msg('上一首')}"
                       size="18px"
                       ?disabled="${!snapshot.canPreviousTrack || this.disabled}"
                       @click="${this._previousTrack}"
-                    ></ui-icon>`
+                    ></ui-icon-button>`
                   : ''}
                 ${showSegments
-                  ? html`<ui-icon
+                  ? html`<ui-icon-button
                       name="backward"
                       title="${msg('上一句')}"
                       size="18px"
                       ?disabled="${!snapshot.canPreviousSegment || this.disabled}"
                       @click="${this._previousSegment}"
-                    ></ui-icon>`
+                    ></ui-icon-button>`
                   : ''}
                 ${this.controlsConfig.playPause
-                  ? html`<ui-icon
+                  ? html`<ui-icon-button
                       name="${snapshot.isPlaying ? 'pause' : 'play'}"
                       title="${snapshot.isPlaying ? msg('暂停') : msg('播放')}"
                       size="20px"
                       ?disabled="${this.disabled}"
                       @click="${this._togglePlay}"
-                    ></ui-icon>`
+                    ></ui-icon-button>`
                   : ''}
                 ${showSegments
-                  ? html`<ui-icon
+                  ? html`<ui-icon-button
                       name="forward"
                       title="${msg('下一句')}"
                       size="18px"
                       ?disabled="${!snapshot.canNextSegment || this.disabled}"
                       @click="${this._nextSegment}"
-                    ></ui-icon>`
+                    ></ui-icon-button>`
                   : ''}
                 ${this.controlsConfig.previousNextTrack
-                  ? html`<ui-icon
+                  ? html`<ui-icon-button
                       name="next"
                       title="${msg('下一首')}"
                       size="18px"
                       ?disabled="${!snapshot.canNextTrack || this.disabled}"
                       @click="${this._nextTrack}"
-                    ></ui-icon>`
+                    ></ui-icon-button>`
                   : ''}
               </div>
 
@@ -712,12 +714,12 @@ export class MediaPlayer extends LitElement {
                 ${this.controlsConfig.volume
                   ? html`
                       <div class="volume-control">
-                        <ui-icon
+                        <ui-icon-button
                           title="${msg('音量')}"
                           name="${snapshot.volume === 0 ? 'volume-close' : 'volume'}"
                           size="16px"
                           @click="${this._toggleMute}"
-                        ></ui-icon>
+                        ></ui-icon-button>
                         <ui-slider
                           class="volume-slider"
                           ?disabled="${this.disabled}"
@@ -736,22 +738,22 @@ export class MediaPlayer extends LitElement {
                   : ''}
 
                 <!-- Settings drawer button -->
-                <ui-icon
+                <ui-icon-button
                   name="setting"
                   class="settings-toggle-btn ${this._showSettings ? 'active' : ''}"
                   title="${msg('高级设置')}"
                   size="18px"
                   @click="${this._toggleSettings}"
-                ></ui-icon>
+                ></ui-icon-button>
 
                 <!-- Change Mode button -->
                 ${this.controlsConfig.switchMode
-                  ? html`<ui-icon
+                  ? html`<ui-icon-button
                       name="media"
                       title="${msg('切换模式')}"
                       size="18px"
                       @click="${this._cycleMode}"
-                    ></ui-icon> `
+                    ></ui-icon-button> `
                   : ''}
               </div>
             </div>

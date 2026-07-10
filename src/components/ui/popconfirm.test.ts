@@ -121,4 +121,50 @@ describe('ui-popconfirm', () => {
     await el.updateComplete;
     expect(getPopup() ?? null).toBeNull();
   });
+
+  it('does not close when trigger is clicked again while open', async () => {
+    const el = await renderPopconfirm();
+    const trigger = el.shadowRoot?.querySelector('.trigger');
+
+    trigger?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await el.updateComplete;
+    await flushUpdates();
+    expect(getPopup()).not.toBeNull();
+
+    trigger?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await el.updateComplete;
+    await flushUpdates();
+    expect(getPopup()).not.toBeNull();
+  });
+
+  it('closes on outside mousedown when trigger is click', async () => {
+    const el = await renderPopconfirm();
+    el.shadowRoot
+      ?.querySelector('.trigger')
+      ?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await el.updateComplete;
+    await flushUpdates();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(getPopup()).not.toBeNull();
+
+    window.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    await el.updateComplete;
+    expect(getPopup() ?? null).toBeNull();
+  });
+
+  it('does not close on outside mousedown when trigger is hover', async () => {
+    const el = await renderPopconfirm(html`
+      <ui-popconfirm title="Delete?" trigger="hover"><button>Delete</button></ui-popconfirm>
+    `);
+    const trigger = el.shadowRoot?.querySelector('.trigger');
+    trigger?.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    await el.updateComplete;
+    await flushUpdates();
+    expect(getPopup()).not.toBeNull();
+
+    window.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    await el.updateComplete;
+    expect(getPopup()).not.toBeNull();
+  });
 });

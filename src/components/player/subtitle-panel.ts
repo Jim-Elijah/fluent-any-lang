@@ -10,6 +10,7 @@ import type {
 import { formatTime } from '../../lib/playback-utils.js';
 import '../ui/button.js';
 import '../ui/icon.js';
+import '../ui/tooltip.js';
 import { isControlledOpen } from '../ui/internal/controlled-state.js';
 import { OverlayController } from '../ui/internal/overlay-controller.js';
 
@@ -533,31 +534,44 @@ export class SubtitlePanel extends LitElement {
         <div class="header title-row">
           <h3 class="title">${msg('字幕')}</h3>
           ${snapshot.hasSubtitles
-            ? html`<ui-button variant="ghost" @click="${this._toggleSubtitles}">
-                <ui-icon
-                  size="20px"
-                  name="${snapshot.subtitlesVisible ? 'subtitle-off' : 'subtitle'}"
-                  title="${snapshot.subtitlesVisible ? msg('隐藏字幕') : msg('显示字幕')}"
-                ></ui-icon>
-              </ui-button>`
+            ? html`<ui-tooltip
+                title="${snapshot.subtitlesVisible ? msg('隐藏字幕') : msg('显示字幕')}"
+              >
+                <ui-button
+                  variant="ghost"
+                  aria-label="${snapshot.subtitlesVisible ? msg('隐藏字幕') : msg('显示字幕')}"
+                  @click="${this._toggleSubtitles}"
+                >
+                  <ui-icon
+                    size="20px"
+                    name="${snapshot.subtitlesVisible ? 'subtitle-off' : 'subtitle'}"
+                  ></ui-icon>
+                </ui-button>
+              </ui-tooltip>`
             : ''}
           ${snapshot.hasSubtitles && snapshot.subtitlesVisible && hasTranslation
-            ? html`<ui-button variant="ghost" @click="${this._toggleTranslationVisible}">
-                <ui-icon
-                  size="20px"
-                  name="translate"
-                  title="${this._translationVisible ? msg('隐藏翻译') : msg('显示翻译')}"
-                ></ui-icon>
-              </ui-button>`
+            ? html`<ui-tooltip
+                title="${this._translationVisible ? msg('隐藏翻译') : msg('显示翻译')}"
+              >
+                <ui-button
+                  variant="ghost"
+                  aria-label="${this._translationVisible ? msg('隐藏翻译') : msg('显示翻译')}"
+                  @click="${this._toggleTranslationVisible}"
+                >
+                  <ui-icon size="20px" name="translate"></ui-icon>
+                </ui-button>
+              </ui-tooltip>`
             : ''}
           ${snapshot.hasSubtitles && snapshot.subtitlesVisible && this.showFullscreenIcon
-            ? html`<ui-button variant="ghost" @click="${this._toggleFullscreen}">
-                <ui-icon
-                  size="20px"
-                  name="sort"
-                  title="${this._isFullscreen() ? msg('退出全屏') : msg('全屏')}"
-                ></ui-icon>
-              </ui-button>`
+            ? html`<ui-tooltip title="${this._isFullscreen() ? msg('退出全屏') : msg('全屏')}">
+                <ui-button
+                  variant="ghost"
+                  aria-label="${this._isFullscreen() ? msg('退出全屏') : msg('全屏')}"
+                  @click="${this._toggleFullscreen}"
+                >
+                  <ui-icon size="20px" name="sort"></ui-icon>
+                </ui-button>
+              </ui-tooltip>`
             : ''}
         </div>
         ${!snapshot.subtitlesVisible

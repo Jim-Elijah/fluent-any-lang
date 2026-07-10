@@ -4,7 +4,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const SAMPLE_SPRITE =
   "<svg><symbol id='icon-play' viewBox='0 0 24 24'><path d='M0 0'/></symbol></svg>";
 
-import './tooltip.js';
 import './icon-registry.js';
 import './icon.js';
 import { UIIcon } from './icon.js';
@@ -22,7 +21,7 @@ describe('ui-icon', () => {
     cleanup = undefined;
   });
 
-  async function renderIcon(template = html`<ui-icon name="play" title="Play"></ui-icon>`) {
+  async function renderIcon(template = html`<ui-icon name="play"></ui-icon>`) {
     const result = mount(template);
     cleanup = result.cleanup;
     const el = result.container.querySelector('ui-icon') as UIIcon;
@@ -34,7 +33,7 @@ describe('ui-icon', () => {
     const el = await renderIcon();
     await el.updateComplete;
     expect(el.shadowRoot?.querySelector('svg')).not.toBeNull();
-    expect(el.shadowRoot?.querySelector('ui-tooltip')).not.toBeNull();
+    expect(el.shadowRoot?.querySelector('ui-tooltip')).toBeNull();
   });
 
   it('renders nothing when name is empty', async () => {
@@ -43,24 +42,13 @@ describe('ui-icon', () => {
     expect(el.shadowRoot?.querySelector('svg')).toBeNull();
   });
 
-  it('applies disabled class and skips custom click event', async () => {
-    const el = await renderIcon(html`<ui-icon name="play" disabled></ui-icon>`);
-    await el.updateComplete;
-    const clickHandler = vi.fn();
-    el.addEventListener('click', clickHandler);
-    el.shadowRoot?.querySelector('svg')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    expect(el.shadowRoot?.querySelector('svg')?.classList.contains('disabled')).toBe(true);
-    expect(clickHandler).not.toHaveBeenCalled();
-  });
-
-  it('dispatches click event with icon name when enabled', async () => {
+  it('does not dispatch click events', async () => {
     const el = await renderIcon();
     await el.updateComplete;
     const clickHandler = vi.fn();
     el.addEventListener('click', clickHandler);
     el.shadowRoot?.querySelector('svg')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    expect(clickHandler).toHaveBeenCalledOnce();
-    expect(clickHandler.mock.calls[0][0].detail).toBe('play');
+    expect(clickHandler).not.toHaveBeenCalled();
   });
 
   it('applies custom size style', async () => {

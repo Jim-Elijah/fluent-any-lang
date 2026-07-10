@@ -96,7 +96,7 @@ export class ContentImporter extends LitElement {
         <p class="hint">${msg('拖拽或选择音频与字幕（字幕支持.srt与.lrc）')}</p>
         <div class="actions">
           <ui-button variant="primary" ?disabled="${this._importing}" @click="${this._openPicker}">
-            <ui-icon name="upload" size="20px" title="${msg('选择文件')}"></ui-icon>
+            <ui-icon name="upload" size="20px"></ui-icon>
           </ui-button>
         </div>
         <!-- @TODO 支持 video/* -->
