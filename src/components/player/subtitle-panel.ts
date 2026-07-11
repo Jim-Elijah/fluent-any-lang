@@ -402,8 +402,16 @@ export class SubtitlePanel extends LitElement {
     }
   }
 
+  private _getActiveSegmentIndex(snapshot: MediaControllerSnapshot): number {
+    if (this.echoMode && this.echoRecordingSegmentIndex >= 0) {
+      return this.echoRecordingSegmentIndex;
+    }
+    return snapshot.currentSegmentIndex;
+  }
+
   protected updated(changed: PropertyValues): void {
-    const index = this._controllerHost?.snapshot.currentSegmentIndex ?? -1;
+    const snapshot = this._controllerHost?.snapshot;
+    const index = snapshot ? this._getActiveSegmentIndex(snapshot) : -1;
     if (index !== this._lastScrolledIndex) {
       this._lastScrolledIndex = index;
       this._scrollActiveIntoView(index);
@@ -535,11 +543,12 @@ export class SubtitlePanel extends LitElement {
     snapshot: MediaControllerSnapshot,
     listClass = 'list',
   ): TemplateResult {
+    const activeIndex = this._getActiveSegmentIndex(snapshot);
     return html`<ul class="${listClass}">
       ${snapshot.segments.map(
         (segment, index) => html`
           <li
-            class="segment ${index === snapshot.currentSegmentIndex ? 'active' : ''}"
+            class="segment ${index === activeIndex ? 'active' : ''}"
             data-segment-index="${index}"
             @click="${() => this._handleSegmentClick(index)}"
           >

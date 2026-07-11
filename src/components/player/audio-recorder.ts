@@ -6,6 +6,7 @@ import { MediaController } from '../../controllers/media-controller.js';
 import { WaveformController } from '../../controllers/waveform-controller.js';
 import { AudioRecorderController } from '../../lib/audio-recorder.js';
 import { ExtendedMediaEventType } from '../../lib/playback-utils.js';
+import { runRecordingCountdown } from '../ui/countdown-overlay.js';
 import type { PracticeSegment, SubtitleSegment } from '../../types/models.js';
 import '../ui/alert.js';
 import '../ui/icon.js';
@@ -86,6 +87,12 @@ export class AudioRecorder extends LitElement {
 
   @property({ attribute: false })
   beforeRecordingStart?: () => void;
+
+  @property({ type: Boolean })
+  countdownBeforeStart = true;
+
+  @property({ type: Number })
+  countdownSeconds = 3;
 
   @state()
   private _recording = false;
@@ -259,6 +266,14 @@ export class AudioRecorder extends LitElement {
 
     this._recordingError = '';
     this._stopReason = 'manual';
+
+    if (this.countdownBeforeStart) {
+      try {
+        await runRecordingCountdown({ seconds: this.countdownSeconds });
+      } catch {
+        return;
+      }
+    }
 
     try {
       await this._audioRecorder.start();

@@ -5,7 +5,6 @@ import { html } from 'lit';
 import { str } from '@lit/localize';
 
 export const templates = {
-  h5ca3162680bccfa8: html`正在同步播放片段 <strong>${0} / ${1}</strong>`,
   s0113509f303fe7f5: `目前儲存`,
   s05cfc6cafa28b482: `2. 如果跟不上原音，可以設置倍速、單句暫停模式。`,
   s06621a009d96f70b: `聽力練習`,
@@ -23,6 +22,7 @@ export const templates = {
   s12126b08970bc567: `剩餘`,
   s12e7c38472490ec1: `下一句`,
   s131dd08472a4e6d8: `下一首`,
+  s15b0aaabcef3f44d: `以後跳過倒數`,
   s15e8bb089a90e6bd: `關閉`,
   s180efd2ba9d4c7ed: `任意語言的聽說練習平台。匯入音訊與字幕，即可開始練習。`,
   s22d17da692264656: str`${0} 個內容已匯入`,
@@ -95,9 +95,11 @@ export const templates = {
   sc714bb29042df8b7: `部分檔案匯入失敗：`,
   sc75f260857a59051: `確定`,
   scdd07a0935dbe208: `語言`,
+  sce48874caca5fd31: `倒數結束後請跟讀`,
   scee43ea65ebdf297: `暫無錄音`,
   scf0a67e2e2c59a42: `目前音訊的已保存錄音`,
   sd0144e085eeb8776: `練習`,
+  sd0af32cc43a284e7: `開始！`,
   sd5e9ab093d8a68f8: `影片`,
   sd6b69523824af28a: `4. 除了倍速、音量、單句暫停模式，跟讀模式會忽略其他的播放器設置。`,
   sd6dc9fcfd0eceb1e: `錄音庫`,
@@ -125,6 +127,8 @@ export const templates = {
   sf963b9095b733075: `降序`,
   sf9d9e3b381776b16: `含字幕`,
   sfc80b5c79424583c: `未選擇媒體`,
+  h3a9e2536cd23b555: html`正在播放片段${0}`,
+  h01c1e14ddec5eda4: html`正在同步播放片段${0}`,
   scad6e385d22d3258: `无法定位到字幕句子`,
   s76aa2863a0cc096c: `该句无录音，无法同步播放`,
   s0f6ad508942e8ee7: `原音`,

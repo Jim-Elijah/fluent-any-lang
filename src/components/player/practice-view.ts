@@ -649,6 +649,7 @@ export class PracticeView extends LitElement {
     this._echoSegmentIndex = segmentIndex;
     this._echoSegment = segment;
     this._recordingError = '';
+    this._echoRecorderEl?.clearWaveform();
     this._resetSettingsForEcho();
     this._echoListening = true;
     this._controller.addEventListener(

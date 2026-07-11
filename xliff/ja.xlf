@@ -470,11 +470,6 @@
   <source>4. 除了倍速、音量、单句暂停模式，跟读模式会忽略其他的播放器设置。</source>
 <target>4. 速度、音量、単一文の一時停止モード以外のプレイヤー設定は、シャドーイングモードでは無視されます。</target>
 </trans-unit>
-<trans-unit id="h5ca3162680bccfa8">
-  <source>正在同步播放片段
-            <x id="0" equiv-text="&lt;strong&gt;${this._syncSegmentIndex + 1}"/> / <x id="1" equiv-text="${this.segments.length}&lt;/strong&gt;"/></source>
-<target>セグメントを同期再生中 <x id="0" equiv-text="&lt;strong&gt;${this._syncSegmentIndex + 1}"/> / <x id="1" equiv-text="${this.segments.length}&lt;/strong&gt;"/></target>
-</trans-unit>
 <trans-unit id="s83f5e5b64fb28eac">
   <source>媒体 "<x id="0" equiv-text="${this._mediaId}"/>" 不存在，回退到第一首媒体。</source>
 <target>メディア "<x id="0" equiv-text="${this._mediaId}"/>" が存在しません。最初のメディアに戻ります。</target>
@@ -531,6 +526,24 @@
 <trans-unit id="s1560390899c2ee48">
   <source>全屏</source>
 </trans-unit>
+<trans-unit id="h3a9e2536cd23b555">
+  <source>正在播放片段<x id="0" equiv-text="${segmentLabel}"/></source>
+</trans-unit>
+<trans-unit id="h01c1e14ddec5eda4">
+  <source>正在同步播放片段<x id="0" equiv-text="${segmentLabel}"/></source>
+</trans-unit>
+<trans-unit id="sce48874caca5fd31">
+  <source>倒计时结束后请跟读</source>
+  <target>カウントダウン終了後に読み上げてください</target>
+  </trans-unit>
+<trans-unit id="sd0af32cc43a284e7">
+  <source>开始！</source>
+  <target>スタート！</target>
+  </trans-unit>
+<trans-unit id="s15b0aaabcef3f44d">
+  <source>以后跳过倒计时</source>
+  <target>今後カウントダウンをスキップする</target>
+  </trans-unit>
 </body>
 </file>
 </xliff>

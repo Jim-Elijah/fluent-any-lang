@@ -155,8 +155,10 @@ describe('audio-recorder component', () => {
     globalThis.AudioContext = originalAudioContext;
   });
 
-  async function renderRecorder() {
-    const result = mount(html`<audio-recorder></audio-recorder>`);
+  async function renderRecorder(countdownBeforeStart = false) {
+    const result = mount(
+      html`<audio-recorder .countdownBeforeStart=${countdownBeforeStart}></audio-recorder>`,
+    );
     cleanup = result.cleanup;
     const el = result.container.querySelector('audio-recorder') as AudioRecorder;
     await el.updateComplete;
@@ -213,5 +215,45 @@ describe('audio-recorder component', () => {
 
     expect(el.shadowRoot?.querySelector('waveform-player')).toBeNull();
     expect(el.shadowRoot?.querySelector('ui-icon')?.getAttribute('name')).toBe('micro-on');
+  });
+
+  it('waits for countdown before starting recorder', async () => {
+    vi.useFakeTimers();
+    localStorage.clear();
+
+    const el = await renderRecorder(true);
+    const startPromise = el.startRecording();
+    await el.updateComplete;
+
+    expect(lastRecorder).toBeNull();
+    expect(document.querySelector('ui-countdown-overlay')).not.toBeNull();
+
+    await vi.advanceTimersByTimeAsync(3000);
+    await vi.advanceTimersByTimeAsync(400);
+    await startPromise;
+    await el.updateComplete;
+
+    expect(lastRecorder).not.toBeNull();
+    expect(document.querySelector('ui-countdown-overlay')).toBeNull();
+    vi.useRealTimers();
+  });
+
+  it('does not start recorder when countdown is cancelled', async () => {
+    vi.useFakeTimers();
+    localStorage.clear();
+
+    const el = await renderRecorder(true);
+    const startPromise = el.startRecording();
+    await el.updateComplete;
+
+    const overlay = document.querySelector('ui-countdown-overlay') as {
+      cancel: () => void;
+    };
+    overlay.cancel();
+    await startPromise;
+    await el.updateComplete;
+
+    expect(lastRecorder).toBeNull();
+    vi.useRealTimers();
   });
 });
