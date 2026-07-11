@@ -154,6 +154,11 @@ export class DualTrackPlayback {
   };
 
   private _handleRecordingTimeUpdate = (): void => {
+    if (this.mode === 'sync') {
+      this._checkSyncSegmentBoundary();
+      return;
+    }
+
     if (this.mode !== 'recording') {
       return;
     }
@@ -230,17 +235,27 @@ export class DualTrackPlayback {
     const segment = this._syncSegment;
     const index = this._syncSegmentIndex;
     const sourceTime = this.sourceAudio.currentTime;
+    const recordingTime = this.recordingAudio.currentTime;
 
-    if (sourceTime >= segment.sourceEndTime - SYNC_END_EPSILON) {
+    const sourceAtEnd = sourceTime >= segment.sourceEndTime - SYNC_END_EPSILON;
+    const recordingAtEnd = recordingTime >= segment.recordingEndTime - SYNC_END_EPSILON;
+
+    if (sourceAtEnd && !this.sourceAudio.paused) {
       this.sourceAudio.pause();
+    }
+    if (recordingAtEnd && !this.recordingAudio.paused) {
       this.recordingAudio.pause();
+    }
 
-      const nextIndex = index + 1;
-      if (nextIndex < this.segments.length) {
-        this._startSyncSegment(nextIndex);
-      } else {
-        this.stop();
-      }
+    if (!sourceAtEnd || !recordingAtEnd) {
+      return;
+    }
+
+    const nextIndex = index + 1;
+    if (nextIndex < this.segments.length) {
+      this._startSyncSegment(nextIndex);
+    } else {
+      this.stop();
     }
   }
 
@@ -251,14 +266,18 @@ export class DualTrackPlayback {
 
     const segment = this._syncSegment;
     const sourceTime = this.sourceAudio.currentTime;
+    const recordingTime = this.recordingAudio.currentTime;
 
     if (sourceTime >= segment.sourceEndTime - SYNC_END_EPSILON) {
+      return;
+    }
+    if (recordingTime >= segment.recordingEndTime - SYNC_END_EPSILON) {
       return;
     }
 
     const sourceElapsed = sourceTime - segment.sourceStartTime;
     const expectedRecordingTime = segment.recordingStartTime + sourceElapsed;
-    const drift = Math.abs(this.recordingAudio.currentTime - expectedRecordingTime);
+    const drift = Math.abs(recordingTime - expectedRecordingTime);
     if (drift > SYNC_DRIFT_THRESHOLD) {
       this.recordingAudio.currentTime = expectedRecordingTime;
     }

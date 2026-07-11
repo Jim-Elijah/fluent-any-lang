@@ -6,6 +6,8 @@ import {
   findCrossedSegmentEnd,
   findPracticeSegmentIndex,
   findSegmentIndex,
+  getLongerPracticeAxis,
+  getPracticeSegmentDuration,
   getPracticeSourceDuration,
   getPracticeSourceSpan,
   getPracticeRecordingSpan,
@@ -147,6 +149,37 @@ describe('getPracticeSourceDuration', () => {
 
   it('returns span length for multiple segments', () => {
     expect(getPracticeSourceDuration(samplePracticeSegments)).toBe(15);
+  });
+});
+
+describe('getPracticeSegmentDuration', () => {
+  it('returns segment length on the requested axis', () => {
+    expect(getPracticeSegmentDuration(samplePracticeSegments[0], 'source')).toBe(5);
+    expect(getPracticeSegmentDuration(samplePracticeSegments[0], 'recording')).toBe(4.5);
+  });
+});
+
+describe('getLongerPracticeAxis', () => {
+  it('prefers source when durations are equal', () => {
+    const segment: PracticeSegment = {
+      id: 'equal',
+      sourceStartTime: 0,
+      sourceEndTime: 5,
+      recordingStartTime: 0,
+      recordingEndTime: 5,
+    };
+    expect(getLongerPracticeAxis(segment)).toBe('source');
+  });
+
+  it('returns recording when the recording segment is longer', () => {
+    const segment: PracticeSegment = {
+      id: 'long-recording',
+      sourceStartTime: 10,
+      sourceEndTime: 11,
+      recordingStartTime: 0,
+      recordingEndTime: 2,
+    };
+    expect(getLongerPracticeAxis(segment)).toBe('recording');
   });
 });
 

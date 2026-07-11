@@ -166,6 +166,22 @@ export function getPracticeRecordingSpan(
 
 export type PracticeTimeAxis = 'source' | 'recording';
 
+export function getPracticeSegmentDuration(
+  segment: PracticeSegment,
+  axis: PracticeTimeAxis,
+): number {
+  const startKey = axis === 'source' ? 'sourceStartTime' : 'recordingStartTime';
+  const endKey = axis === 'source' ? 'sourceEndTime' : 'recordingEndTime';
+  return Math.max(0, segment[endKey] - segment[startKey]);
+}
+
+/** Returns the time axis with the longer duration for a practice segment. Ties prefer source. */
+export function getLongerPracticeAxis(segment: PracticeSegment): PracticeTimeAxis {
+  const sourceDuration = getPracticeSegmentDuration(segment, 'source');
+  const recordingDuration = getPracticeSegmentDuration(segment, 'recording');
+  return recordingDuration > sourceDuration ? 'recording' : 'source';
+}
+
 /** Map a timestamp from one practice axis to the other via segment alignment. */
 export function mapPracticeTime(
   time: number,

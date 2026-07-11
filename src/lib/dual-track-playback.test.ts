@@ -118,4 +118,56 @@ describe('DualTrackPlayback', () => {
     source.dispatchEvent(new Event('ended'));
     expect(controller.getState().mode).toBe('idle');
   });
+
+  it('waits for the longer recording segment before ending sync playback', async () => {
+    const longRecordingSegment: PracticeSegment = {
+      id: 'long-recording',
+      sourceStartTime: 0,
+      sourceEndTime: 1,
+      recordingStartTime: 0,
+      recordingEndTime: 2,
+    };
+    controller.setSegments([longRecordingSegment]);
+    await controller.playSyncFromSegment(0);
+    Object.defineProperty(source, 'paused', { configurable: true, value: false });
+    Object.defineProperty(recording, 'paused', { configurable: true, value: false });
+    vi.mocked(source.pause).mockClear();
+    vi.mocked(recording.pause).mockClear();
+
+    source.currentTime = 1;
+    source.dispatchEvent(new Event('timeupdate'));
+    expect(controller.getState().mode).toBe('sync');
+    expect(source.pause).toHaveBeenCalled();
+    expect(recording.pause).not.toHaveBeenCalled();
+
+    recording.currentTime = 2;
+    recording.dispatchEvent(new Event('timeupdate'));
+    expect(controller.getState().mode).toBe('idle');
+  });
+
+  it('waits for the longer source segment before ending sync playback', async () => {
+    const longSourceSegment: PracticeSegment = {
+      id: 'long-source',
+      sourceStartTime: 0,
+      sourceEndTime: 2,
+      recordingStartTime: 0,
+      recordingEndTime: 1,
+    };
+    controller.setSegments([longSourceSegment]);
+    await controller.playSyncFromSegment(0);
+    Object.defineProperty(source, 'paused', { configurable: true, value: false });
+    Object.defineProperty(recording, 'paused', { configurable: true, value: false });
+    vi.mocked(source.pause).mockClear();
+    vi.mocked(recording.pause).mockClear();
+
+    recording.currentTime = 1;
+    recording.dispatchEvent(new Event('timeupdate'));
+    expect(controller.getState().mode).toBe('sync');
+    expect(recording.pause).toHaveBeenCalled();
+    expect(source.pause).not.toHaveBeenCalled();
+
+    source.currentTime = 2;
+    source.dispatchEvent(new Event('timeupdate'));
+    expect(controller.getState().mode).toBe('idle');
+  });
 });

@@ -131,8 +131,11 @@ export class WaveformPlayer extends LitElement {
   };
   private _resizeObserver: ResizeObserver | null = null;
   private _suppressClick = false;
+  private _pendingClickId: ReturnType<typeof setTimeout> | null = null;
+  private static readonly CLICK_DELAY_MS = 250;
 
   disconnectedCallback(): void {
+    this._clearPendingClick();
     this._teardownObservers();
     window.removeEventListener('mouseup', this._handleWindowMouseUp);
     super.disconnectedCallback();
@@ -170,6 +173,7 @@ export class WaveformPlayer extends LitElement {
         class=${canvasClass}
         @mousedown=${this._handleMouseDown}
         @mousemove=${this._handleMouseMove}
+        @dblclick=${this._handleDoubleClick}
         @click=${this._handleClick}
       ></canvas>
       ${tracks.length > 1
@@ -578,15 +582,46 @@ export class WaveformPlayer extends LitElement {
         start: Math.min(startTime, endTime),
         end: Math.max(startTime, endTime),
       });
-    } else {
-      controller.setViewRange(null);
     }
 
     this._viewSelect.active = false;
     this._renderCanvas();
   };
 
-  private _handleClick = async (event: MouseEvent): Promise<void> => {
+  private _handleDoubleClick = (): void => {
+    if (!this.interactive) {
+      return;
+    }
+
+    this._clearPendingClick();
+    this.controller?.setViewRange(null);
+  };
+
+  private _clearPendingClick(): void {
+    if (this._pendingClickId !== null) {
+      clearTimeout(this._pendingClickId);
+      this._pendingClickId = null;
+    }
+  }
+
+  private _handleClick = (event: MouseEvent): void => {
+    if (!this.interactive) {
+      return;
+    }
+
+    if (this._suppressClick) {
+      this._suppressClick = false;
+      return;
+    }
+
+    this._clearPendingClick();
+    this._pendingClickId = setTimeout(() => {
+      this._pendingClickId = null;
+      void this._performClick(event);
+    }, WaveformPlayer.CLICK_DELAY_MS);
+  };
+
+  private async _performClick(event: MouseEvent): Promise<void> {
     if (!this.interactive) {
       return;
     }
@@ -634,7 +669,7 @@ export class WaveformPlayer extends LitElement {
     controller.setActiveId(target.id);
     controller.seek(clamped);
     await controller.play();
-  };
+  }
 }
 
 declare global {

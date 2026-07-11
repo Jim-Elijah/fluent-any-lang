@@ -6,6 +6,7 @@ import { DualTrackPlayback, type DualTrackMode } from '../../lib/dual-track-play
 import {
   findPracticeSegmentIndex,
   findSegmentIndex,
+  getLongerPracticeAxis,
   getPracticeRecordingSpan,
   getPracticeSourceSpan,
   mapPracticeViewRange,
@@ -255,34 +256,25 @@ export class RecordingPreview extends LitElement {
     }
 
     const { trackId, time } = event.detail;
-    let segmentIndex: number;
+    if (trackId !== this._sourceTrackId && trackId !== this._recordingTrackId) {
+      return;
+    }
 
-    if (trackId === this._sourceTrackId) {
-      if (this.subtitleSegments.length > 0) {
-        const subtitleIndex = findSegmentIndex(this.subtitleSegments, time);
-        if (subtitleIndex < 0) {
-          Message.warning(msg('无法定位到字幕句子'));
-          return;
-        }
-        const subtitle = this.subtitleSegments[subtitleIndex];
-        segmentIndex = this.segments.findIndex((segment) => segment.id === subtitle.id);
-        if (segmentIndex < 0) {
-          /** @TODO why?  segment gap?  */
-          Message.info(msg('该句无录音，无法同步播放'));
-          return;
-        }
-      } else {
-        segmentIndex = findPracticeSegmentIndex(this.segments, time, 'source');
-        if (segmentIndex < 0) {
-          return;
-        }
-      }
-    } else if (trackId === this._recordingTrackId) {
-      segmentIndex = findPracticeSegmentIndex(this.segments, time, 'recording');
-      if (segmentIndex < 0) {
+    const axis = trackId === this._recordingTrackId ? 'recording' : 'source';
+    let segmentIndex = findPracticeSegmentIndex(this.segments, time, axis);
+    if (segmentIndex < 0 && axis === 'source' && this.subtitleSegments.length > 0) {
+      const subtitleIndex = findSegmentIndex(this.subtitleSegments, time);
+      if (subtitleIndex < 0) {
+        Message.warning(msg('无法定位到字幕句子'));
         return;
       }
-    } else {
+      const subtitle = this.subtitleSegments[subtitleIndex];
+      segmentIndex = this.segments.findIndex((segment) => segment.id === subtitle.id);
+      if (segmentIndex < 0) {
+        Message.info(msg('该句无录音，无法同步播放'));
+        return;
+      }
+    } else if (segmentIndex < 0) {
       return;
     }
 
@@ -373,6 +365,19 @@ export class RecordingPreview extends LitElement {
 
     return viewRange;
   };
+
+  private _setSyncActiveTrack(segmentIndex: number): void {
+    const segment = this.segments[segmentIndex];
+    if (!segment) {
+      return;
+    }
+
+    const longerAxis = getLongerPracticeAxis(segment);
+    const activeTrackId = longerAxis === 'recording' ? this._recordingTrackId : this._sourceTrackId;
+    if (activeTrackId) {
+      this._controller.setActiveId(activeTrackId);
+    }
+  }
 
   private _zoomToPracticeSegment(segmentIndex: number): void {
     const segment = this.segments[segmentIndex];
@@ -493,8 +498,8 @@ export class RecordingPreview extends LitElement {
         if (this.segments.length > 0) {
           this._zoomToPracticeSegment(state.syncSegmentIndex);
         }
-      } else if (state.mode === 'sync' && this._sourceTrackId) {
-        this._controller.setActiveId(this._sourceTrackId);
+      } else if (state.mode === 'sync') {
+        this._setSyncActiveTrack(state.syncSegmentIndex);
         this._zoomToPracticeSegment(state.syncSegmentIndex);
       }
     });

@@ -188,4 +188,21 @@ describe('recording-preview', () => {
     expect(infoSpy).toHaveBeenCalled();
     expect(playSyncFromSegment).not.toHaveBeenCalled();
   });
+
+  it('keeps sync seek on the zoomed segment instead of jumping via full-span time', async () => {
+    const el = await renderPreview();
+    const playSyncFromSegment = vi.fn().mockResolvedValue(undefined);
+
+    el._playback = createPlaybackMock(playSyncFromSegment);
+    el._sourceTrackId = 'source-1';
+    el._recordingTrackId = 'rec-1';
+    el._playMode = 'sync';
+    el.subtitleSegments = sampleSegments;
+    el.segments = samplePracticeSegments;
+    await el.updateComplete;
+
+    dispatchSeek(el, 4.5);
+
+    expect(playSyncFromSegment).toHaveBeenCalledWith(0);
+  });
 });
