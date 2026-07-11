@@ -41,7 +41,7 @@ export type SubtitleTrack = {
   segments: SubtitleSegment[];
 };
 
-export type PracticeMode = 'repeat' | 'shadowing';
+export type PracticeMode = 'shadowing' | 'echo';
 
 // 录音与原始音频每一片段的对应关系，用于对比回放（时间单位为秒）
 export type PracticeSegment = {
@@ -58,10 +58,12 @@ export type PracticeRecord = {
   mediaId: string;
   mediaTitle: string;
   mediaFilename: string;
-  mode: 'shadowing';
+  mode: PracticeMode;
+  /** echo 模式：对应的字幕句 id，便于按句查询 */
+  segmentId?: string;
   mimeType: string;
   createdAt: number;
-  sourceDuration: number; // 原始音频时长
+  sourceDuration: number; // 本次练习覆盖的原音时长（秒），即 segments 首尾在原音时间轴上的跨度
   recordingDuration: number; // 录音时长
   segments: PracticeSegment[];
 };
@@ -123,6 +125,7 @@ export interface RouteContext {
 
 export type AppSettings = {
   maxRecordingsPerMedia: number;
+  maxEchoPerSegment: number;
   maxStorageMB: number;
   lowStorageThresholdPercent: number;
   repeatPausePercent: number;
@@ -130,6 +133,7 @@ export type AppSettings = {
 
 export const DEFAULT_SETTINGS: AppSettings = {
   maxRecordingsPerMedia: 5,
+  maxEchoPerSegment: 10,
   maxStorageMB: 200,
   lowStorageThresholdPercent: 10,
   repeatPausePercent: 100,

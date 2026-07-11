@@ -6,6 +6,7 @@ import { arrowStyles } from './internal/arrow-styles.js';
 import { isControlledOpen } from './internal/controlled-state.js';
 import { OverlayController } from './internal/overlay-controller.js';
 import { computePlacement4, arrowSideForPlacement } from './internal/placement.js';
+import { Z_INDEX } from './internal/z-index.js';
 
 export type TooltipTriggerType = 'click' | 'hover';
 
@@ -77,7 +78,7 @@ export class UiTooltip extends LitElement {
   @property() color = '';
   @property({ type: Boolean, attribute: 'destroy-on-close' }) destroyOnClose = false;
   @property({ type: Boolean, attribute: 'close-on-esc' }) closeOnEsc = true;
-  @property({ type: Number, attribute: 'z-index' }) zIndex = 1070;
+  @property({ type: Number, attribute: 'z-index' }) zIndex = Z_INDEX.TOOLTIP;
 
   /** 鼠标移入后延时显示，单位：秒（antd mouseEnterDelay） */
   @property({ type: Number, attribute: 'mouse-enter-delay' }) mouseEnterDelay =

@@ -14,10 +14,6 @@
   <source>导入练习内容</source>
   <target>Import practice content</target>
   </trans-unit>
-<trans-unit id="s0dd9d854cdf22192">
-  <source>选择文件</source>
-  <target>Choose files</target>
-  </trans-unit>
 <trans-unit id="sc714bb29042df8b7">
   <source>部分文件导入失败：</source>
   <target>Some files failed to import:</target>
@@ -218,18 +214,6 @@
   <source>当前浏览器不支持录音。</source>
 <target>Audio recording is not supported in this browser.</target>
   </trans-unit>
-<trans-unit id="s0608efee9a487d9b">
-  <source>停止录音</source>
-<target>Stop Recording</target>
-  </trans-unit>
-<trans-unit id="s5a466d18b932e208">
-  <source>开始录音</source>
-<target>Start Recording</target>
-  </trans-unit>
-<trans-unit id="sa8543fad6d53e6f0">
-  <source>正在录音…</source>
-<target>Recording…</target>
-  </trans-unit>
 <trans-unit id="seb23a966a2c436d4">
   <source>录音已保存</source>
 <target>Recording saved</target>
@@ -245,10 +229,6 @@
 <trans-unit id="s8b9445de9e1ddfa3">
   <source>磁盘存储空间不足，建议导出或删除旧录音。</source>
 <target>Low disk space. We recommend exporting or deleting old recordings.</target>
-  </trans-unit>
-<trans-unit id="sc7c442d8145f83c7">
-  <source>录音已达上限。</source>
-<target>Recording limit reached.</target>
   </trans-unit>
 <trans-unit id="sa51509d5238300c9">
   <source>未能开启麦克风，请检查权限。</source>
@@ -361,10 +341,6 @@
   <source>录音失败，请重试。</source>
 <target>Recording failed. Please try again.</target>
   </trans-unit>
-<trans-unit id="sc30ed748a9fd3f37">
-  <source>当前音频的录音已达上限（<x id="0" equiv-text="${this._recordingLimit}"/>条），删除旧录音后可继续。</source>
-<target>Recordings for this audio have reached the limit (<x id="0" equiv-text="${this._recordingLimit}"/>). Delete old recordings to continue.</target>
-  </trans-unit>
 <trans-unit id="scf0a67e2e2c59a42">
   <source>当前音频的已保存录音</source>
 <target>Saved recordings for this audio</target>
@@ -380,10 +356,6 @@
 <trans-unit id="s180efd2ba9d4c7ed">
   <source>任意语言的听说练习平台。导入音频与字幕，即可开始练习。</source>
 <target>A listening and speaking practice platform for any language. Import audio and subtitles to get started.</target>
-  </trans-unit>
-<trans-unit id="sef6c4f94212fe9f2">
-  <source>采用跟读模式练习，点击以下「麦克风图标」并跟随播放语音，停止录音后会自动保存。</source>
-<target>Practice in shadowing mode: click the microphone icon below, shadow the audio, and the recording will save automatically when stopped.</target>
   </trans-unit>
 <trans-unit id="s06621a009d96f70b">
   <source>听力练习</source>
@@ -510,6 +482,54 @@
   <source>音量</source>
   <target>Volume</target>
   </trans-unit>
+<trans-unit id="scad6e385d22d3258">
+  <source>无法定位到字幕句子</source>
+</trans-unit>
+<trans-unit id="s76aa2863a0cc096c">
+  <source>该句无录音，无法同步播放</source>
+</trans-unit>
+<trans-unit id="s0f6ad508942e8ee7">
+  <source>原音</source>
+</trans-unit>
+<trans-unit id="s381abd08b78133f9">
+  <source>录音</source>
+</trans-unit>
+<trans-unit id="s60fc9ce9f81a123a">
+  <source>采用跟读模式练习，点击以下【麦克风图标】并跟随播放语音，停止录音后会自动保存。</source>
+</trans-unit>
+<trans-unit id="s07d85c23960a4db4">
+  <source>采用单句跟读（Echo）模式：点击字幕行右侧【麦克风图标】，先播放该句原音，原音结束后自动开始录音，跟读完成后手动停止。</source>
+</trans-unit>
+<trans-unit id="s2be4bfc93467a5f5">
+  <source>2. 每句最多保存若干条录音，可在字幕行右侧下拉查看。</source>
+</trans-unit>
+<trans-unit id="s333d3161efe35efa">
+  <source>3. 听音和录音期间播放器不可操作。</source>
+</trans-unit>
+<trans-unit id="s8e5d54ab4014f238">
+  <source>跟读 (Shadowing)</source>
+</trans-unit>
+<trans-unit id="s2d09a6bc1467086d">
+  <source>单句 (Echo)</source>
+</trans-unit>
+<trans-unit id="sada555f61848b379">
+  <source>当前音频的跟读录音已达上限（<x id="0" equiv-text="${this._shadowingLimit}"/>条），删除旧录音后可继续。</source>
+</trans-unit>
+<trans-unit id="s3fd93394e75f5977">
+  <source>该句录音已达上限（<x id="0" equiv-text="${this._echoLimitPerSegment}"/>条），删除旧录音后可继续。</source>
+</trans-unit>
+<trans-unit id="s19575e089d1dae1b">
+  <source>停止</source>
+</trans-unit>
+<trans-unit id="se3eecd09498e150f">
+  <source>跟读</source>
+</trans-unit>
+<trans-unit id="sa4a59d0ac86f3b0e">
+  <source>退出全屏</source>
+</trans-unit>
+<trans-unit id="s1560390899c2ee48">
+  <source>全屏</source>
+</trans-unit>
 </body>
 </file>
 </xliff>

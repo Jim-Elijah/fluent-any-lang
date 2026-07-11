@@ -139,7 +139,36 @@ export class AudioRecorderController {
     }
 
     this.chunks = [];
-    this.mediaRecorder.start();
+
+    await new Promise<void>((resolve, reject) => {
+      const recorder = this.mediaRecorder!;
+
+      const handleStart = () => {
+        cleanup();
+        resolve();
+      };
+
+      const handleError = (event: Event) => {
+        cleanup();
+        const error = (event as ErrorEvent).error ?? new Error('录音启动失败');
+        reject(error);
+      };
+
+      const cleanup = () => {
+        recorder.removeEventListener('start', handleStart);
+        recorder.removeEventListener('error', handleError);
+      };
+
+      recorder.addEventListener('start', handleStart, { once: true });
+      recorder.addEventListener('error', handleError, { once: true });
+
+      try {
+        recorder.start();
+      } catch (error) {
+        cleanup();
+        reject(error instanceof Error ? error : new Error('录音启动失败'));
+      }
+    });
   }
 
   /**

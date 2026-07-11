@@ -1,6 +1,14 @@
 import { getDB } from './index.js';
 import { STORE_RECORDING_BLOB, STORE_RECORDING } from './schema.js';
-import type { PracticeRecordBlob, PracticeRecord } from '../types/models.js';
+import type { PracticeMode, PracticeRecordBlob, PracticeRecord } from '../types/models.js';
+
+function isEchoRecord(record: PracticeRecord): boolean {
+  return record.mode === 'echo';
+}
+
+function isShadowingRecord(record: PracticeRecord): boolean {
+  return record.mode === 'shadowing';
+}
 
 // create/insert
 // add recording and its blob
@@ -42,6 +50,39 @@ export async function getRecordingBlob(id: string): Promise<Blob | undefined> {
 export async function countRecording(mediaId: string): Promise<number> {
   const db = await getDB();
   return db.countFromIndex(STORE_RECORDING, 'byMediaId', mediaId);
+}
+
+export async function findRecordingsByMode(
+  mediaId: string,
+  mode: PracticeMode,
+): Promise<PracticeRecord[]> {
+  const items = await findRecordings(mediaId);
+  return items.filter((item) => item.mode === mode);
+}
+
+export async function countShadowingRecordings(mediaId: string): Promise<number> {
+  const items = await findRecordings(mediaId);
+  return items.filter(isShadowingRecord).length;
+}
+
+export async function findEchoRecordings(
+  mediaId: string,
+  segmentId: string,
+): Promise<PracticeRecord[]> {
+  const items = await findRecordings(mediaId);
+  return items
+    .filter((item) => isEchoRecord(item) && item.segmentId === segmentId)
+    .sort((a, b) => b.createdAt - a.createdAt);
+}
+
+export async function countEchoRecordings(mediaId: string, segmentId: string): Promise<number> {
+  const items = await findEchoRecordings(mediaId, segmentId);
+  return items.length;
+}
+
+export async function findAllEchoRecordings(mediaId: string): Promise<PracticeRecord[]> {
+  const items = await findRecordings(mediaId);
+  return items.filter(isEchoRecord).sort((a, b) => b.createdAt - a.createdAt);
 }
 
 // delete

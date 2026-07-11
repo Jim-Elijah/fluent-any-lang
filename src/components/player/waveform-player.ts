@@ -6,6 +6,7 @@ import type { WaveformController, WaveformLayout } from '../../controllers/wavef
 import {
   getPeakIndexRange,
   type TrackRect,
+  type ViewRange,
   type WaveformTrack,
   xToTime,
 } from '../../controllers/waveform-controller.js';
@@ -97,6 +98,19 @@ export class WaveformPlayer extends LitElement {
 
   @property({ type: Boolean })
   interactive = true;
+
+  /**
+   * Overlay layout only: map the controller view range from the active track's
+   * timeline onto another track before drawing peaks.
+   */
+  @property({ attribute: false })
+  resolveTrackViewRange:
+    | ((
+        track: WaveformTrack,
+        viewRange: ViewRange | null,
+        activeTrack: WaveformTrack | null,
+      ) => ViewRange | null)
+    | null = null;
 
   @query('canvas')
   private _canvas?: HTMLCanvasElement;
@@ -224,6 +238,7 @@ export class WaveformPlayer extends LitElement {
       layout: snapshot.layout,
       viewRange: snapshot.viewRange,
       hiddenTrackIds: new Set(this._hiddenTrackIds),
+      resolveTrackViewRange: this.resolveTrackViewRange,
     });
 
     this._drawPlayhead(canvas, snapshot);
@@ -258,13 +273,15 @@ export class WaveformPlayer extends LitElement {
     layout,
     viewRange,
     hiddenTrackIds,
+    resolveTrackViewRange,
   }: {
     canvas: HTMLCanvasElement;
     tracks: WaveformTrack[];
     activeId: string | null;
     layout: WaveformLayout;
-    viewRange: { start: number; end: number } | null;
+    viewRange: ViewRange | null;
     hiddenTrackIds: Set<string>;
+    resolveTrackViewRange: WaveformPlayer['resolveTrackViewRange'];
   }): TrackRect[] {
     const ctx = canvas.getContext('2d');
     if (!ctx) {
@@ -304,13 +321,16 @@ export class WaveformPlayer extends LitElement {
       ctx.lineTo(cssW, midY);
       ctx.stroke();
 
+      const activeTrack = tracks.find((item) => item.id === activeId) ?? null;
+
       const drawWave = (track: WaveformTrack, alpha: number, lineWidth: number): void => {
         const { peaks } = track;
         if (!peaks || peaks.length < 2) {
           return;
         }
 
-        const { iStart, iEnd } = getPeakIndexRange(track, viewRange);
+        const trackViewRange = resolveTrackViewRange?.(track, viewRange, activeTrack) ?? viewRange;
+        const { iStart, iEnd } = getPeakIndexRange(track, trackViewRange);
         const visibleCount = Math.max(2, iEnd - iStart + 1);
 
         ctx.globalAlpha = alpha;
@@ -332,7 +352,7 @@ export class WaveformPlayer extends LitElement {
       };
 
       for (const track of visibleTracks.filter((item) => item.id !== activeId)) {
-        drawWave(track, 0.18, 1.2);
+        drawWave(track, 0.28, 1.2);
       }
       const active = visibleTracks.find((item) => item.id === activeId);
       if (active) {

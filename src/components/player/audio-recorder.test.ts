@@ -26,6 +26,30 @@ class MockMediaRecorder {
     this.listeners.start?.forEach((fn) => fn());
   }
 
+  addEventListener(
+    type: string,
+    listener: (event?: Event) => void,
+    options?: { once?: boolean },
+  ): void {
+    const handlers = (this.listeners[type] ??= []);
+    handlers.push(listener);
+    if (options?.once) {
+      const wrapped = (event?: Event) => {
+        this.removeEventListener(type, wrapped);
+        listener(event);
+      };
+      handlers[handlers.length - 1] = wrapped;
+    }
+  }
+
+  removeEventListener(type: string, listener: (event?: Event) => void): void {
+    const handlers = this.listeners[type];
+    if (!handlers) {
+      return;
+    }
+    this.listeners[type] = handlers.filter((fn) => fn !== listener);
+  }
+
   pause(): void {
     this.state = 'paused';
     this.listeners.pause?.forEach((fn) => fn());

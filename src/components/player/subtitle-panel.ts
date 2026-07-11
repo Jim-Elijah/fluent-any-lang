@@ -1,21 +1,38 @@
 import { msg, localized } from '@lit/localize';
-import { css, html, LitElement, type PropertyValues, type TemplateResult } from 'lit';
+import { css, html, LitElement, nothing, type PropertyValues, type TemplateResult } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 
+import { getMediaBlob } from '../../db/media.js';
+import { getRecordingBlob } from '../../db/service.js';
 import { MediaControllerHost } from '../../controllers/media-controller-host.js';
 import type {
   MediaController,
   MediaControllerSnapshot,
 } from '../../controllers/media-controller.js';
 import { formatTime } from '../../lib/playback-utils.js';
+import type { PracticeRecord, SubtitleSegment } from '../../types/models.js';
+import '../library/recording-preview.js';
 import '../ui/button.js';
 import '../ui/icon.js';
+import '../ui/modal.js';
+import '../ui/dropdown.js';
 import '../ui/tooltip.js';
 import { isControlledOpen } from '../ui/internal/controlled-state.js';
 import { OverlayController } from '../ui/internal/overlay-controller.js';
+import { Z_INDEX } from '../ui/internal/z-index.js';
+import type { DropdownSelectDetail } from '../ui/dropdown.js';
 
 export type SubtitlePanelFullscreenChangeDetail = {
   fullscreen: boolean;
+};
+
+export type EchoRecordRequestDetail = {
+  segmentIndex: number;
+};
+
+export type EchoRecordingDeletedDetail = {
+  id: string;
+  segmentId: string;
 };
 
 const FULLSCREEN_PORTAL_STYLES = `
@@ -126,10 +143,28 @@ const FULLSCREEN_PORTAL_STYLES = `
     display: none;
   }
 
+  .echo-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+    margin-left: auto;
+  }
+
+  // .echo-select {
+  //   min-width: 120px;
+  //   max-width: 160px;
+  // }
+
   @media (max-width: 767px) {
     .content {
       align-items: flex-start;
     }
+
+    // .echo-select {
+    //   min-width: 96px;
+    //   max-width: 120px;
+    // }
   }
 `;
 
@@ -242,10 +277,36 @@ export class SubtitlePanel extends LitElement {
       color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
     }
 
+    .echo-controls {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+      margin-left: auto;
+    }
+
+    .echo-controls ui-button button {
+      padding: 4px 8px;
+    }
+
+    // .echo-select ui-button button {
+    //   padding: 4px 8px;
+    // }
+
+    // .echo-select {
+    //   min-width: 120px;
+    //   max-width: 160px;
+    // }
+
     @media (max-width: 767px) {
       .content {
         align-items: flex-start;
       }
+
+      // .echo-select {
+      //   min-width: 96px;
+      //   max-width: 120px;
+      // }
     }
   `;
 
@@ -262,10 +323,25 @@ export class SubtitlePanel extends LitElement {
   showFullscreenIcon?: boolean;
 
   @property({ type: Number, attribute: 'z-index' })
-  zIndex = 1500;
+  zIndex = Z_INDEX.FULLSCREEN;
 
   @property()
   popupContainer: string | HTMLElement | null = 'body';
+
+  @property({ type: Boolean })
+  echoMode = false;
+
+  @property({ attribute: false })
+  echoRecordingsBySegmentId: Record<string, PracticeRecord[]> = {};
+
+  @property({ type: Number })
+  echoRecordingSegmentIndex = -1;
+
+  @property({ type: Boolean })
+  recordingSupported = true;
+
+  @property({ type: Number })
+  echoLimitPerSegment = 10;
 
   @state()
   private _controllerHost: MediaControllerHost | null = null;
@@ -278,6 +354,21 @@ export class SubtitlePanel extends LitElement {
 
   @state()
   private _internalFullscreen = false;
+
+  @state()
+  private _modalOpen = false;
+
+  @state()
+  private _modalRecording: PracticeRecord | null = null;
+
+  @state()
+  private _modalRecordingBlob: Blob | null = null;
+
+  @state()
+  private _modalSourceBlob: Blob | null = null;
+
+  @state()
+  private _modalSubtitleSegments: SubtitleSegment[] = [];
 
   private _boundController: MediaController | null = null;
   private _overlay: OverlayController | null = null;
@@ -461,10 +552,121 @@ export class SubtitlePanel extends LitElement {
                   </p>`
                 : ''}
             </div>
+            ${this.echoMode
+              ? html`<div class="echo-controls" @click="${this._stopRowClick}">
+                  ${this._renderEchoRecordButton(index)} ${this._renderEchoSelect(segment.id)}
+                </div>`
+              : nothing}
           </li>
         `,
       )}
     </ul>`;
+  }
+
+  private _stopRowClick(event: Event): void {
+    event.stopPropagation();
+  }
+
+  private _renderEchoRecordButton(segmentIndex: number): TemplateResult {
+    const isActiveRow = this.echoRecordingSegmentIndex === segmentIndex;
+    const atLimit =
+      (this.echoRecordingsBySegmentId[
+        this._controllerHost?.snapshot.segments[segmentIndex]?.id ?? ''
+      ]?.length ?? 0) >= this.echoLimitPerSegment;
+    const disabled =
+      !this.recordingSupported ||
+      (this.echoRecordingSegmentIndex >= 0 && !isActiveRow) ||
+      (!isActiveRow && atLimit);
+
+    return html`
+      <ui-tooltip
+        title="${isActiveRow ? msg('停止') : msg('跟读')}"
+        .zIndex=${this._isFullscreen() ? Z_INDEX.POPUP_ABOVE_FULLSCREEN : Z_INDEX.TOOLTIP}
+        ?disabled=${disabled}
+      >
+        <ui-button
+          variant="${isActiveRow ? 'primary' : 'secondary'}"
+          aria-label="${isActiveRow ? msg('停止') : msg('跟读')}"
+          ?disabled=${disabled}
+          @click="${() => this._handleEchoRecord(segmentIndex)}"
+        >
+          <ui-icon name="${isActiveRow ? 'stop-recording' : 'micro-on'}" size="16px"></ui-icon>
+        </ui-button>
+      </ui-tooltip>
+    `;
+  }
+
+  private _renderEchoSelect(segmentId: string): TemplateResult | typeof nothing {
+    const recordings = this.echoRecordingsBySegmentId[segmentId] ?? [];
+    if (recordings.length === 0) {
+      return nothing;
+    }
+
+    const menu = {
+      selectable: true,
+      items: recordings.map((record, index) => ({
+        key: record.id,
+        label: `录音 ${index + 1}`,
+        // label: `${formatDate(record.createdAt, true)} · ${formatTime(record.recordingDuration)}`,
+      })),
+    };
+
+    return html`
+      <ui-dropdown
+        class="echo-select"
+        trigger="click"
+        .zIndex=${this._isFullscreen() ? Z_INDEX.POPUP_ABOVE_FULLSCREEN : Z_INDEX.DROPDOWN}
+        .menu=${menu}
+        @select=${(event: CustomEvent<DropdownSelectDetail>) =>
+          this._handleEchoSelectChange(event, recordings)}
+      >
+        <ui-button variant="secondary">${msg('录音')}</ui-button>
+      </ui-dropdown>
+    `;
+  }
+
+  private _handleEchoRecord(segmentIndex: number): void {
+    if (this.echoRecordingSegmentIndex === segmentIndex) {
+      this._dispatch('echo-record-stop', {});
+      return;
+    }
+    this._dispatch('echo-record-request', { segmentIndex } satisfies EchoRecordRequestDetail);
+  }
+
+  private _handleEchoSelectChange(
+    event: CustomEvent<DropdownSelectDetail>,
+    recordings: PracticeRecord[],
+  ): void {
+    const recordId = event.detail.key;
+    const record = recordings.find((item) => item.id === recordId);
+    if (record) {
+      void this._openPreview(record);
+    }
+  }
+
+  private async _openPreview(record: PracticeRecord): Promise<void> {
+    const [recordingBlob, sourceBlob] = await Promise.all([
+      getRecordingBlob(record.id),
+      getMediaBlob(record.mediaId),
+    ]);
+
+    if (!recordingBlob) {
+      return;
+    }
+
+    this._modalRecording = record;
+    this._modalRecordingBlob = recordingBlob;
+    this._modalSourceBlob = sourceBlob ?? null;
+    this._modalSubtitleSegments = this._controllerHost?.snapshot?.segments ?? [];
+    this._modalOpen = true;
+  }
+
+  private _handleModalClose(): void {
+    this._modalOpen = false;
+    this._modalRecording = null;
+    this._modalRecordingBlob = null;
+    this._modalSourceBlob = null;
+    this._modalSubtitleSegments = [];
   }
 
   private _fullscreenTemplate(): TemplateResult {
@@ -578,6 +780,29 @@ export class SubtitlePanel extends LitElement {
           ? html`<div class="hidden-note">${msg('字幕已隐藏')}</div>`
           : this._renderSegmentsList(snapshot)}
       </div>
+      <ui-modal
+        title="${this._modalRecording?.mediaTitle ?? msg('录音预览')}"
+        @close="${() => this._handleModalClose()}"
+        ?open=${this._modalOpen}
+        width="600px"
+        centered
+        ?mask=${true}
+        ?mask-closable=${true}
+        ?keyboard=${true}
+        ?closable=${true}
+        .footer=${false}
+        ?destroy-on-close=${true}
+      >
+        ${this._modalOpen && this._modalRecordingBlob
+          ? html`<recording-preview
+              .sourceBlob=${this._modalSourceBlob}
+              .recordingBlob=${this._modalRecordingBlob}
+              .segments=${this._modalRecording?.segments ?? []}
+              .subtitleSegments=${this._modalSubtitleSegments}
+              .practiceMode=${this._modalRecording?.mode ?? 'shadowing'}
+            ></recording-preview>`
+          : null}
+      </ui-modal>
     `;
   }
 

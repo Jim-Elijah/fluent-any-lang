@@ -1,6 +1,7 @@
 import { css, html, LitElement, nothing } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
+import { Z_INDEX } from './internal/z-index.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -105,7 +106,7 @@ function resolveOptions(input: string | MessageOptions): ResolvedMessageOptions 
     grouping: opts.grouping ?? globalConfig.grouping ?? false,
     repeatNum: opts.repeatNum ?? 1,
     offset: opts.offset ?? globalConfig.offset ?? 16,
-    zIndex: opts.zIndex ?? globalConfig.zIndex ?? 2000,
+    zIndex: opts.zIndex ?? globalConfig.zIndex ?? Z_INDEX.TOAST,
     customClass: opts.customClass ?? '',
     icon: opts.icon,
     id: opts.id ?? nextId(),

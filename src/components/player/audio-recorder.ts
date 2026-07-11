@@ -73,6 +73,12 @@ export class AudioRecorder extends LitElement {
   stopOnSegmentEnd = false;
 
   @property({ type: Boolean })
+  pauseMediaOnSegmentEnd = false;
+
+  @property({ type: Boolean })
+  hideControls = false;
+
+  @property({ type: Boolean })
   disabled = false;
 
   @property({ type: Number })
@@ -119,7 +125,7 @@ export class AudioRecorder extends LitElement {
       if (this.stopOnMediaEnded) {
         this._attachEndedListener();
       }
-      if (this.collectSegments) {
+      if (this.collectSegments || this.pauseMediaOnSegmentEnd) {
         this._attachSegmentEndListener();
       }
 
@@ -196,24 +202,27 @@ export class AudioRecorder extends LitElement {
 
   render() {
     return html`
-      <div class="recording-controls">
-        <ui-tooltip
-          title="${this._recording ? msg('停止') : msg('录音')}"
-          ?disabled="${this.disabled || !this._recordingSupported}"
-        >
-          <ui-button
-            variant="primary"
-            ?disabled="${this.disabled || !this._recordingSupported}"
-            @click="${this.toggleRecording}"
-          >
-            <ui-icon name="${this._recording ? 'stop-recording' : 'micro-on'}"></ui-icon>
-          </ui-button>
-        </ui-tooltip>
-        ${this._recordingError
-          ? html`<ui-alert type="error">${this._recordingError}</ui-alert>`
-          : null}
-      </div>
-
+      ${!this.hideControls
+        ? html`
+            <div class="recording-controls">
+              <ui-tooltip
+                title="${this._recording ? msg('停止') : msg('录音')}"
+                ?disabled="${this.disabled || !this._recordingSupported}"
+              >
+                <ui-button
+                  variant="primary"
+                  ?disabled="${this.disabled || !this._recordingSupported}"
+                  @click="${this.toggleRecording}"
+                >
+                  <ui-icon name="${this._recording ? 'stop-recording' : 'micro-on'}"></ui-icon>
+                </ui-button>
+              </ui-tooltip>
+              ${this._recordingError
+                ? html`<ui-alert type="error">${this._recordingError}</ui-alert>`
+                : null}
+            </div>
+          `
+        : null}
       ${this._hasWaveform
         ? html`
             <div class="recording-waveform">
@@ -301,6 +310,10 @@ export class AudioRecorder extends LitElement {
     this._liveTrackId = null;
   }
 
+  get recording(): boolean {
+    return this._recording;
+  }
+
   private _onSegmentEnded = (event: Event): void => {
     const customEvent = event as CustomEvent<{ segmentIndex: number; segment: SubtitleSegment }>;
     const segment = customEvent.detail?.segment;
@@ -324,6 +337,11 @@ export class AudioRecorder extends LitElement {
         this._stopReason = 'segment-end';
         void this.stopRecording();
       }
+    }
+
+    if (this.pauseMediaOnSegmentEnd && this.controller) {
+      this.controller.setPauseMode('off');
+      void this.controller.pause();
     }
   };
 

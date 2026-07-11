@@ -150,6 +150,104 @@ export function computeSegmentPauseMs(
   return (((segment.endTime - segment.startTime) * pausePercent) / 100) * 1000;
 }
 
+/** Source time span covered by practice segments (first start → last end). */
+export function getPracticeSourceSpan(
+  segments: PracticeSegment[],
+): { start: number; end: number } | null {
+  return getPracticeSpan(segments, 'source');
+}
+
+/** Recording time span covered by practice segments (first start → last end). */
+export function getPracticeRecordingSpan(
+  segments: PracticeSegment[],
+): { start: number; end: number } | null {
+  return getPracticeSpan(segments, 'recording');
+}
+
+export type PracticeTimeAxis = 'source' | 'recording';
+
+/** Map a timestamp from one practice axis to the other via segment alignment. */
+export function mapPracticeTime(
+  time: number,
+  from: PracticeTimeAxis,
+  to: PracticeTimeAxis,
+  segments: PracticeSegment[],
+): number {
+  if (from === to || segments.length === 0) {
+    return time;
+  }
+
+  const fromSpan =
+    from === 'source' ? getPracticeSourceSpan(segments) : getPracticeRecordingSpan(segments);
+  const toSpan =
+    to === 'source' ? getPracticeSourceSpan(segments) : getPracticeRecordingSpan(segments);
+  if (!fromSpan || !toSpan) {
+    return time;
+  }
+
+  const clampedTime = Math.max(fromSpan.start, Math.min(time, fromSpan.end));
+  const segmentIndex = findPracticeSegmentIndex(segments, clampedTime, from);
+  if (segmentIndex < 0) {
+    const fromDuration = fromSpan.end - fromSpan.start;
+    const toDuration = toSpan.end - toSpan.start;
+    if (fromDuration <= 0) {
+      return toSpan.start;
+    }
+    const ratio = (clampedTime - fromSpan.start) / fromDuration;
+    return toSpan.start + ratio * toDuration;
+  }
+
+  const segment = segments[segmentIndex];
+  const fromStart = segment[from === 'source' ? 'sourceStartTime' : 'recordingStartTime'];
+  const fromEnd = segment[from === 'source' ? 'sourceEndTime' : 'recordingEndTime'];
+  const toStart = segment[to === 'source' ? 'sourceStartTime' : 'recordingStartTime'];
+  const toEnd = segment[to === 'source' ? 'sourceEndTime' : 'recordingEndTime'];
+  const fromDuration = fromEnd - fromStart;
+  if (fromDuration <= 0) {
+    return toStart;
+  }
+
+  const ratio = (clampedTime - fromStart) / fromDuration;
+  return toStart + ratio * (toEnd - toStart);
+}
+
+/** Map a view range from one practice axis to the other via segment alignment. */
+export function mapPracticeViewRange(
+  range: { start: number; end: number },
+  from: PracticeTimeAxis,
+  to: PracticeTimeAxis,
+  segments: PracticeSegment[],
+): { start: number; end: number } {
+  if (from === to || segments.length === 0) {
+    return range;
+  }
+
+  return {
+    start: mapPracticeTime(range.start, from, to, segments),
+    end: mapPracticeTime(range.end, from, to, segments),
+  };
+}
+
+function getPracticeSpan(
+  segments: PracticeSegment[],
+  axis: 'source' | 'recording',
+): { start: number; end: number } | null {
+  if (segments.length === 0) {
+    return null;
+  }
+  const first = segments[0];
+  const last = segments[segments.length - 1];
+  const startKey = axis === 'source' ? 'sourceStartTime' : 'recordingStartTime';
+  const endKey = axis === 'source' ? 'sourceEndTime' : 'recordingEndTime';
+  return { start: first[startKey], end: last[endKey] };
+}
+
+/** Duration of the source span covered by practice segments, in seconds. */
+export function getPracticeSourceDuration(segments: PracticeSegment[]): number {
+  const span = getPracticeSourceSpan(segments);
+  return span ? span.end - span.start : 0;
+}
+
 export function findPracticeSegmentIndex(
   segments: PracticeSegment[],
   time: number,

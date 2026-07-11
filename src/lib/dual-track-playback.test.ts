@@ -51,15 +51,44 @@ describe('DualTrackPlayback', () => {
   it('plays source track and pauses recording', async () => {
     await controller.playSource();
     expect(controller.getState().mode).toBe('source');
+    expect(source.currentTime).toBe(0);
     expect(source.play).toHaveBeenCalled();
     expect(recording.pause).toHaveBeenCalled();
+  });
+
+  it('seeks to first segment start when playing source with segments', async () => {
+    await controller.playSource();
+    expect(source.currentTime).toBe(segments[0].sourceStartTime);
+  });
+
+  it('stops source playback when reaching last segment end', async () => {
+    await controller.playSource();
+    source.currentTime = segments[1].sourceEndTime - 0.1;
+    source.dispatchEvent(new Event('timeupdate'));
+    expect(controller.getState().mode).toBe('source');
+
+    source.currentTime = segments[1].sourceEndTime;
+    source.dispatchEvent(new Event('timeupdate'));
+    expect(controller.getState().mode).toBe('idle');
   });
 
   it('plays recording track and pauses source', async () => {
     await controller.playRecording();
     expect(controller.getState().mode).toBe('recording');
+    expect(recording.currentTime).toBe(segments[0].recordingStartTime);
     expect(recording.play).toHaveBeenCalled();
     expect(source.pause).toHaveBeenCalled();
+  });
+
+  it('stops recording playback when reaching last segment end', async () => {
+    await controller.playRecording();
+    recording.currentTime = segments[1].recordingEndTime - 0.1;
+    recording.dispatchEvent(new Event('timeupdate'));
+    expect(controller.getState().mode).toBe('recording');
+
+    recording.currentTime = segments[1].recordingEndTime;
+    recording.dispatchEvent(new Event('timeupdate'));
+    expect(controller.getState().mode).toBe('idle');
   });
 
   it('starts sync playback from a segment', async () => {

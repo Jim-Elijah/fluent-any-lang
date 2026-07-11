@@ -4,6 +4,7 @@ import { classMap } from 'lit/directives/class-map.js';
 import { styleMap } from 'lit/directives/style-map.js';
 import { PortalHost } from './internal/portal-host.js';
 import { computePlacement4 } from './internal/placement.js';
+import { Z_INDEX } from './internal/z-index.js';
 
 export type SelectSize = 'small' | 'middle' | 'large';
 export type SelectMode = 'default' | 'multiple' | 'tags';
@@ -306,7 +307,7 @@ export class UiSelect extends LitElement {
   @property({ type: Boolean }) loading = false;
 
   @property({ attribute: false }) popupContainer: string | HTMLElement | null = 'body';
-  @property({ type: Number, attribute: 'z-index' }) zIndex = 1050;
+  @property({ type: Number, attribute: 'z-index' }) zIndex = Z_INDEX.DROPDOWN;
 
   @state() private _internalValue: string[] = [];
   @state() private _internalOpen = false;

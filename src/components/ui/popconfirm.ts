@@ -7,6 +7,7 @@ import { arrowStyles } from './internal/arrow-styles.js';
 import { isControlledOpen } from './internal/controlled-state.js';
 import { OverlayController } from './internal/overlay-controller.js';
 import { arrowSideForPlacement, computePlacement4 } from './internal/placement.js';
+import { Z_INDEX } from './internal/z-index.js';
 
 export type PopconfirmTriggerType = 'click' | 'hover';
 
@@ -162,7 +163,7 @@ export class UiPopconfirm extends LitElement {
   @property({ type: Boolean, attribute: 'auto-close' }) autoClose = true;
   @property({ type: Boolean, attribute: 'close-on-esc' }) closeOnEsc = true;
   @property({ type: Boolean, attribute: 'destroy-on-close' }) destroyOnClose = false;
-  @property({ type: Number, attribute: 'z-index' }) zIndex = 1080;
+  @property({ type: Number, attribute: 'z-index' }) zIndex = Z_INDEX.POPCONFIRM;
 
   /** 鼠标移入后延时显示，单位：秒（hover trigger） */
   @property({ type: Number, attribute: 'mouse-enter-delay' }) mouseEnterDelay =

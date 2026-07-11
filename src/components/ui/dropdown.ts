@@ -11,6 +11,7 @@ import {
   parsePlacement,
   type DropdownPlacement,
 } from './internal/placement.js';
+import { Z_INDEX } from './internal/z-index.js';
 
 export type { DropdownPlacement };
 
@@ -203,7 +204,7 @@ export class UiDropdown extends LitElement {
 
   @property({ type: Boolean, attribute: 'auto-adjust-overflow' }) autoAdjustOverflow = true;
   @property({ type: Boolean, attribute: 'destroy-on-close' }) destroyOnClose = false;
-  @property({ type: Number, attribute: 'z-index' }) zIndex = 1050;
+  @property({ type: Number, attribute: 'z-index' }) zIndex = Z_INDEX.DROPDOWN;
 
   /** 类似 antd getPopupContainer */
   @property() popupContainer: string | HTMLElement | null = 'body';

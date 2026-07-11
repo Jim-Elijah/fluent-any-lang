@@ -3,9 +3,20 @@ import { css, html, LitElement, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 
 import { DualTrackPlayback, type DualTrackMode } from '../../lib/dual-track-playback.js';
-import { findPracticeSegmentIndex } from '../../lib/playback-utils.js';
-import { WaveformController } from '../../controllers/waveform-controller.js';
-import type { PracticeSegment } from '../../types/models.js';
+import {
+  findPracticeSegmentIndex,
+  findSegmentIndex,
+  getPracticeRecordingSpan,
+  getPracticeSourceSpan,
+  mapPracticeViewRange,
+} from '../../lib/playback-utils.js';
+import {
+  ViewRange,
+  WaveformController,
+  WaveformEventType,
+  type WaveformTrack,
+} from '../../controllers/waveform-controller.js';
+import type { PracticeMode, PracticeSegment, SubtitleSegment } from '../../types/models.js';
 import type { WaveformSeekRequestDetail } from '../player/waveform-player.js';
 import '../ui/button.js';
 import '../player/waveform-player.js';
@@ -56,6 +67,12 @@ export class RecordingPreview extends LitElement {
   @property({ type: Array })
   segments: PracticeSegment[] = [];
 
+  @property({ type: Array })
+  subtitleSegments: SubtitleSegment[] = [];
+
+  @property({ type: String })
+  practiceMode: PracticeMode = 'shadowing';
+
   @state()
   private _controller: WaveformController = new WaveformController();
 
@@ -72,17 +89,34 @@ export class RecordingPreview extends LitElement {
   private _loadGeneration = 0;
   private readonly _fallbackAudio = new Audio();
 
+  connectedCallback(): void {
+    super.connectedCallback();
+    this._controller.addEventListener(
+      WaveformEventType.VIEW_RANGE_CHANGE,
+      this._handleViewRangeChange,
+    );
+    this._controller.addEventListener(WaveformEventType.TRACK_CHANGE, this._handleTrackChange);
+  }
+
   protected updated(changed: Map<PropertyKey, unknown>): void {
     if (changed.has('sourceBlob') || changed.has('recordingBlob')) {
       void this._loadTracks();
     }
 
-    if (changed.has('segments') && this._playback) {
-      this._playback.setSegments(this.segments);
+    if (changed.has('segments')) {
+      if (this._playback) {
+        this._playback.setSegments(this.segments);
+      }
+      this._enforceViewRangeBounds();
     }
   }
 
   disconnectedCallback(): void {
+    this._controller.removeEventListener(
+      WaveformEventType.VIEW_RANGE_CHANGE,
+      this._handleViewRangeChange,
+    );
+    this._controller.removeEventListener(WaveformEventType.TRACK_CHANGE, this._handleTrackChange);
     this._teardownPlayback();
     this._controller.destroy();
     super.disconnectedCallback();
@@ -102,6 +136,7 @@ export class RecordingPreview extends LitElement {
         <waveform-player
           .controller=${this._controller}
           .canvasHeight=${120}
+          .resolveTrackViewRange=${this._resolveTrackViewRange}
           @seek-request=${this._handleWaveformSeekRequest}
         ></waveform-player>
 
@@ -140,52 +175,71 @@ export class RecordingPreview extends LitElement {
   }
 
   private _renderStatus() {
+    const segmentCount = this.segments.length;
+    const segmentLabel =
+      segmentCount > 0
+        ? html` <strong>${this._syncSegmentIndex + 1} / ${segmentCount}</strong>`
+        : nothing;
+
     switch (this._playMode) {
       case 'source':
-        return html`${msg('正在播放原音…')}`;
+        return segmentCount > 0
+          ? msg(html`正在播放片段${segmentLabel}`)
+          : html`${msg('正在播放原音…')}`;
       case 'recording':
-        return html`${msg('正在播放录音…')}`;
+        return segmentCount > 0
+          ? msg(html`正在播放片段${segmentLabel}`)
+          : html`${msg('正在播放录音…')}`;
       case 'sync':
-        return msg(
-          html`正在同步播放片段
-            <strong>${this._syncSegmentIndex + 1} / ${this.segments.length}</strong>`,
-        );
+        return msg(html`正在同步播放片段${segmentLabel}`);
       default:
         return nothing;
     }
   }
 
   private async _handlePlaySource(): Promise<void> {
-    if (!this._playback || !this.sourceBlob) {
+    if (!this.sourceBlob) {
+      return;
+    }
+    if (!(await this._ensurePlayback())) {
       return;
     }
 
     if (this._playMode === 'source') {
-      this._playback.stop();
+      this._playback!.stop();
       return;
     }
 
     try {
-      await this._playback.playSource();
+      if (this._sourceTrackId) {
+        this._controller.setActiveId(this._sourceTrackId);
+      }
+      await this._playback!.playSource();
     } catch {
-      this._playback.stop();
+      this._playback?.stop();
     }
   }
 
   private async _handlePlayRecording(): Promise<void> {
-    if (!this._playback || !this.recordingBlob) {
+    if (!this.recordingBlob) {
+      return;
+    }
+    if (!(await this._ensurePlayback())) {
       return;
     }
 
     if (this._playMode === 'recording') {
-      this._playback.stop();
+      this._playback!.stop();
       return;
     }
 
     try {
-      await this._playback.playRecording();
+      if (this._recordingTrackId) {
+        this._controller.setActiveId(this._recordingTrackId);
+      }
+      await this._playback!.playRecording();
     } catch {
-      this._playback.stop();
+      this._playback?.stop();
     }
   }
 
@@ -201,32 +255,142 @@ export class RecordingPreview extends LitElement {
     }
 
     const { trackId, time } = event.detail;
-    let segmentIndex = -1;
+    let segmentIndex: number;
 
     if (trackId === this._sourceTrackId) {
-      segmentIndex = findPracticeSegmentIndex(this.segments, time, 'source');
+      if (this.subtitleSegments.length > 0) {
+        const subtitleIndex = findSegmentIndex(this.subtitleSegments, time);
+        if (subtitleIndex < 0) {
+          Message.warning(msg('无法定位到字幕句子'));
+          return;
+        }
+        const subtitle = this.subtitleSegments[subtitleIndex];
+        segmentIndex = this.segments.findIndex((segment) => segment.id === subtitle.id);
+        if (segmentIndex < 0) {
+          /** @TODO why?  segment gap?  */
+          Message.info(msg('该句无录音，无法同步播放'));
+          return;
+        }
+      } else {
+        segmentIndex = findPracticeSegmentIndex(this.segments, time, 'source');
+        if (segmentIndex < 0) {
+          return;
+        }
+      }
     } else if (trackId === this._recordingTrackId) {
       segmentIndex = findPracticeSegmentIndex(this.segments, time, 'recording');
-    }
-
-    console.log('source segmentIndex', segmentIndex);
-    /** @TODO UI上缩放视图 setViewRange */
-    /**  当点击处的time不在任何片段范围内时，将播放第一个片段或最后一个片段 */
-    if (segmentIndex < 0) {
-      const { sourceStartTime } = this.segments[0];
-      const { sourceEndTime } = this.segments[this.segments.length - 1];
-      if (time < sourceStartTime) {
-        segmentIndex = 0;
-        Message.warning(msg('无法找到对应的片段，将播放第一个片段'));
-      } else if (time > sourceEndTime) {
-        segmentIndex = this.segments.length - 1;
-        Message.warning(msg('无法找到对应的片段，将播放最后一个片段'));
+      if (segmentIndex < 0) {
+        return;
       }
+    } else {
+      return;
     }
 
     event.preventDefault();
+    this._zoomToPracticeSegment(segmentIndex);
     void this._playback.playSyncFromSegment(segmentIndex).catch(() => {
       this._playback?.stop();
+    });
+  }
+
+  private _getPracticeViewBounds(): ViewRange | null {
+    if (this._usesRecordingTimeline()) {
+      return getPracticeRecordingSpan(this.segments);
+    }
+    return getPracticeSourceSpan(this.segments);
+  }
+
+  private _usesRecordingTimeline(): boolean {
+    if (this._playMode === 'recording') {
+      return true;
+    }
+    return Boolean(this._recordingTrackId && this._controller.activeId === this._recordingTrackId);
+  }
+
+  private _clampViewRangeToBounds(range: ViewRange, bounds: ViewRange): ViewRange {
+    const start = Math.max(bounds.start, Math.min(range.start, range.end));
+    const end = Math.min(bounds.end, Math.max(range.start, range.end));
+    if (end <= start) {
+      return { start: bounds.start, end: bounds.end };
+    }
+    return { start, end };
+  }
+
+  private _setPracticeViewRange(range: ViewRange | null): void {
+    const bounds = this._getPracticeViewBounds();
+    if (!bounds) {
+      this._controller.setViewRange(range);
+      return;
+    }
+    if (!range) {
+      this._controller.setViewRange(bounds);
+      return;
+    }
+    this._controller.setViewRange(this._clampViewRangeToBounds(range, bounds));
+  }
+
+  private _enforceViewRangeBounds(): void {
+    const bounds = this._getPracticeViewBounds();
+    if (!bounds) {
+      return;
+    }
+
+    const current = this._controller.viewRange;
+    if (!current) {
+      this._controller.setViewRange(bounds);
+      return;
+    }
+
+    const clamped = this._clampViewRangeToBounds(current, bounds);
+    if (clamped.start !== current.start || clamped.end !== current.end) {
+      this._controller.setViewRange(clamped);
+    }
+  }
+
+  private _handleViewRangeChange = (): void => {
+    this._enforceViewRangeBounds();
+  };
+
+  private _handleTrackChange = (): void => {
+    this._setPracticeViewRange(null);
+  };
+
+  private _resolveTrackViewRange = (
+    track: WaveformTrack,
+    viewRange: ViewRange | null,
+    activeTrack: WaveformTrack | null,
+  ): ViewRange | null => {
+    if (!viewRange || !activeTrack || track.id === activeTrack.id || this.segments.length === 0) {
+      return viewRange;
+    }
+
+    if (activeTrack.id === this._sourceTrackId && track.id === this._recordingTrackId) {
+      return mapPracticeViewRange(viewRange, 'source', 'recording', this.segments);
+    }
+    if (activeTrack.id === this._recordingTrackId && track.id === this._sourceTrackId) {
+      return mapPracticeViewRange(viewRange, 'recording', 'source', this.segments);
+    }
+
+    return viewRange;
+  };
+
+  private _zoomToPracticeSegment(segmentIndex: number): void {
+    const segment = this.segments[segmentIndex];
+    if (!segment) {
+      return;
+    }
+
+    if (this._usesRecordingTimeline()) {
+      this._setPracticeViewRange({
+        start: segment.recordingStartTime,
+        end: segment.recordingEndTime,
+      });
+      return;
+    }
+
+    this._setPracticeViewRange({
+      start: segment.sourceStartTime,
+      end: segment.sourceEndTime,
     });
   }
 
@@ -278,6 +442,14 @@ export class RecordingPreview extends LitElement {
     }
 
     this._schedulePlaybackInit();
+
+    if (this.segments.length > 0) {
+      if (this.practiceMode === 'echo') {
+        this._zoomToPracticeSegment(0);
+      } else {
+        this._setPracticeViewRange(null);
+      }
+    }
   }
 
   private _schedulePlaybackInit(): void {
@@ -311,12 +483,31 @@ export class RecordingPreview extends LitElement {
 
       if (state.mode === 'source' && this._sourceTrackId) {
         this._controller.setActiveId(this._sourceTrackId);
+        this._setPracticeViewRange(null);
+        if (this.segments.length > 0) {
+          this._zoomToPracticeSegment(state.syncSegmentIndex);
+        }
       } else if (state.mode === 'recording' && this._recordingTrackId) {
         this._controller.setActiveId(this._recordingTrackId);
+        this._setPracticeViewRange(null);
+        if (this.segments.length > 0) {
+          this._zoomToPracticeSegment(state.syncSegmentIndex);
+        }
       } else if (state.mode === 'sync' && this._sourceTrackId) {
         this._controller.setActiveId(this._sourceTrackId);
+        this._zoomToPracticeSegment(state.syncSegmentIndex);
       }
     });
+  }
+
+  private async _ensurePlayback(): Promise<boolean> {
+    if (this._playback) {
+      return true;
+    }
+
+    await this.updateComplete;
+    this._initPlayback();
+    return Boolean(this._playback);
   }
 
   private _teardownPlayback(): void {
@@ -325,6 +516,7 @@ export class RecordingPreview extends LitElement {
     this._playMode = 'idle';
     this._syncSegmentIndex = 0;
     this._controller.pause();
+    this._setPracticeViewRange(null);
   }
 }
 

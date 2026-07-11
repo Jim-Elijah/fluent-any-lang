@@ -8,6 +8,7 @@ import {
   deleteRecording,
   getRecordingList,
   getRecordingBlob,
+  getSubtitle,
 } from '../../db/service.js';
 import { exportRecording } from '../../lib/export-content.js';
 import '../ui/alert.js';
@@ -17,7 +18,12 @@ import '../ui/popconfirm.js';
 import './recording-preview.js';
 import '../ui/icon.js';
 import '../ui/tooltip.js';
-import type { PracticeRecord, SortDirection } from '../../types/models.js';
+import type {
+  PracticeMode,
+  PracticeRecord,
+  SortDirection,
+  SubtitleSegment,
+} from '../../types/models.js';
 import { formatDate, formatTime } from '../../lib/playback-utils.js';
 
 @customElement('record-list')
@@ -133,6 +139,9 @@ export class RecordList extends LitElement {
   @property({ type: String })
   mediaId?: string;
 
+  @property({ type: String })
+  modeFilter?: PracticeMode;
+
   @property({ type: Boolean })
   showHeader = true;
 
@@ -159,6 +168,9 @@ export class RecordList extends LitElement {
 
   @state()
   private _modalSourceBlob: Blob | null = null;
+
+  @state()
+  private _modalSubtitleSegments: SubtitleSegment[] = [];
 
   constructor() {
     super();
@@ -201,6 +213,9 @@ export class RecordList extends LitElement {
     console.log('record-list render', this._items);
 
     let renderedItems = this._items;
+    if (this.modeFilter) {
+      renderedItems = renderedItems.filter((item) => item.mode === this.modeFilter);
+    }
     if (this.keyword) {
       renderedItems = renderedItems.filter((item: PracticeRecord) =>
         item.mediaTitle.toLowerCase().includes(this.keyword!.toLowerCase()),
@@ -297,13 +312,14 @@ export class RecordList extends LitElement {
           ?closable=${true}
           .footer=${false}
           ?destroy-on-close=${true}
-          zIndex="1000"
         >
           ${this._modalOpen && this._modalRecordingBlob
             ? html`<recording-preview
                 .sourceBlob=${this._modalSourceBlob}
                 .recordingBlob=${this._modalRecordingBlob}
                 .segments=${this._modalRecording?.segments ?? []}
+                .subtitleSegments=${this._modalSubtitleSegments}
+                .practiceMode=${this._modalRecording?.mode ?? 'shadowing'}
               ></recording-preview>`
             : null}
         </ui-modal>
@@ -316,12 +332,14 @@ export class RecordList extends LitElement {
     this._modalRecording = null;
     this._modalRecordingBlob = null;
     this._modalSourceBlob = null;
+    this._modalSubtitleSegments = [];
   }
 
   private async _handleView(recording: PracticeRecord): Promise<void> {
-    const [recordingBlob, sourceBlob] = await Promise.all([
+    const [recordingBlob, sourceBlob, subtitleTrack] = await Promise.all([
       getRecordingBlob(recording.id),
       getMediaBlob(recording.mediaId),
+      getSubtitle(recording.mediaTitle),
     ]);
 
     if (!recordingBlob) {
@@ -332,6 +350,7 @@ export class RecordList extends LitElement {
     this._modalRecording = recording;
     this._modalRecordingBlob = recordingBlob;
     this._modalSourceBlob = sourceBlob ?? null;
+    this._modalSubtitleSegments = subtitleTrack?.segments ?? [];
     this._modalOpen = true;
   }
 

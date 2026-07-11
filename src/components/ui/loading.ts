@@ -1,5 +1,6 @@
 import { css, html, LitElement, nothing } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
+import { Z_INDEX } from './internal/z-index.js';
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -34,7 +35,7 @@ type ResolvedLoadingOptions = Required<
 const PARENT_RELATIVE_CLASS = 'ui-loading-parent--relative';
 const PARENT_HIDDEN_CLASS = 'ui-loading-parent--hidden';
 const DEFAULT_BACKGROUND = 'rgba(255, 255, 255, 0.9)';
-const DEFAULT_Z_INDEX = 2000;
+const DEFAULT_Z_INDEX = Z_INDEX.TOAST;
 
 function resolveTarget(target?: string | HTMLElement): HTMLElement {
   if (!target) return document.body;

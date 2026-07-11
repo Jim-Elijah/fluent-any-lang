@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AudioRecorderController } from './audio-recorder.js';
 
 let lastRecorder: MockMediaRecorder | null = null;
+let deferRecorderStart = false;
 
 function registerLastRecorder(recorder: MockMediaRecorder): void {
   lastRecorder = recorder;
@@ -20,7 +21,36 @@ class MockMediaRecorder {
 
   start(): void {
     this.state = 'recording';
-    this.listeners.start?.forEach((fn) => fn());
+    const fire = () => this.listeners.start?.forEach((fn) => fn());
+    if (deferRecorderStart) {
+      queueMicrotask(fire);
+      return;
+    }
+    fire();
+  }
+
+  addEventListener(
+    type: string,
+    listener: (event?: Event) => void,
+    options?: { once?: boolean },
+  ): void {
+    const handlers = (this.listeners[type] ??= []);
+    handlers.push(listener);
+    if (options?.once) {
+      const wrapped = (event?: Event) => {
+        this.removeEventListener(type, wrapped);
+        listener(event);
+      };
+      handlers[handlers.length - 1] = wrapped;
+    }
+  }
+
+  removeEventListener(type: string, listener: (event?: Event) => void): void {
+    const handlers = this.listeners[type];
+    if (!handlers) {
+      return;
+    }
+    this.listeners[type] = handlers.filter((fn) => fn !== listener);
   }
 
   pause(): void {
@@ -76,6 +106,7 @@ describe('AudioRecorderController', () => {
 
   beforeEach(() => {
     lastRecorder = null;
+    deferRecorderStart = false;
     const stream = {
       getTracks: () => [{ stop: vi.fn() }],
     } as unknown as MediaStream;
@@ -99,6 +130,19 @@ describe('AudioRecorderController', () => {
     const controller = new AudioRecorderController({ onStateChange });
 
     await controller.start();
+    expect(controller.getState()).toBe('recording');
+    expect(onStateChange).toHaveBeenCalledWith('recording');
+  });
+
+  it('resolves start only after MediaRecorder fires start', async () => {
+    deferRecorderStart = true;
+    const onStateChange = vi.fn();
+    const controller = new AudioRecorderController({ onStateChange });
+    const startPromise = controller.start();
+
+    expect(controller.getState()).toBe('inactive');
+    await startPromise;
+
     expect(controller.getState()).toBe('recording');
     expect(onStateChange).toHaveBeenCalledWith('recording');
   });

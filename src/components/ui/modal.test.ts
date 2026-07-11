@@ -1,9 +1,50 @@
-import { html } from 'lit';
+import { css, html, LitElement } from 'lit';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import './modal.js';
-import { UiModal } from './modal.js';
+import { getModalPortalRoot, UiModal } from './modal.js';
+import { Z_INDEX } from './internal/z-index.js';
 import { mount } from './test-utils.js';
+
+class ModalChildStub extends LitElement {
+  static styles = css`
+    :host {
+      display: block;
+    }
+  `;
+
+  render() {
+    return html`<span class="child">child</span>`;
+  }
+}
+
+class ModalHostStub extends LitElement {
+  private _open = true;
+
+  private _handleClose() {
+    this._open = false;
+  }
+
+  render() {
+    return html`
+      <ui-modal
+        ?open=${this._open}
+        title="Host"
+        @close=${() => this._handleClose()}
+        ?destroy-on-close=${true}
+      >
+        ${this._open ? html`<modal-child-stub></modal-child-stub>` : null}
+      </ui-modal>
+    `;
+  }
+}
+
+customElements.define('modal-child-stub', ModalChildStub);
+customElements.define('modal-host-stub', ModalHostStub);
+
+function queryModal<T extends Element = Element>(selector: string): T | null {
+  return getModalPortalRoot()?.querySelector(selector) as T | null;
+}
 
 describe('ui-modal', () => {
   let cleanup: (() => void) | undefined;
@@ -21,10 +62,22 @@ describe('ui-modal', () => {
     return el;
   }
 
-  it('renders dialog when open', async () => {
+  it('renders dialog in shadow root when open', async () => {
+    await renderModal();
+    expect(queryModal('.dialog')).not.toBeNull();
+    expect(queryModal('.title')?.textContent?.trim()).toBe('Test Modal');
+    expect(getModalPortalRoot()).not.toBeNull();
+  });
+
+  it('renders default slot content in the dialog body', async () => {
     const el = await renderModal();
-    expect(el.shadowRoot?.querySelector('.dialog')).not.toBeNull();
-    expect(el.shadowRoot?.querySelector('.title')?.textContent?.trim()).toBe('Test Modal');
+    const slot = el.shadowRoot?.querySelector('.body > slot') as HTMLSlotElement | undefined;
+    const assignedText = slot
+      ?.assignedNodes({ flatten: true })
+      .map((node) => node.textContent ?? '')
+      .join('')
+      .trim();
+    expect(assignedText).toBe('Body');
   });
 
   it('does not render overlay before first open', async () => {
@@ -32,7 +85,13 @@ describe('ui-modal', () => {
     cleanup = result.cleanup;
     const el = result.container.querySelector('ui-modal') as UiModal;
     await el.updateComplete;
-    expect(el.shadowRoot?.querySelector('.overlay')).toBeNull();
+    expect(el.shadowRoot?.querySelector('.dialog')).toBeNull();
+  });
+
+  it('uses z-index above fullscreen overlay by default', async () => {
+    const el = await renderModal();
+    expect(el.style.getPropertyValue('--modal-z')).toBe(String(Z_INDEX.MODAL));
+    expect(Number(el.style.getPropertyValue('--modal-z'))).toBeGreaterThan(Z_INDEX.FULLSCREEN);
   });
 
   it('dispatches ok and close on OK click', async () => {
@@ -42,7 +101,7 @@ describe('ui-modal', () => {
     el.addEventListener('ok', okHandler);
     el.addEventListener('close', closeHandler);
 
-    el.shadowRoot?.querySelector<HTMLButtonElement>('.btn.primary')?.click();
+    queryModal<HTMLButtonElement>('.btn.primary')?.click();
     expect(okHandler).toHaveBeenCalled();
     expect(closeHandler).toHaveBeenCalledOnce();
     expect(closeHandler.mock.calls[0][0].detail.reason).toBe('ok');
@@ -52,7 +111,7 @@ describe('ui-modal', () => {
     const el = await renderModal();
     const cancelHandler = vi.fn();
     el.addEventListener('cancel', cancelHandler);
-    el.shadowRoot?.querySelector<HTMLButtonElement>('.btn.ghost')?.click();
+    queryModal<HTMLButtonElement>('.btn.ghost')?.click();
     expect(cancelHandler).toHaveBeenCalledOnce();
   });
 
@@ -61,7 +120,7 @@ describe('ui-modal', () => {
     el.addEventListener('beforeClose', (e) => e.preventDefault());
     const closeHandler = vi.fn();
     el.addEventListener('close', closeHandler);
-    el.shadowRoot?.querySelector<HTMLButtonElement>('.btn.ghost')?.click();
+    queryModal<HTMLButtonElement>('.btn.ghost')?.click();
     expect(closeHandler).not.toHaveBeenCalled();
   });
 
@@ -88,7 +147,7 @@ describe('ui-modal', () => {
     const el = await renderModal();
     const closeHandler = vi.fn();
     el.addEventListener('close', closeHandler);
-    el.shadowRoot?.querySelector<HTMLElement>('.overlay')?.click();
+    queryModal<HTMLElement>('.overlay')?.click();
     expect(closeHandler).toHaveBeenCalledOnce();
     expect(closeHandler.mock.calls[0][0].detail.reason).toBe('mask');
   });
@@ -97,19 +156,36 @@ describe('ui-modal', () => {
     const el = await renderModal();
     const updateHandler = vi.fn();
     el.addEventListener('update:open', updateHandler);
-    el.shadowRoot?.querySelector<HTMLButtonElement>('.btn.ghost')?.click();
+    queryModal<HTMLButtonElement>('.btn.ghost')?.click();
     expect(updateHandler).toHaveBeenCalledOnce();
     expect(updateHandler.mock.calls[0][0].detail.open).toBe(false);
   });
 
   it('hides default footer when footer is false', async () => {
-    const el = await renderModal(html`<ui-modal open .footer=${false}>Body</ui-modal>`);
-    expect(el.shadowRoot?.querySelector('.footer .btn')).toBeNull();
-    expect(el.shadowRoot?.querySelector('slot[name="footer"]')).not.toBeNull();
+    await renderModal(html`<ui-modal open .footer=${false}>Body</ui-modal>`);
+    expect(queryModal('.footer .btn')).toBeNull();
+    expect(queryModal('.footer')).not.toBeNull();
   });
 
   it('disables OK button when confirmLoading', async () => {
-    const el = await renderModal(html`<ui-modal open confirm-loading>Body</ui-modal>`);
-    expect(el.shadowRoot?.querySelector<HTMLButtonElement>('.btn.primary')?.disabled).toBe(true);
+    await renderModal(html`<ui-modal open confirm-loading>Body</ui-modal>`);
+    expect(queryModal<HTMLButtonElement>('.btn.primary')?.disabled).toBe(true);
+  });
+
+  it('closes without breaking Lit-managed slot content', async () => {
+    const host = document.createElement('modal-host-stub') as LitElement;
+    document.body.appendChild(host);
+    cleanup = () => host.remove();
+    await host.updateComplete;
+
+    const modal = host.renderRoot.querySelector('ui-modal') as UiModal;
+    expect(modal.querySelector('modal-child-stub')).not.toBeNull();
+
+    queryModal<HTMLElement>('.overlay')?.click();
+    await host.updateComplete;
+    await modal.updateComplete;
+
+    host.requestUpdate();
+    await host.updateComplete;
   });
 });

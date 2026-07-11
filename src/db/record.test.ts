@@ -66,4 +66,40 @@ describe('record db', () => {
     expect(await getRecordingBlob(record.id)).toBeUndefined();
     expect(await getRecordingList()).toEqual([]);
   });
+
+  it('filters echo recordings by segment', async () => {
+    const { saveRecording, findEchoRecordings, countEchoRecordings, countShadowingRecordings } =
+      await import('./record.js');
+    const blob = new Blob(['audio'], { type: 'audio/webm' });
+    const echoA = makeRecord({
+      id: 'echo-a1',
+      mode: 'echo',
+      segmentId: 'seg-a',
+      createdAt: 100,
+    });
+    const echoA2 = makeRecord({
+      id: 'echo-a2',
+      mode: 'echo',
+      segmentId: 'seg-a',
+      createdAt: 200,
+    });
+    const echoB = makeRecord({
+      id: 'echo-b1',
+      mode: 'echo',
+      segmentId: 'seg-b',
+      createdAt: 300,
+    });
+    const shadow = makeRecord({ id: 'shadow-1', mode: 'shadowing', createdAt: 400 });
+
+    await saveRecording(echoA, blob);
+    await saveRecording(echoA2, blob);
+    await saveRecording(echoB, blob);
+    await saveRecording(shadow, blob);
+
+    expect(
+      await findEchoRecordings('media-1', 'seg-a').then((items) => items.map((i) => i.id)),
+    ).toEqual(['echo-a2', 'echo-a1']);
+    expect(await countEchoRecordings('media-1', 'seg-a')).toBe(2);
+    expect(await countShadowingRecordings('media-1')).toBe(1);
+  });
 });
