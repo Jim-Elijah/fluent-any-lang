@@ -14,7 +14,7 @@ import {
 describe('db schema constants', () => {
   it('defines stable database identity', () => {
     expect(DB_NAME).toBe('fluent-any-lang');
-    expect(DB_VERSION).toBe(2);
+    expect(DB_VERSION).toBe(4);
   });
 
   it('defines all object store names', () => {

@@ -1,5 +1,5 @@
 import { msg } from '@lit/localize';
-import type { MediaType } from '../types/models.js';
+import type { MediaItem, MediaType } from '../types/models.js';
 
 const AUDIO_EXTENSIONS = new Set(['mp3', 'wav', 'ogg', 'webm', 'm4a', 'aac', 'flac']);
 
@@ -115,14 +115,46 @@ export async function hashAny(target: string | File) {
   return hashFile(target);
 }
 
-/** @TODO 上传时判断是否已存在 */
-export function isSameFile(file1: File, file2: File) {
+const DURATION_EPSILON_SECONDS = 0.05;
+
+export function durationsMatch(a: number, b: number): boolean {
+  return Math.abs(a - b) < DURATION_EPSILON_SECONDS;
+}
+
+/** size 是否一致（导入判重的第一道廉价筛） */
+export function mediaSizesMatch(
+  existing: Pick<MediaItem, 'size'>,
+  candidate: Pick<MediaItem, 'size'>,
+): boolean {
+  return existing.size === candidate.size;
+}
+
+/**
+ * 已存媒体与待导入文件是否为同一内容。
+ * 调用方应先按 size → duration 短路，仅在可能相同时再算 contentHash 后调用本函数。
+ */
+export function isSameMediaContent(
+  existing: Pick<MediaItem, 'id' | 'size' | 'duration' | 'contentHash'>,
+  candidate: Pick<MediaItem, 'id' | 'size' | 'duration' | 'contentHash'>,
+): boolean {
   return (
-    file1.name === file2.name &&
-    file1.size === file2.size &&
-    file1.type === file2.type &&
-    hashAny(file1) == hashAny(file2)
+    existing.id === candidate.id &&
+    mediaSizesMatch(existing, candidate) &&
+    durationsMatch(existing.duration, candidate.duration) &&
+    !!existing.contentHash &&
+    existing.contentHash === candidate.contentHash
   );
+}
+
+export async function isSameFile(file1: File, file2: File): Promise<boolean> {
+  if (file1.name !== file2.name || file1.size !== file2.size || file1.type !== file2.type) {
+    return false;
+  }
+  return (await hashFile(file1)) === (await hashFile(file2));
+}
+
+export function titleTypeKey(title: string, type: MediaType): string {
+  return `${title}::${type}`;
 }
 
 export function getMediaDuration(file: Blob, mimeType: string): Promise<number> {

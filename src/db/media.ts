@@ -26,7 +26,7 @@ export async function getMedia(id: string): Promise<MediaItem | undefined> {
   return db.get(STORE_MEDIA, id);
 }
 
-export async function getMediaListByTitle(title: string): Promise<Array<MediaItem | undefined>> {
+export async function getMediaListByTitle(title: string): Promise<MediaItem[]> {
   const db = await getDB();
   return db.getAllFromIndex(STORE_MEDIA, 'byTitle', title);
 }

@@ -5,19 +5,19 @@ import type { SubtitleTrack } from '../types/models.js';
 // create/insert
 export async function addSubtitle(subtitles: SubtitleTrack): Promise<void> {
   const db = await getDB();
-  db.put(STORE_SUBTITLE, subtitles);
+  await db.put(STORE_SUBTITLE, subtitles);
 }
 
-// read
-export async function getSubtitle(mediaTitle: string): Promise<SubtitleTrack | undefined> {
+// read by mediaId
+export async function getSubtitle(mediaId: string): Promise<SubtitleTrack | undefined> {
   const db = await getDB();
-  return db.getFromIndex(STORE_SUBTITLE, 'byTitle', mediaTitle);
+  return db.getFromIndex(STORE_SUBTITLE, 'byMediaId', mediaId);
 }
 
-// delete
-export async function deleteSubtitle(title: string): Promise<void> {
+// delete by mediaId
+export async function deleteSubtitle(mediaId: string): Promise<void> {
   const db = await getDB();
-  const subtitle = await getSubtitle(title);
+  const subtitle = await getSubtitle(mediaId);
   if (subtitle) {
     await db.delete(STORE_SUBTITLE, subtitle.id);
   }

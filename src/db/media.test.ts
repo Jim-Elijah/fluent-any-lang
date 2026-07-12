@@ -14,6 +14,7 @@ function makeMediaItem(overrides: Partial<MediaItem> = {}): MediaItem {
     duration: 120,
     createdAt: 1_000,
     hasSubtitles: false,
+    contentHash: 'hash',
     ...overrides,
   };
 }

@@ -18,7 +18,7 @@ export async function loadMediaForPlayback(id: string): Promise<LoadedMedia | nu
     return null;
   }
 
-  const subtitleTrack = await getSubtitle(item.title);
+  const subtitleTrack = await getSubtitle(item.id);
   return {
     item,
     blob,

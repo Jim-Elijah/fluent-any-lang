@@ -18,6 +18,7 @@ import '../ui/popconfirm.js';
 import './recording-preview.js';
 import '../ui/icon.js';
 import '../ui/tooltip.js';
+import '../ui/virtual-grid.js';
 import type {
   PracticeMode,
   PracticeRecord,
@@ -25,6 +26,10 @@ import type {
   SubtitleSegment,
 } from '../../types/models.js';
 import { formatDate, formatTime } from '../../lib/playback-utils.js';
+
+/** Row height including the 12px gap below each card. */
+const RECORD_ROW_HEIGHT = 88;
+const RECORD_LIST_HEIGHT = 480;
 
 @customElement('record-list')
 @localized()
@@ -53,24 +58,18 @@ export class RecordList extends LitElement {
       font-size: 0.875rem;
     }
 
-    .list {
-      display: grid;
-      gap: 12px;
-      margin: 0;
-      padding: 0;
-      list-style: none;
-    }
-
     .item {
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
       gap: 12px;
       align-items: center;
+      height: calc(100% - 12px);
       padding: 14px 16px;
       background: var(--color-surface, #fff);
       border: 1px solid var(--color-border, #d9d9d9);
       border-radius: var(--radius-md, 8px);
       box-shadow: var(--shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.06));
+      box-sizing: border-box;
     }
 
     .meta {
@@ -222,7 +221,7 @@ export class RecordList extends LitElement {
       );
     }
     if (this.sortBy && this.sortDirection) {
-      renderedItems = renderedItems.sort((a: PracticeRecord, b: PracticeRecord) => {
+      renderedItems = [...renderedItems].sort((a: PracticeRecord, b: PracticeRecord) => {
         if (this.sortBy === 'date') {
           return this.sortDirection === 'asc'
             ? a.createdAt - b.createdAt
@@ -237,6 +236,11 @@ export class RecordList extends LitElement {
       });
     }
 
+    const listHeight = Math.min(
+      Math.max(renderedItems.length, 1) * RECORD_ROW_HEIGHT,
+      RECORD_LIST_HEIGHT,
+    );
+
     return html`
       <section>
         ${this.showHeader
@@ -250,56 +254,13 @@ export class RecordList extends LitElement {
           ? html`<div class="empty">${msg('加载中…')}</div>`
           : renderedItems.length === 0
             ? html`<div class="empty">${msg('暂无录音')}</div>`
-            : html`<div class="list">
-                ${renderedItems.map(
-                  (item) => html`
-                <div class="item">
-                  <div class="meta">
-                      <p class="title">${item.mediaTitle}</p>
-                      <p class="details">
-                        <span>${formatTime(item.recordingDuration)}</span>
-                        <span>${formatDate(item.createdAt, true)}</span>
-                      </p>
-                  </div>
-                  <div class="actions">
-                    <ui-tooltip title="${msg('查看')}">
-                      <ui-button
-                        variant="primary"
-                        aria-label="${msg('查看')}"
-                        @click="${() => this._handleView(item)}"
-                      >
-                        <ui-icon name="play"></ui-icon>
-                      </ui-button>
-                    </ui-tooltip>
-                    <ui-tooltip title="${msg('导出')}">
-                      <ui-button
-                        variant="secondary"
-                        aria-label="${msg('导出')}"
-                        @click="${() => this._handleExport(item)}"
-                      >
-                        <ui-icon name="download"></ui-icon>
-                      </ui-button>
-                    </ui-tooltip>
-                    <ui-popconfirm
-                      title=${msg('确定删除该录音吗？')}
-                      placement="bottom"
-                      ?confirm-loading=${this._deletingId === item.id}
-                      @confirm=${() => this._handleDelete(item)}
-                    >
-                        <ui-button
-                          variant="danger"
-                          aria-label="${msg('删除')}"
-                          ?disabled="${this._deletingId === item.id}"
-                        >
-                          <ui-icon name="delete"></ui-icon>
-                        </ui-button>
-                    </ui-popconfirm>
-                  </div>
-                </div>
-               </div>
-              `,
-                )}
-              </div>`}
+            : html`<ui-virtual-grid
+                .items=${renderedItems}
+                .itemHeight=${RECORD_ROW_HEIGHT}
+                .containerHeight=${listHeight}
+                .gridItems=${1}
+                .renderItem=${this._renderItem}
+              ></ui-virtual-grid>`}
         <ui-modal
           title="${this._modalRecording?.mediaTitle ?? msg('录音预览')}"
           @close="${() => this._handleModalClose()}"
@@ -327,6 +288,55 @@ export class RecordList extends LitElement {
     `;
   }
 
+  private _renderItem = (item: unknown): unknown => {
+    const recording = item as PracticeRecord;
+    return html`
+      <div class="item">
+        <div class="meta">
+          <p class="title">${recording.mediaTitle}</p>
+          <p class="details">
+            <span>${formatTime(recording.recordingDuration)}</span>
+            <span>${formatDate(recording.createdAt, true)}</span>
+          </p>
+        </div>
+        <div class="actions">
+          <ui-tooltip title="${msg('查看')}">
+            <ui-button
+              variant="primary"
+              aria-label="${msg('查看')}"
+              @click="${() => this._handleView(recording)}"
+            >
+              <ui-icon name="play"></ui-icon>
+            </ui-button>
+          </ui-tooltip>
+          <ui-tooltip title="${msg('导出')}">
+            <ui-button
+              variant="secondary"
+              aria-label="${msg('导出')}"
+              @click="${() => this._handleExport(recording)}"
+            >
+              <ui-icon name="download"></ui-icon>
+            </ui-button>
+          </ui-tooltip>
+          <ui-popconfirm
+            title=${msg('确定删除该录音吗？')}
+            placement="bottom"
+            ?confirm-loading=${this._deletingId === recording.id}
+            @confirm=${() => this._handleDelete(recording)}
+          >
+            <ui-button
+              variant="danger"
+              aria-label="${msg('删除')}"
+              ?disabled="${this._deletingId === recording.id}"
+            >
+              <ui-icon name="delete"></ui-icon>
+            </ui-button>
+          </ui-popconfirm>
+        </div>
+      </div>
+    `;
+  };
+
   private _handleModalClose(): void {
     this._modalOpen = false;
     this._modalRecording = null;
@@ -339,7 +349,7 @@ export class RecordList extends LitElement {
     const [recordingBlob, sourceBlob, subtitleTrack] = await Promise.all([
       getRecordingBlob(recording.id),
       getMediaBlob(recording.mediaId),
-      getSubtitle(recording.mediaTitle),
+      getSubtitle(recording.mediaId),
     ]);
 
     if (!recordingBlob) {

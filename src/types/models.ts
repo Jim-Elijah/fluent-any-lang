@@ -22,7 +22,10 @@ export type MediaItem = {
   mimeType: string;
   duration: number;
   createdAt: number;
-  hasSubtitles: boolean; // 字幕是否上传，取决于与title同名的SubtitleTrack是否有segments
+  /** 文件内容 SHA-256，用于导入判重 */
+  contentHash: string;
+  /** 该 mediaId 下是否已有字幕 segments */
+  hasSubtitles: boolean;
   cover?: string; // 封面图片url
 };
 
@@ -33,11 +36,13 @@ export type MediaBlob = {
 };
 
 export type SubtitleTrack = {
-  id: string; // 根据filename生成hash，上传时判重
+  id: string; // hash(mediaId:filename)，与媒体一对一
+  mediaId: string;
   title: string; // basename
   filename: string; // filename
   type: SubtitleType; // srt or lrc
-  // TODO whether or not to add more metadata
+  /** 字幕原文 SHA-256，用于导入判重（避免 segment id 随机导致误判） */
+  contentHash: string;
   segments: SubtitleSegment[];
 };
 
@@ -160,9 +165,40 @@ export type ImportError = {
   message: string;
 };
 
+export type ImportConflictKind = 'media-content' | 'media-title' | 'subtitle-content';
+
+/** 导入冲突：需用户选择覆盖或跳过 */
+export type ImportConflict = {
+  kind: ImportConflictKind;
+  filename: string;
+  message: string;
+  /** 将被覆盖的已有媒体 id */
+  existingMediaId: string;
+  title?: string;
+  mediaType?: MediaType;
+};
+
+export type ImportOptions = {
+  /** 同 filename 内容不同时允许覆盖的 media id */
+  overwriteMediaIds?: string[];
+  /** 同 title+type 不同后缀时允许覆盖，格式 `${title}::${type}` */
+  overwriteTitleTypes?: string[];
+  /** 允许覆盖字幕的 media id */
+  overwriteSubtitleMediaIds?: string[];
+};
+
+/** 用户对单条导入冲突的选择 */
+export type ConflictDecision = {
+  conflict: ImportConflict;
+  /** true=覆盖，false=跳过 */
+  overwrite: boolean;
+};
+
 export type ImportResult = {
   imported: Array<MediaItem | SubtitleTrack>;
   errors: ImportError[];
+  skipped: ImportError[];
+  conflicts: ImportConflict[];
 };
 
 export type SortDirection = 'asc' | 'desc';

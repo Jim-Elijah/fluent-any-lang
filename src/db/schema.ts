@@ -10,7 +10,7 @@ import type {
 } from '../types/models.js';
 
 export const DB_NAME = 'fluent-any-lang';
-export const DB_VERSION = 2;
+export const DB_VERSION = 4;
 
 export const STORE_MEDIA = 'media';
 export const STORE_MEDIA_BLOB = 'mediaBlob';
@@ -32,7 +32,7 @@ export interface FluentAnyLangDB {
   [STORE_SUBTITLE]: {
     key: string;
     value: SubtitleTrack;
-    indexes: { byTitle: string };
+    indexes: { byTitle: string; byMediaId: string };
   };
   [STORE_RECORDING]: {
     key: string;

@@ -54,6 +54,7 @@ describe('media-list', () => {
         mimeType: 'audio/mpeg',
         duration: 12,
         createdAt: 1,
+        contentHash: 'hash',
         hasSubtitles: false,
       },
     ]);

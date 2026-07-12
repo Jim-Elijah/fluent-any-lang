@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  durationsMatch,
   getBaseName,
   getFileExtension,
   getMediaType,
@@ -8,10 +9,14 @@ import {
   isAudioFile,
   isLrcFile,
   isMediaFile,
+  isSameFile,
+  isSameMediaContent,
   isSrtFile,
   isVideoFile,
+  mediaSizesMatch,
   resolveMimeType,
   titleFromFileName,
+  titleTypeKey,
   validateMediaFile,
 } from './file-validation.js';
 
@@ -101,5 +106,41 @@ describe('validateMediaFile', () => {
     const result = validateMediaFile(makeFile('readme.txt', 'text/plain'));
     expect(result.valid).toBe(false);
     expect(result.error).toBeTruthy();
+  });
+});
+
+describe('isSameMediaContent', () => {
+  it('requires id, size, duration, and contentHash to match', () => {
+    const base = { id: 'a', size: 10, duration: 12.5, contentHash: 'h1' };
+    expect(isSameMediaContent(base, { ...base })).toBe(true);
+    expect(isSameMediaContent(base, { ...base, size: 11 })).toBe(false);
+    expect(isSameMediaContent(base, { ...base, contentHash: 'h2' })).toBe(false);
+    expect(isSameMediaContent({ ...base, contentHash: '' }, base)).toBe(false);
+  });
+
+  it('allows small duration drift', () => {
+    expect(durationsMatch(12.5, 12.54)).toBe(true);
+    expect(durationsMatch(12.5, 12.6)).toBe(false);
+  });
+
+  it('mediaSizesMatch compares size only', () => {
+    expect(mediaSizesMatch({ size: 10 }, { size: 10 })).toBe(true);
+    expect(mediaSizesMatch({ size: 10 }, { size: 11 })).toBe(false);
+  });
+});
+
+describe('isSameFile', () => {
+  it('compares name, size, type, and content hash', async () => {
+    const a = new File(['x'], 'a.mp3', { type: 'audio/mpeg' });
+    const b = new File(['x'], 'a.mp3', { type: 'audio/mpeg' });
+    const c = new File(['y'], 'a.mp3', { type: 'audio/mpeg' });
+    expect(await isSameFile(a, b)).toBe(true);
+    expect(await isSameFile(a, c)).toBe(false);
+  });
+});
+
+describe('titleTypeKey', () => {
+  it('joins title and media type', () => {
+    expect(titleTypeKey('lesson', 'audio')).toBe('lesson::audio');
   });
 });

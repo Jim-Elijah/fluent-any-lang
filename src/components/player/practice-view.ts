@@ -510,7 +510,8 @@ export class PracticeView extends LitElement {
       this._syncMediaIdFromController();
       this._syncTimeTrackerMedia();
       await this._refreshRecordings();
-    } catch {
+    } catch (error) {
+      console.error('[practice-view] failed to load practice media', error);
       Message.error(msg('加载媒体失败，请重试。'));
     } finally {
       loadingInstance.close();

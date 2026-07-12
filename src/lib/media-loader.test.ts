@@ -15,6 +15,7 @@ function makeMediaItem(overrides: Partial<MediaItem> = {}): MediaItem {
     duration: 120,
     createdAt: 1_000,
     hasSubtitles: false,
+    contentHash: 'hash',
     ...overrides,
   };
 }
@@ -49,9 +50,11 @@ describe('media-loader', () => {
     await addMedia(item, blob);
     await addSubtitle({
       id: 'sub-1',
+      mediaId: item.id,
       title: item.title,
       filename: 'lesson-1.srt',
       type: 'srt',
+      contentHash: 'sub-hash',
       segments: [{ id: 's1', startTime: 0, endTime: 2, text: 'hello' }],
     });
 
