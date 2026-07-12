@@ -1,3 +1,4 @@
+import { msg, localized } from '@lit/localize';
 import { css, html, LitElement, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
@@ -14,6 +15,7 @@ const TYPE_ICONS: Record<AlertType, string> = {
 };
 
 @customElement('ui-alert')
+@localized()
 export class UiAlert extends LitElement {
   static styles = css`
     :host {
@@ -327,7 +329,12 @@ export class UiAlert extends LitElement {
 
         ${this.closable
           ? html`
-              <button class="close" type="button" aria-label="Close" @click=${this._handleClose}>
+              <button
+                class="close"
+                type="button"
+                aria-label="${msg('关闭')}"
+                @click=${this._handleClose}
+              >
                 ${this.closeText
                   ? html`<span class="close-text">${this.closeText}</span>`
                   : html`<span class="close-icon">✕</span>`}

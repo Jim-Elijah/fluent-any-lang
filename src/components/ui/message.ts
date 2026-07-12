@@ -1,3 +1,4 @@
+import { msg, localized } from '@lit/localize';
 import { css, html, LitElement, nothing } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
@@ -120,6 +121,7 @@ function resolveOptions(input: string | MessageOptions): ResolvedMessageOptions 
 // ---------------------------------------------------------------------------
 
 @customElement('ui-message-item')
+@localized()
 export class UiMessageItem extends LitElement {
   static styles = css`
     :host {
@@ -300,7 +302,12 @@ export class UiMessageItem extends LitElement {
         >
         <span class="content">${this.message}</span>
         ${this.showClose
-          ? html`<button class="close" type="button" aria-label="Close" @click=${this._onClose}>
+          ? html`<button
+              class="close"
+              type="button"
+              aria-label="${msg('关闭')}"
+              @click=${this._onClose}
+            >
               ✕
             </button>`
           : nothing}

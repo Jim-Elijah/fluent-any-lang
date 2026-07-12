@@ -1,4 +1,4 @@
-import { msg, localized } from '@lit/localize';
+import { msg, str, localized } from '@lit/localize';
 import { css, html, LitElement, nothing, type PropertyValues, type TemplateResult } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 
@@ -640,7 +640,7 @@ export class SubtitlePanel extends LitElement {
     const labelById = new Map(
       [...newestFirst]
         .sort((a, b) => a.createdAt - b.createdAt)
-        .map((record, index) => [record.id, `录音 ${index + 1}`]),
+        .map((record, index) => [record.id, msg(str`录音 ${index + 1}`)]),
     );
 
     const menu = {

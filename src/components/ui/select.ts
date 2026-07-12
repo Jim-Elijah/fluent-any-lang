@@ -1,3 +1,4 @@
+import { msg, localized } from '@lit/localize';
 import { css, html, LitElement, nothing, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
@@ -169,6 +170,7 @@ export function defaultFilterOption(input: string, option: SelectOption): boolea
 }
 
 @customElement('ui-select')
+@localized()
 export class UiSelect extends LitElement {
   static styles = css`
     :host {
@@ -292,7 +294,7 @@ export class UiSelect extends LitElement {
 
   @property({ type: Array, attribute: false }) options: SelectOptions[] = [];
 
-  @property({ type: String }) placeholder = '请选择';
+  @property({ type: String }) placeholder = '';
   @property({ type: Boolean, attribute: 'allow-clear' }) allowClear = false;
   @property({ type: Boolean, reflect: true }) disabled = false;
   @property({ type: String, reflect: true }) size: SelectSize = 'middle';
@@ -303,7 +305,7 @@ export class UiSelect extends LitElement {
   @property({ type: Boolean, attribute: 'default-open' }) defaultOpen = false;
 
   @property({ type: String, reflect: true }) mode: SelectMode = 'default';
-  @property({ type: String, attribute: 'not-found-content' }) notFoundContent = '无匹配项';
+  @property({ type: String, attribute: 'not-found-content' }) notFoundContent = '';
   @property({ type: Boolean }) loading = false;
 
   @property({ attribute: false }) popupContainer: string | HTMLElement | null = 'body';
@@ -724,7 +726,7 @@ export class UiSelect extends LitElement {
           '--select-z': String(this.zIndex),
         })}
         role="listbox"
-        aria-label="Options"
+        aria-label="${msg('选项')}"
         @mousedown=${(e: MouseEvent) => e.stopPropagation()}
         @keydown=${this._handleDropdownKeyDown}
       >
@@ -735,7 +737,7 @@ export class UiSelect extends LitElement {
                   class="search-input"
                   type="text"
                   .value=${this._searchValue}
-                  placeholder="搜索"
+                  placeholder="${msg('搜索')}"
                   @input=${this._handleSearchInput}
                   @keydown=${this._handleDropdownKeyDown}
                 />
@@ -743,7 +745,7 @@ export class UiSelect extends LitElement {
             `
           : nothing}
         ${this.loading
-          ? html`<div class="loading">加载中</div>`
+          ? html`<div class="loading">${msg('加载中')}</div>`
           : filtered.length
             ? html`
                 <ul class="option-list">
@@ -768,7 +770,7 @@ export class UiSelect extends LitElement {
                   })}
                 </ul>
               `
-            : html`<div class="empty">${this.notFoundContent}</div>`}
+            : html`<div class="empty">${this.notFoundContent || msg('无匹配项')}</div>`}
       </div>
     `;
   }
@@ -919,12 +921,17 @@ export class UiSelect extends LitElement {
         @keydown=${this._handleSelectorKeyDown}
       >
         <span class=${classMap({ selection: true, placeholder: !hasValue })}>
-          ${hasValue ? displayLabel : this.placeholder}
+          ${hasValue ? displayLabel : this.placeholder || msg('请选择')}
         </span>
         <span class="suffix">
           ${showClear
             ? html`
-                <button class="clear" type="button" aria-label="清空" @click=${this._handleClear}>
+                <button
+                  class="clear"
+                  type="button"
+                  aria-label="${msg('清空')}"
+                  @click=${this._handleClear}
+                >
                   ×
                 </button>
               `

@@ -1,3 +1,4 @@
+import { msg, localized } from '@lit/localize';
 import { css, html, LitElement, nothing, type PropertyValues, type TemplateResult } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
@@ -370,7 +371,7 @@ abstract class InputBase extends LitElement {
       <button
         type="button"
         class="clear"
-        aria-label="clear"
+        aria-label="${msg('清空')}"
         ?disabled="${this.disabled}"
         @click="${this._handleClearClick}"
       >
@@ -414,6 +415,7 @@ abstract class InputBase extends LitElement {
   }
 }
 
+@localized()
 @customElement('ui-input')
 export class UiInput extends InputBase {
   @property({ type: String }) type = 'text';
@@ -460,6 +462,7 @@ export class UiInput extends InputBase {
   }
 }
 
+@localized()
 @customElement('ui-input-textarea')
 export class UiInputTextArea extends InputBase {
   @property({ type: Number }) rows = 4;
@@ -568,6 +571,7 @@ export class UiInputTextArea extends InputBase {
   }
 }
 
+@localized()
 @customElement('ui-input-search')
 export class UiInputSearch extends InputBase {
   @property({ attribute: false }) enterButton: boolean | string = false;
@@ -621,7 +625,7 @@ export class UiInputSearch extends InputBase {
       <button
         type="button"
         class="icon-btn"
-        aria-label="search"
+        aria-label="${msg('搜索')}"
         ?disabled="${this.disabled || this.loading}"
         @click="${this._handleSearchClick}"
       >
@@ -634,7 +638,7 @@ export class UiInputSearch extends InputBase {
     if (!this.enterButton) {
       return nothing;
     }
-    const label = typeof this.enterButton === 'string' ? this.enterButton : 'Search';
+    const label = typeof this.enterButton === 'string' ? this.enterButton : msg('搜索');
     return html`
       <button
         type="button"
@@ -676,6 +680,7 @@ export class UiInputSearch extends InputBase {
   }
 }
 
+@localized()
 @customElement('ui-input-password')
 export class UiInputPassword extends InputBase {
   @property({ type: Boolean, attribute: 'visibility-toggle' }) visibilityToggle = true;

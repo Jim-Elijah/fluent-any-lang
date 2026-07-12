@@ -1,3 +1,4 @@
+import { msg } from '@lit/localize';
 import { getAudioContext } from './audio-context.js';
 
 export type RecorderState = 'inactive' | 'recording' | 'paused';
@@ -87,11 +88,11 @@ export class AudioRecorderController {
       };
 
       this.mediaRecorder.onerror = (event: ErrorEvent) => {
-        const error = event.error || new Error('录音发生未知错误');
+        const error = event.error || new Error(msg('录音发生未知错误'));
         this.options.onError?.(error);
       };
     } catch (error) {
-      const err = error instanceof Error ? error : new Error('初始化录音器失败');
+      const err = error instanceof Error ? error : new Error(msg('初始化录音器失败'));
       this.options.onError?.(err);
       throw err;
     }
@@ -124,7 +125,7 @@ export class AudioRecorderController {
    */
   public async start(): Promise<void> {
     if (this.state === 'recording') {
-      throw new Error('当前已经在录音中');
+      throw new Error(msg('当前已经在录音中'));
     }
 
     if (this.state === 'paused') {
@@ -135,7 +136,7 @@ export class AudioRecorderController {
     await this.initRecorder();
 
     if (!this.mediaRecorder) {
-      throw new Error('MediaRecorder 初始化失败');
+      throw new Error(msg('MediaRecorder 初始化失败'));
     }
 
     this.chunks = [];
@@ -150,7 +151,7 @@ export class AudioRecorderController {
 
       const handleError = (event: Event) => {
         cleanup();
-        const error = (event as ErrorEvent).error ?? new Error('录音启动失败');
+        const error = (event as ErrorEvent).error ?? new Error(msg('录音启动失败'));
         reject(error);
       };
 
@@ -166,7 +167,7 @@ export class AudioRecorderController {
         recorder.start();
       } catch (error) {
         cleanup();
-        reject(error instanceof Error ? error : new Error('录音启动失败'));
+        reject(error instanceof Error ? error : new Error(msg('录音启动失败')));
       }
     });
   }
@@ -176,11 +177,11 @@ export class AudioRecorderController {
    */
   public pause(): void {
     if (!this.mediaRecorder) {
-      throw new Error('录音器未初始化');
+      throw new Error(msg('录音器未初始化'));
     }
 
     if (this.state !== 'recording') {
-      throw new Error('当前不是录音状态，无法暂停');
+      throw new Error(msg('当前不是录音状态，无法暂停'));
     }
 
     this.mediaRecorder.pause();
@@ -191,11 +192,11 @@ export class AudioRecorderController {
    */
   public resume(): void {
     if (!this.mediaRecorder) {
-      throw new Error('录音器未初始化');
+      throw new Error(msg('录音器未初始化'));
     }
 
     if (this.state !== 'paused') {
-      throw new Error('当前不是暂停状态，无法继续');
+      throw new Error(msg('当前不是暂停状态，无法继续'));
     }
 
     this.mediaRecorder.resume();
@@ -207,12 +208,12 @@ export class AudioRecorderController {
   public stop(): Promise<Blob> {
     return new Promise((resolve, reject) => {
       if (!this.mediaRecorder) {
-        reject(new Error('录音器未初始化'));
+        reject(new Error(msg('录音器未初始化')));
         return;
       }
 
       if (this.state === 'inactive') {
-        reject(new Error('当前没有正在进行的录音'));
+        reject(new Error(msg('当前没有正在进行的录音')));
         return;
       }
 
@@ -237,7 +238,7 @@ export class AudioRecorderController {
     options: WaveformAnalysisOptions = {},
   ): () => void {
     if (!this.stream) {
-      throw new Error('录音流未就绪');
+      throw new Error(msg('录音流未就绪'));
     }
 
     this.detachWaveformAnalysis();

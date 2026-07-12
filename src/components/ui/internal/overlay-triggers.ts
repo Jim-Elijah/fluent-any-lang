@@ -34,8 +34,6 @@ export class OverlayTriggerController {
   private _globalOpts: GlobalTriggerOptions | null = null;
   private _globalBound = false;
 
-  constructor(private readonly _host: HTMLElement) {}
-
   bindHover(el: HTMLElement, opts: HoverTriggerOptions): void {
     this._hoverTarget = el;
     this._hoverOpts = opts;

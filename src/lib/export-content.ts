@@ -1,3 +1,4 @@
+import { msg } from '@lit/localize';
 import { formatDate } from './playback-utils.js';
 import { DEFAULT_SETTINGS, type PracticeRecord } from '../types/models.js';
 import { getMedia, getRecordingBlob } from '../db/service.js';
@@ -19,7 +20,7 @@ export function downloadBlob(blob: Blob, fileName: string): void {
 
 export async function exportRecording(recording: PracticeRecord): Promise<void> {
   const blob = await getRecordingBlob(recording.id);
-  if (!blob) throw new Error('录音文件未找到');
+  if (!blob) throw new Error(msg('录音文件未找到'));
   const mediaItem = await getMedia(recording.mediaId);
   const fileName = formatRecordingFileName(recording, mediaItem?.title);
   downloadBlob(blob, fileName);

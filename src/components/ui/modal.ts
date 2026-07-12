@@ -1,3 +1,4 @@
+import { msg, localized } from '@lit/localize';
 import { css, html, LitElement, nothing, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 
@@ -6,6 +7,7 @@ import { OverlayTriggerController } from './internal/overlay-triggers.js';
 import { Z_INDEX } from './internal/z-index.js';
 
 @customElement('ui-modal')
+@localized()
 export class UiModal extends LitElement {
   static styles = css`
     :host {
@@ -155,8 +157,8 @@ export class UiModal extends LitElement {
 
   @property({ type: Boolean }) open?: boolean;
   @property({ type: Boolean, attribute: 'default-open' }) defaultOpen = false;
-  @property({ attribute: 'ok-text' }) okText = 'OK';
-  @property({ attribute: 'cancel-text' }) cancelText = 'Cancel';
+  @property({ attribute: 'ok-text' }) okText = '';
+  @property({ attribute: 'cancel-text' }) cancelText = '';
 
   @property({ type: String }) title: string = '';
   @property({ type: Boolean }) centered = false;
@@ -370,7 +372,11 @@ export class UiModal extends LitElement {
           <div class="header">
             <div class="title">${this.title ? html`${this.title}` : nothing}</div>
             ${this.closable
-              ? html`<button class="close" aria-label="Close" @click=${() => this._onClickCloseX()}>
+              ? html`<button
+                  class="close"
+                  aria-label="${msg('关闭')}"
+                  @click=${() => this._onClickCloseX()}
+                >
                   ✕
                 </button>`
               : nothing}
@@ -386,7 +392,7 @@ export class UiModal extends LitElement {
                     ?disabled=${this.cancelButtonPropsDisabled}
                     @click=${() => this._handleCancel({ type: 'cancel' })}
                   >
-                    ${this.cancelText}
+                    ${this.cancelText || msg('取消')}
                   </button>
                   <button
                     class="btn primary"
@@ -394,8 +400,8 @@ export class UiModal extends LitElement {
                     ?disabled=${this.confirmLoading || this.okButtonPropsDisabled}
                   >
                     ${this.confirmLoading
-                      ? html`<span class="spin"></span>${this.okText}`
-                      : this.okText}
+                      ? html`<span class="spin"></span>${this.okText || msg('确定')}`
+                      : this.okText || msg('确定')}
                   </button>
                 </div>
               `
