@@ -113,11 +113,26 @@ export class RecordList extends LitElement {
 
     .details {
       display: flex;
-      flex-wrap: wrap;
-      gap: 8px 12px;
+      flex-wrap: nowrap;
+      align-items: center;
+      gap: 8px;
       margin: 0;
+      min-width: 0;
+      overflow: hidden;
       color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
       font-size: 0.8125rem;
+    }
+
+    .details > span {
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+
+    .details > .date {
+      flex-shrink: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .badge {
@@ -355,7 +370,7 @@ export class RecordList extends LitElement {
           <p class="title">${recording.mediaTitle}</p>
           <p class="details">
             <span>${formatTime(recording.recordingDuration)}</span>
-            <span>${formatDate(recording.createdAt, true)}</span>
+            <span class="date">${formatDate(recording.createdAt, true)}</span>
           </p>
         </div>
         <div class="actions">

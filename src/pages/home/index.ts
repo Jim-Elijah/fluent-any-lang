@@ -1,5 +1,5 @@
 import { css, html, LitElement } from 'lit';
-import { customElement, query } from 'lit/decorators.js';
+import { customElement, property, query, state } from 'lit/decorators.js';
 import { msg, localized } from '@lit/localize';
 import { navigator } from 'lit-element-router';
 
@@ -7,6 +7,8 @@ import '../../components/import/content-importer.js';
 import '../../components/library/media-list.js';
 import '../../components/stats/practice-stats-dashboard.js';
 import type { MediaList } from '../../components/library/media-list.js';
+
+const COMPACT_MQ = '(max-height: 739px)';
 
 const NavigatorElement = navigator(LitElement);
 @customElement('home-page')
@@ -19,6 +21,11 @@ export class HomePage extends NavigatorElement {
       min-height: 0;
       height: 100%;
       overflow: hidden;
+    }
+
+    :host([compact]) {
+      height: auto;
+      overflow: visible;
     }
 
     .home {
@@ -51,10 +58,37 @@ export class HomePage extends NavigatorElement {
       flex: 1;
       min-height: 12rem;
     }
+
+    :host([compact]) media-list {
+      flex: none;
+      min-height: 0;
+    }
   `;
+
+  @property({ type: Boolean, reflect: true })
+  compact = false;
+
+  @state()
+  private _compactMq?: MediaQueryList;
 
   @query('media-list')
   private _mediaList?: MediaList;
+
+  connectedCallback() {
+    super.connectedCallback();
+    this._compactMq = window.matchMedia(COMPACT_MQ);
+    this.compact = this._compactMq.matches;
+    this._compactMq.addEventListener('change', this._onCompactChange);
+  }
+
+  disconnectedCallback() {
+    this._compactMq?.removeEventListener('change', this._onCompactChange);
+    super.disconnectedCallback();
+  }
+
+  private _onCompactChange = (e: MediaQueryListEvent) => {
+    this.compact = e.matches;
+  };
 
   render() {
     return html`
@@ -66,7 +100,7 @@ export class HomePage extends NavigatorElement {
           <practice-stats-dashboard></practice-stats-dashboard>
           <content-importer @content-imported="${this._handleContentImported}"></content-importer>
           <media-list
-            fill-height
+            ?fill-height=${!this.compact}
             .limit=${10}
             @media-selected="${this._handleMediaSelected}"
           ></media-list>

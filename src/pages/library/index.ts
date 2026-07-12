@@ -1,5 +1,5 @@
 import { css, html, LitElement } from 'lit';
-import { customElement, query, state } from 'lit/decorators.js';
+import { customElement, property, query, state } from 'lit/decorators.js';
 import { msg, localized } from '@lit/localize';
 import { navigator } from 'lit-element-router';
 import { styleMap } from 'lit/directives/style-map.js';
@@ -15,6 +15,7 @@ import { allocateStackedHeights, type ListMetricsDetail } from '../../lib/split-
 import { SortDirection } from '../../types/models.js';
 
 const STACK_GAP_PX = 16;
+const COMPACT_MQ = '(max-height: 739px)';
 
 const NavigatorElement = navigator(LitElement);
 @customElement('library-page')
@@ -27,6 +28,11 @@ export class LibraryPage extends NavigatorElement {
       min-height: 0;
       height: 100%;
       overflow: hidden;
+    }
+
+    :host([compact]) {
+      height: auto;
+      overflow: visible;
     }
 
     .layout {
@@ -86,10 +92,20 @@ export class LibraryPage extends NavigatorElement {
       overflow: hidden;
     }
 
+    :host([compact]) .stack {
+      flex: none;
+      overflow: visible;
+    }
+
     media-list,
     record-list {
       min-height: 0;
       overflow: hidden;
+    }
+
+    :host([compact]) media-list,
+    :host([compact]) record-list {
+      overflow: visible;
     }
 
     media-list.pending,
@@ -97,6 +113,9 @@ export class LibraryPage extends NavigatorElement {
       flex: 1;
     }
   `;
+
+  @property({ type: Boolean, reflect: true })
+  compact = false;
 
   @query('.stack')
   private _stack?: HTMLElement;
@@ -122,11 +141,31 @@ export class LibraryPage extends NavigatorElement {
 
   private _resizeObserver: ResizeObserver | null = null;
 
+  private _compactMq?: MediaQueryList;
+
+  connectedCallback() {
+    super.connectedCallback();
+    this._compactMq = window.matchMedia(COMPACT_MQ);
+    this.compact = this._compactMq.matches;
+    this._compactMq.addEventListener('change', this._onCompactChange);
+  }
+
   disconnectedCallback(): void {
+    this._compactMq?.removeEventListener('change', this._onCompactChange);
     this._resizeObserver?.disconnect();
     this._resizeObserver = null;
     super.disconnectedCallback();
   }
+
+  private _onCompactChange = (e: MediaQueryListEvent) => {
+    this.compact = e.matches;
+    if (!this.compact) {
+      this._reallocate();
+    } else {
+      this._mediaHeight = 0;
+      this._recordHeight = 0;
+    }
+  };
 
   protected firstUpdated(): void {
     if (!this._stack) return;
@@ -150,6 +189,7 @@ export class LibraryPage extends NavigatorElement {
   }
 
   private _reallocate(): void {
+    if (this.compact) return;
     const available = Math.max(0, (this._stack?.clientHeight ?? 0) - STACK_GAP_PX);
     const [mediaHeight, recordHeight] = allocateStackedHeights(
       this._mediaNatural,
@@ -174,7 +214,7 @@ export class LibraryPage extends NavigatorElement {
   };
 
   render() {
-    const sized = this._mediaHeight > 0 && this._recordHeight > 0;
+    const sized = !this.compact && this._mediaHeight > 0 && this._recordHeight > 0;
 
     return html`
       <div class="layout">
@@ -218,8 +258,8 @@ export class LibraryPage extends NavigatorElement {
         <p class="hint">${msg('筛选与排序同时作用于下方媒体库与录音库')}</p>
         <div class="stack">
           <media-list
-            class=${sized ? '' : 'pending'}
-            fill-height
+            class=${sized || this.compact ? '' : 'pending'}
+            ?fill-height=${!this.compact}
             style=${styleMap(sized ? { height: `${this._mediaHeight}px`, flex: 'none' } : {})}
             .keyword=${this._keyword}
             .sortBy=${this._sortBy}
@@ -228,8 +268,8 @@ export class LibraryPage extends NavigatorElement {
             @media-selected="${this._handleMediaSelected}"
           ></media-list>
           <record-list
-            class=${sized ? '' : 'pending'}
-            fill-height
+            class=${sized || this.compact ? '' : 'pending'}
+            ?fill-height=${!this.compact}
             style=${styleMap(sized ? { height: `${this._recordHeight}px`, flex: 'none' } : {})}
             .keyword=${this._keyword}
             .sortBy=${this._sortBy}

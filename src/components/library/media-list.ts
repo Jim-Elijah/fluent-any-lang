@@ -100,11 +100,26 @@ export class MediaList extends LitElement {
 
     .details {
       display: flex;
-      flex-wrap: wrap;
-      gap: 8px 12px;
+      flex-wrap: nowrap;
+      align-items: center;
+      gap: 8px;
       margin: 0;
+      min-width: 0;
+      overflow: hidden;
       color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
       font-size: 0.8125rem;
+    }
+
+    .details > span {
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+
+    .details > .date {
+      flex-shrink: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .badge {
@@ -224,8 +239,6 @@ export class MediaList extends LitElement {
   }
 
   render() {
-    console.log('media list render');
-
     let renderedItems = this._items;
     if (this.keyword) {
       renderedItems = renderedItems.filter((item: MediaItem) =>
@@ -304,7 +317,7 @@ export class MediaList extends LitElement {
               </ui-tooltip>
             </span>
             <span>${formatTime(media.duration)}</span>
-            <span>${formatDate(media.createdAt, true)}</span>
+            <span class="date">${formatDate(media.createdAt, true)}</span>
             <span class="badge ${media.hasSubtitles ? '' : 'muted'}">
               <ui-tooltip title="${media.hasSubtitles ? msg('含字幕') : msg('无字幕')}">
                 <ui-icon

@@ -158,6 +158,27 @@ export class MyApp extends RouterNavigatorApp {
         font-size: 1.25rem;
       }
     }
+
+    /* Short viewports: allow page scroll so lists are reachable. */
+    @media (max-height: 739px) {
+      .main-content:has(home-page),
+      .main-content:has(library-page) {
+        overflow: auto;
+      }
+
+      .main-content:has(home-page) > main,
+      .main-content:has(library-page) > main {
+        flex: none;
+        min-height: 0;
+      }
+
+      .main-content:has(home-page) > main > home-page,
+      .main-content:has(library-page) > main > library-page {
+        flex: none;
+        height: auto;
+        min-height: 0;
+      }
+    }
   `;
 
   @property({ type: String })
