@@ -42,10 +42,11 @@ export class MyApp extends RouterNavigatorApp {
 
     .layout {
       display: flex;
-      min-height: 100vh;
+      height: 100dvh;
       max-width: calc(960px + 48px);
       margin: 0 auto;
       padding: 0 16px;
+      overflow: hidden;
     }
     .navigation {
       width: fit-content;
@@ -64,12 +65,6 @@ export class MyApp extends RouterNavigatorApp {
     .navigation ui-menu {
       height: auto; /* 不要 height: 100% */
     }
-    .main-content {
-      flex: 1;
-      min-width: 0;
-      padding: 24px 0 48px 0; /* 间距交给 gap */
-    }
-
     .navigation ui-menu {
       display: block;
       height: 100%;
@@ -78,10 +73,35 @@ export class MyApp extends RouterNavigatorApp {
     .main-content {
       flex: 1;
       min-width: 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
       padding: 24px 0 48px 24px;
+      overflow: auto;
+    }
+
+    /* Home / library fill the main pane; lists scroll internally. */
+    .main-content:has(home-page),
+    .main-content:has(library-page) {
+      overflow: hidden;
+    }
+
+    .main-content:has(home-page) > main,
+    .main-content:has(library-page) > main {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .main-content:has(home-page) > main > home-page,
+    .main-content:has(library-page) > main > library-page {
+      flex: 1;
+      min-height: 0;
     }
 
     header {
+      flex-shrink: 0;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -104,6 +124,7 @@ export class MyApp extends RouterNavigatorApp {
         flex-direction: column;
         max-width: none;
         padding: 0;
+        height: 100dvh;
       }
 
       .navigation {
@@ -125,7 +146,7 @@ export class MyApp extends RouterNavigatorApp {
       }
 
       .main-content {
-        padding: 16px 16px calc(var(--nav-height) + env(safe-area-inset-bottom, 0) + 16px);
+        padding: 6px 6px calc(var(--nav-height) + env(safe-area-inset-bottom, 0) + 6px);
       }
 
       header {
@@ -168,7 +189,7 @@ export class MyApp extends RouterNavigatorApp {
       { key: 'home', label: msg('首页'), link: '/', icon: 'home' },
       { key: 'practice', label: msg('练习'), link: '/practice', icon: 'practice' },
       { key: 'library', label: msg('库'), link: '/library', icon: 'media' },
-      { key: 'stats', label: msg('统计'), link: '/stats', icon: 'clock' },
+      { key: 'stats', label: msg('统计'), link: '/stats', icon: 'stats' },
     ];
   }
 

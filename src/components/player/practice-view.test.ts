@@ -45,7 +45,7 @@ type PracticeViewInternals = PracticeView & {
     pause: () => Promise<void>;
     addEventListener: (type: string, listener: (event?: Event) => void) => void;
     removeEventListener: (type: string, listener: (event?: Event) => void) => void;
-    getSnapshot: () => { segments: SubtitleSegment[] };
+    getSnapshot: () => { segments: SubtitleSegment[]; currentItem: { id: string } | null };
     dispatchEvent: (event: Event) => boolean;
   };
   _echoListening: boolean;
@@ -135,6 +135,27 @@ describe('practice-view', () => {
     const el = await renderView();
     expect(el.shadowRoot?.querySelector('.layout')).not.toBeNull();
     expect(el.shadowRoot?.querySelector('media-player')).not.toBeNull();
+  });
+
+  it('loads the first track when route has no media id', async () => {
+    const result = mount(
+      html`<practice-view
+        .routeContext=${{
+          route: 'practice',
+          params: {},
+          query: {},
+          data: {},
+        }}
+      ></practice-view>`,
+    );
+    cleanup = result.cleanup;
+    const el = result.container.querySelector('practice-view') as PracticeViewInternals;
+    await el.updateComplete;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await el.updateComplete;
+
+    expect(mockLoadPlaylist).toHaveBeenCalled();
+    expect(el._controller.getSnapshot().currentItem?.id).toBe('media-1');
   });
 
   async function dispatchEchoRecordRequest(el: PracticeViewInternals, segmentIndex = 0) {

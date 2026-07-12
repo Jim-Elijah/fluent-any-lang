@@ -14,46 +14,42 @@ const NavigatorElement = navigator(LitElement);
 export class HomePage extends NavigatorElement {
   static styles = css`
     :host {
-      display: block;
-      min-height: 100vh;
-    }
-
-    .layout {
-      max-width: 960px;
-      margin: 0 auto;
-      padding: 24px 16px 48px;
-    }
-
-    .layout.practice {
-      max-width: 1100px;
-    }
-
-    header {
       display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      margin-bottom: 32px;
-      padding-bottom: 16px;
-      border-bottom: 1px solid var(--color-border, #d9d9d9);
+      flex-direction: column;
+      min-height: 0;
+      height: 100%;
+      overflow: hidden;
     }
 
-    .brand {
-      margin: 0;
-      font-size: 1.5rem;
-      font-weight: 600;
-      color: var(--color-primary, #1677ff);
+    .home {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
     }
 
     .intro {
+      flex-shrink: 0;
       margin: 0 0 24px;
       color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
       font-size: 0.9375rem;
     }
 
     .stack {
-      display: grid;
+      display: flex;
+      flex-direction: column;
       gap: 24px;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .stack > :not(media-list) {
+      flex-shrink: 0;
+    }
+
+    media-list {
+      flex: 1;
+      min-height: 12rem;
     }
   `;
 
@@ -63,11 +59,17 @@ export class HomePage extends NavigatorElement {
   render() {
     return html`
       <div class="home">
-        <p class="intro">${msg('任意语言的听说练习平台。导入音频与字幕，即可开始练习。')}</p>
+        <p class="intro">
+          ${msg('任意语言的听说练习平台。导入音视频后即可开始练习，字幕可稍后补充。')}
+        </p>
         <div class="stack">
           <practice-stats-dashboard></practice-stats-dashboard>
           <content-importer @content-imported="${this._handleContentImported}"></content-importer>
-          <media-list @media-selected="${this._handleMediaSelected}"></media-list>
+          <media-list
+            fill-height
+            .limit=${10}
+            @media-selected="${this._handleMediaSelected}"
+          ></media-list>
         </div>
       </div>
     `;
@@ -75,7 +77,6 @@ export class HomePage extends NavigatorElement {
 
   private _handleContentImported(): void {
     void this._mediaList?.refresh();
-    // void this._recordList?.refresh();
   }
 
   private _handleMediaSelected(event: CustomEvent<{ id: string }>): void {

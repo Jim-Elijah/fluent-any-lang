@@ -67,6 +67,35 @@ describe('ui-popconfirm', () => {
     vi.useRealTimers();
   });
 
+  it('stays open while confirmLoading then closes when loading ends', async () => {
+    const el = await renderPopconfirm();
+    el.addEventListener('confirm', () => {
+      el.confirmLoading = true;
+    });
+
+    el.shadowRoot
+      ?.querySelector('.trigger')
+      ?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await el.updateComplete;
+    await flushUpdates();
+
+    getPopup()?.querySelector<HTMLButtonElement>('.btn.primary')?.click();
+    await el.updateComplete;
+    await flushUpdates();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await el.updateComplete;
+    await flushUpdates();
+
+    expect(getPopup()).not.toBeNull();
+    expect(getPopup()?.querySelector('.spin')).not.toBeNull();
+
+    el.confirmLoading = false;
+    await el.updateComplete;
+    await flushUpdates();
+
+    expect(getPopup() ?? null).toBeNull();
+  });
+
   it('dispatches cancel and closes on cancel click', async () => {
     const el = await renderPopconfirm();
     const cancelHandler = vi.fn();

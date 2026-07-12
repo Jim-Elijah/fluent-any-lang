@@ -10,6 +10,8 @@ function makeSession(overrides: Partial<PracticeSession> = {}): PracticeSession 
     id: 'sess-1',
     mediaId: 'media-1',
     mediaTitle: 'Song A',
+    mediaType: 'audio',
+    mediaFilename: 'Song A.mp3',
     mode: 'listening',
     startedAt,
     endedAt: startedAt + 5_000,

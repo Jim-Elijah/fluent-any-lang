@@ -190,6 +190,8 @@ export class UiPopconfirm extends LitElement {
   private _hoverCloseTimer: ReturnType<typeof setTimeout> | null = null;
   private _openingLock = false;
   private _openingLockTimer: ReturnType<typeof setTimeout> | null = null;
+  /** When confirm sets confirmLoading, close once loading clears. */
+  private _closeAfterConfirmLoading = false;
 
   connectedCallback(): void {
     super.connectedCallback();
@@ -277,6 +279,9 @@ export class UiPopconfirm extends LitElement {
     }
 
     this._assignOpen(next);
+    if (!next) {
+      this._closeAfterConfirmLoading = false;
+    }
 
     if (next) {
       this._dispatch('update:open', { open: true, trigger: meta.trigger });
@@ -415,6 +420,7 @@ export class UiPopconfirm extends LitElement {
   disconnectedCallback() {
     this._clearHoverTimers();
     this._clearOpeningLock();
+    this._closeAfterConfirmLoading = false;
     if (this._globalBound) {
       this._unbindGlobal();
       this._globalBound = false;
@@ -469,6 +475,17 @@ export class UiPopconfirm extends LitElement {
   }
 
   private _onPopupContentChanged(changed: PropertyValues) {
+    if (
+      changed.has('confirmLoading') &&
+      this._closeAfterConfirmLoading &&
+      !this.confirmLoading &&
+      this._isOpen()
+    ) {
+      this._closeAfterConfirmLoading = false;
+      this._hide('confirm');
+      return;
+    }
+
     const needsSync =
       changed.has('title') ||
       changed.has('okText') ||
@@ -629,6 +646,7 @@ export class UiPopconfirm extends LitElement {
 
   private _onCancel() {
     if (this.confirmLoading || this.disabled) return;
+    this._closeAfterConfirmLoading = false;
     this._dispatch('cancel', {});
     this._hide('cancel');
   }
@@ -642,8 +660,12 @@ export class UiPopconfirm extends LitElement {
     this._dispatch('confirm', {});
     setTimeout(() => {
       if (!this.confirmLoading) {
+        this._closeAfterConfirmLoading = false;
         this._hide('confirm');
+        return;
       }
+      // Parent set confirm-loading for async work; close when it clears.
+      this._closeAfterConfirmLoading = true;
     }, 0);
   }
 }

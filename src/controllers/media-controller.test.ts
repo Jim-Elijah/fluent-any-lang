@@ -48,6 +48,18 @@ describe('MediaController', () => {
     controller.destroy();
   });
 
+  it('applies object URL when media element attaches after loadTracks', async () => {
+    const lateController = new MediaController();
+    await lateController.loadTracks([makeTrack('a', 'Track A')]);
+
+    const lateAudio = createAudioMock();
+    lateController.attachMediaElement(lateAudio);
+
+    expect(lateAudio.src).toContain('blob:');
+    expect(lateAudio.load).toHaveBeenCalled();
+    lateController.destroy();
+  });
+
   it('loads tracks and exposes snapshot', async () => {
     const segments: SubtitleSegment[] = [{ id: 's1', startTime: 0, endTime: 5, text: 'one' }];
     await controller.loadTracks(
@@ -60,6 +72,23 @@ describe('MediaController', () => {
     expect(snapshot.currentItem?.id).toBe('a');
     expect(snapshot.segments).toEqual(segments);
     expect(snapshot.hasSubtitles).toBe(true);
+  });
+
+  it('updates current track subtitles without reloading media', async () => {
+    await controller.loadTracks([makeTrack('a', 'Track A')]);
+    expect(controller.getSnapshot().hasSubtitles).toBe(false);
+
+    const segments: SubtitleSegment[] = [
+      { id: 's1', startTime: 0, endTime: 2, text: 'hello' },
+      { id: 's2', startTime: 2, endTime: 4, text: 'world' },
+    ];
+    controller.updateCurrentTrackSubtitles(segments);
+
+    const snapshot = controller.getSnapshot();
+    expect(snapshot.hasSubtitles).toBe(true);
+    expect(snapshot.segments).toEqual(segments);
+    expect(snapshot.currentItem?.hasSubtitles).toBe(true);
+    expect(snapshot.subtitlesVisible).toBe(true);
   });
 
   it('seeks within duration bounds', async () => {

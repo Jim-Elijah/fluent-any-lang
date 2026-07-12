@@ -16,6 +16,8 @@ import { getAllPracticeSessions } from '../../db/practice-session.js';
 import type { PracticeAnalyticsMode } from '../../types/models.js';
 import '../../components/ui/input.js';
 import type { InputChangeDetail } from '../../components/ui/input.js';
+import '../../components/ui/icon.js';
+import '../../components/ui/tooltip.js';
 
 const NavigatorElement = navigator(LitElement);
 
@@ -261,10 +263,26 @@ export class PracticeStatsPage extends NavigatorElement {
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
     }
 
     .rank-title:hover {
       color: var(--color-primary-hover, #4096ff);
+    }
+
+    .rank-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .rank-type {
+      flex-shrink: 0;
+      color: var(--color-text-secondary, rgba(0, 0, 0, 0.45));
+      display: inline-flex;
     }
 
     .rank-ms {
@@ -607,9 +625,20 @@ export class PracticeStatsPage extends NavigatorElement {
                       <button
                         type="button"
                         class="rank-title"
+                        title=${item.mediaFilename || item.mediaTitle}
                         @click=${() => this.navigate(`/practice/${item.mediaId}`)}
                       >
-                        ${item.mediaTitle}
+                        <span class="rank-type">
+                          <ui-tooltip
+                            title="${item.mediaType === 'video' ? msg('视频') : msg('音频')}"
+                          >
+                            <ui-icon
+                              name="${item.mediaType === 'video' ? 'video' : 'music'}"
+                              size="16px"
+                            ></ui-icon>
+                          </ui-tooltip>
+                        </span>
+                        <span class="rank-name">${item.mediaTitle}</span>
                       </button>
                       <span class="rank-ms">${formatActiveDuration(item.totalMs)}</span>
                       <div class="rank-track">

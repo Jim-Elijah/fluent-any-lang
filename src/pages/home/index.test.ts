@@ -12,6 +12,7 @@ vi.mock('../../i18n/localization.js', async (importOriginal) => {
 
 import './index.js';
 import type { HomePage } from './index.js';
+import type { MediaList } from '../../components/library/media-list.js';
 import { mount } from '../../components/ui/test-utils.js';
 
 describe('home-page', () => {
@@ -34,7 +35,9 @@ describe('home-page', () => {
     const el = await renderPage();
     expect(el.shadowRoot?.querySelector('practice-stats-dashboard')).not.toBeNull();
     expect(el.shadowRoot?.querySelector('content-importer')).not.toBeNull();
-    expect(el.shadowRoot?.querySelector('media-list')).not.toBeNull();
-    expect(el.shadowRoot?.querySelector('practice-stats-dashboard')).not.toBeNull();
+    const mediaList = el.shadowRoot?.querySelector('media-list') as MediaList | null;
+    expect(mediaList).not.toBeNull();
+    expect(mediaList?.limit).toBe(10);
+    expect(mediaList?.fillHeight).toBe(true);
   });
 });

@@ -633,3 +633,84 @@ export async function importContentFiles(
 
   return { imported, errors, skipped, conflicts };
 }
+
+/**
+ * 为指定媒体挂载字幕（不依赖文件名配对）。
+ * 用于媒体库 / 练习页「导入字幕」入口。
+ */
+export async function importSubtitleForMedia(
+  mediaId: string,
+  file: File,
+  options: { overwrite?: boolean } = {},
+): Promise<ImportResult> {
+  const result: ImportResult = {
+    imported: [],
+    errors: [],
+    skipped: [],
+    conflicts: [],
+  };
+
+  const media = await getMedia(mediaId);
+  if (!media) {
+    result.errors.push({
+      filename: file.name,
+      message: msg('媒体不存在'),
+    });
+    return result;
+  }
+
+  const subtitleType: SubtitleType | undefined = isSrtFile(file)
+    ? 'srt'
+    : isLrcFile(file)
+      ? 'lrc'
+      : undefined;
+
+  if (!subtitleType) {
+    result.errors.push({
+      filename: file.name,
+      message: msg('请选择 .srt 或 .lrc 字幕文件'),
+    });
+    return result;
+  }
+
+  const parsed = await parseSubtitleFile(file, subtitleType);
+  if (!parsed.segments || !parsed.contentHash) {
+    result.errors.push({
+      filename: file.name,
+      message: parsed.error ?? msg('无效的 SRT/LRC 文件'),
+    });
+    return result;
+  }
+
+  if (parsed.segments.length === 0) {
+    result.errors.push({
+      filename: file.name,
+      message: msg('字幕文件没有有效片段'),
+    });
+    return result;
+  }
+
+  const overwriteSubtitleMediaIds = options.overwrite ? new Set([mediaId]) : new Set<string>();
+
+  const subResult = await saveOrConflictSubtitle(
+    file,
+    subtitleType,
+    mediaId,
+    parsed.segments,
+    parsed.contentHash,
+    overwriteSubtitleMediaIds,
+  );
+
+  result.errors.push(...subResult.errors);
+  result.skipped.push(...subResult.skipped);
+  result.conflicts.push(...subResult.conflicts);
+
+  if (subResult.subtitles) {
+    result.imported.push(subResult.subtitles);
+    if (!media.hasSubtitles) {
+      await updateMedia({ ...media, hasSubtitles: true });
+    }
+  }
+
+  return result;
+}

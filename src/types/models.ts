@@ -56,6 +56,9 @@ export type PracticeSession = {
   id: string;
   mediaId: string;
   mediaTitle: string;
+  /** 写入时冗余，媒体删除后仍可区分音/视频 */
+  mediaType: MediaType;
+  mediaFilename: string;
   mode: PracticeAnalyticsMode;
   startedAt: number;
   endedAt: number;

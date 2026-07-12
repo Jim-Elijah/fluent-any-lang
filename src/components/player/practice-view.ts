@@ -1,5 +1,5 @@
 import { msg, str, localized } from '@lit/localize';
-import { css, html, LitElement } from 'lit';
+import { css, html, LitElement, nothing } from 'lit';
 import { keyed } from 'lit/directives/keyed.js';
 import { customElement, property, query, state } from 'lit/decorators.js';
 
@@ -182,9 +182,13 @@ export class PracticeView extends LitElement {
 
   private _echoSegment: SubtitleSegment | null = null;
 
+  private _didInitialLoad = false;
+
   private _getShadowingTips(): string[] {
     return [
-      msg('采用跟读模式练习，点击以下【麦克风图标】并跟随播放语音，停止录音后会自动保存。'),
+      msg(
+        '跟读（Shadowing）：点击下方【麦克风】开始【同步】跟读；录音前有倒计时提醒（默认开启），录音停止后自动保存。',
+      ),
       msg('温馨提示：'),
       msg('1. 建议使用耳机练习。'),
       msg('2. 如果跟不上原音，可以设置倍速、单句暂停模式。'),
@@ -196,7 +200,7 @@ export class PracticeView extends LitElement {
   private _getEchoTips(): string[] {
     return [
       msg(
-        '采用单句跟读（Echo）模式：点击字幕行右侧【麦克风图标】，先播放该句原音，原音结束后自动开始录音，跟读完成后手动停止。',
+        '单句（Echo）：点击字幕行右侧【麦克风】：先播原音 → 倒计时提醒（默认开启）→ 录音；跟读完后手动停止录音。',
       ),
       msg('温馨提示：'),
       msg('1. 建议使用耳机练习。'),
@@ -236,16 +240,19 @@ export class PracticeView extends LitElement {
   }
 
   protected updated(changed: Map<PropertyKey, unknown>): void {
-    if (!changed.has('routeContext')) {
+    if (!changed.has('routeContext') && this._didInitialLoad) {
       return;
     }
-    const prevContext = changed.get('routeContext') as RouteContext | undefined;
-    const prevId = prevContext?.params?.id;
-    const nextId = this.routeContext.params.id;
-    if (prevId === nextId) {
-      return;
+    const nextId = this.routeContext.params?.id ?? '';
+    if (this._didInitialLoad) {
+      const prevContext = changed.get('routeContext') as RouteContext | undefined;
+      const prevId = prevContext?.params?.id ?? '';
+      if (prevId === nextId) {
+        return;
+      }
     }
-    this._mediaId = nextId ?? '';
+    this._didInitialLoad = true;
+    this._mediaId = nextId;
     void this._loadPractice();
   }
 
@@ -254,11 +261,6 @@ export class PracticeView extends LitElement {
     this._controller.addEventListener(ExtendedMediaEventType.TRACK_CHANGE, this._onTrackChange);
     this._timeTracker.attach(this._controller);
     this._timeTracker.setMode(this._resolveAnalyticsMode());
-
-    if (this.routeContext.params?.id) {
-      this._mediaId = this.routeContext.params.id;
-    }
-    void this._loadPractice();
   }
 
   private _resolveAnalyticsMode(): PracticeAnalyticsMode {
@@ -271,10 +273,10 @@ export class PracticeView extends LitElement {
   private _syncTimeTrackerMedia(): void {
     const item = this._controller.getSnapshot().currentItem;
     if (item) {
-      this._timeTracker.setMedia(item.id, item.title);
+      this._timeTracker.setMedia(item.id, item.title, item.type, item.filename);
       return;
     }
-    this._timeTracker.setMedia('', '');
+    this._timeTracker.setMedia('', '', 'audio', '');
   }
 
   private _onTrackChange = (): void => {
@@ -307,6 +309,8 @@ export class PracticeView extends LitElement {
 
     const headerTitle = this._practiceType === 'listening' ? msg('听力练习') : msg('口语练习');
 
+    const { hasSubtitles } = this._controller.getSnapshot();
+
     return html`
       <section>
         <div class="header">
@@ -336,15 +340,17 @@ export class PracticeView extends LitElement {
                 >
                   ${msg('跟读 (Shadowing)')}
                 </ui-button>
-                <ui-button
-                  variant="${this._speakingMode === 'echo' ? 'primary' : 'secondary'}"
-                  @click="${() => this._setSpeakingMode('echo')}"
-                >
-                  ${msg('单句 (Echo)')}
-                </ui-button>
+                ${hasSubtitles
+                  ? html`<ui-button
+                      variant="${this._speakingMode === 'echo' ? 'primary' : 'secondary'}"
+                      @click="${() => this._setSpeakingMode('echo')}"
+                    >
+                      ${msg('单句 (Echo)')}
+                    </ui-button>`
+                  : nothing}
               </div>
             `
-          : null}
+          : nothing}
         ${isShadowing
           ? html`
               <div class="settings-panel">
@@ -789,6 +795,9 @@ export class PracticeView extends LitElement {
         }
         grouped[segmentId] ??= [];
         grouped[segmentId].push(record);
+      }
+      for (const segmentId of Object.keys(grouped)) {
+        grouped[segmentId].sort((a, b) => b.createdAt - a.createdAt);
       }
       this._echoRecordingsBySegmentId = grouped;
       this._storageEstimate = await estimateStorage();

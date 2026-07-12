@@ -17,6 +17,8 @@ function makeSession(overrides: Partial<PracticeSession> = {}): PracticeSession 
     id: 'sess-1',
     mediaId: 'media-1',
     mediaTitle: 'Song A',
+    mediaType: 'audio',
+    mediaFilename: 'Song A.mp3',
     mode: 'listening',
     startedAt,
     endedAt: startedAt + 5_000,
@@ -131,7 +133,13 @@ describe('aggregatePracticeStats', () => {
     expect(summary.granularity).toBe('day');
     expect(summary.buckets).toHaveLength(7);
     expect(summary.buckets.find((b) => b.key === '2026-07-12')?.totalMs).toBe(180_000);
-    expect(summary.mediaRanking[0]).toMatchObject({ mediaId: 'm1', totalMs: 180_000 });
+    expect(summary.mediaRanking[0]).toMatchObject({
+      mediaId: 'm1',
+      mediaTitle: 'A',
+      mediaType: 'audio',
+      mediaFilename: 'Song A.mp3',
+      totalMs: 180_000,
+    });
   });
 
   it('filters by mode', () => {

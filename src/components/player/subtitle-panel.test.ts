@@ -149,4 +149,78 @@ describe('subtitle-panel', () => {
     ).toBeNull();
     expect(el.fullscreen).toBeUndefined();
   });
+
+  it('shows import subtitle CTA when media has no subtitles', async () => {
+    controller = new MediaController();
+    await controller.loadTracks([makeTrack('a', 'Track A', [])]);
+
+    const result = mount(html`<subtitle-panel .controller=${controller}></subtitle-panel>`);
+    cleanup = result.cleanup;
+    const el = result.container.querySelector('subtitle-panel') as SubtitlePanel;
+    await el.updateComplete;
+    await flushUpdates();
+
+    expect(el.shadowRoot?.textContent).toContain('当前媒体没有字幕');
+    expect(el.shadowRoot?.textContent).toContain('导入字幕');
+    expect(el.shadowRoot?.querySelector('input[type="file"]')).not.toBeNull();
+  });
+
+  it('labels echo recordings by creation order with newest first in the menu', async () => {
+    const el = await renderPanel();
+    el.echoMode = true;
+    el.echoRecordingsBySegmentId = {
+      s1: [
+        {
+          id: 'newest',
+          mediaId: 'a',
+          mediaTitle: 'Track A',
+          mediaFilename: 'Track A.mp3',
+          mode: 'echo',
+          segmentId: 's1',
+          mimeType: 'audio/webm',
+          createdAt: 300,
+          sourceDuration: 2,
+          recordingDuration: 2,
+          segments: [],
+        },
+        {
+          id: 'oldest',
+          mediaId: 'a',
+          mediaTitle: 'Track A',
+          mediaFilename: 'Track A.mp3',
+          mode: 'echo',
+          segmentId: 's1',
+          mimeType: 'audio/webm',
+          createdAt: 100,
+          sourceDuration: 2,
+          recordingDuration: 2,
+          segments: [],
+        },
+        {
+          id: 'middle',
+          mediaId: 'a',
+          mediaTitle: 'Track A',
+          mediaFilename: 'Track A.mp3',
+          mode: 'echo',
+          segmentId: 's1',
+          mimeType: 'audio/webm',
+          createdAt: 200,
+          sourceDuration: 2,
+          recordingDuration: 2,
+          segments: [],
+        },
+      ],
+    };
+    await el.updateComplete;
+    await flushUpdates();
+
+    const dropdown = el.shadowRoot?.querySelector('ui-dropdown.echo-select') as {
+      menu?: { items: Array<{ key: string; label: string }> };
+    } | null;
+    expect(dropdown?.menu?.items).toEqual([
+      { key: 'newest', label: '录音 3' },
+      { key: 'middle', label: '录音 2' },
+      { key: 'oldest', label: '录音 1' },
+    ]);
+  });
 });

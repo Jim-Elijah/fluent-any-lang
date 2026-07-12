@@ -9,18 +9,25 @@ import type {
   MediaController,
   MediaControllerSnapshot,
 } from '../../controllers/media-controller.js';
+import { importSubtitleForMedia } from '../../lib/import-content.js';
 import { formatTime } from '../../lib/playback-utils.js';
-import type { PracticeRecord, SubtitleSegment } from '../../types/models.js';
+import type { PracticeRecord, SubtitleSegment, SubtitleTrack } from '../../types/models.js';
 import '../library/recording-preview.js';
 import '../ui/button.js';
 import '../ui/icon.js';
 import '../ui/modal.js';
 import '../ui/dropdown.js';
 import '../ui/tooltip.js';
+import { Message } from '../ui/message.js';
 import { isControlledOpen } from '../ui/internal/controlled-state.js';
 import { OverlayController } from '../ui/internal/overlay-controller.js';
 import { Z_INDEX } from '../ui/internal/z-index.js';
 import type { DropdownSelectDetail } from '../ui/dropdown.js';
+
+export type SubtitleImportedDetail = {
+  mediaId: string;
+  track: SubtitleTrack;
+};
 
 export type SubtitlePanelFullscreenChangeDetail = {
   fullscreen: boolean;
@@ -271,6 +278,20 @@ export class SubtitlePanel extends LitElement {
       color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
     }
 
+    .empty p {
+      margin: 0;
+    }
+
+    .empty-actions {
+      display: flex;
+      justify-content: center;
+      margin-top: 12px;
+    }
+
+    input[type='file'] {
+      display: none;
+    }
+
     .hidden-note {
       padding: 24px 16px;
       text-align: center;
@@ -369,6 +390,9 @@ export class SubtitlePanel extends LitElement {
 
   @state()
   private _modalSubtitleSegments: SubtitleSegment[] = [];
+
+  @state()
+  private _importingSubtitle = false;
 
   private _boundController: MediaController | null = null;
   private _overlay: OverlayController | null = null;
@@ -611,12 +635,19 @@ export class SubtitlePanel extends LitElement {
       return nothing;
     }
 
+    // Newest first in the menu; labels follow creation order (oldest = 录音 1).
+    const newestFirst = [...recordings].sort((a, b) => b.createdAt - a.createdAt);
+    const labelById = new Map(
+      [...newestFirst]
+        .sort((a, b) => a.createdAt - b.createdAt)
+        .map((record, index) => [record.id, `录音 ${index + 1}`]),
+    );
+
     const menu = {
       selectable: true,
-      items: recordings.map((record, index) => ({
+      items: newestFirst.map((record) => ({
         key: record.id,
-        label: `录音 ${index + 1}`,
-        // label: `${formatDate(record.createdAt, true)} · ${formatTime(record.recordingDuration)}`,
+        label: labelById.get(record.id) ?? msg('录音'),
       })),
     };
 
@@ -689,25 +720,11 @@ export class SubtitlePanel extends LitElement {
         <div class="fullscreen-panel">
           <div class="fullscreen-header">
             <h3 class="fullscreen-title">${msg('字幕')}</h3>
-            <ui-button variant="ghost" @click="${() => this._setFullscreen(false)}">
-              <span class="close-icon" title="${msg('退出全屏')}">
-                <svg
-                  viewBox="0 0 24 24"
-                  width="20"
-                  height="20"
-                  aria-hidden="true"
-                  focusable="false"
-                >
-                  <path
-                    d="M18 6L6 18M6 6l12 12"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    fill="none"
-                  ></path>
-                </svg>
-              </span>
-            </ui-button>
+            <ui-tooltip title="${msg('退出全屏')}" .zIndex=${Z_INDEX.FULLSCREEN} placement="left">
+              <ui-button variant="ghost" @click="${() => this._setFullscreen(false)}">
+                <ui-icon size="20px" name="close"></ui-icon>
+              </ui-button>
+            </ui-tooltip>
           </div>
           ${this._renderSegmentsList(snapshot, 'list fullscreen')}
         </div>
@@ -723,6 +740,58 @@ export class SubtitlePanel extends LitElement {
     this.controller?.setSubtitlesVisible(!snapshot.subtitlesVisible);
   }
 
+  private _openSubtitlePicker(): void {
+    const input = this.renderRoot.querySelector('input[type="file"]') as HTMLInputElement | null;
+    input?.click();
+  }
+
+  private async _handleSubtitleFile(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+
+    const mediaId = this._controllerHost?.snapshot?.currentItem?.id;
+    if (!file || !mediaId) {
+      return;
+    }
+
+    this._importingSubtitle = true;
+    try {
+      const result = await importSubtitleForMedia(mediaId, file);
+
+      for (const error of result.errors) {
+        Message.error({ message: `${error.filename}: ${error.message}` });
+      }
+      for (const skipped of result.skipped) {
+        Message.info({ message: `${skipped.filename}: ${skipped.message}` });
+      }
+      if (result.conflicts.length > 0) {
+        Message.info({
+          message: result.conflicts[0]?.message ?? msg('该媒体已有不同内容的字幕'),
+        });
+      }
+
+      const track = result.imported.find(
+        (item): item is SubtitleTrack => 'segments' in item && item.mediaId === mediaId,
+      );
+      if (track) {
+        Message.success({ message: msg('字幕已导入') });
+        this.controller?.updateCurrentTrackSubtitles(track.segments, { hasSubtitles: true });
+        this.dispatchEvent(
+          new CustomEvent('subtitle-imported', {
+            detail: { mediaId, track } satisfies SubtitleImportedDetail,
+            bubbles: true,
+            composed: true,
+          }),
+        );
+      }
+    } catch {
+      Message.error({ message: msg('导入字幕失败，请重试') });
+    } finally {
+      this._importingSubtitle = false;
+    }
+  }
+
   render() {
     const snapshot = this._controllerHost?.snapshot;
 
@@ -733,7 +802,20 @@ export class SubtitlePanel extends LitElement {
     if (!snapshot.hasSubtitles) {
       return html`
         <div class="surface">
-          <div class="empty">${msg('当前媒体没有字幕')}</div>
+          <div class="empty">
+            <p>${msg('当前媒体没有字幕')}</p>
+            <div class="empty-actions">
+              <ui-button
+                variant="primary"
+                ?disabled="${this._importingSubtitle || !snapshot.currentItem}"
+                @click="${this._openSubtitlePicker}"
+              >
+                <ui-icon name="upload" size="18px"></ui-icon>
+                ${msg('导入字幕')}
+              </ui-button>
+            </div>
+          </div>
+          <input type="file" accept=".srt,.lrc" @change="${this._handleSubtitleFile}" />
         </div>
       `;
     }
@@ -780,7 +862,10 @@ export class SubtitlePanel extends LitElement {
                   aria-label="${this._isFullscreen() ? msg('退出全屏') : msg('全屏')}"
                   @click="${this._toggleFullscreen}"
                 >
-                  <ui-icon size="20px" name="sort"></ui-icon>
+                  <ui-icon
+                    size="20px"
+                    name="${this._isFullscreen() ? 'fullscreen-exit' : 'fullscreen'}"
+                  ></ui-icon>
                 </ui-button>
               </ui-tooltip>`
             : ''}

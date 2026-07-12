@@ -268,6 +268,47 @@ Text
     expect(result.errors[0]?.message).toMatch(/请先导入/);
   });
 
+  it('importSubtitleForMedia attaches subtitle to an existing media id', async () => {
+    const { importContentFiles, importSubtitleForMedia } = await import('./import-content.js');
+    const { getMedia, getSubtitle } = await import('../db/service.js');
+
+    await importContentFiles([makeFile('lesson.mp3', 'audio/mpeg')]);
+    const mediaId = 'hash-lesson.mp3';
+
+    const result = await importSubtitleForMedia(
+      mediaId,
+      makeFile('other-name.srt', 'application/x-subrip', validSrt),
+    );
+
+    expect(result.errors).toHaveLength(0);
+    expect(result.conflicts).toHaveLength(0);
+    expect(result.imported).toHaveLength(1);
+    expect(result.imported[0]).toMatchObject({
+      mediaId,
+      type: 'srt',
+      filename: 'other-name.srt',
+    });
+    expect((await getSubtitle(mediaId))?.segments).toHaveLength(2);
+    expect((await getMedia(mediaId))?.hasSubtitles).toBe(true);
+  });
+
+  it('importSubtitleForMedia rejects missing media and invalid type', async () => {
+    const { importContentFiles, importSubtitleForMedia } = await import('./import-content.js');
+
+    const missing = await importSubtitleForMedia(
+      'no-such-media',
+      makeFile('lesson.srt', 'application/x-subrip', validSrt),
+    );
+    expect(missing.errors[0]?.message).toMatch(/媒体不存在/);
+
+    await importContentFiles([makeFile('lesson.mp3', 'audio/mpeg')]);
+    const badType = await importSubtitleForMedia(
+      'hash-lesson.mp3',
+      makeFile('notes.txt', 'text/plain'),
+    );
+    expect(badType.errors[0]?.message).toMatch(/\.srt 或 \.lrc/);
+  });
+
   it('buildOverwriteOptions maps decisions to overwrite sets', async () => {
     const { buildOverwriteOptions } = await import('./import-content.js');
     const options = buildOverwriteOptions([

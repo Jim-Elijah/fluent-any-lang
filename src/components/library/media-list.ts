@@ -3,14 +3,17 @@ import { css, html, LitElement } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 
 import { deleteMedia, getMediaList, deleteSubtitle } from '../../db/service.js';
+import { importSubtitleForMedia } from '../../lib/import-content.js';
 import { formatTime, formatDate } from '../../lib/playback-utils.js';
-import type { MediaItem, SortDirection } from '../../types/models.js';
+import { estimateListNaturalHeight, type ListMetricsDetail } from '../../lib/split-list-heights.js';
+import type { MediaItem, SortDirection, SubtitleTrack } from '../../types/models.js';
 import '../ui/alert.js';
 import '../ui/button.js';
 import '../ui/popconfirm.js';
 import '../ui/icon.js';
 import '../ui/tooltip.js';
 import '../ui/virtual-grid.js';
+import { Message } from '../ui/message.js';
 
 /** Row height including the 12px gap below each card. */
 const MEDIA_ROW_HEIGHT = 96;
@@ -24,12 +27,37 @@ export class MediaList extends LitElement {
       display: block;
     }
 
+    :host([fill-height]) {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      min-height: 0;
+    }
+
+    :host([fill-height]) section {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+    }
+
+    :host([fill-height]) .list-viewport {
+      flex: 1;
+      min-height: 0;
+    }
+
+    :host([fill-height]) .list-viewport ui-virtual-grid {
+      display: block;
+      height: 100%;
+    }
+
     .header {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 12px;
       margin-bottom: 12px;
+      flex-shrink: 0;
     }
 
     .header h2 {
@@ -113,6 +141,10 @@ export class MediaList extends LitElement {
     .error {
       margin-bottom: 12px;
     }
+
+    input[type='file'] {
+      display: none;
+    }
   `;
 
   @property({ type: String })
@@ -123,6 +155,14 @@ export class MediaList extends LitElement {
 
   @property({ type: String })
   sortDirection?: SortDirection = 'desc';
+
+  /** When set, only the first N items after filter/sort are shown (e.g. recent 10 on home). */
+  @property({ type: Number })
+  limit?: number;
+
+  /** Fill parent height and scroll inside the list instead of using a fixed max height. */
+  @property({ type: Boolean, reflect: true, attribute: 'fill-height' })
+  fillHeight = false;
 
   @state()
   private _items: MediaItem[] = [];
@@ -136,9 +176,37 @@ export class MediaList extends LitElement {
   @state()
   private _deletingId = '';
 
+  @state()
+  private _importingSubtitleId = '';
+
+  private _pendingSubtitleMediaId = '';
+
+  private _visibleCount = 0;
+
+  private _lastMetricsKey = '';
+
   connectedCallback(): void {
     super.connectedCallback();
     void this.refresh();
+  }
+
+  protected updated(): void {
+    const naturalHeight = estimateListNaturalHeight({
+      itemCount: this._visibleCount,
+      rowHeight: MEDIA_ROW_HEIGHT,
+      hasError: Boolean(this._error),
+      loading: this._loading,
+    });
+    const key = `${naturalHeight}:${this._visibleCount}:${this._loading}:${this._error}`;
+    if (key === this._lastMetricsKey) return;
+    this._lastMetricsKey = key;
+    this.dispatchEvent(
+      new CustomEvent<ListMetricsDetail>('list-metrics', {
+        detail: { naturalHeight, itemCount: this._visibleCount },
+        bubbles: true,
+        composed: true,
+      }),
+    );
   }
 
   async refresh(): Promise<void> {
@@ -180,32 +248,45 @@ export class MediaList extends LitElement {
       });
     }
 
-    const listHeight = Math.min(
-      Math.max(renderedItems.length, 1) * MEDIA_ROW_HEIGHT,
-      MEDIA_LIST_HEIGHT,
-    );
+    if (this.limit != null && this.limit >= 0) {
+      renderedItems = renderedItems.slice(0, this.limit);
+    }
+
+    this._visibleCount = renderedItems.length;
+
+    const listHeight = this.fillHeight
+      ? '100%'
+      : Math.min(Math.max(renderedItems.length, 1) * MEDIA_ROW_HEIGHT, MEDIA_LIST_HEIGHT);
 
     return html`
       <section>
         <div class="header">
           <h2>${msg('媒体库')}</h2>
-          <span class="count">${renderedItems.length} ${msg('项')}</span>
+          <span class="count"
+            >${this.limit && this.limit > 0 ? msg('最近') : ''} ${renderedItems.length}
+            ${msg('项')}</span
+          >
         </div>
 
         ${this._error ? html`<ui-alert class="error" type="error">${this._error}</ui-alert>` : null}
         ${this._loading
           ? html`<div class="empty">${msg('加载中…')}</div>`
           : renderedItems.length === 0
-            ? html`<div class="empty">${msg('暂无内容，请先导入音频和字幕')}</div>`
+            ? html`<div class="empty">
+                ${this.keyword ? msg('无匹配内容') : msg('暂无内容，请先导入音视频')}
+              </div>`
             : html`
-                <ui-virtual-grid
-                  .items=${renderedItems}
-                  .itemHeight=${MEDIA_ROW_HEIGHT}
-                  .containerHeight=${listHeight}
-                  .gridItems=${1}
-                  .renderItem=${this._renderItem}
-                ></ui-virtual-grid>
+                <div class="list-viewport">
+                  <ui-virtual-grid
+                    .items=${renderedItems}
+                    .itemHeight=${MEDIA_ROW_HEIGHT}
+                    .containerHeight=${listHeight}
+                    .gridItems=${1}
+                    .renderItem=${this._renderItem}
+                  ></ui-virtual-grid>
+                </div>
               `}
+        <input type="file" accept=".srt,.lrc" @change="${this._handleSubtitleFile}" />
       </section>
     `;
   }
@@ -235,6 +316,20 @@ export class MediaList extends LitElement {
           </p>
         </div>
         <div class="actions">
+          ${!media.hasSubtitles
+            ? html`
+                <ui-tooltip title="${msg('导入字幕')}">
+                  <ui-button
+                    variant="secondary"
+                    aria-label="${msg('导入字幕')}"
+                    ?disabled="${this._importingSubtitleId === media.id}"
+                    @click="${() => this._openSubtitlePicker(media)}"
+                  >
+                    <ui-icon name="subtitle"></ui-icon>
+                  </ui-button>
+                </ui-tooltip>
+              `
+            : null}
           <ui-tooltip title="${msg('练习')}">
             <ui-button
               variant="secondary"
@@ -262,6 +357,62 @@ export class MediaList extends LitElement {
       </div>
     `;
   };
+
+  private _openSubtitlePicker(media: MediaItem): void {
+    this._pendingSubtitleMediaId = media.id;
+    const input = this.renderRoot.querySelector('input[type="file"]') as HTMLInputElement | null;
+    input?.click();
+  }
+
+  private async _handleSubtitleFile(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    const mediaId = this._pendingSubtitleMediaId;
+    input.value = '';
+    this._pendingSubtitleMediaId = '';
+
+    if (!file || !mediaId) {
+      return;
+    }
+
+    this._importingSubtitleId = mediaId;
+    try {
+      const result = await importSubtitleForMedia(mediaId, file);
+
+      for (const error of result.errors) {
+        Message.error({ message: `${error.filename}: ${error.message}` });
+      }
+      for (const skipped of result.skipped) {
+        Message.info({ message: `${skipped.filename}: ${skipped.message}` });
+      }
+      if (result.conflicts.length > 0) {
+        Message.info({
+          message: result.conflicts[0]?.message ?? msg('该媒体已有不同内容的字幕'),
+        });
+      }
+
+      const track = result.imported.find(
+        (item): item is SubtitleTrack => 'segments' in item && item.mediaId === mediaId,
+      );
+      if (track) {
+        Message.success({ message: msg('字幕已导入') });
+        this._items = this._items.map((item) =>
+          item.id === mediaId ? { ...item, hasSubtitles: true } : item,
+        );
+        this.dispatchEvent(
+          new CustomEvent('subtitle-imported', {
+            detail: { mediaId, track },
+            bubbles: true,
+            composed: true,
+          }),
+        );
+      }
+    } catch {
+      Message.error({ message: msg('导入字幕失败，请重试') });
+    } finally {
+      this._importingSubtitleId = '';
+    }
+  }
 
   private _handlePractice(item: MediaItem): void {
     this.dispatchEvent(

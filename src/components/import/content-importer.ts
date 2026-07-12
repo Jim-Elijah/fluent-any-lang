@@ -173,7 +173,7 @@ export class ContentImporter extends LitElement {
         @drop="${this._handleDrop}"
       >
         <p class="title">${msg('导入练习内容')}</p>
-        <p class="hint">${msg('拖拽或选择音视频与字幕（字幕支持.srt与.lrc）')}</p>
+        <p class="hint">${msg('拖拽或选择音视频（可同时放入同名 .srt/.lrc 字幕）')}</p>
         <div class="actions">
           <ui-button variant="primary" ?disabled="${this._importing}" @click="${this.openPicker}">
             <ui-icon name="upload" size="20px"></ui-icon>

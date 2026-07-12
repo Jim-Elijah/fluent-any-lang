@@ -119,6 +119,14 @@ export class MediaController extends EventTarget {
 
     element.playbackRate = this.playbackRate;
     element.volume = this.volume;
+
+    // Tracks may load before the player mounts an <audio>/<video> (no currentItem yet).
+    // Re-apply the object URL so play() works after late attach.
+    if (this.objectUrl) {
+      element.src = this.objectUrl;
+      element.load();
+      element.currentTime = this.currentTime;
+    }
   }
 
   detachMediaElement(): void {
@@ -500,6 +508,35 @@ export class MediaController extends EventTarget {
     if (this.mediaElement) {
       this.mediaElement.playbackRate = this.playbackRate;
       this.mediaElement.volume = this.volume;
+    }
+
+    this._emitChange();
+  }
+
+  /**
+   * 更新当前曲目字幕（例如练习页补导入字幕后），不重新加载媒体 blob。
+   */
+  updateCurrentTrackSubtitles(segments: SubtitleSegment[], mediaUpdate?: Partial<MediaItem>): void {
+    const track = this.tracks[this.currentIndex];
+    if (!track) {
+      return;
+    }
+
+    track.segments = segments;
+    track.item = {
+      ...track.item,
+      ...mediaUpdate,
+      hasSubtitles: segments.length > 0,
+    };
+    this.playlist[this.currentIndex] = track.item;
+    this.segments = segments;
+    this.currentSegmentIndex = segments.length > 0 ? 0 : -1;
+
+    if (segments.length === 0) {
+      this.pauseMode = 'off';
+      this._clearSegmentPauseTimer();
+    } else {
+      this.subtitlesVisible = true;
     }
 
     this._emitChange();

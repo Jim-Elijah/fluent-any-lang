@@ -31,6 +31,8 @@ describe('practice-stats-dashboard', () => {
         id: 's1',
         mediaId: 'm2',
         mediaTitle: 'Latest Track',
+        mediaType: 'audio',
+        mediaFilename: 'Latest Track.mp3',
         mode: 'echo',
         startedAt: 1,
         endedAt: 2,

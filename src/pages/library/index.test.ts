@@ -30,6 +30,14 @@ describe('library-page', () => {
     const el = await renderPage();
     expect(el.shadowRoot?.querySelectorAll('ui-select').length).toBe(2);
     expect(el.shadowRoot?.querySelector('ui-input')).not.toBeNull();
+    expect(el.shadowRoot?.querySelector('ui-icon[name="search"]')).not.toBeNull();
     expect(el.shadowRoot?.querySelector('media-list')).not.toBeNull();
+    expect(el.shadowRoot?.querySelector('record-list')).not.toBeNull();
+    expect(
+      (el.shadowRoot?.querySelector('media-list') as HTMLElement).hasAttribute('fill-height'),
+    ).toBe(true);
+    expect(
+      (el.shadowRoot?.querySelector('record-list') as HTMLElement).hasAttribute('fill-height'),
+    ).toBe(true);
   });
 });

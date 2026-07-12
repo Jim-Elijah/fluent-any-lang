@@ -1,6 +1,6 @@
 import type { MediaController, MediaControllerSnapshot } from '../controllers/media-controller.js';
 import { addPracticeSession, toLocalDateKey } from '../db/practice-session.js';
-import type { PracticeAnalyticsMode, PracticeSession } from '../types/models.js';
+import type { MediaType, PracticeAnalyticsMode, PracticeSession } from '../types/models.js';
 
 /** 短于该阈值的会话不落库，避免点击抖动 */
 export const MIN_ACTIVE_MS = 1000;
@@ -25,6 +25,8 @@ export class PracticeTimeTracker {
   private controller: MediaController | null = null;
   private mediaId = '';
   private mediaTitle = '';
+  private mediaType: MediaType = 'audio';
+  private mediaFilename = '';
   private mode: PracticeAnalyticsMode = 'listening';
   private playing = false;
   private recording = false;
@@ -67,16 +69,28 @@ export class PracticeTimeTracker {
     this._reconcile();
   }
 
-  setMedia(mediaId: string, mediaTitle: string): void {
+  setMedia(
+    mediaId: string,
+    mediaTitle: string,
+    mediaType: MediaType = 'audio',
+    mediaFilename = '',
+  ): void {
     if (this.disposed) {
       return;
     }
-    if (this.mediaId === mediaId && this.mediaTitle === mediaTitle) {
+    if (
+      this.mediaId === mediaId &&
+      this.mediaTitle === mediaTitle &&
+      this.mediaType === mediaType &&
+      this.mediaFilename === mediaFilename
+    ) {
       return;
     }
     this._flush();
     this.mediaId = mediaId;
     this.mediaTitle = mediaTitle;
+    this.mediaType = mediaType;
+    this.mediaFilename = mediaFilename;
     this._reconcile();
   }
 
@@ -235,6 +249,8 @@ export class PracticeTimeTracker {
       id: this.sessionId,
       mediaId: this.mediaId,
       mediaTitle: this.mediaTitle,
+      mediaType: this.mediaType,
+      mediaFilename: this.mediaFilename,
       mode: this.mode,
       startedAt: this.startedAt,
       endedAt,

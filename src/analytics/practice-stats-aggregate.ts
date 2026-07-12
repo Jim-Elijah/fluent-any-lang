@@ -1,4 +1,4 @@
-import type { PracticeAnalyticsMode, PracticeSession } from '../types/models.js';
+import type { MediaType, PracticeAnalyticsMode, PracticeSession } from '../types/models.js';
 import { toLocalDateKey } from '../db/practice-session.js';
 
 export type StatsRangePreset = 'today' | 'last7' | 'month' | 'custom';
@@ -23,6 +23,8 @@ export type DayBucket = {
 export type MediaRankingItem = {
   mediaId: string;
   mediaTitle: string;
+  mediaType: MediaType;
+  mediaFilename: string;
   totalMs: number;
 };
 
@@ -279,6 +281,8 @@ export function aggregatePracticeStats(
       mediaMap.set(s.mediaId, {
         mediaId: s.mediaId,
         mediaTitle: s.mediaTitle || s.mediaId,
+        mediaType: s.mediaType,
+        mediaFilename: s.mediaFilename,
         totalMs: s.activeMs,
       });
     }

@@ -68,7 +68,7 @@ describe('PracticeTimeTracker', () => {
 
   it('accumulates listening time while playing and flushes on mode change', async () => {
     tracker.attach(controller as never);
-    tracker.setMedia('media-1', 'Song');
+    tracker.setMedia('media-1', 'Song', 'audio', 'Song.mp3');
     tracker.setMode('listening');
     controller.setPlaying(true);
     advance(3_000);
@@ -77,6 +77,9 @@ describe('PracticeTimeTracker', () => {
     await vi.waitFor(() => expect(saved).toHaveLength(1));
     expect(saved[0]).toMatchObject({
       mediaId: 'media-1',
+      mediaTitle: 'Song',
+      mediaType: 'audio',
+      mediaFilename: 'Song.mp3',
       mode: 'listening',
       activeMs: 3_000,
     });
@@ -84,7 +87,7 @@ describe('PracticeTimeTracker', () => {
 
   it('attributes free play on shadowing tab to shadowing, not listening', async () => {
     tracker.attach(controller as never);
-    tracker.setMedia('media-1', 'Song');
+    tracker.setMedia('media-1', 'Song', 'audio', 'Song.mp3');
     tracker.setMode('shadowing');
     controller.setPlaying(true);
     advance(2_500);
@@ -97,7 +100,7 @@ describe('PracticeTimeTracker', () => {
 
   it('counts echoListening as echo even if playing flag lags', async () => {
     tracker.attach(controller as never);
-    tracker.setMedia('media-1', 'Song');
+    tracker.setMedia('media-1', 'Song', 'audio', 'Song.mp3');
     tracker.setMode('echo');
     tracker.setFlags({ echoListening: true });
     advance(2_000);
@@ -115,7 +118,7 @@ describe('PracticeTimeTracker', () => {
 
   it('pauses accumulation when document is hidden', async () => {
     tracker.attach(controller as never);
-    tracker.setMedia('media-1', 'Song');
+    tracker.setMedia('media-1', 'Song', 'audio', 'Song.mp3');
     tracker.setMode('listening');
     controller.setPlaying(true);
     advance(1_000);
@@ -141,7 +144,7 @@ describe('PracticeTimeTracker', () => {
 
   it('drops sessions shorter than MIN_ACTIVE_MS', async () => {
     tracker.attach(controller as never);
-    tracker.setMedia('media-1', 'Song');
+    tracker.setMedia('media-1', 'Song', 'audio', 'Song.mp3');
     tracker.setMode('listening');
     controller.setPlaying(true);
     advance(MIN_ACTIVE_MS - 1);
@@ -153,16 +156,18 @@ describe('PracticeTimeTracker', () => {
 
   it('flushes previous media before switching tracks', async () => {
     tracker.attach(controller as never);
-    tracker.setMedia('media-1', 'A');
+    tracker.setMedia('media-1', 'A', 'audio', 'A.mp3');
     tracker.setMode('listening');
     controller.setPlaying(true);
     advance(2_000);
-    tracker.setMedia('media-2', 'B');
+    tracker.setMedia('media-2', 'B', 'video', 'B.mp4');
     advance(2_000);
     tracker.dispose();
 
     await vi.waitFor(() => expect(saved).toHaveLength(2));
     expect(saved.map((s) => s.mediaId)).toEqual(['media-1', 'media-2']);
+    expect(saved.map((s) => s.mediaType)).toEqual(['audio', 'video']);
+    expect(saved.map((s) => s.mediaFilename)).toEqual(['A.mp3', 'B.mp4']);
   });
 
   it('does not accumulate without mediaId', () => {

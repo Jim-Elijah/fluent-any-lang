@@ -11,6 +11,7 @@ import {
   getSubtitle,
 } from '../../db/service.js';
 import { exportRecording } from '../../lib/export-content.js';
+import { estimateListNaturalHeight, type ListMetricsDetail } from '../../lib/split-list-heights.js';
 import '../ui/alert.js';
 import '../ui/button.js';
 import '../ui/modal.js';
@@ -39,12 +40,37 @@ export class RecordList extends LitElement {
       display: block;
     }
 
+    :host([fill-height]) {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      min-height: 0;
+    }
+
+    :host([fill-height]) section {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+    }
+
+    :host([fill-height]) .list-viewport {
+      flex: 1;
+      min-height: 0;
+    }
+
+    :host([fill-height]) .list-viewport ui-virtual-grid {
+      display: block;
+      height: 100%;
+    }
+
     .header {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 12px;
       margin-bottom: 12px;
+      flex-shrink: 0;
     }
 
     h2 {
@@ -144,6 +170,10 @@ export class RecordList extends LitElement {
   @property({ type: Boolean })
   showHeader = true;
 
+  /** Fill parent height and scroll inside the list instead of using a fixed max height. */
+  @property({ type: Boolean, reflect: true, attribute: 'fill-height' })
+  fillHeight = false;
+
   @state()
   private _items: PracticeRecord[] = [];
 
@@ -171,6 +201,10 @@ export class RecordList extends LitElement {
   @state()
   private _modalSubtitleSegments: SubtitleSegment[] = [];
 
+  private _visibleCount = 0;
+
+  private _lastMetricsKey = '';
+
   constructor() {
     super();
   }
@@ -181,9 +215,27 @@ export class RecordList extends LitElement {
   }
 
   protected updated(changed: Map<PropertyKey, unknown>): void {
-    if (changed.has('mediaId')) {
+    if (changed.has('mediaId') && changed.get('mediaId') !== this.mediaId) {
       void this.refresh();
     }
+
+    const naturalHeight = estimateListNaturalHeight({
+      itemCount: this._visibleCount,
+      rowHeight: RECORD_ROW_HEIGHT,
+      hasHeader: this.showHeader,
+      hasError: Boolean(this._error),
+      loading: this._loading,
+    });
+    const key = `${naturalHeight}:${this._visibleCount}:${this._loading}:${this._error}:${this.showHeader}`;
+    if (key === this._lastMetricsKey) return;
+    this._lastMetricsKey = key;
+    this.dispatchEvent(
+      new CustomEvent<ListMetricsDetail>('list-metrics', {
+        detail: { naturalHeight, itemCount: this._visibleCount },
+        bubbles: true,
+        composed: true,
+      }),
+    );
   }
 
   async refresh(): Promise<void> {
@@ -236,10 +288,13 @@ export class RecordList extends LitElement {
       });
     }
 
-    const listHeight = Math.min(
-      Math.max(renderedItems.length, 1) * RECORD_ROW_HEIGHT,
-      RECORD_LIST_HEIGHT,
-    );
+    this._visibleCount = renderedItems.length;
+
+    const listHeight = this.fillHeight
+      ? '100%'
+      : Math.min(Math.max(renderedItems.length, 1) * RECORD_ROW_HEIGHT, RECORD_LIST_HEIGHT);
+
+    const emptyMessage = this.keyword ? msg('无匹配录音') : msg('暂无录音');
 
     return html`
       <section>
@@ -253,14 +308,18 @@ export class RecordList extends LitElement {
         ${this._loading
           ? html`<div class="empty">${msg('加载中…')}</div>`
           : renderedItems.length === 0
-            ? html`<div class="empty">${msg('暂无录音')}</div>`
-            : html`<ui-virtual-grid
-                .items=${renderedItems}
-                .itemHeight=${RECORD_ROW_HEIGHT}
-                .containerHeight=${listHeight}
-                .gridItems=${1}
-                .renderItem=${this._renderItem}
-              ></ui-virtual-grid>`}
+            ? html`<div class="empty">${emptyMessage}</div>`
+            : html`
+                <div class="list-viewport">
+                  <ui-virtual-grid
+                    .items=${renderedItems}
+                    .itemHeight=${RECORD_ROW_HEIGHT}
+                    .containerHeight=${listHeight}
+                    .gridItems=${1}
+                    .renderItem=${this._renderItem}
+                  ></ui-virtual-grid>
+                </div>
+              `}
         <ui-modal
           title="${this._modalRecording?.mediaTitle ?? msg('录音预览')}"
           @close="${() => this._handleModalClose()}"
