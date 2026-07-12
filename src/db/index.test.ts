@@ -6,6 +6,7 @@ import {
   DB_VERSION,
   STORE_MEDIA,
   STORE_MEDIA_BLOB,
+  STORE_PRACTICE_SESSION,
   STORE_RECORDING,
   STORE_RECORDING_BLOB,
   STORE_SUBTITLE,
@@ -29,6 +30,7 @@ describe('getDB', () => {
         STORE_SUBTITLE,
         STORE_RECORDING,
         STORE_RECORDING_BLOB,
+        STORE_PRACTICE_SESSION,
       ]),
     );
 
@@ -36,6 +38,13 @@ describe('getDB', () => {
     const store = tx.objectStore(STORE_MEDIA);
     expect([...store.indexNames]).toEqual(expect.arrayContaining(['byCreatedAt', 'byTitle']));
     await tx.done;
+
+    const sessionTx = db.transaction(STORE_PRACTICE_SESSION, 'readonly');
+    const sessionStore = sessionTx.objectStore(STORE_PRACTICE_SESSION);
+    expect([...sessionStore.indexNames]).toEqual(
+      expect.arrayContaining(['byDateKey', 'byMediaId', 'byMode', 'byStartedAt']),
+    );
+    await sessionTx.done;
   });
 
   it('returns the same singleton promise', async () => {

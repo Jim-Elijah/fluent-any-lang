@@ -5,8 +5,7 @@ import { navigator } from 'lit-element-router';
 
 import '../../components/import/content-importer.js';
 import '../../components/library/media-list.js';
-import '../../components/library/record-list.js';
-import '../../components/player/practice-view.js';
+import '../../components/stats/practice-stats-dashboard.js';
 import type { MediaList } from '../../components/library/media-list.js';
 
 const NavigatorElement = navigator(LitElement);
@@ -66,9 +65,9 @@ export class HomePage extends NavigatorElement {
       <div class="home">
         <p class="intro">${msg('任意语言的听说练习平台。导入音频与字幕，即可开始练习。')}</p>
         <div class="stack">
+          <practice-stats-dashboard></practice-stats-dashboard>
           <content-importer @content-imported="${this._handleContentImported}"></content-importer>
           <media-list @media-selected="${this._handleMediaSelected}"></media-list>
-          <record-list></record-list>
         </div>
       </div>
     `;

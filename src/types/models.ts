@@ -43,6 +43,22 @@ export type SubtitleTrack = {
 
 export type PracticeMode = 'shadowing' | 'echo';
 
+/** 练习时长埋点用的模式（含听力） */
+export type PracticeAnalyticsMode = 'listening' | 'shadowing' | 'echo';
+
+/** 一次有效练习会话（写入 IndexedDB） */
+export type PracticeSession = {
+  id: string;
+  mediaId: string;
+  mediaTitle: string;
+  mode: PracticeAnalyticsMode;
+  startedAt: number;
+  endedAt: number;
+  activeMs: number;
+  /** 本地时区 YYYY-MM-DD，便于按日查询 */
+  dateKey: string;
+};
+
 // 录音与原始音频每一片段的对应关系，用于对比回放（时间单位为秒）
 export type PracticeSegment = {
   id: string; // segment_id

@@ -30,10 +30,11 @@ describe('home-page', () => {
     return el;
   }
 
-  it('renders importer and library sections', async () => {
+  it('renders dashboard, importer and library sections', async () => {
     const el = await renderPage();
+    expect(el.shadowRoot?.querySelector('practice-stats-dashboard')).not.toBeNull();
     expect(el.shadowRoot?.querySelector('content-importer')).not.toBeNull();
     expect(el.shadowRoot?.querySelector('media-list')).not.toBeNull();
-    expect(el.shadowRoot?.querySelector('record-list')).not.toBeNull();
+    expect(el.shadowRoot?.querySelector('practice-stats-dashboard')).not.toBeNull();
   });
 });

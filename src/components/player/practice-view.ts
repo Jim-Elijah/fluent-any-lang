@@ -4,6 +4,7 @@ import { keyed } from 'lit/directives/keyed.js';
 import { customElement, property, query, state } from 'lit/decorators.js';
 
 import '../library/record-list.js';
+import { PracticeTimeTracker } from '../../analytics/practice-time-tracker.js';
 import { MediaController } from '../../controllers/media-controller.js';
 import { loadPlaylistForPlayback } from '../../lib/media-loader.js';
 import {
@@ -16,6 +17,7 @@ import { estimateStorage } from '../../lib/export-content.js';
 import { getMediaDuration } from '../../lib/file-validation.js';
 import type {
   MediaItem,
+  PracticeAnalyticsMode,
   PracticeRecord,
   PracticeSegment,
   RouteContext,
@@ -213,6 +215,7 @@ export class PracticeView extends LitElement {
   private _echoRecorderEl?: AudioRecorder;
 
   private readonly _controller = new MediaController();
+  private readonly _timeTracker = new PracticeTimeTracker();
   private _lastRecordingId: string | null = null;
   private readonly _shadowingLimit = DEFAULT_SETTINGS.maxRecordingsPerMedia;
   private readonly _echoLimitPerSegment = DEFAULT_SETTINGS.maxEchoPerSegment;
@@ -226,6 +229,7 @@ export class PracticeView extends LitElement {
     if (this._echoListening) {
       this._cancelEchoListen();
     }
+    this._timeTracker.dispose();
     this._controller.removeEventListener(ExtendedMediaEventType.TRACK_CHANGE, this._onTrackChange);
     this._controller.destroy();
     super.disconnectedCallback();
@@ -248,11 +252,29 @@ export class PracticeView extends LitElement {
   connectedCallback(): void {
     super.connectedCallback();
     this._controller.addEventListener(ExtendedMediaEventType.TRACK_CHANGE, this._onTrackChange);
+    this._timeTracker.attach(this._controller);
+    this._timeTracker.setMode(this._resolveAnalyticsMode());
 
     if (this.routeContext.params?.id) {
       this._mediaId = this.routeContext.params.id;
     }
     void this._loadPractice();
+  }
+
+  private _resolveAnalyticsMode(): PracticeAnalyticsMode {
+    if (this._practiceType === 'listening') {
+      return 'listening';
+    }
+    return this._speakingMode;
+  }
+
+  private _syncTimeTrackerMedia(): void {
+    const item = this._controller.getSnapshot().currentItem;
+    if (item) {
+      this._timeTracker.setMedia(item.id, item.title);
+      return;
+    }
+    this._timeTracker.setMedia('', '');
   }
 
   private _onTrackChange = (): void => {
@@ -265,6 +287,7 @@ export class PracticeView extends LitElement {
       this._echoSegment = null;
     }
     this._syncMediaIdFromController();
+    this._syncTimeTrackerMedia();
     void this._refreshRecordings();
   };
 
@@ -485,6 +508,7 @@ export class PracticeView extends LitElement {
       }
       await this._controller.loadTracks(playlist, startIndex);
       this._syncMediaIdFromController();
+      this._syncTimeTrackerMedia();
       await this._refreshRecordings();
     } catch {
       Message.error(msg('加载媒体失败，请重试。'));
@@ -507,6 +531,7 @@ export class PracticeView extends LitElement {
     this._echoRecorderEl?.destroy();
     this._echoSegmentIndex = -1;
     this._echoSegment = null;
+    this._timeTracker.setMode(this._resolveAnalyticsMode());
   }
 
   private _setSpeakingMode(mode: SpeakingMode): void {
@@ -523,6 +548,7 @@ export class PracticeView extends LitElement {
     this._echoRecorderEl?.destroy();
     this._echoSegmentIndex = -1;
     this._echoSegment = null;
+    this._timeTracker.setMode(this._resolveAnalyticsMode());
   }
 
   private _resetSettingsForShadowing = (): void => {
@@ -574,6 +600,7 @@ export class PracticeView extends LitElement {
 
   private _onRecordingStateChange = (event: CustomEvent<RecordingStateChangeDetail>): void => {
     this._recording = event.detail.recording;
+    this._timeTracker.setFlags({ recording: this._recording });
     if (!event.detail.recording && this._speakingMode === 'echo') {
       this._echoSegmentIndex = -1;
     }
@@ -593,6 +620,7 @@ export class PracticeView extends LitElement {
       this._onEchoListenSegmentEnd,
     );
     this._echoListening = false;
+    this._timeTracker.setFlags({ echoListening: false });
     void this._controller.pause();
 
     void (async () => {
@@ -622,6 +650,7 @@ export class PracticeView extends LitElement {
     this._echoListening = false;
     this._echoSegmentIndex = -1;
     this._echoSegment = null;
+    this._timeTracker.setFlags({ echoListening: false });
   }
 
   private _onEchoRecordRequest = async (
@@ -652,6 +681,7 @@ export class PracticeView extends LitElement {
     this._echoRecorderEl?.clearWaveform();
     this._resetSettingsForEcho();
     this._echoListening = true;
+    this._timeTracker.setFlags({ echoListening: true });
     this._controller.addEventListener(
       ExtendedMediaEventType.SEGMENT_END,
       this._onEchoListenSegmentEnd,

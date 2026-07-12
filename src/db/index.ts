@@ -5,6 +5,7 @@ import {
   DB_VERSION,
   STORE_MEDIA,
   STORE_MEDIA_BLOB,
+  STORE_PRACTICE_SESSION,
   STORE_RECORDING_BLOB,
   STORE_RECORDING,
   STORE_SUBTITLE,
@@ -45,6 +46,15 @@ export function getDB(): Promise<AppDatabase> {
         // recording blob
         if (!db.objectStoreNames.contains(STORE_RECORDING_BLOB)) {
           db.createObjectStore(STORE_RECORDING_BLOB, { keyPath: 'recordId' });
+        }
+
+        // practice time sessions (analytics)
+        if (!db.objectStoreNames.contains(STORE_PRACTICE_SESSION)) {
+          const sessionStore = db.createObjectStore(STORE_PRACTICE_SESSION, { keyPath: 'id' });
+          sessionStore.createIndex('byDateKey', 'dateKey');
+          sessionStore.createIndex('byMediaId', 'mediaId');
+          sessionStore.createIndex('byMode', 'mode');
+          sessionStore.createIndex('byStartedAt', 'startedAt');
         }
       },
     });

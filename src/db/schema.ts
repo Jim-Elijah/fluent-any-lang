@@ -4,18 +4,20 @@ import type {
   MediaBlob,
   MediaItem,
   PracticeRecord,
+  PracticeSession,
   SubtitleTrack,
   PracticeRecordBlob,
 } from '../types/models.js';
 
 export const DB_NAME = 'fluent-any-lang';
-export const DB_VERSION = 1;
+export const DB_VERSION = 2;
 
 export const STORE_MEDIA = 'media';
 export const STORE_MEDIA_BLOB = 'mediaBlob';
 export const STORE_SUBTITLE = 'subtitle';
 export const STORE_RECORDING = 'record';
 export const STORE_RECORDING_BLOB = 'recordBlob';
+export const STORE_PRACTICE_SESSION = 'practiceSession';
 
 export interface FluentAnyLangDB {
   [STORE_MEDIA]: {
@@ -40,6 +42,16 @@ export interface FluentAnyLangDB {
   [STORE_RECORDING_BLOB]: {
     key: string;
     value: PracticeRecordBlob;
+  };
+  [STORE_PRACTICE_SESSION]: {
+    key: string;
+    value: PracticeSession;
+    indexes: {
+      byDateKey: string;
+      byMediaId: string;
+      byMode: string;
+      byStartedAt: number;
+    };
   };
 }
 
