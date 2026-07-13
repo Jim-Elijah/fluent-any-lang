@@ -34,7 +34,7 @@ export class RecordingPreview extends LitElement {
     .preview {
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: var(--space-inline);
     }
 
     .subtitle-area {
@@ -44,7 +44,7 @@ export class RecordingPreview extends LitElement {
     .controls {
       display: flex;
       flex-wrap: wrap;
-      gap: 8px;
+      gap: var(--space-sm);
     }
 
     .status {

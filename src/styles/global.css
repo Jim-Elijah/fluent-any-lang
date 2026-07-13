@@ -16,6 +16,55 @@
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
   --font-family:
     -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+  /*
+   * Spacing scale (fixed). Prefer for control chrome, badges, tight gaps.
+   * xs 4 · sm 8 · md 12 · lg 16 · xl 24 · 2xl 32
+   */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 24px;
+  --space-2xl: 32px;
+
+  /*
+   * Semantic layout aliases (breakpoint-aware). Prefer for page / panel / stack.
+   * On narrow viewports these step down one rung on the scale.
+   */
+  --space-page-x: var(--space-lg);
+  --space-page-y: var(--space-xl);
+  --space-section: var(--space-2xl);
+  --space-stack: var(--space-xl);
+  --space-inline: var(--space-lg);
+  --space-block: var(--space-md);
+
+  /*
+   * Icon size scale (breakpoint-aware). Prefer over raw px on ui-icon / ui-icon-button.
+   * sm 14 · md 16 · lg 18 · xl 20 · 2xl 22 — narrow viewports step down one rung.
+   */
+  --icon-sm: 14px;
+  --icon-md: 16px;
+  --icon-lg: 18px;
+  --icon-xl: 20px;
+  --icon-2xl: 22px;
+}
+
+@media (max-width: 767px) {
+  :root {
+    --space-page-x: clamp(8px, 3vw, 12px);
+    --space-page-y: var(--space-md);
+    --space-section: 20px;
+    --space-stack: var(--space-lg);
+    --space-inline: var(--space-md);
+    --space-block: var(--space-sm);
+
+    --icon-sm: 12px;
+    --icon-md: 14px;
+    --icon-lg: 16px;
+    --icon-xl: 18px;
+    --icon-2xl: 20px;
+  }
 }
 
 html,

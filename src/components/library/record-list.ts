@@ -28,7 +28,7 @@ import type {
 } from '../../types/models.js';
 import { formatDate, formatTime } from '../../lib/playback-utils.js';
 
-/** Row height including the 12px gap below each card. */
+/** Row height including the --space-md (12px) gap below each card. */
 const RECORD_ROW_HEIGHT = 88;
 const RECORD_LIST_HEIGHT = 480;
 
@@ -68,8 +68,8 @@ export class RecordList extends LitElement {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 12px;
+      gap: var(--space-block);
+      margin-bottom: var(--space-block);
       flex-shrink: 0;
     }
 
@@ -87,10 +87,11 @@ export class RecordList extends LitElement {
     .item {
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
-      gap: 12px;
+      gap: var(--space-md);
       align-items: center;
-      height: calc(100% - 12px);
-      padding: 14px 16px;
+      /* Reserve --space-md to match RECORD_ROW_HEIGHT gap (fixed, not --space-block). */
+      height: calc(100% - var(--space-md));
+      padding: var(--space-md) var(--space-lg);
       background: var(--color-surface, #fff);
       border: 1px solid var(--color-border, #d9d9d9);
       border-radius: var(--radius-md, 8px);
@@ -103,7 +104,7 @@ export class RecordList extends LitElement {
     }
 
     .title {
-      margin: 0 0 6px;
+      margin: 0 0 var(--space-xs);
       font-size: 1rem;
       font-weight: 600;
       overflow: hidden;
@@ -115,7 +116,7 @@ export class RecordList extends LitElement {
       display: flex;
       flex-wrap: nowrap;
       align-items: center;
-      gap: 8px;
+      gap: var(--space-sm);
       margin: 0;
       min-width: 0;
       overflow: hidden;
@@ -138,7 +139,7 @@ export class RecordList extends LitElement {
     .badge {
       display: inline-flex;
       align-items: center;
-      padding: 2px 8px;
+      padding: 2px var(--space-sm);
       border-radius: 999px;
       background: rgba(22, 119, 255, 0.08);
       color: var(--color-primary, #1677ff);
@@ -153,17 +154,32 @@ export class RecordList extends LitElement {
 
     .actions {
       display: flex;
-      gap: 8px;
+      gap: var(--space-sm);
       flex-shrink: 0;
     }
 
     .empty {
-      padding: 24px;
+      padding: var(--space-stack);
       text-align: center;
       color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
       background: var(--color-surface, #fff);
       border: 1px dashed var(--color-border, #d9d9d9);
       border-radius: var(--radius-md, 8px);
+    }
+
+    @media (max-width: 767px) {
+      .item {
+        gap: var(--space-sm);
+        height: calc(100% - var(--space-sm));
+        padding: var(--space-sm) var(--space-md);
+      }
+
+      .details {
+        gap: var(--space-xs);
+      }
+      .actions {
+        gap: var(--space-xs);
+      }
     }
   `;
 

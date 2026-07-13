@@ -30,7 +30,7 @@ export class ContentImporter extends LitElement {
 
     .dropzone {
       position: relative;
-      padding: 32px 24px;
+      padding: var(--space-section) var(--space-stack);
       text-align: center;
       background: var(--color-surface, #fff);
       border: 2px dashed var(--color-border, #d9d9d9);
@@ -51,13 +51,13 @@ export class ContentImporter extends LitElement {
     }
 
     .title {
-      margin: 0 0 8px;
+      margin: 0 0 var(--space-sm);
       font-size: 1rem;
       font-weight: 600;
     }
 
     .hint {
-      margin: 0 0 16px;
+      margin: 0 0 var(--space-inline);
       color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
       font-size: 0.875rem;
     }
@@ -65,7 +65,7 @@ export class ContentImporter extends LitElement {
     .actions {
       display: flex;
       justify-content: center;
-      gap: 12px;
+      gap: var(--space-block);
       flex-wrap: wrap;
     }
 
@@ -75,32 +75,32 @@ export class ContentImporter extends LitElement {
 
     .messages {
       display: grid;
-      gap: 12px;
-      margin-top: 16px;
+      gap: var(--space-block);
+      margin-top: var(--space-inline);
     }
 
     .conflict-list {
       display: grid;
-      gap: 12px;
+      gap: var(--space-block);
       max-height: min(50vh, 360px);
       overflow: auto;
     }
 
     .conflict-item {
-      padding: 12px;
+      padding: var(--space-block);
       border: 1px solid var(--color-border, #f0f0f0);
       border-radius: var(--radius-md, 8px);
       text-align: left;
     }
 
     .conflict-name {
-      margin: 0 0 4px;
+      margin: 0 0 var(--space-xs);
       font-weight: 600;
       font-size: 0.875rem;
     }
 
     .conflict-msg {
-      margin: 0 0 10px;
+      margin: 0 0 var(--space-sm);
       color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
       font-size: 0.8125rem;
       line-height: 1.5;
@@ -108,23 +108,23 @@ export class ContentImporter extends LitElement {
 
     .conflict-choices {
       display: flex;
-      gap: 16px;
+      gap: var(--space-inline);
       flex-wrap: wrap;
     }
 
     .conflict-choices label {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: var(--space-xs);
       font-size: 0.8125rem;
       cursor: pointer;
     }
 
     .bulk-actions {
       display: flex;
-      gap: 8px;
+      gap: var(--space-sm);
       flex-wrap: wrap;
-      margin-bottom: 12px;
+      margin-bottom: var(--space-block);
     }
   `;
 
@@ -176,7 +176,7 @@ export class ContentImporter extends LitElement {
         <p class="hint">${msg('拖拽或选择音视频（可同时放入同名 .srt/.lrc 字幕）')}</p>
         <div class="actions">
           <ui-button variant="primary" ?disabled="${this._importing}" @click="${this.openPicker}">
-            <ui-icon name="upload" size="20px"></ui-icon>
+            <ui-icon name="upload" size="var(--icon-xl)"></ui-icon>
           </ui-button>
         </div>
         <input

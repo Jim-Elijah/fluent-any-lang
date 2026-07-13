@@ -22,20 +22,20 @@ export class UiModal extends LitElement {
       justify-content: center;
       align-items: flex-start;
       overflow: auto;
-      padding: 56px 16px;
+      padding: 56px var(--space-inline);
       pointer-events: auto;
       z-index: var(--modal-z, 1050);
     }
 
     .overlay.centered {
       align-items: center;
-      padding: 16px;
+      padding: var(--space-inline);
     }
 
     .dialog {
       position: relative;
       width: var(--modal-width, 520px);
-      max-width: calc(100vw - 32px);
+      max-width: calc(100vw - var(--space-2xl));
       background: #fff;
       border-radius: 8px;
       box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
@@ -53,10 +53,10 @@ export class UiModal extends LitElement {
     }
 
     .header {
-      padding: 16px 24px;
+      padding: var(--space-inline) var(--space-stack);
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: var(--space-block);
       border-bottom: 1px solid #f0f0f0;
     }
 
@@ -85,14 +85,14 @@ export class UiModal extends LitElement {
     }
 
     .body {
-      padding: 16px 24px;
+      padding: var(--space-inline) var(--space-stack);
     }
 
     .footer {
-      padding: 10px 24px 16px;
+      padding: var(--space-sm) var(--space-stack) var(--space-inline);
       display: flex;
       justify-content: flex-end;
-      gap: 8px;
+      gap: var(--space-sm);
       border-top: 1px solid #f0f0f0;
     }
 
@@ -145,7 +145,7 @@ export class UiModal extends LitElement {
       border-top-color: rgba(255, 255, 255, 1);
       animation: spin 0.8s linear infinite;
       vertical-align: -2px;
-      margin-right: 6px;
+      margin-right: var(--space-xs);
     }
 
     @keyframes spin {

@@ -45,7 +45,7 @@ export class MyApp extends RouterNavigatorApp {
       height: 100dvh;
       max-width: calc(960px + 48px);
       margin: 0 auto;
-      padding: 0 16px;
+      padding: 0 var(--space-page-x);
       overflow: hidden;
     }
     .navigation {
@@ -76,27 +76,41 @@ export class MyApp extends RouterNavigatorApp {
       min-height: 0;
       display: flex;
       flex-direction: column;
-      padding: 24px 0 48px 24px;
+      padding: var(--space-page-y) 0 calc(var(--space-page-y) * 2) var(--space-page-y);
       overflow: auto;
     }
 
     /* Home / library fill the main pane; lists scroll internally. */
-    .main-content:has(home-page),
-    .main-content:has(library-page) {
+    .main-content:has(home-page:not([compact])),
+    .main-content:has(library-page:not([compact])) {
       overflow: hidden;
     }
 
-    .main-content:has(home-page) > main,
-    .main-content:has(library-page) > main {
+    .main-content:has(home-page:not([compact])) > main,
+    .main-content:has(library-page:not([compact])) > main {
       flex: 1;
       min-height: 0;
       display: flex;
       flex-direction: column;
     }
 
-    .main-content:has(home-page) > main > home-page,
-    .main-content:has(library-page) > main > library-page {
+    .main-content:has(home-page:not([compact])) > main > home-page,
+    .main-content:has(library-page:not([compact])) > main > library-page {
       flex: 1;
+      min-height: 0;
+    }
+
+    /* Compact: page scrolls in .main-content so lists stay reachable. */
+    .main-content:has(home-page[compact]) > main,
+    .main-content:has(library-page[compact]) > main {
+      flex: none;
+      min-height: 0;
+    }
+
+    .main-content:has(home-page[compact]) > main > home-page,
+    .main-content:has(library-page[compact]) > main > library-page {
+      flex: none;
+      height: auto;
       min-height: 0;
     }
 
@@ -105,9 +119,9 @@ export class MyApp extends RouterNavigatorApp {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 16px;
-      margin-bottom: 32px;
-      padding-bottom: 16px;
+      gap: var(--space-inline);
+      margin-bottom: var(--space-section);
+      padding-bottom: var(--space-inline);
       border-bottom: 1px solid var(--color-border, #d9d9d9);
     }
 
@@ -146,37 +160,12 @@ export class MyApp extends RouterNavigatorApp {
       }
 
       .main-content {
-        padding: 6px 6px calc(var(--nav-height) + env(safe-area-inset-bottom, 0) + 6px);
-      }
-
-      header {
-        margin-bottom: 24px;
-        padding-bottom: 12px;
+        padding: var(--space-page-x) var(--space-page-x)
+          calc(var(--nav-height) + env(safe-area-inset-bottom, 0) + var(--space-page-x));
       }
 
       .brand {
         font-size: 1.25rem;
-      }
-    }
-
-    /* Short viewports: allow page scroll so lists are reachable. */
-    @media (max-height: 739px) {
-      .main-content:has(home-page),
-      .main-content:has(library-page) {
-        overflow: auto;
-      }
-
-      .main-content:has(home-page) > main,
-      .main-content:has(library-page) > main {
-        flex: none;
-        min-height: 0;
-      }
-
-      .main-content:has(home-page) > main > home-page,
-      .main-content:has(library-page) > main > library-page {
-        flex: none;
-        height: auto;
-        min-height: 0;
       }
     }
   `;

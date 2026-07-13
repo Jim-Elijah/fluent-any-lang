@@ -38,12 +38,12 @@ export class UiMenu extends LitElement {
       --menu-bg: transparent;
       --menu-border: #f0f0f0;
       --menu-item-height: 40px;
-      --menu-item-padding: 0 16px;
+      --menu-item-padding: 0 var(--space-inline);
       --menu-text: rgba(0, 0, 0, 0.88);
       --menu-muted: rgba(0, 0, 0, 0.45);
       --menu-active: #1677ff;
       --menu-hover: rgba(22, 119, 255, 0.08);
-      --menu-submenu-indent: 16px;
+      --menu-submenu-indent: var(--space-inline);
     }
 
     .menu {
@@ -83,7 +83,7 @@ export class UiMenu extends LitElement {
       height: var(--menu-item-height);
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: var(--space-sm);
       padding: var(--menu-item-padding);
       color: var(--menu-text);
       cursor: pointer;
@@ -173,8 +173,8 @@ export class UiMenu extends LitElement {
       height: var(--menu-item-height);
       display: flex;
       align-items: center;
-      gap: 10px;
-      padding: 0 16px;
+      gap: var(--space-sm);
+      padding: 0 var(--space-inline);
       cursor: pointer;
       color: var(--menu-text);
       user-select: none;
@@ -222,9 +222,9 @@ export class UiMenu extends LitElement {
       flex-direction: column;
       justify-content: center;
       height: var(--menu-item-height, 56px);
-      padding: 6px 4px;
+      padding: 6px var(--space-xs);
       font-size: 12px;
-      gap: 4px;
+      gap: var(--space-xs);
     }
 
     /* 底部激活指示：左侧竖条 → 顶部横条 */
@@ -417,7 +417,9 @@ export class UiMenu extends LitElement {
                   aria-expanded=${isOpen}
                   @click=${(e: Event) => this._handleSubmenuClick(item, e)}
                 >
-                  ${item.icon ? html`<ui-icon name=${item.icon} size="20px"></ui-icon>` : nothing}
+                  ${item.icon
+                    ? html`<ui-icon name=${item.icon} size="var(--icon-xl)"></ui-icon>`
+                    : nothing}
                   <span>${item.label}</span>
                   <span class="chevron ${isOpen ? 'open' : ''}">›</span>
                 </div>
@@ -456,7 +458,7 @@ export class UiMenu extends LitElement {
                       @click=${(e: Event) => this._handleSelect(child, e)}
                     >
                       ${child.icon
-                        ? html`<ui-icon name=${child.icon} size="20px"></ui-icon>`
+                        ? html`<ui-icon name=${child.icon} size="var(--icon-xl)"></ui-icon>`
                         : nothing}
                       <span>${child.label}</span>
                     </div>
@@ -475,7 +477,9 @@ export class UiMenu extends LitElement {
             role="menuitem"
             @click=${(e: Event) => this._handleSelect(item, e)}
           >
-            ${item.icon ? html`<ui-icon name=${item.icon} size="20px"></ui-icon>` : nothing}
+            ${item.icon
+              ? html`<ui-icon name=${item.icon} size="var(--icon-xl)"></ui-icon>`
+              : nothing}
             <span>${item.label}</span>
           </div>
         `;

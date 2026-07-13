@@ -87,7 +87,7 @@ export class UiCountdownOverlay extends LitElement {
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 16px;
+      padding: var(--space-inline);
       box-sizing: border-box;
       pointer-events: auto;
     }
@@ -100,9 +100,9 @@ export class UiCountdownOverlay extends LitElement {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 20px;
+      gap: var(--space-stack);
       width: min(100%, 360px);
-      padding: 28px 24px 24px;
+      padding: var(--space-xl) var(--space-stack) var(--space-stack);
       border-radius: 16px;
       background: rgba(255, 255, 255, 0.98);
       box-shadow: 0 16px 48px rgba(0, 0, 0, 0.24);
@@ -161,14 +161,14 @@ export class UiCountdownOverlay extends LitElement {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 14px;
+      gap: var(--space-md);
       width: 100%;
     }
 
     .cancel {
       min-width: 120px;
       height: 36px;
-      padding: 0 18px;
+      padding: 0 var(--space-lg);
       border: 1px solid #d9d9d9;
       border-radius: 8px;
       background: #fff;
@@ -185,7 +185,7 @@ export class UiCountdownOverlay extends LitElement {
     .skip {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
+      gap: var(--space-sm);
       margin: 0;
       color: rgba(0, 0, 0, 0.55);
       font-size: 0.8125rem;
@@ -205,7 +205,7 @@ export class UiCountdownOverlay extends LitElement {
     @media (max-width: 480px) {
       .panel {
         width: 100%;
-        padding: 24px 20px 20px;
+        padding: var(--space-stack) var(--space-lg) var(--space-lg);
         border-radius: 14px;
       }
 

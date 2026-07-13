@@ -58,15 +58,15 @@ export class WaveformPlayer extends LitElement {
       display: flex;
       flex-wrap: wrap;
       justify-content: center;
-      gap: 8px 12px;
-      margin-top: 8px;
+      gap: var(--space-sm) var(--space-block);
+      margin-top: var(--space-sm);
       padding: 0 2px;
     }
 
     .track-label {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: var(--space-xs);
       padding: 2px 0;
       border: none;
       background: none;

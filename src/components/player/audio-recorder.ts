@@ -45,13 +45,13 @@ export class AudioRecorder extends LitElement {
     .recording-controls {
       display: flex;
       flex-wrap: wrap;
-      gap: 12px;
+      gap: var(--space-block);
       align-items: center;
       justify-content: center;
     }
 
     .recording-waveform {
-      margin-top: 8px;
+      margin-top: var(--space-sm);
     }
   `;
 

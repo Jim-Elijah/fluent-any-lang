@@ -29,8 +29,8 @@ export class UiAlert extends LitElement {
     .alert {
       display: flex;
       align-items: flex-start;
-      gap: 8px;
-      padding: 8px 16px;
+      gap: var(--space-sm);
+      padding: var(--space-sm) var(--space-inline);
       border: 1px solid transparent;
       border-radius: var(--radius-md, 4px);
       font-size: 14px;
@@ -82,7 +82,7 @@ export class UiAlert extends LitElement {
     }
 
     .title:not([hidden]):not(:last-child) {
-      margin-bottom: 4px;
+      margin-bottom: var(--space-xs);
     }
 
     .description {
@@ -100,7 +100,7 @@ export class UiAlert extends LitElement {
       background: transparent;
       cursor: pointer;
       padding: 0;
-      margin-left: 4px;
+      margin-left: var(--space-xs);
       height: 22px;
       display: inline-flex;
       align-items: center;

@@ -127,7 +127,7 @@ export class UiMessageItem extends LitElement {
     :host {
       display: block;
       pointer-events: auto;
-      margin-bottom: var(--message-gap, 16px);
+      margin-bottom: var(--message-gap, var(--space-inline));
       transition:
         opacity 0.2s ease,
         transform 0.2s ease;
@@ -149,10 +149,10 @@ export class UiMessageItem extends LitElement {
       position: relative;
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: var(--space-sm);
       min-width: 200px;
       max-width: min(480px, calc(100vw - 32px));
-      padding: 10px 16px;
+      padding: var(--space-sm) var(--space-inline);
       border-radius: var(--radius-md, 8px);
       font-size: 14px;
       line-height: 1.5;
@@ -472,7 +472,7 @@ class MessageManager {
       'flex-direction:column',
       'align-items:center',
       'pointer-events:none',
-      'padding:0 16px',
+      'padding:0 var(--space-lg)',
       'box-sizing:border-box',
     ].join(';');
 

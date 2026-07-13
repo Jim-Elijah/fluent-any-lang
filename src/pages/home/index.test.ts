@@ -67,4 +67,19 @@ describe('home-page', () => {
     const mediaList = el.shadowRoot?.querySelector('media-list') as MediaList | null;
     expect(mediaList?.fillHeight).toBe(false);
   });
+
+  it('enters compact when media-list height is too small', async () => {
+    stubMatchMedia(false);
+    const el = await renderPage();
+    expect(el.compact).toBe(false);
+
+    const list = el.shadowRoot?.querySelector('media-list') as HTMLElement;
+    Object.defineProperty(list, 'clientHeight', { configurable: true, get: () => 120 });
+    // ResizeObserver callbacks are async in some environments; call sync path via update.
+    (el as unknown as { _syncCompactFromSpace: () => void })._syncCompactFromSpace();
+    await el.updateComplete;
+
+    expect(el.compact).toBe(true);
+    expect((el.shadowRoot?.querySelector('media-list') as MediaList).fillHeight).toBe(false);
+  });
 });

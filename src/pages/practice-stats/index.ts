@@ -31,18 +31,18 @@ export class PracticeStatsPage extends NavigatorElement {
 
     .page {
       display: grid;
-      gap: 20px;
+      gap: var(--space-stack);
     }
 
     .filters {
       display: grid;
-      gap: 12px;
+      gap: var(--space-block);
     }
 
     .seg {
       display: flex;
       flex-wrap: wrap;
-      gap: 8px;
+      gap: var(--space-sm);
     }
 
     .seg-btn {
@@ -76,14 +76,14 @@ export class PracticeStatsPage extends NavigatorElement {
     .custom-range {
       display: flex;
       flex-wrap: wrap;
-      gap: 10px;
+      gap: var(--space-sm);
       align-items: center;
     }
 
     .custom-range label {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: var(--space-xs);
       font-size: 0.8125rem;
       color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
     }
@@ -97,11 +97,11 @@ export class PracticeStatsPage extends NavigatorElement {
       border: 1px solid var(--color-border, #d9d9d9);
       border-radius: var(--radius-md, 8px);
       box-shadow: var(--shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.06));
-      padding: 16px 18px;
+      padding: var(--space-inline);
     }
 
     .card h2 {
-      margin: 0 0 14px;
+      margin: 0 0 var(--space-md);
       font-size: 0.9375rem;
       font-weight: 600;
     }
@@ -109,7 +109,7 @@ export class PracticeStatsPage extends NavigatorElement {
     .summary {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 12px;
+      gap: var(--space-block);
     }
 
     .stat {
@@ -125,20 +125,20 @@ export class PracticeStatsPage extends NavigatorElement {
     }
 
     .stat-label {
-      margin-top: 4px;
+      margin-top: var(--space-xs);
       font-size: 0.75rem;
       color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
     }
 
     .bars {
       display: grid;
-      gap: 8px;
+      gap: var(--space-sm);
     }
 
     .bar-row {
       display: grid;
       grid-template-columns: 44px 1fr 52px;
-      gap: 8px;
+      gap: var(--space-sm);
       align-items: center;
       font-size: 0.75rem;
       color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
@@ -184,7 +184,7 @@ export class PracticeStatsPage extends NavigatorElement {
 
     .breakdown {
       display: grid;
-      gap: 10px;
+      gap: var(--space-sm);
     }
 
     .stack-bar {
@@ -203,7 +203,7 @@ export class PracticeStatsPage extends NavigatorElement {
     .legend {
       display: flex;
       flex-wrap: wrap;
-      gap: 12px 16px;
+      gap: var(--space-block) var(--space-inline);
       font-size: 0.8125rem;
       color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
     }
@@ -211,7 +211,7 @@ export class PracticeStatsPage extends NavigatorElement {
     .legend-item {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: var(--space-xs);
     }
 
     .dot {
@@ -237,7 +237,7 @@ export class PracticeStatsPage extends NavigatorElement {
 
     .ranking {
       display: grid;
-      gap: 10px;
+      gap: var(--space-sm);
       list-style: none;
       margin: 0;
       padding: 0;
@@ -246,7 +246,7 @@ export class PracticeStatsPage extends NavigatorElement {
     .rank-item {
       display: grid;
       grid-template-columns: 1fr auto;
-      gap: 8px 12px;
+      gap: var(--space-sm) var(--space-block);
       align-items: center;
     }
 
@@ -265,7 +265,7 @@ export class PracticeStatsPage extends NavigatorElement {
       white-space: nowrap;
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: var(--space-xs);
       min-width: 0;
     }
 
@@ -314,7 +314,7 @@ export class PracticeStatsPage extends NavigatorElement {
     .loading-wrap {
       display: flex;
       justify-content: center;
-      padding: 32px 0;
+      padding: var(--space-section) 0;
       font-size: 0.875rem;
       color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
     }
@@ -634,7 +634,7 @@ export class PracticeStatsPage extends NavigatorElement {
                           >
                             <ui-icon
                               name="${item.mediaType === 'video' ? 'video' : 'music'}"
-                              size="16px"
+                              size="var(--icon-md)"
                             ></ui-icon>
                           </ui-tooltip>
                         </span>

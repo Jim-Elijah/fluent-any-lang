@@ -67,8 +67,8 @@ const FULLSCREEN_PORTAL_STYLES = `
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    padding: 12px 16px;
+    gap: var(--space-block);
+    padding: var(--space-block) var(--space-inline);
     border-bottom: 1px solid var(--color-border, #d9d9d9);
   }
 
@@ -88,23 +88,23 @@ const FULLSCREEN_PORTAL_STYLES = `
   }
 
   .list {
-    max-height: 360px;
-    overflow-y: auto;
     margin: 0;
-    padding: 8px 0;
+    padding: var(--space-sm) 0;
     list-style: none;
   }
 
   .list.fullscreen {
     flex: 1;
+    min-height: 0;
     max-height: none;
+    overflow-y: auto;
   }
 
   .segment {
     display: flex;
-    gap: 4px;
+    gap: var(--space-xs);
     align-items: center;
-    padding: 6px 16px;
+    padding: 6px var(--space-inline);
     cursor: pointer;
     transition: background-color 0.15s ease;
   }
@@ -120,7 +120,7 @@ const FULLSCREEN_PORTAL_STYLES = `
   .segment.active {
     background: rgba(22, 119, 255, 0.1);
     border-left: 3px solid var(--color-primary, #1677ff);
-    padding-left: 13px;
+    padding-left: calc(var(--space-inline) - 3px);
   }
 
   .content {
@@ -153,7 +153,7 @@ const FULLSCREEN_PORTAL_STYLES = `
   .echo-controls {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: var(--space-xs);
     flex-shrink: 0;
     margin-left: auto;
   }
@@ -192,7 +192,7 @@ export class SubtitlePanel extends LitElement {
     }
 
     .header {
-      padding: 12px 16px;
+      padding: var(--space-block) var(--space-inline);
       border-bottom: 1px solid var(--color-border, #d9d9d9);
       font-size: 0.9375rem;
       font-weight: 600;
@@ -201,7 +201,7 @@ export class SubtitlePanel extends LitElement {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
+      gap: var(--space-block);
     }
 
     .title {
@@ -215,18 +215,19 @@ export class SubtitlePanel extends LitElement {
     }
 
     .list {
-      max-height: 360px;
-      overflow-y: auto;
+      /* Let .main-content own page scroll; avoid a second scrollbar beside it. */
+      max-height: none;
+      overflow: visible;
       margin: 0;
-      padding: 8px 0;
+      padding: var(--space-sm) 0;
       list-style: none;
     }
 
     .segment {
       display: flex;
-      gap: 4px;
+      gap: var(--space-xs);
       align-items: center;
-      padding: 6px 16px;
+      padding: 6px var(--space-inline);
       cursor: pointer;
       transition: background-color 0.15s ease;
     }
@@ -242,7 +243,7 @@ export class SubtitlePanel extends LitElement {
     .segment.active {
       background: rgba(22, 119, 255, 0.1);
       border-left: 3px solid var(--color-primary, #1677ff);
-      padding-left: 13px;
+      padding-left: calc(var(--space-inline) - 3px);
     }
 
     .content {
@@ -273,7 +274,7 @@ export class SubtitlePanel extends LitElement {
     }
 
     .empty {
-      padding: 24px 16px;
+      padding: var(--space-stack) var(--space-inline);
       text-align: center;
       color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
     }
@@ -285,7 +286,7 @@ export class SubtitlePanel extends LitElement {
     .empty-actions {
       display: flex;
       justify-content: center;
-      margin-top: 12px;
+      margin-top: var(--space-block);
     }
 
     input[type='file'] {
@@ -293,7 +294,7 @@ export class SubtitlePanel extends LitElement {
     }
 
     .hidden-note {
-      padding: 24px 16px;
+      padding: var(--space-stack) var(--space-inline);
       text-align: center;
       color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
     }
@@ -301,33 +302,19 @@ export class SubtitlePanel extends LitElement {
     .echo-controls {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: var(--space-xs);
       flex-shrink: 0;
       margin-left: auto;
     }
 
     .echo-controls ui-button button {
-      padding: 4px 8px;
+      padding: var(--space-xs) var(--space-sm);
     }
-
-    // .echo-select ui-button button {
-    //   padding: 4px 8px;
-    // }
-
-    // .echo-select {
-    //   min-width: 120px;
-    //   max-width: 160px;
-    // }
 
     @media (max-width: 767px) {
       .content {
         align-items: flex-start;
       }
-
-      // .echo-select {
-      //   min-width: 96px;
-      //   max-width: 120px;
-      // }
     }
   `;
 
@@ -623,7 +610,10 @@ export class SubtitlePanel extends LitElement {
           ?disabled=${disabled}
           @click="${() => this._handleEchoRecord(segmentIndex)}"
         >
-          <ui-icon name="${isActiveRow ? 'stop-recording' : 'micro-on'}" size="16px"></ui-icon>
+          <ui-icon
+            name="${isActiveRow ? 'stop-recording' : 'micro-on'}"
+            size="var(--icon-md)"
+          ></ui-icon>
         </ui-button>
       </ui-tooltip>
     `;
@@ -722,7 +712,7 @@ export class SubtitlePanel extends LitElement {
             <h3 class="fullscreen-title">${msg('字幕')}</h3>
             <ui-tooltip title="${msg('退出全屏')}" .zIndex=${Z_INDEX.FULLSCREEN} placement="left">
               <ui-button variant="ghost" @click="${() => this._setFullscreen(false)}">
-                <ui-icon size="20px" name="close"></ui-icon>
+                <ui-icon size="var(--icon-xl)" name="close"></ui-icon>
               </ui-button>
             </ui-tooltip>
           </div>
@@ -810,7 +800,7 @@ export class SubtitlePanel extends LitElement {
                 ?disabled="${this._importingSubtitle || !snapshot.currentItem}"
                 @click="${this._openSubtitlePicker}"
               >
-                <ui-icon name="upload" size="18px"></ui-icon>
+                <ui-icon name="upload" size="var(--icon-lg)"></ui-icon>
                 ${msg('导入字幕')}
               </ui-button>
             </div>
@@ -836,7 +826,7 @@ export class SubtitlePanel extends LitElement {
                   @click="${this._toggleSubtitles}"
                 >
                   <ui-icon
-                    size="20px"
+                    size="var(--icon-xl)"
                     name="${snapshot.subtitlesVisible ? 'subtitle-off' : 'subtitle'}"
                   ></ui-icon>
                 </ui-button>
@@ -851,7 +841,7 @@ export class SubtitlePanel extends LitElement {
                   aria-label="${this._translationVisible ? msg('隐藏翻译') : msg('显示翻译')}"
                   @click="${this._toggleTranslationVisible}"
                 >
-                  <ui-icon size="20px" name="translate"></ui-icon>
+                  <ui-icon size="var(--icon-xl)" name="translate"></ui-icon>
                 </ui-button>
               </ui-tooltip>`
             : ''}
@@ -863,7 +853,7 @@ export class SubtitlePanel extends LitElement {
                   @click="${this._toggleFullscreen}"
                 >
                   <ui-icon
-                    size="20px"
+                    size="var(--icon-xl)"
                     name="${this._isFullscreen() ? 'fullscreen-exit' : 'fullscreen'}"
                   ></ui-icon>
                 </ui-button>

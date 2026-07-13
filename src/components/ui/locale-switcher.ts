@@ -17,7 +17,7 @@ export class LocaleSwitcher extends LitElement {
     }
 
     select {
-      padding: 4px 8px;
+      padding: var(--space-xs) var(--space-sm);
       border: 1px solid var(--color-border, #d9d9d9);
       border-radius: var(--radius-md, 8px);
       background: var(--color-surface, #fff);

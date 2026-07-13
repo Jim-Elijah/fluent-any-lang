@@ -66,7 +66,7 @@ const POPUP_PORTAL_STYLES = `
       0 6px 16px 0 rgba(0, 0, 0, 0.08),
       0 3px 6px -4px rgba(0, 0, 0, 0.12),
       0 9px 28px 8px rgba(0, 0, 0, 0.05);
-    padding: 4px;
+    padding: var(--space-xs);
     color: rgba(0, 0, 0, 0.88);
     font-size: 14px;
     line-height: 1.5714285714285714;
@@ -93,9 +93,9 @@ const POPUP_PORTAL_STYLES = `
   .menu-item {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--space-sm);
     min-height: 32px;
-    padding: 5px 12px;
+    padding: var(--space-xs) var(--space-md);
     border-radius: 4px;
     cursor: pointer;
     white-space: nowrap;
@@ -132,7 +132,7 @@ const POPUP_PORTAL_STYLES = `
 
   .divider {
     height: 1px;
-    margin: 4px 0;
+    margin: var(--space-xs) 0;
     background: rgba(5, 5, 5, 0.06);
   }
 
@@ -151,7 +151,7 @@ const POPUP_PORTAL_STYLES = `
       0 6px 16px 0 rgba(0, 0, 0, 0.08),
       0 3px 6px -4px rgba(0, 0, 0, 0.12),
       0 9px 28px 8px rgba(0, 0, 0, 0.05);
-    padding: 4px;
+    padding: var(--space-xs);
     display: none;
     z-index: 1;
   }
@@ -442,7 +442,9 @@ export class UiDropdown extends LitElement {
                     });
                 }}
               >
-                ${item.icon ? html`<ui-icon name=${item.icon} size="16px"></ui-icon>` : nothing}
+                ${item.icon
+                  ? html`<ui-icon name=${item.icon} size="var(--icon-md)"></ui-icon>`
+                  : nothing}
                 <span>${item.label}</span>
                 <span class="chevron">›</span>
               </div>
@@ -463,7 +465,9 @@ export class UiDropdown extends LitElement {
             aria-disabled=${item.disabled ? 'true' : 'false'}
             @click=${(e: Event) => this._handleMenuItemClick(item, e)}
           >
-            ${item.icon ? html`<ui-icon name=${item.icon} size="16px"></ui-icon>` : nothing}
+            ${item.icon
+              ? html`<ui-icon name=${item.icon} size="var(--icon-md)"></ui-icon>`
+              : nothing}
             <span>${item.label}</span>
           </div>
         `;

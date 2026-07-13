@@ -63,7 +63,7 @@ const DROPDOWN_PORTAL_STYLES = css`
   }
 
   .search-wrap {
-    padding: 8px;
+    padding: var(--space-sm);
     border-bottom: 1px solid #f0f0f0;
   }
 
@@ -86,14 +86,14 @@ const DROPDOWN_PORTAL_STYLES = css`
   .option-list {
     max-height: 256px;
     overflow: auto;
-    padding: 4px;
+    padding: var(--space-xs);
     margin: 0;
     list-style: none;
   }
 
   .option {
     min-height: 32px;
-    padding: 5px 12px;
+    padding: var(--space-xs) var(--space-md);
     border-radius: 4px;
     cursor: pointer;
     user-select: none;
@@ -120,7 +120,7 @@ const DROPDOWN_PORTAL_STYLES = css`
 
   .empty,
   .loading {
-    padding: 16px 12px;
+    padding: var(--space-inline) var(--space-md);
     text-align: center;
     color: rgba(0, 0, 0, 0.45);
   }
@@ -130,7 +130,7 @@ const DROPDOWN_PORTAL_STYLES = css`
     display: inline-block;
     width: 14px;
     height: 14px;
-    margin-left: 8px;
+    margin-left: var(--space-sm);
     border: 2px solid rgba(22, 119, 255, 0.2);
     border-top-color: var(--color-primary, #1677ff);
     border-radius: 50%;
@@ -249,7 +249,7 @@ export class UiSelect extends LitElement {
       transform: translateY(-50%);
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: var(--space-xs);
       color: rgba(0, 0, 0, 0.25);
     }
 

@@ -7,8 +7,14 @@ import '../../components/import/content-importer.js';
 import '../../components/library/media-list.js';
 import '../../components/stats/practice-stats-dashboard.js';
 import type { MediaList } from '../../components/library/media-list.js';
-
-const COMPACT_MQ = '(max-height: 739px)';
+import {
+  COMPACT_VIEWPORT_MQ,
+  EXIT_FILL_LIST_PX,
+  MIN_FILL_LIST_PX,
+  gapPx,
+  measurePageViewportHeight,
+  sumOffsetHeights,
+} from '../../lib/layout-compact.js';
 
 const NavigatorElement = navigator(LitElement);
 @customElement('home-page')
@@ -37,7 +43,7 @@ export class HomePage extends NavigatorElement {
 
     .intro {
       flex-shrink: 0;
-      margin: 0 0 24px;
+      margin: 0 0 var(--space-stack);
       color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
       font-size: 0.9375rem;
     }
@@ -45,7 +51,7 @@ export class HomePage extends NavigatorElement {
     .stack {
       display: flex;
       flex-direction: column;
-      gap: 24px;
+      gap: var(--space-stack);
       flex: 1;
       min-height: 0;
     }
@@ -74,21 +80,97 @@ export class HomePage extends NavigatorElement {
   @query('media-list')
   private _mediaList?: MediaList;
 
+  private _resizeObserver: ResizeObserver | null = null;
+
+  private _observed = new Set<Element>();
+
   connectedCallback() {
     super.connectedCallback();
-    this._compactMq = window.matchMedia(COMPACT_MQ);
+    this._compactMq = window.matchMedia(COMPACT_VIEWPORT_MQ);
     this.compact = this._compactMq.matches;
-    this._compactMq.addEventListener('change', this._onCompactChange);
+    this._compactMq.addEventListener('change', this._onCompactMqChange);
   }
 
   disconnectedCallback() {
-    this._compactMq?.removeEventListener('change', this._onCompactChange);
+    this._compactMq?.removeEventListener('change', this._onCompactMqChange);
+    this._resizeObserver?.disconnect();
+    this._resizeObserver = null;
+    this._observed.clear();
     super.disconnectedCallback();
   }
 
-  private _onCompactChange = (e: MediaQueryListEvent) => {
-    this.compact = e.matches;
+  protected firstUpdated(): void {
+    this._resizeObserver = new ResizeObserver(() => this._syncCompactFromSpace());
+    this._observe(this);
+    const mainContent = this.parentElement?.parentElement;
+    if (mainContent) this._observe(mainContent);
+    this._observeShadowTargets();
+    this._syncCompactFromSpace();
+  }
+
+  protected updated(): void {
+    this._observeShadowTargets();
+  }
+
+  private _onCompactMqChange = (e: MediaQueryListEvent) => {
+    if (e.matches) {
+      this.compact = true;
+      return;
+    }
+    this._syncCompactFromSpace();
   };
+
+  private _observe(el: Element | null | undefined): void {
+    if (!el || !this._resizeObserver || this._observed.has(el)) return;
+    this._resizeObserver.observe(el);
+    this._observed.add(el);
+  }
+
+  private _observeShadowTargets(): void {
+    const root = this.renderRoot;
+    this._observe(root.querySelector('.intro'));
+    this._observe(root.querySelector('.stack'));
+    this._observe(root.querySelector('practice-stats-dashboard'));
+    this._observe(root.querySelector('content-importer'));
+    this._observe(root.querySelector('media-list'));
+  }
+
+  /** Prefer fill-height when the list has room; otherwise page-scroll (compact). */
+  private _syncCompactFromSpace(): void {
+    if (this._compactMq?.matches) {
+      if (!this.compact) this.compact = true;
+      return;
+    }
+
+    if (!this.compact) {
+      const list = this.renderRoot.querySelector('media-list') as HTMLElement | null;
+      const listHeight = list?.clientHeight ?? 0;
+      // Ignore 0 (unmounted / no flex height yet) to avoid false compact in tests.
+      if (listHeight > 0 && listHeight < MIN_FILL_LIST_PX) {
+        this.compact = true;
+      }
+      return;
+    }
+
+    const pageViewport = measurePageViewportHeight(this);
+    if (pageViewport <= 0) return;
+
+    const intro = this.renderRoot.querySelector('.intro') as HTMLElement | null;
+    const stack = this.renderRoot.querySelector('.stack');
+    if (!stack) return;
+
+    const siblings = [...stack.children].filter(
+      (child) => child.tagName.toLowerCase() !== 'media-list',
+    );
+    const introMb = intro ? Number.parseFloat(getComputedStyle(intro).marginBottom) || 0 : 0;
+    const gaps = gapPx(stack) * Math.max(0, stack.children.length - 1);
+    const upper = (intro?.offsetHeight ?? 0) + introMb + sumOffsetHeights(siblings) + gaps;
+    const remaining = pageViewport - upper;
+
+    if (remaining >= EXIT_FILL_LIST_PX) {
+      this.compact = false;
+    }
+  }
 
   render() {
     return html`

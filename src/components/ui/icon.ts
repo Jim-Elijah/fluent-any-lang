@@ -16,8 +16,8 @@ export class UIIcon extends LitElement {
     }
 
     svg {
-      width: var(--ui-icon-size, 1em);
-      height: var(--ui-icon-size, 1em);
+      width: var(--ui-icon-size, var(--icon-sm, 14px));
+      height: var(--ui-icon-size, var(--icon-sm, 14px));
       fill: currentColor;
       overflow: hidden;
     }

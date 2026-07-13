@@ -15,7 +15,7 @@ import '../ui/tooltip.js';
 import '../ui/virtual-grid.js';
 import { Message } from '../ui/message.js';
 
-/** Row height including the 12px gap below each card. */
+/** Row height including the --space-md (12px) gap below each card. */
 const MEDIA_ROW_HEIGHT = 96;
 const MEDIA_LIST_HEIGHT = 480;
 
@@ -55,8 +55,8 @@ export class MediaList extends LitElement {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 12px;
+      gap: var(--space-block);
+      margin-bottom: var(--space-block);
       flex-shrink: 0;
     }
 
@@ -74,10 +74,11 @@ export class MediaList extends LitElement {
     .item {
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
-      gap: 12px;
+      gap: var(--space-md);
       align-items: center;
-      height: calc(100% - 12px);
-      padding: 14px 16px;
+      /* Reserve --space-md to match MEDIA_ROW_HEIGHT gap (fixed, not --space-block). */
+      height: calc(100% - var(--space-md));
+      padding: var(--space-md) var(--space-lg);
       background: var(--color-surface, #fff);
       border: 1px solid var(--color-border, #d9d9d9);
       border-radius: var(--radius-md, 8px);
@@ -90,7 +91,7 @@ export class MediaList extends LitElement {
     }
 
     .title {
-      margin: 0 0 6px;
+      margin: 0 0 var(--space-xs);
       font-size: 1rem;
       font-weight: 600;
       overflow: hidden;
@@ -102,7 +103,7 @@ export class MediaList extends LitElement {
       display: flex;
       flex-wrap: nowrap;
       align-items: center;
-      gap: 8px;
+      gap: var(--space-sm);
       margin: 0;
       min-width: 0;
       overflow: hidden;
@@ -125,7 +126,7 @@ export class MediaList extends LitElement {
     .badge {
       display: inline-flex;
       align-items: center;
-      padding: 4px;
+      padding: var(--space-xs);
       border-radius: 999px;
       background: rgba(22, 119, 255, 0.08);
       color: var(--color-primary, #1677ff);
@@ -140,12 +141,12 @@ export class MediaList extends LitElement {
 
     .actions {
       display: flex;
-      gap: 8px;
+      gap: var(--space-sm);
       flex-shrink: 0;
     }
 
     .empty {
-      padding: 24px;
+      padding: var(--space-stack);
       text-align: center;
       color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
       background: var(--color-surface, #fff);
@@ -154,11 +155,26 @@ export class MediaList extends LitElement {
     }
 
     .error {
-      margin-bottom: 12px;
+      margin-bottom: var(--space-block);
     }
 
     input[type='file'] {
       display: none;
+    }
+
+    @media (max-width: 767px) {
+      .item {
+        gap: var(--space-sm);
+        height: calc(100% - var(--space-sm));
+        padding: var(--space-sm) var(--space-md);
+      }
+
+      .details {
+        gap: var(--space-xs);
+      }
+      .actions {
+        gap: var(--space-xs);
+      }
     }
   `;
 
@@ -313,7 +329,10 @@ export class MediaList extends LitElement {
           <p class="details">
             <span class="badge">
               <ui-tooltip title="${media.type === 'video' ? msg('视频') : msg('音频')}">
-                <ui-icon name="${media.type === 'video' ? 'video' : 'music'}" size="16px"></ui-icon>
+                <ui-icon
+                  name="${media.type === 'video' ? 'video' : 'music'}"
+                  size="var(--icon-md)"
+                ></ui-icon>
               </ui-tooltip>
             </span>
             <span>${formatTime(media.duration)}</span>
@@ -322,7 +341,7 @@ export class MediaList extends LitElement {
               <ui-tooltip title="${media.hasSubtitles ? msg('含字幕') : msg('无字幕')}">
                 <ui-icon
                   name="${media.hasSubtitles ? 'subtitle' : 'subtitle-off'}"
-                  size="16px"
+                  size="var(--icon-md)"
                 ></ui-icon>
               </ui-tooltip>
             </span>

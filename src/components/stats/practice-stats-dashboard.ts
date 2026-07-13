@@ -35,15 +35,15 @@ export class PracticeStatsDashboard extends NavigatorElement {
       border: 1px solid var(--color-border, #d9d9d9);
       border-radius: var(--radius-md, 8px);
       box-shadow: var(--shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.06));
-      padding: 16px 18px;
+      padding: var(--space-inline);
     }
 
     .header {
       display: flex;
       align-items: flex-start;
       justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 14px;
+      gap: var(--space-block);
+      margin-bottom: var(--space-inline);
     }
 
     .title {
@@ -78,9 +78,9 @@ export class PracticeStatsDashboard extends NavigatorElement {
     .hero {
       display: flex;
       align-items: baseline;
-      gap: 10px;
+      gap: var(--space-sm);
       flex-wrap: wrap;
-      margin-bottom: 14px;
+      margin-bottom: var(--space-inline);
     }
 
     .hero-value {
@@ -102,7 +102,7 @@ export class PracticeStatsDashboard extends NavigatorElement {
       color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
       background: rgba(22, 119, 255, 0.06);
       border-radius: 999px;
-      padding: 4px 10px;
+      padding: var(--space-xs) var(--space-sm);
     }
 
     .streak strong {
@@ -113,13 +113,13 @@ export class PracticeStatsDashboard extends NavigatorElement {
     .modes {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 8px;
-      margin-bottom: 14px;
+      gap: var(--space-block);
+      margin-bottom: var(--space-inline);
     }
 
     .mode {
       border-radius: 8px;
-      padding: 8px 10px;
+      padding: var(--space-sm);
       background: var(--color-bg, #f5f5f5);
       min-width: 0;
     }
@@ -127,10 +127,10 @@ export class PracticeStatsDashboard extends NavigatorElement {
     .mode-name {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: var(--space-xs);
       font-size: 0.75rem;
       color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
-      margin-bottom: 4px;
+      margin-bottom: var(--space-xs);
     }
 
     .dot {
@@ -165,7 +165,7 @@ export class PracticeStatsDashboard extends NavigatorElement {
       border-radius: 999px;
       overflow: hidden;
       background: #f0f0f0;
-      margin-bottom: 14px;
+      margin-bottom: var(--space-inline);
     }
 
     .stack-bar > span {
@@ -188,7 +188,7 @@ export class PracticeStatsDashboard extends NavigatorElement {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
+      gap: var(--space-block);
       flex-wrap: wrap;
     }
 
@@ -222,7 +222,7 @@ export class PracticeStatsDashboard extends NavigatorElement {
     .loading-wrap {
       display: flex;
       justify-content: center;
-      padding: 12px 0;
+      padding: var(--space-block) 0;
       font-size: 0.875rem;
       color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
     }

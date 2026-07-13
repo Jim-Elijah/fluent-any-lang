@@ -15,7 +15,7 @@ export class UIIconButton extends LitElement {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      padding: 4px;
+      padding: var(--space-xs);
       border: none;
       border-radius: var(--radius-md, 8px);
       background: transparent;

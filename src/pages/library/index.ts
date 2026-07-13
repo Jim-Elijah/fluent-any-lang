@@ -12,10 +12,16 @@ import '../../components/ui/icon.js';
 import type { SelectChangeDetail } from '../../components/ui/select.js';
 import { InputChangeDetail } from '../../components/ui/input.js';
 import { allocateStackedHeights, type ListMetricsDetail } from '../../lib/split-list-heights.js';
+import {
+  COMPACT_VIEWPORT_MQ,
+  EXIT_LIBRARY_STACK_PX,
+  MIN_LIBRARY_STACK_PX,
+  gapPx,
+  measurePageViewportHeight,
+} from '../../lib/layout-compact.js';
 import { SortDirection } from '../../types/models.js';
 
-const STACK_GAP_PX = 16;
-const COMPACT_MQ = '(max-height: 739px)';
+const STACK_GAP_FALLBACK_PX = 16;
 
 const NavigatorElement = navigator(LitElement);
 @customElement('library-page')
@@ -45,10 +51,10 @@ export class LibraryPage extends NavigatorElement {
     .toolbar {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: var(--space-block);
       flex-wrap: wrap;
       flex-shrink: 0;
-      margin-bottom: 8px;
+      margin-bottom: var(--space-sm);
     }
 
     .search {
@@ -59,14 +65,14 @@ export class LibraryPage extends NavigatorElement {
     .sort-group {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: var(--space-sm);
       flex: 0 0 auto;
     }
 
     .sort-label {
       display: inline-flex;
       align-items: center;
-      gap: 4px;
+      gap: var(--space-xs);
       color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
       font-size: 0.875rem;
       white-space: nowrap;
@@ -78,7 +84,7 @@ export class LibraryPage extends NavigatorElement {
 
     .hint {
       flex-shrink: 0;
-      margin: 0 0 16px;
+      margin: 0 0 var(--space-inline);
       color: var(--color-text-secondary, rgba(0, 0, 0, 0.45));
       font-size: 0.8125rem;
     }
@@ -86,7 +92,7 @@ export class LibraryPage extends NavigatorElement {
     .stack {
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: var(--space-stack);
       flex: 1;
       min-height: 0;
       overflow: hidden;
@@ -141,37 +147,110 @@ export class LibraryPage extends NavigatorElement {
 
   private _resizeObserver: ResizeObserver | null = null;
 
+  private _observed = new Set<Element>();
+
   private _compactMq?: MediaQueryList;
 
   connectedCallback() {
     super.connectedCallback();
-    this._compactMq = window.matchMedia(COMPACT_MQ);
+    this._compactMq = window.matchMedia(COMPACT_VIEWPORT_MQ);
     this.compact = this._compactMq.matches;
-    this._compactMq.addEventListener('change', this._onCompactChange);
+    this._compactMq.addEventListener('change', this._onCompactMqChange);
   }
 
   disconnectedCallback(): void {
-    this._compactMq?.removeEventListener('change', this._onCompactChange);
+    this._compactMq?.removeEventListener('change', this._onCompactMqChange);
     this._resizeObserver?.disconnect();
     this._resizeObserver = null;
+    this._observed.clear();
     super.disconnectedCallback();
   }
 
-  private _onCompactChange = (e: MediaQueryListEvent) => {
-    this.compact = e.matches;
-    if (!this.compact) {
-      this._reallocate();
-    } else {
-      this._mediaHeight = 0;
-      this._recordHeight = 0;
+  private _onCompactMqChange = (e: MediaQueryListEvent) => {
+    if (e.matches) {
+      this._setCompact(true);
+      return;
     }
+    this._syncCompactFromSpace();
   };
 
   protected firstUpdated(): void {
-    if (!this._stack) return;
-    this._resizeObserver = new ResizeObserver(() => this._reallocate());
-    this._resizeObserver.observe(this._stack);
-    this._reallocate();
+    this._resizeObserver = new ResizeObserver(() => this._syncCompactFromSpace());
+    this._observe(this);
+    const mainContent = this.parentElement?.parentElement;
+    if (mainContent) this._observe(mainContent);
+    this._observeShadowTargets();
+    this._syncCompactFromSpace();
+  }
+
+  protected updated(): void {
+    this._observeShadowTargets();
+  }
+
+  private _observe(el: Element | null | undefined): void {
+    if (!el || !this._resizeObserver || this._observed.has(el)) return;
+    this._resizeObserver.observe(el);
+    this._observed.add(el);
+  }
+
+  private _observeShadowTargets(): void {
+    const root = this.renderRoot;
+    this._observe(root.querySelector('.toolbar'));
+    this._observe(root.querySelector('.hint'));
+    this._observe(root.querySelector('.stack'));
+  }
+
+  private _setCompact(next: boolean): void {
+    if (this.compact === next) {
+      if (!next) this._reallocate();
+      return;
+    }
+    this.compact = next;
+    if (next) {
+      this._mediaHeight = 0;
+      this._recordHeight = 0;
+    } else {
+      this._reallocate();
+    }
+  }
+
+  private _estimateStackBudget(): number {
+    const pageViewport = measurePageViewportHeight(this);
+    if (pageViewport <= 0) return 0;
+
+    const root = this.renderRoot;
+    const toolbar = root.querySelector('.toolbar') as HTMLElement | null;
+    const hint = root.querySelector('.hint') as HTMLElement | null;
+    const toolbarMb = toolbar ? Number.parseFloat(getComputedStyle(toolbar).marginBottom) || 0 : 0;
+    const hintMb = hint ? Number.parseFloat(getComputedStyle(hint).marginBottom) || 0 : 0;
+
+    return Math.max(
+      0,
+      pageViewport - (toolbar?.offsetHeight ?? 0) - toolbarMb - (hint?.offsetHeight ?? 0) - hintMb,
+    );
+  }
+
+  private _syncCompactFromSpace(): void {
+    if (this._compactMq?.matches) {
+      this._setCompact(true);
+      return;
+    }
+
+    if (!this.compact) {
+      const stackHeight = this._stack?.clientHeight ?? 0;
+      // Ignore 0 until flex layout has assigned a height.
+      if (stackHeight > 0 && stackHeight < MIN_LIBRARY_STACK_PX) {
+        this._setCompact(true);
+        return;
+      }
+      this._reallocate();
+      return;
+    }
+
+    const budget = this._estimateStackBudget();
+    if (budget >= EXIT_LIBRARY_STACK_PX) {
+      this._setCompact(false);
+    }
   }
 
   private _getSortByOptions() {
@@ -188,9 +267,13 @@ export class LibraryPage extends NavigatorElement {
     ];
   }
 
+  private _getStackGapPx(): number {
+    return gapPx(this._stack ?? this, STACK_GAP_FALLBACK_PX);
+  }
+
   private _reallocate(): void {
     if (this.compact) return;
-    const available = Math.max(0, (this._stack?.clientHeight ?? 0) - STACK_GAP_PX);
+    const available = Math.max(0, (this._stack?.clientHeight ?? 0) - this._getStackGapPx());
     const [mediaHeight, recordHeight] = allocateStackedHeights(
       this._mediaNatural,
       this._recordNatural,
@@ -229,12 +312,12 @@ export class LibraryPage extends NavigatorElement {
               this._keyword = (e.detail.value || '').trim();
             }}
           >
-            <ui-icon slot="prefix" name="search" size="16px"></ui-icon>
+            <ui-icon slot="prefix" name="search" size="var(--icon-md)"></ui-icon>
           </ui-input>
 
           <div class="sort-group">
             <span class="sort-label">
-              <ui-icon name="sort" size="16px"></ui-icon>
+              <ui-icon name="sort" size="var(--icon-md)"></ui-icon>
               ${msg('排序')}
             </span>
             <ui-select

@@ -92,7 +92,7 @@ export class UiLoadingMask extends LitElement {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 8px;
+      gap: var(--space-sm);
     }
 
     .circular {

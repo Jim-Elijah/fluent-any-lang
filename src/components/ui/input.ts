@@ -122,7 +122,7 @@ const INPUT_BASE_STYLES = css`
 
   .suffix {
     padding-right: var(--input-padding-x);
-    gap: 4px;
+    gap: var(--space-xs);
   }
 
   .control {
@@ -148,11 +148,11 @@ const INPUT_BASE_STYLES = css`
   }
 
   .wrapper.has-prefix .control {
-    padding-left: 8px;
+    padding-left: var(--space-sm);
   }
 
   .wrapper.has-suffix .control {
-    padding-right: 8px;
+    padding-right: var(--space-sm);
   }
 
   .clear,

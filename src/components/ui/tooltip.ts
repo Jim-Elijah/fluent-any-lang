@@ -29,7 +29,7 @@ const POPUP_PORTAL_STYLES = `
     z-index: var(--tooltip-z, 1070);
     max-width: var(--tooltip-max-width, 250px);
     min-height: 32px;
-    padding: 6px 8px;
+    padding: 6px var(--space-sm);
     background: var(--tooltip-bg, rgba(0, 0, 0, 0.85));
     color: var(--tooltip-color, #fff);
     font-size: 14px;

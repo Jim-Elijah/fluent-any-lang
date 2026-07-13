@@ -67,8 +67,8 @@ export class PracticeView extends LitElement {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 16px;
+      gap: var(--space-block);
+      margin-bottom: var(--space-inline);
     }
 
     .header h2 {
@@ -79,28 +79,28 @@ export class PracticeView extends LitElement {
 
     .layout {
       display: grid;
-      gap: 16px;
+      gap: var(--space-inline);
     }
 
     .mode-tabs {
       display: flex;
       flex-wrap: wrap;
-      gap: 10px;
-      margin-bottom: 16px;
+      gap: var(--space-sm);
+      margin-bottom: var(--space-inline);
     }
 
     .speaking-mode-tabs {
       display: flex;
       flex-wrap: wrap;
-      gap: 8px;
-      margin-bottom: 12px;
+      gap: var(--space-sm);
+      margin-bottom: var(--space-block);
     }
 
     .settings-panel {
       display: grid;
-      gap: 12px;
-      padding: 16px;
-      margin-bottom: 16px;
+      gap: var(--space-block);
+      padding: var(--space-inline);
+      margin-bottom: var(--space-inline);
       border: 1px solid var(--color-border, #d9d9d9);
       border-radius: var(--radius-md, 8px);
       background: var(--color-surface, #fff);
@@ -114,25 +114,25 @@ export class PracticeView extends LitElement {
 
     .settings-group {
       display: grid;
-      gap: 8px;
+      gap: var(--space-sm);
     }
 
     .storage-info {
       display: grid;
-      gap: 4px;
+      gap: var(--space-xs);
       font-size: 0.875rem;
       color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
     }
 
     .info-text {
       display: grid;
-      gap: 8px;
+      gap: var(--space-sm);
       font-size: 0.875rem;
       color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
     }
 
     .echo-recorder {
-      margin-top: 8px;
+      margin-top: var(--space-sm);
     }
   `;
 
@@ -322,13 +322,13 @@ export class PracticeView extends LitElement {
             variant="${this._practiceType === 'listening' ? 'primary' : 'secondary'}"
             @click="${() => this._setPracticeType('listening')}"
           >
-            <ui-icon name="listen" size="20px"></ui-icon> ${msg('听力')}
+            <ui-icon name="listen" size="var(--icon-xl)"></ui-icon> ${msg('听力')}
           </ui-button>
           <ui-button
             variant="${this._practiceType === 'speaking' ? 'primary' : 'secondary'}"
             @click="${() => this._setPracticeType('speaking')}"
           >
-            <ui-icon name="speak" size="20px"></ui-icon> ${msg('口语')}
+            <ui-icon name="speak" size="var(--icon-xl)"></ui-icon> ${msg('口语')}
           </ui-button>
         </div>
         ${isSpeaking

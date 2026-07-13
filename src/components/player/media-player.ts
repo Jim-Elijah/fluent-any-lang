@@ -142,7 +142,7 @@ export class MediaPlayer extends LitElement {
       display: flex;
       flex-direction: column;
       justify-content: center;
-      padding: 8px 16px;
+      padding: var(--space-block) var(--space-inline);
       overflow: hidden;
     }
 
@@ -151,7 +151,7 @@ export class MediaPlayer extends LitElement {
       justify-content: space-between;
       align-items: baseline;
       margin-bottom: 2px;
-      gap: 12px;
+      gap: var(--space-block);
     }
 
     .title {
@@ -179,7 +179,7 @@ export class MediaPlayer extends LitElement {
 
     /* Progress bar */
     .progress-bar-wrap {
-      margin: 2px 0 6px 0;
+      margin: 2px 0 var(--space-xs) 0;
     }
 
     /* Control row containing buttons */
@@ -192,20 +192,20 @@ export class MediaPlayer extends LitElement {
     .nav-buttons {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: var(--space-sm);
     }
 
     .action-buttons {
       display: flex;
       align-items: center;
-      gap: 14px;
+      gap: var(--space-md);
     }
 
     /* Volume control */
     .volume-control {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: var(--space-xs);
       width: 72px;
     }
 
@@ -227,20 +227,20 @@ export class MediaPlayer extends LitElement {
     .settings-panel.expanded {
       height: auto;
       border-top: 1px solid var(--color-border, #e8e8e8);
-      padding: 12px 16px;
+      padding: var(--space-block) var(--space-inline);
       overflow-y: auto;
     }
 
     .settings-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 12px 20px;
+      gap: var(--space-block) var(--space-inline);
     }
 
     .setting-item {
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: var(--space-xs);
     }
 
     .setting-label {
@@ -343,8 +343,8 @@ export class MediaPlayer extends LitElement {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
-      padding: 8px 16px;
+      gap: var(--space-block);
+      padding: var(--space-block) var(--space-inline);
       border-top: 1px solid var(--color-border, #e8e8e8);
       background: rgba(22, 119, 255, 0.05);
       color: var(--color-primary, #1677ff);
@@ -362,6 +362,12 @@ export class MediaPlayer extends LitElement {
       width: 100%;
       max-height: 420px;
       object-fit: contain;
+    }
+
+    @media (max-width: 767px) {
+      video {
+        max-height: min(420px, 40dvh);
+      }
     }
 
     audio {
@@ -562,12 +568,15 @@ export class MediaPlayer extends LitElement {
             style="background-image: url(${snapshot.currentItem.cover || ''});"
           >
             ${!snapshot.currentItem.cover
-              ? html`<ui-icon name="${isVideo ? 'video' : 'audio'}" size="20px"></ui-icon>`
+              ? html`<ui-icon
+                  name="${isVideo ? 'video' : 'audio'}"
+                  size="var(--icon-xl)"
+                ></ui-icon>`
               : ''}
             <div class="mini-overlay">
               <ui-icon-button
                 name="${snapshot.isPlaying ? 'pause' : 'play'}"
-                size="18px"
+                size="var(--icon-lg)"
                 title="${snapshot.isPlaying ? msg('暂停') : msg('播放')}"
                 @click="${this._togglePlay}"
               ></ui-icon-button>
@@ -626,10 +635,16 @@ export class MediaPlayer extends LitElement {
                   style="background-image: url(${snapshot.currentItem.cover || ''});"
                 >
                   ${!snapshot.currentItem.cover
-                    ? html`<ui-icon name="${isVideo ? 'video' : 'audio'}" size="22px"></ui-icon>`
+                    ? html`<ui-icon
+                        name="${isVideo ? 'video' : 'audio'}"
+                        size="var(--icon-2xl)"
+                      ></ui-icon>`
                     : ''}
                   <div class="play-overlay">
-                    <ui-icon name="${snapshot.isPlaying ? 'pause' : 'play'}" size="20px"></ui-icon>
+                    <ui-icon
+                      name="${snapshot.isPlaying ? 'pause' : 'play'}"
+                      size="var(--icon-xl)"
+                    ></ui-icon>
                   </div>
                 </div>
               </div>`
@@ -666,7 +681,7 @@ export class MediaPlayer extends LitElement {
                   ? html`<ui-icon-button
                       name="previous"
                       title="${msg('上一首')}"
-                      size="18px"
+                      size="var(--icon-lg)"
                       ?disabled="${!snapshot.canPreviousTrack || this.disabled}"
                       @click="${this._previousTrack}"
                     ></ui-icon-button>`
@@ -675,7 +690,7 @@ export class MediaPlayer extends LitElement {
                   ? html`<ui-icon-button
                       name="backward"
                       title="${msg('上一句')}"
-                      size="18px"
+                      size="var(--icon-lg)"
                       ?disabled="${!snapshot.canPreviousSegment || this.disabled}"
                       @click="${this._previousSegment}"
                     ></ui-icon-button>`
@@ -684,7 +699,7 @@ export class MediaPlayer extends LitElement {
                   ? html`<ui-icon-button
                       name="${snapshot.isPlaying ? 'pause' : 'play'}"
                       title="${snapshot.isPlaying ? msg('暂停') : msg('播放')}"
-                      size="20px"
+                      size="var(--icon-xl)"
                       ?disabled="${this.disabled}"
                       @click="${this._togglePlay}"
                     ></ui-icon-button>`
@@ -693,7 +708,7 @@ export class MediaPlayer extends LitElement {
                   ? html`<ui-icon-button
                       name="forward"
                       title="${msg('下一句')}"
-                      size="18px"
+                      size="var(--icon-lg)"
                       ?disabled="${!snapshot.canNextSegment || this.disabled}"
                       @click="${this._nextSegment}"
                     ></ui-icon-button>`
@@ -702,7 +717,7 @@ export class MediaPlayer extends LitElement {
                   ? html`<ui-icon-button
                       name="next"
                       title="${msg('下一首')}"
-                      size="18px"
+                      size="var(--icon-lg)"
                       ?disabled="${!snapshot.canNextTrack || this.disabled}"
                       @click="${this._nextTrack}"
                     ></ui-icon-button>`
@@ -717,7 +732,7 @@ export class MediaPlayer extends LitElement {
                         <ui-icon-button
                           title="${msg('音量')}"
                           name="${snapshot.volume === 0 ? 'volume-close' : 'volume'}"
-                          size="16px"
+                          size="var(--icon-md)"
                           @click="${this._toggleMute}"
                         ></ui-icon-button>
                         <ui-slider
@@ -742,7 +757,7 @@ export class MediaPlayer extends LitElement {
                   name="setting"
                   class="settings-toggle-btn ${this._showSettings ? 'active' : ''}"
                   title="${msg('高级设置')}"
-                  size="18px"
+                  size="var(--icon-lg)"
                   @click="${this._toggleSettings}"
                 ></ui-icon-button>
 
@@ -751,7 +766,7 @@ export class MediaPlayer extends LitElement {
                   ? html`<ui-icon-button
                       name="media"
                       title="${msg('切换模式')}"
-                      size="18px"
+                      size="var(--icon-lg)"
                       @click="${this._cycleMode}"
                     ></ui-icon-button> `
                   : ''}
@@ -765,7 +780,7 @@ export class MediaPlayer extends LitElement {
             ? html` <div class="fixed-switcher" @click="${this._toggleFixedCollapse}">
                 <ui-icon
                   name="${this.collapsed ? 'play' : 'pause'}"
-                  size="14px"
+                  size="var(--icon-sm)"
                   style="transform: rotate(90deg);"
                 ></ui-icon>
               </div>`
