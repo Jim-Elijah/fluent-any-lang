@@ -116,4 +116,221 @@ describe('ui-tooltip', () => {
     await el.updateComplete;
     expect(closeHandler).toHaveBeenCalled();
   });
+
+  it('auto-closes click tooltip after autoCloseDelay', async () => {
+    const el = await renderTooltip(html`
+      <ui-tooltip title="Click me" trigger="click" .autoCloseDelay=${1}
+        ><span>Btn</span></ui-tooltip
+      >
+    `);
+    const closeHandler = vi.fn();
+    el.addEventListener('close', closeHandler);
+
+    el.shadowRoot
+      ?.querySelector('.trigger')
+      ?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await el.updateComplete;
+    await flushUpdates();
+    expect(getPopup()).not.toBeNull();
+
+    vi.advanceTimersByTime(999);
+    await el.updateComplete;
+    expect(closeHandler).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(1);
+    await el.updateComplete;
+    await flushUpdates();
+    expect(closeHandler).toHaveBeenCalledWith(
+      expect.objectContaining({ detail: expect.objectContaining({ reason: 'timeout' }) }),
+    );
+    expect(getPopup() ?? null).toBeNull();
+  });
+
+  it('does not auto-close when autoCloseDelay is 0', async () => {
+    const el = await renderTooltip(html`
+      <ui-tooltip title="Click me" trigger="click" .autoCloseDelay=${0}
+        ><span>Btn</span></ui-tooltip
+      >
+    `);
+    const closeHandler = vi.fn();
+    el.addEventListener('close', closeHandler);
+
+    el.shadowRoot
+      ?.querySelector('.trigger')
+      ?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await el.updateComplete;
+    await flushUpdates();
+
+    vi.advanceTimersByTime(5000);
+    await el.updateComplete;
+    expect(closeHandler).not.toHaveBeenCalled();
+    expect(getPopup()).not.toBeNull();
+  });
+
+  it('resets auto-close timer when title changes while open', async () => {
+    const el = await renderTooltip(html`
+      <ui-tooltip title="A" trigger="click" .autoCloseDelay=${1}><span>Btn</span></ui-tooltip>
+    `);
+    const closeHandler = vi.fn();
+    el.addEventListener('close', closeHandler);
+
+    el.shadowRoot
+      ?.querySelector('.trigger')
+      ?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await el.updateComplete;
+    await flushUpdates();
+
+    vi.advanceTimersByTime(800);
+    el.title = 'B';
+    await el.updateComplete;
+    await flushUpdates();
+
+    vi.advanceTimersByTime(800);
+    await el.updateComplete;
+    expect(closeHandler).not.toHaveBeenCalled();
+    expect(getPopup()?.textContent).toContain('B');
+
+    vi.advanceTimersByTime(200);
+    await el.updateComplete;
+    await flushUpdates();
+    expect(closeHandler).toHaveBeenCalled();
+  });
+
+  it('repositions popup when title changes while open', async () => {
+    const el = await renderTooltip(html`
+      <ui-tooltip title="1" .open=${true}><span>Btn</span></ui-tooltip>
+    `);
+    await flushUpdates();
+    const popup = getPopup() as HTMLElement | null;
+    expect(popup).not.toBeNull();
+
+    const computeSpy = vi.spyOn(
+      el as unknown as { _computePopupPosition: () => void },
+      '_computePopupPosition',
+    );
+
+    el.title = 'much-longer-title-content';
+    await el.updateComplete;
+    await flushUpdates();
+    await Promise.resolve();
+    await el.updateComplete;
+
+    expect(computeSpy).toHaveBeenCalled();
+    expect(getPopup()?.textContent).toContain('much-longer-title-content');
+    computeSpy.mockRestore();
+  });
+
+  function mockHoverMedia(hoverNone: boolean) {
+    vi.spyOn(window, 'matchMedia').mockImplementation((query) => {
+      return {
+        matches: hoverNone && query === '(hover: none)',
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      } as MediaQueryList;
+    });
+  }
+
+  it('auto-closes hover tooltip on touch-like devices', async () => {
+    mockHoverMedia(true);
+
+    const el = await renderTooltip(html`
+      <ui-tooltip title="Hint" .autoCloseDelay=${1}><span>Btn</span></ui-tooltip>
+    `);
+    const closeHandler = vi.fn();
+    el.addEventListener('close', closeHandler);
+
+    el.shadowRoot
+      ?.querySelector('.trigger')
+      ?.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+    vi.advanceTimersByTime(100);
+    await el.updateComplete;
+    await flushUpdates();
+    expect(getPopup()).not.toBeNull();
+
+    vi.advanceTimersByTime(1000);
+    await el.updateComplete;
+    await flushUpdates();
+    expect(closeHandler).toHaveBeenCalledWith(
+      expect.objectContaining({ detail: expect.objectContaining({ reason: 'timeout' }) }),
+    );
+  });
+
+  it('reopens hover tooltip via click after auto-close on touch-like devices', async () => {
+    mockHoverMedia(true);
+
+    const el = await renderTooltip(html`
+      <ui-tooltip title="Hint" .autoCloseDelay=${1}><span>Btn</span></ui-tooltip>
+    `);
+    const trigger = el.shadowRoot?.querySelector('.trigger');
+    expect(trigger).not.toBeNull();
+
+    trigger!.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+    vi.advanceTimersByTime(100);
+    await el.updateComplete;
+    await flushUpdates();
+    expect(getPopup()).not.toBeNull();
+
+    vi.advanceTimersByTime(1000);
+    await el.updateComplete;
+    await flushUpdates();
+    expect(getPopup() ?? null).toBeNull();
+
+    // sticky hover: no second mouseenter; click must reopen
+    trigger!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await el.updateComplete;
+    await flushUpdates();
+    expect(getPopup()?.textContent).toContain('Hint');
+  });
+
+  it('does not close hover tooltip on the same touch tap that opened it', async () => {
+    mockHoverMedia(true);
+
+    const el = await renderTooltip(html`
+      <ui-tooltip title="Hint" .autoCloseDelay=${2}><span>Btn</span></ui-tooltip>
+    `);
+    const trigger = el.shadowRoot?.querySelector('.trigger');
+    expect(trigger).not.toBeNull();
+    const closeHandler = vi.fn();
+    el.addEventListener('close', closeHandler);
+
+    trigger!.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+    vi.advanceTimersByTime(100);
+    await el.updateComplete;
+    await flushUpdates();
+    expect(getPopup()).not.toBeNull();
+
+    // same tap synthesizes click after mouseenter — must not toggle closed
+    trigger!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await el.updateComplete;
+    await flushUpdates();
+    expect(closeHandler).not.toHaveBeenCalled();
+    expect(getPopup()).not.toBeNull();
+  });
+
+  it('does not auto-close hover tooltip on desktop hover devices', async () => {
+    mockHoverMedia(false);
+
+    const el = await renderTooltip(html`
+      <ui-tooltip title="Hint" .autoCloseDelay=${1}><span>Btn</span></ui-tooltip>
+    `);
+    const closeHandler = vi.fn();
+    el.addEventListener('close', closeHandler);
+
+    el.shadowRoot
+      ?.querySelector('.trigger')
+      ?.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+    vi.advanceTimersByTime(100);
+    await el.updateComplete;
+    await flushUpdates();
+
+    vi.advanceTimersByTime(2000);
+    await el.updateComplete;
+    expect(closeHandler).not.toHaveBeenCalled();
+    expect(getPopup()).not.toBeNull();
+  });
 });

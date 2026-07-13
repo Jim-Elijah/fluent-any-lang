@@ -644,6 +644,7 @@ export class UiSlider extends LitElement {
     }
 
     e.preventDefault();
+    this._focused = true;
     this._keyboardChanging = true;
     this._emitChange(next);
   };
@@ -676,6 +677,13 @@ export class UiSlider extends LitElement {
   };
 
   private _onHandleMouseLeave = () => {
+    this._handleHovered = false;
+  };
+
+  /** 受控 tooltip 关闭时清除 focus/hover，否则 open 会一直为 true */
+  private _onTooltipClose = () => {
+    if (this._dragging) return;
+    this._focused = false;
     this._handleHovered = false;
   };
 
@@ -871,10 +879,12 @@ export class UiSlider extends LitElement {
             .placement=${this._tooltipPlacement()}
             .popupContainer=${this._tooltipContainer()}
             trigger="click"
+            autoCloseDelay=${1}
             .disabled=${this._isTooltipHidden()}
             .arrow=${true}
             .mouseEnterDelay=${0}
             .mouseLeaveDelay=${0}
+            @close=${this._onTooltipClose}
           >
             <div
               class=${classMap({

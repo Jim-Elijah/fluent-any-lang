@@ -12,7 +12,7 @@ export type TooltipTriggerType = 'click' | 'hover';
 
 export type TooltipPlacement = 'top' | 'bottom' | 'left' | 'right';
 
-export type TooltipCloseReason = 'clickOutside' | 'esc' | 'trigger' | 'manual';
+export type TooltipCloseReason = 'clickOutside' | 'esc' | 'trigger' | 'manual' | 'timeout';
 
 export type TooltipOpenChangeDetail = {
   open: boolean;
@@ -22,6 +22,8 @@ export type TooltipOpenChangeDetail = {
 
 const DEFAULT_ENTER_DELAY_S = 0.1;
 const DEFAULT_LEAVE_DELAY_S = 0.1;
+/** click 触发后自动关闭延时（秒）；0 表示不自动关闭 */
+const DEFAULT_AUTO_CLOSE_DELAY_S = 1;
 
 const POPUP_PORTAL_STYLES = `
   .popup {
@@ -86,6 +88,14 @@ export class UiTooltip extends LitElement {
   /** 鼠标移出后延时隐藏，单位：秒（antd mouseLeaveDelay） */
   @property({ type: Number, attribute: 'mouse-leave-delay' }) mouseLeaveDelay =
     DEFAULT_LEAVE_DELAY_S;
+  /**
+   * 自动关闭延时，单位：秒；`0` 表示不自动关闭。
+   * - `trigger="click"`：始终生效
+   * - `trigger="hover"`：仅在无悬停能力的设备（如手机，`(hover: none)`）生效，避免粘滞 hover 一直不关
+   * 打开期间 title 更新会重置计时（便于 slider 等跟手场景）。
+   */
+  @property({ type: Number, attribute: 'auto-close-delay' }) autoCloseDelay =
+    DEFAULT_AUTO_CLOSE_DELAY_S;
 
   /** 类似 antd getPopupContainer：selector 或 HTMLElement，默认 body */
   @property() popupContainer: string | HTMLElement | null = 'body';
@@ -103,6 +113,7 @@ export class UiTooltip extends LitElement {
   private _prevIsOpen = false;
   private _hoverOpenTimer: ReturnType<typeof setTimeout> | null = null;
   private _hoverCloseTimer: ReturnType<typeof setTimeout> | null = null;
+  private _autoCloseTimer: ReturnType<typeof setTimeout> | null = null;
 
   connectedCallback(): void {
     super.connectedCallback();
@@ -198,6 +209,21 @@ export class UiTooltip extends LitElement {
 
   private _leaveDelayMs(): number {
     return Math.max(0, this.mouseLeaveDelay) * 1000;
+  }
+
+  private _autoCloseDelayMs(): number {
+    return Math.max(0, this.autoCloseDelay) * 1000;
+  }
+
+  /** 触控/无悬停设备：hover 会粘滞，需靠 timeout / 点外部关闭 */
+  private _isTouchLike(): boolean {
+    return typeof window !== 'undefined' && window.matchMedia('(hover: none)').matches;
+  }
+
+  private _shouldAutoClose(): boolean {
+    if (this._autoCloseDelayMs() <= 0) return false;
+    if (this.trigger === 'click') return true;
+    return this.trigger === 'hover' && this._isTouchLike();
   }
 
   private _popupStyleVars(): Record<string, string> {
@@ -313,6 +339,7 @@ export class UiTooltip extends LitElement {
 
   disconnectedCallback() {
     this._clearHoverTimers();
+    this._clearAutoCloseTimer();
     if (this._globalBound) {
       this._unbindGlobal();
       this._globalBound = false;
@@ -343,6 +370,7 @@ export class UiTooltip extends LitElement {
         this._globalBound = true;
       }
       this._syncPortal();
+      this._scheduleAutoClose();
       queueMicrotask(() => {
         if (!this._isOpen() || this._isDisabled()) return;
         this._updatePosition();
@@ -357,6 +385,7 @@ export class UiTooltip extends LitElement {
     }
     this._getOverlay().triggers.clearHoverTimers();
     this._clearHoverTimers();
+    this._clearAutoCloseTimer();
     if (this.destroyOnClose) {
       this._overlay?.destroyPortal();
     } else {
@@ -379,7 +408,11 @@ export class UiTooltip extends LitElement {
 
     this._syncPortal();
 
-    if (changed.has('placement') || changed.has('popupContainer')) {
+    if (changed.has('title')) {
+      this._scheduleAutoClose();
+    }
+
+    if (changed.has('title') || changed.has('placement') || changed.has('popupContainer')) {
       queueMicrotask(() => {
         if (!this._isOpen()) return;
         this._updatePosition();
@@ -417,6 +450,23 @@ export class UiTooltip extends LitElement {
     }
   }
 
+  private _clearAutoCloseTimer() {
+    if (this._autoCloseTimer) {
+      clearTimeout(this._autoCloseTimer);
+      this._autoCloseTimer = null;
+    }
+  }
+
+  private _scheduleAutoClose() {
+    this._clearAutoCloseTimer();
+    if (!this._shouldAutoClose()) return;
+    const delayMs = this._autoCloseDelayMs();
+    this._autoCloseTimer = setTimeout(() => {
+      this._autoCloseTimer = null;
+      if (this._isOpen()) this._hide('timeout');
+    }, delayMs);
+  }
+
   private _scheduleHoverOpen() {
     if (this.trigger !== 'hover') return;
     this._clearHoverTimers();
@@ -443,13 +493,26 @@ export class UiTooltip extends LitElement {
   }
 
   private _onTriggerClick = () => {
-    if (this.trigger !== 'click') return;
     if (this._isDisabled()) return;
 
-    if (this._isOpen()) {
-      this._hide('trigger');
-    } else {
-      this._show('click');
+    if (this.trigger === 'click') {
+      if (this._isOpen()) {
+        this._hide('trigger');
+      } else {
+        this._show('click');
+      }
+      return;
+    }
+
+    // 触控 + hover：自动关闭后同一元素不会再触发 mouseenter（粘滞 hover），
+    // 用 click 重新打开。若本次 tap 已由 mouseenter 打开，则只刷新计时，避免立刻关掉。
+    if (this.trigger === 'hover' && this._isTouchLike()) {
+      if (this._isOpen()) {
+        this._scheduleAutoClose();
+        return;
+      }
+      this._clearHoverTimers();
+      this._show('hover');
     }
   };
 
@@ -483,7 +546,8 @@ export class UiTooltip extends LitElement {
   private _onDocumentMouseDown(e: MouseEvent) {
     if (!this._isOpen()) return;
     if (this._getOverlay().isEventInside(e)) return;
-    if (this.trigger === 'click') {
+    // click 触发，或触控设备上的粘滞 hover，点外部关闭
+    if (this.trigger === 'click' || this._isTouchLike()) {
       this._hide('clickOutside');
     }
   }

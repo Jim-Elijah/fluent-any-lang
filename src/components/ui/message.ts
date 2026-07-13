@@ -3,6 +3,7 @@ import { css, html, LitElement, nothing } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
 import { Z_INDEX } from './internal/z-index.js';
+import './icon.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -71,11 +72,11 @@ let globalConfig: MessageConfig = {};
 let idCounter = 0;
 
 const TYPE_ICONS: Record<MessageType, string> = {
-  primary: '●',
-  success: '✓',
-  info: 'ℹ',
-  warning: '!',
-  error: '✕',
+  primary: 'warning',
+  success: 'success',
+  info: 'warning',
+  warning: 'warning',
+  error: 'error',
 };
 
 function nextId(): string {
@@ -155,65 +156,86 @@ export class UiMessageItem extends LitElement {
       padding: var(--space-sm) var(--space-inline);
       border-radius: var(--radius-md, 8px);
       font-size: 14px;
+      font-weight: 500;
       line-height: 1.5;
-      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
       border: 1px solid transparent;
       box-sizing: border-box;
       background: #fff;
       color: rgba(0, 0, 0, 0.88);
     }
 
-    .message.plain.info {
-      background: #e6f4ff;
-      border-color: #91caff;
-      color: #0958d9;
+    /* Default: tinted type background (Element Plus non-plain) */
+    .message.info {
+      background: #f4f4f5;
+      border-color: #e9e9eb;
+      color: #909399;
     }
-    .message.plain.success {
-      background: #f6ffed;
-      border-color: #b7eb8f;
-      color: #389e0d;
+    .message.success {
+      background: #f0f9eb;
+      border-color: #f0f9eb;
+      color: #67c23a;
     }
-    .message.plain.warning {
-      background: #fffbe6;
-      border-color: #ffe58f;
-      color: #d48806;
+    .message.warning {
+      background: #fdf6ec;
+      border-color: #faecd8;
+      color: #e6a23c;
     }
-    .message.plain.error {
-      background: #fff2f0;
-      border-color: #ffccc7;
-      color: #cf1322;
+    .message.error {
+      background: #fef0f0;
+      border-color: #fde2e2;
+      color: #f56c6c;
     }
-    .message.plain.primary {
-      background: #e6f4ff;
-      border-color: #91caff;
-      color: #1677ff;
+    .message.primary {
+      background: #ecf5ff;
+      border-color: #d9ecff;
+      color: #409eff;
+    }
+
+    /* Plain: white overlay background, keep type text color */
+    .message.plain {
+      background: #fff;
+      border-color: #fff;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
     }
 
     .icon {
       flex-shrink: 0;
-      width: 18px;
-      height: 18px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
       display: grid;
       place-items: center;
-      font-size: 14px;
-      font-weight: 600;
+      font-size: 12px;
+      font-weight: 700;
       line-height: 1;
+      color: #fff;
     }
 
     .icon.info {
-      color: #1677ff;
+      color: #909399;
     }
     .icon.success {
-      color: #52c41a;
+      color: #67c23a;
     }
     .icon.warning {
-      color: #faad14;
+      color: #e6a23c;
     }
     .icon.error {
-      color: #ff4d4f;
+      color: #f56c6c;
     }
     .icon.primary {
-      color: #1677ff;
+      color: #409eff;
+    }
+
+    .icon.info ui-icon {
+      transform: rotate(20deg);
+    }
+
+    .icon.warning ui-icon {
+      transform: rotate(20deg);
+    }
+    .icon.primary ui-icon {
+      transform: rotate(20deg);
     }
 
     .content {
@@ -226,13 +248,10 @@ export class UiMessageItem extends LitElement {
       border: 0;
       background: transparent;
       cursor: pointer;
-      width: 22px;
-      height: 22px;
       border-radius: 4px;
       display: grid;
       place-items: center;
       color: rgba(0, 0, 0, 0.45);
-      font-size: 14px;
       line-height: 1;
       padding: 0;
     }
@@ -285,7 +304,7 @@ export class UiMessageItem extends LitElement {
   }
 
   render() {
-    const iconText = this.icon ?? TYPE_ICONS[this.type];
+    const iconName = this.icon ?? TYPE_ICONS[this.type];
 
     return html`
       <div
@@ -298,8 +317,8 @@ export class UiMessageItem extends LitElement {
         role="alert"
       >
         <span class=${classMap({ icon: true, [this.type]: true })} aria-hidden="true"
-          >${iconText}</span
-        >
+          ><ui-icon name="${iconName}" size="var(--icon-md)"></ui-icon
+        ></span>
         <span class="content">${this.message}</span>
         ${this.showClose
           ? html`<button
@@ -308,7 +327,7 @@ export class UiMessageItem extends LitElement {
               aria-label="${msg('关闭')}"
               @click=${this._onClose}
             >
-              ✕
+              <ui-icon name="close" size="var(--icon-md)"></ui-icon>
             </button>`
           : nothing}
         ${this.repeatNum > 1 ? html`<span class="badge">${this.repeatNum}</span>` : nothing}
