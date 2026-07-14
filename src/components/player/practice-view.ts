@@ -618,6 +618,7 @@ export class PracticeView extends LitElement {
     const isShadowing = this._tipsModalKind === 'shadowing';
     const tips = isShadowing ? this._getShadowingTips() : this._getEchoTips();
     const title = isShadowing ? msg('跟读说明') : msg('单句说明');
+    const shouldSkipTips = isShadowing ? shouldSkipShadowingTips() : shouldSkipEchoTips();
 
     return html`
       <ui-modal
@@ -637,17 +638,21 @@ export class PracticeView extends LitElement {
       >
         <div class="tips-modal-body">${tips.map((tip) => html`<div>${tip}</div>`)}</div>
         <div slot="footer" class="tips-modal-footer">
-          <label class="tips-skip">
-            <input
-              type="checkbox"
-              .checked=${this._tipsSkipChecked}
-              @change=${(event: Event) => {
-                this._tipsSkipChecked = (event.target as HTMLInputElement).checked;
-              }}
-            />
-            ${msg('以后不再提醒')}
-          </label>
-          <ui-button variant="primary" @click=${this._confirmTipsModal}>${msg('知道了')}</ui-button>
+          ${!shouldSkipTips
+            ? html` <label class="tips-skip">
+                <input
+                  type="checkbox"
+                  .checked=${this._tipsSkipChecked}
+                  @change=${(event: Event) => {
+                    this._tipsSkipChecked = (event.target as HTMLInputElement).checked;
+                  }}
+                />
+                ${msg('以后不再提醒')}
+              </label>`
+            : nothing}
+          <ui-button style="margin-left: auto;" variant="primary" @click=${this._confirmTipsModal}
+            >${msg('知道了')}</ui-button
+          >
         </div>
       </ui-modal>
     `;

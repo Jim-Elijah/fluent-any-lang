@@ -43,7 +43,7 @@ export class HomePage extends NavigatorElement {
 
     .intro {
       flex-shrink: 0;
-      margin: 0 0 var(--space-stack);
+      margin: 0 0 var(--space-inline);
       color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
       font-size: 0.9375rem;
     }

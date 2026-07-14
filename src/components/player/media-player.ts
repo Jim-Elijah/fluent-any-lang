@@ -589,7 +589,7 @@ export class MediaPlayer extends LitElement {
     const rateLabel = `${rate.toFixed(1)}x`;
     return this._renderSliderDropdown({
       title: rateLabel,
-      placement: 'top',
+      placement: 'left',
       trigger: html`
         <button type="button" class="rate-trigger" title="${rateLabel}" ?disabled=${this.disabled}>
           ${rateLabel}
@@ -632,7 +632,7 @@ export class MediaPlayer extends LitElement {
     return this._renderSliderDropdown({
       icon: volume === 0 ? 'volume-close' : 'volume',
       title: `${percent}%`,
-      placement: 'top',
+      placement: 'left',
       overlay: html`
         <span class="overlay-panel-label">${percent}%</span>
         <ui-slider

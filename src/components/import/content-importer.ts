@@ -30,7 +30,7 @@ export class ContentImporter extends LitElement {
 
     .dropzone {
       position: relative;
-      padding: var(--space-section) var(--space-stack);
+      padding: var(--space-lg) var(--space-inline);
       text-align: center;
       background: var(--color-surface, #fff);
       border: 2px dashed var(--color-border, #d9d9d9);

@@ -55,7 +55,7 @@
     --space-page-x: clamp(8px, 3vw, 12px);
     --space-page-y: var(--space-md);
     --space-section: 20px;
-    --space-stack: var(--space-lg);
+    --space-stack: var(--space-md);
     --space-inline: var(--space-md);
     --space-block: var(--space-sm);
 
