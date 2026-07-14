@@ -59,9 +59,11 @@ export class PortalHost {
     return this._mount!;
   }
 
-  render(template: TemplateResult): void {
+  render(template: TemplateResult, host?: object): void {
     const mount = this.ensureMount();
-    render(template, mount);
+    // Portal content is rendered outside the owning LitElement's renderRoot.
+    // Pass `host` so `@event=${this.method}` listeners keep the correct `this`.
+    render(template, mount, host ? { host } : undefined);
   }
 
   hide(): void {

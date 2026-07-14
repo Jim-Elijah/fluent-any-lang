@@ -66,7 +66,7 @@ export class OverlayController {
       this._portal?.hide();
       return;
     }
-    this._ensurePortal().render(template);
+    this._ensurePortal().render(template, this._options.host);
   }
 
   hideContent(): void {

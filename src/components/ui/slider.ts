@@ -120,13 +120,16 @@ export class UiSlider extends LitElement {
     :host([with-marks][orientation='horizontal']) {
       height: auto;
       min-height: var(--slider-horizontal-height);
-      padding-bottom: 22px;
+      /* Inline inset keeps end mark labels (centered via translateX(-50%)) inside the host. */
+      padding: calc((var(--slider-handle-size-active) - var(--slider-rail-size)) / 2)
+        var(--slider-mark-edge-padding, 14px) 22px;
     }
 
     :host([with-marks][orientation='vertical']) {
       width: auto;
       min-width: var(--slider-vertical-width, 32px);
-      padding-right: 48px;
+      padding: var(--slider-mark-edge-padding, 14px) 48px var(--slider-mark-edge-padding, 14px)
+        calc((var(--slider-handle-size-active) - var(--slider-rail-size)) / 2);
     }
 
     :host([orientation='horizontal']) {

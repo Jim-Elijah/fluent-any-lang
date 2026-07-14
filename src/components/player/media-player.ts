@@ -1,5 +1,5 @@
 import { msg, str, localized } from '@lit/localize';
-import { css, html, LitElement } from 'lit';
+import { css, html, LitElement, type TemplateResult } from 'lit';
 import { customElement, property, query, state } from 'lit/decorators.js';
 
 import { MediaControllerHost } from '../../controllers/media-controller-host.js';
@@ -14,8 +14,11 @@ import '../ui/tooltip.js';
 import '../ui/select.js';
 import '../ui/icon.js';
 import '../ui/icon-button.js';
+import '../ui/dropdown.js';
 import { MediaControlsConfig, MediaPlayerMode } from '../../types/index.js';
 import { SelectChangeDetail } from '../ui/select.js';
+import { Z_INDEX } from '../ui/internal/z-index.js';
+import { DropdownPlacement } from '../ui/dropdown.js';
 
 // @TODO apply default config
 const defaultControlConfig: MediaControlsConfig = {
@@ -198,19 +201,40 @@ export class MediaPlayer extends LitElement {
     .action-buttons {
       display: flex;
       align-items: center;
-      gap: var(--space-md);
+      gap: var(--space-sm);
     }
 
-    /* Volume control */
-    .volume-control {
-      display: flex;
+    .rate-trigger {
+      display: inline-flex;
       align-items: center;
-      gap: var(--space-xs);
-      width: 72px;
+      justify-content: center;
+      min-width: calc(var(--icon-lg) + 2 * var(--space-xs));
+      min-height: calc(var(--icon-lg) + 2 * var(--space-xs));
+      padding: var(--space-xs);
+      border: none;
+      border-radius: var(--radius-md, 8px);
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      font-size: 0.8125rem;
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+      cursor: pointer;
+      transition: background-color 0.15s ease;
     }
 
-    .volume-slider {
-      flex-grow: 1;
+    .rate-trigger:hover:not(:disabled) {
+      background: rgba(0, 0, 0, 0.04);
+    }
+
+    .rate-trigger:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .rate-trigger:focus-visible {
+      outline: 2px solid var(--color-primary, #1677ff);
+      outline-offset: 2px;
     }
 
     /* Settings toggle active state */
@@ -368,6 +392,10 @@ export class MediaPlayer extends LitElement {
       video {
         max-height: min(420px, 40dvh);
       }
+      .nav-buttons,
+      .action-buttons {
+        gap: 2px;
+      }
     }
 
     audio {
@@ -429,7 +457,6 @@ export class MediaPlayer extends LitElement {
   private _showSettings = false;
 
   private _boundController: MediaController | null = null;
-  private _lastVolume = 1;
 
   disconnectedCallback(): void {
     this.controller?.detachMediaElement();
@@ -521,15 +548,116 @@ export class MediaPlayer extends LitElement {
     this._showSettings = !this._showSettings;
   }
 
-  private _toggleMute(): void {
-    if (!this.controller) return;
-    const vol = this._controllerHost?.snapshot?.volume ?? 1;
-    if (vol > 0) {
-      this._lastVolume = vol;
-      this.controller.setVolume(0);
-    } else {
-      this.controller.setVolume(this._lastVolume);
-    }
+  private _renderSliderDropdown(options: {
+    icon?: string;
+    title: string;
+    placement: DropdownPlacement;
+    overlay: TemplateResult;
+    overlayStyle: string;
+    trigger?: TemplateResult;
+  }): TemplateResult {
+    const trigger =
+      options.trigger ??
+      html`
+        <ui-icon-button
+          name="${options.icon ?? ''}"
+          title="${options.title}"
+          size="var(--icon-lg)"
+          ?disabled="${this.disabled}"
+        ></ui-icon-button>
+      `;
+
+    return html`
+      <ui-dropdown
+        trigger="click"
+        placement=${options.placement}
+        .arrow="${true}"
+        ?disabled=${this.disabled}
+        style="${options.overlayStyle}"
+        .zIndex=${this.mode === 'fixed' || this.mode === 'mini'
+          ? Z_INDEX.POPUP_ABOVE_FULLSCREEN
+          : Z_INDEX.DROPDOWN}
+        .overlay=${options.overlay}
+      >
+        ${trigger}
+      </ui-dropdown>
+    `;
+  }
+
+  private _renderRateControl(snapshot: MediaControllerSnapshot): TemplateResult {
+    const rate = Number(snapshot.playbackRate);
+    const rateLabel = `${rate.toFixed(1)}x`;
+    return this._renderSliderDropdown({
+      title: rateLabel,
+      placement: 'top',
+      trigger: html`
+        <button type="button" class="rate-trigger" title="${rateLabel}" ?disabled=${this.disabled}>
+          ${rateLabel}
+        </button>
+      `,
+      // Arrow handlers: overlay is rendered into a portal, so method refs would lose `this`.
+      overlay: html`
+        <span class="overlay-panel-label">${rateLabel}</span>
+        <ui-slider
+          ?disabled="${this.disabled}"
+          .value=${rate}
+          style="--slider-mark-edge-padding: var(--space-sm);"
+          min="0.1"
+          max="4"
+          step="0.1"
+          orientation="horizontal"
+          .marks=${{
+            0.5: '0.5x',
+            1: '1x',
+            1.5: '1.5x',
+            2: '2x',
+            3: '3x',
+            4: '4x',
+          }}
+          .tooltip=${{
+            formatter: (v: number) => `${v.toFixed(1)}x`,
+            placement: 'top',
+          }}
+          @change=${(e: CustomEvent<{ value: number }>) => this._handleRateChange(e)}
+        ></ui-slider>
+      `,
+      overlayStyle:
+        '--dropdown-overlay-min-width: 220px;--dropdown-overlay-padding-block: var(--space-sm); --dropdown-overlay-padding-inline: var(--space-sm);',
+    });
+  }
+
+  private _renderVolumeControl(snapshot: MediaControllerSnapshot): TemplateResult {
+    const volume = Number(snapshot.volume);
+    const percent = Math.round(volume * 100);
+    return this._renderSliderDropdown({
+      icon: volume === 0 ? 'volume-close' : 'volume',
+      title: `${percent}%`,
+      placement: 'top',
+      overlay: html`
+        <span class="overlay-panel-label">${percent}%</span>
+        <ui-slider
+          ?disabled="${this.disabled}"
+          .value=${volume}
+          style="--slider-mark-edge-padding: var(--space-sm);"
+          orientation="horizontal"
+          min="0"
+          max="1"
+          step="0.01"
+          .marks=${{
+            0: '0%',
+            0.5: '50%',
+            1: '100%',
+          }}
+          .tooltip=${{
+            formatter: (v: number) => `${Math.round(v * 100)}%`,
+            placement: 'top',
+          }}
+          @change=${(e: CustomEvent<{ value: number }>) => this._handleVolumeChange(e)}
+        ></ui-slider>
+      `,
+      overlayStyle:
+        '--dropdown-overlay-min-width: 160px; --dropdown-overlay-padding-block: var(--space-sm); --dropdown-overlay-padding-inline: var(--space-sm);',
+    });
   }
 
   render() {
@@ -725,32 +853,8 @@ export class MediaPlayer extends LitElement {
               </div>
 
               <div class="action-buttons">
-                <!-- Volume slider always visible but compact -->
-                ${this.controlsConfig.volume
-                  ? html`
-                      <div class="volume-control">
-                        <ui-icon-button
-                          title="${msg('音量')}"
-                          name="${snapshot.volume === 0 ? 'volume-close' : 'volume'}"
-                          size="var(--icon-md)"
-                          @click="${this._toggleMute}"
-                        ></ui-icon-button>
-                        <ui-slider
-                          class="volume-slider"
-                          ?disabled="${this.disabled}"
-                          .value=${Number(snapshot.volume)}
-                          min="0"
-                          max="1"
-                          step="0.01"
-                          .tooltip=${{
-                            formatter: (v: number) => `${Number((v * 100).toFixed(0))}%`,
-                            placement: 'top',
-                          }}
-                          @change=${this._handleVolumeChange}
-                        ></ui-slider>
-                      </div>
-                    `
-                  : ''}
+                ${this.controlsConfig.playbackRate ? this._renderRateControl(snapshot) : ''}
+                ${this.controlsConfig.volume ? this._renderVolumeControl(snapshot) : ''}
 
                 <!-- Settings drawer button -->
                 <ui-icon-button
@@ -775,7 +879,7 @@ export class MediaPlayer extends LitElement {
           </div>
 
           <!-- Fixed switcher toggle (only in fixed mode) -->
-          <!-- @fixeme fixed模式 没有显示icon -->
+          <!-- @fixme fixed模式 没有显示icon；定位的问题 -->
           ${this.mode === 'fixed'
             ? html` <div class="fixed-switcher" @click="${this._toggleFixedCollapse}">
                 <ui-icon
@@ -809,33 +913,6 @@ export class MediaPlayer extends LitElement {
                     ]}
                     @change=${this._handleLoopModeChange}
                   ></ui-select>
-                </div>`
-              : ''}
-            ${this.controlsConfig.playbackRate
-              ? html`<div class="setting-item">
-                  <span class="setting-label"
-                    >${msg(str`倍速（${Number(snapshot.playbackRate).toFixed(1)}x）`)}</span
-                  >
-                  <ui-slider
-                    ?disabled="${this.disabled}"
-                    .value=${Number(snapshot.playbackRate)}
-                    min="0.1"
-                    max="4"
-                    step="0.1"
-                    .marks=${{
-                      0.5: '0.5',
-                      1: '1',
-                      1.5: '1.5',
-                      2: '2',
-                      3: '3',
-                      4: '4',
-                    }}
-                    .tooltip=${{
-                      formatter: (v: number) => `${v.toFixed(1)}x`,
-                      placement: 'top',
-                    }}
-                    @change=${this._handleRateChange}
-                  ></ui-slider>
                 </div>`
               : ''}
             ${showPauseMode

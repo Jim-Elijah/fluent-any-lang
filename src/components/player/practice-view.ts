@@ -426,7 +426,7 @@ export class PracticeView extends LitElement {
               progress: true,
               previousNextTrack: true,
               previousNextSegment: true,
-              switchMode: false,
+              switchMode: true,
             }}"
           >
           </media-player>

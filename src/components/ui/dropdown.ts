@@ -159,6 +159,24 @@ const POPUP_PORTAL_STYLES = `
   .submenu.open .submenu-panel {
     display: block;
   }
+
+  .overlay-body {
+    position: relative;
+    z-index: 1;
+    min-width: var(--dropdown-overlay-min-width, 148px);
+    /* Extra inline padding so slider end marks (translateX(-50%)) clear the overlay edge. */
+    padding: var(--dropdown-overlay-padding-block, var(--space-sm))
+      var(--dropdown-overlay-padding-inline, var(--space-lg));
+    box-sizing: border-box;
+  }
+
+  .overlay-panel-label {
+    display: block;
+    margin-bottom: var(--space-xs);
+    font-size: 0.75rem;
+    line-height: 1.4;
+    color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
+  }
 `;
 
 function parseTriggers(value: string | DropdownTriggerType[]): DropdownTriggerType[] {
@@ -195,6 +213,15 @@ export class UiDropdown extends LitElement {
 
   /** antd menu 配置 */
   @property({ attribute: false }) menu: DropdownMenuConfig | null = null;
+
+  /**
+   * 自定义浮层内容（优先于 menu）。
+   * 用于在下拉中放置 slider 等非菜单交互；内容渲染在 portal 内。
+   * 注意：传入的 TemplateResult 若使用 `@event=${this.method}`，
+   * 事件回调的 `this` 会变成 dropdown（portal render host），
+   * 父组件应使用箭头函数保留词法 `this`，例如 `@change=${(e) => this.onChange(e)}`。
+   */
+  @property({ attribute: false }) overlay: TemplateResult | null = null;
 
   /** antd arrow：boolean 或 { pointAtCenter } */
   @property({ attribute: false }) arrow: DropdownArrowConfig = false;
@@ -488,8 +515,18 @@ export class UiDropdown extends LitElement {
           zIndex: String(this.zIndex),
           '--dropdown-z': String(this.zIndex),
           '--dropdown-bg': '#fff',
+          // Forward host CSS vars into the portal shadow tree.
+          '--dropdown-overlay-min-width':
+            getComputedStyle(this).getPropertyValue('--dropdown-overlay-min-width').trim() ||
+            undefined,
+          '--dropdown-overlay-padding-block':
+            getComputedStyle(this).getPropertyValue('--dropdown-overlay-padding-block').trim() ||
+            undefined,
+          '--dropdown-overlay-padding-inline':
+            getComputedStyle(this).getPropertyValue('--dropdown-overlay-padding-inline').trim() ||
+            undefined,
         })}
-        role="menu"
+        role=${this.overlay ? 'dialog' : 'menu'}
         id=${this._overlayId}
         @mousedown=${(e: MouseEvent) => e.stopPropagation()}
         @click=${(e: MouseEvent) => e.stopPropagation()}
@@ -505,7 +542,9 @@ export class UiDropdown extends LitElement {
               ></div>
             `
           : nothing}
-        <div class="menu">${this._renderMenuItems(this._menuItems())}</div>
+        ${this.overlay
+          ? html`<div class="overlay-body">${this.overlay}</div>`
+          : html`<div class="menu">${this._renderMenuItems(this._menuItems())}</div>`}
       </div>
     `;
   }
@@ -525,7 +564,7 @@ export class UiDropdown extends LitElement {
     return html`
       <span
         class="trigger"
-        aria-haspopup="menu"
+        aria-haspopup=${this.overlay ? 'dialog' : 'menu'}
         aria-expanded=${this._isOpen() ? 'true' : 'false'}
         @click=${this._onTriggerClick}
         @mouseenter=${this._onTriggerMouseEnter}
@@ -617,6 +656,7 @@ export class UiDropdown extends LitElement {
   private _onOverlayContentChanged(changed: PropertyValues) {
     const needsSync =
       changed.has('menu') ||
+      changed.has('overlay') ||
       changed.has('arrow') ||
       changed.has('zIndex') ||
       changed.has('popupContainer') ||
