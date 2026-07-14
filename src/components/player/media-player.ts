@@ -587,13 +587,16 @@ export class MediaPlayer extends LitElement {
   private _renderRateControl(snapshot: MediaControllerSnapshot): TemplateResult {
     const rate = Number(snapshot.playbackRate);
     const rateLabel = `${rate.toFixed(1)}x`;
+    const rateTitle = `${rateLabel} ([) (])`;
     return this._renderSliderDropdown({
-      title: rateLabel,
+      title: rateTitle,
       placement: 'left',
       trigger: html`
-        <button type="button" class="rate-trigger" title="${rateLabel}" ?disabled=${this.disabled}>
-          ${rateLabel}
-        </button>
+        <ui-tooltip title="${rateTitle}" ?disabled=${this.disabled}>
+          <button type="button" class="rate-trigger" ?disabled=${this.disabled}>
+            ${rateLabel}
+          </button>
+        </ui-tooltip>
       `,
       // Arrow handlers: overlay is rendered into a portal, so method refs would lose `this`.
       overlay: html`
@@ -631,7 +634,7 @@ export class MediaPlayer extends LitElement {
     const percent = Math.round(volume * 100);
     return this._renderSliderDropdown({
       icon: volume === 0 ? 'volume-close' : 'volume',
-      title: `${percent}%`,
+      title: `${percent}% (↑) (↓)`,
       placement: 'left',
       overlay: html`
         <span class="overlay-panel-label">${percent}%</span>
@@ -705,7 +708,7 @@ export class MediaPlayer extends LitElement {
               <ui-icon-button
                 name="${snapshot.isPlaying ? 'pause' : 'play'}"
                 size="var(--icon-lg)"
-                title="${snapshot.isPlaying ? msg('暂停') : msg('播放')}"
+                title="${snapshot.isPlaying ? msg('暂停 (Space)') : msg('播放 (Space)')}"
                 @click="${this._togglePlay}"
               ></ui-icon-button>
               ${this.controlsConfig.switchMode
@@ -817,7 +820,7 @@ export class MediaPlayer extends LitElement {
                 ${showSegments
                   ? html`<ui-icon-button
                       name="backward"
-                      title="${msg('上一句')}"
+                      title="${msg('上一句 (←)')}"
                       size="var(--icon-lg)"
                       ?disabled="${!snapshot.canPreviousSegment || this.disabled}"
                       @click="${this._previousSegment}"
@@ -826,7 +829,7 @@ export class MediaPlayer extends LitElement {
                 ${this.controlsConfig.playPause
                   ? html`<ui-icon-button
                       name="${snapshot.isPlaying ? 'pause' : 'play'}"
-                      title="${snapshot.isPlaying ? msg('暂停') : msg('播放')}"
+                      title="${snapshot.isPlaying ? msg('暂停 (Space)') : msg('播放 (Space)')}"
                       size="var(--icon-xl)"
                       ?disabled="${this.disabled}"
                       @click="${this._togglePlay}"
@@ -835,7 +838,7 @@ export class MediaPlayer extends LitElement {
                 ${showSegments
                   ? html`<ui-icon-button
                       name="forward"
-                      title="${msg('下一句')}"
+                      title="${msg('下一句 (→)')}"
                       size="var(--icon-lg)"
                       ?disabled="${!snapshot.canNextSegment || this.disabled}"
                       @click="${this._nextSegment}"

@@ -114,18 +114,6 @@
   <source>删除失败，请重试。</source>
 <target>削除に失敗しました。やり直してください。</target>
   </trans-unit>
-<trans-unit id="s7990b4a1eb25ee6c">
-  <source>播放原音</source>
-<target>原音を再生</target>
-  </trans-unit>
-<trans-unit id="s6f90b4a1e39b86a2">
-  <source>播放录音</source>
-<target>録音を再生</target>
-  </trans-unit>
-<trans-unit id="s5bce75e7cd1ad781">
-  <source>同步播放</source>
-<target>同時再生</target>
-  </trans-unit>
 <trans-unit id="s8a4dc49db947db13">
   <source>正在播放原音…</source>
 <target>原音を再生中…</target>
@@ -145,22 +133,6 @@
 <trans-unit id="s0e4c6b846c31bee3">
   <source>上一首</source>
 <target>前の曲</target>
-  </trans-unit>
-<trans-unit id="s0d92bc846af63a86">
-  <source>上一句</source>
-<target>前の文</target>
-  </trans-unit>
-<trans-unit id="s7d282808180601fb">
-  <source>暂停</source>
-<target>一時停止</target>
-  </trans-unit>
-<trans-unit id="s843808081e992b92">
-  <source>播放</source>
-<target>再生</target>
-  </trans-unit>
-<trans-unit id="s12e7c38472490ec1">
-  <source>下一句</source>
-<target>次の文</target>
   </trans-unit>
 <trans-unit id="s131dd08472a4e6d8">
   <source>下一首</source>
@@ -935,9 +907,6 @@
 <trans-unit id="s610d2978b54eb77c">
   <source>导入失败</source>
 </trans-unit>
-<trans-unit id="s05b4d7f2aba528cd">
-  <source>备份预检</source>
-</trans-unit>
 <trans-unit id="s447fd8564d355faf">
   <source>即将导入</source>
 </trans-unit>
@@ -959,17 +928,11 @@
 <trans-unit id="s106f15d676c512cc">
   <source>学习记录</source>
 </trans-unit>
-<trans-unit id="sf4f37789cd3ff268">
-  <source>已存在的相同条目会跳过；设置将被覆盖。</source>
-</trans-unit>
 <trans-unit id="s18c71c4309c950c4">
   <source>确认导入</source>
 </trans-unit>
 <trans-unit id="sc77746790d186435">
   <source>导入结果</source>
-</trans-unit>
-<trans-unit id="sd860d64360d58a6a">
-  <source>设置：<x id="0" equiv-text="${result.settingsApplied ? '已覆盖' : '未变更'}"/>；媒体 <x id="1" equiv-text="${result.mediaImported}"/>/<x id="2" equiv-text="${result.mediaSkipped}"/>（导入/跳过）；录音 <x id="3" equiv-text="${result.recordingsImported}"/>/<x id="4" equiv-text="${result.recordingsSkipped}"/>；学习记录 <x id="5" equiv-text="${result.sessionsImported}"/>/<x id="6" equiv-text="${result.sessionsSkipped}"/></source>
 </trans-unit>
 <trans-unit id="s9be55c9df46a0944">
   <source>错误 <x id="0" equiv-text="${result.errors.length}"/> 条：<x id="1" equiv-text="${result.errors[0]}"/></source>
@@ -1114,6 +1077,107 @@
 </trans-unit>
 <trans-unit id="s37f2110af02e60ab">
   <source>管理偏好、练习限额与数据备份。</source>
+</trans-unit>
+<trans-unit id="sf4837aae1c678d2a">
+  <source>暂停 (Space)</source>
+  <target>一時停止 (Space)</target>
+</trans-unit>
+<trans-unit id="s7fc025cf0e04d467">
+  <source>播放 (Space)</source>
+  <target>再生 (Space)</target>
+</trans-unit>
+<trans-unit id="se640b06c732b8f89">
+  <source>上一句 (←)</source>
+  <target>前の文 (←)</target>
+</trans-unit>
+<trans-unit id="sbcf2541a7380dfa0">
+  <source>下一句 (→)</source>
+  <target>次の文 (→)</target>
+</trans-unit>
+<trans-unit id="sb4f91f9aaf378234">
+  <source>当前库已有同名条目时将跳过，不会覆盖；设置将被覆盖。</source>
+</trans-unit>
+<trans-unit id="s8469a3d8f117936d">
+  <source>已覆盖</source>
+</trans-unit>
+<trans-unit id="s07c7bcbad2edd691">
+  <source>未变更</source>
+</trans-unit>
+<trans-unit id="s57451b7247723b23">
+  <source>媒体：导入 <x id="0" equiv-text="${result.mediaImported}"/>，跳过 <x id="1" equiv-text="${result.mediaSkipped}"/></source>
+</trans-unit>
+<trans-unit id="sd6e43015e3959770">
+  <source>录音：导入 <x id="0" equiv-text="${result.recordingsImported}"/>，跳过 <x id="1" equiv-text="${result.recordingsSkipped}"/></source>
+</trans-unit>
+<trans-unit id="saa6832a82ff07f89">
+  <source>学习记录：导入 <x id="0" equiv-text="${result.sessionsImported}"/>，跳过 <x id="1" equiv-text="${result.sessionsSkipped}"/></source>
+</trans-unit>
+<trans-unit id="sfa7d40c63e620e58">
+  <source>当前存储用量</source>
+</trans-unit>
+<trans-unit id="sd920fcad72f05b92">
+  <source>播放原音 (Q)</source>
+  <target>原音を再生 (Q)</target>
+</trans-unit>
+<trans-unit id="s22fdce4a31f8b02a">
+  <source>播放录音 (W)</source>
+  <target>録音を再生 (W)</target>
+</trans-unit>
+<trans-unit id="s440869f26073329f">
+  <source>同步播放 (E)</source>
+  <target>同時再生 (E)</target>
+</trans-unit>
+<trans-unit id="sc0bdfad1635aa20b">
+  <source>快捷键</source>
+  <target>ショートカット</target>
+</trans-unit>
+<trans-unit id="sd71cd26b49bf0b81">
+  <source>暂不支持自定义快捷键。</source>
+  <target>ショートカットのカスタマイズはまだできません。</target>
+</trans-unit>
+<trans-unit id="s446413ad7f853119">
+  <source>播放/暂停</source>
+  <target>再生/一時停止</target>
+</trans-unit>
+<trans-unit id="s0d92bc846af63a86">
+  <source>上一句</source>
+  <target>前の文</target>
+</trans-unit>
+<trans-unit id="s12e7c38472490ec1">
+  <source>下一句</source>
+  <target>次の文</target>
+</trans-unit>
+<trans-unit id="s1e592bcd34347cd4">
+  <source>增大音量</source>
+  <target>音量を上げる</target>
+</trans-unit>
+<trans-unit id="s060ae8d26b83cacd">
+  <source>减小音量</source>
+  <target>音量を下げる</target>
+</trans-unit>
+<trans-unit id="sf09451161ee63614">
+  <source>加快倍速</source>
+  <target>再生速度を上げる</target>
+</trans-unit>
+<trans-unit id="s0a437be389ba8f0c">
+  <source>减慢倍速</source>
+  <target>再生速度を下げる</target>
+</trans-unit>
+<trans-unit id="s7990b4a1eb25ee6c">
+  <source>播放原音</source>
+  <target>原音を再生</target>
+</trans-unit>
+<trans-unit id="s6f90b4a1e39b86a2">
+  <source>播放录音</source>
+  <target>録音を再生</target>
+</trans-unit>
+<trans-unit id="s5bce75e7cd1ad781">
+  <source>同步播放</source>
+  <target>同時再生</target>
+</trans-unit>
+<trans-unit id="sa41c492fc8b5bcbf">
+  <source>练习播放器</source>
+  <target>練習プレーヤー</target>
 </trans-unit>
 </body>
 </file>

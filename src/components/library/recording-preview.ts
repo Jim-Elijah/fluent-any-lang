@@ -3,6 +3,7 @@ import { css, html, LitElement, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 
 import { DualTrackPlayback, type DualTrackMode } from '../../lib/dual-track-playback.js';
+import { getHotkeyManager } from '../../lib/hotkeys/index.js';
 import {
   findPracticeSegmentIndex,
   findSegmentIndex,
@@ -97,6 +98,7 @@ export class RecordingPreview extends LitElement {
       this._handleViewRangeChange,
     );
     this._controller.addEventListener(WaveformEventType.TRACK_CHANGE, this._handleTrackChange);
+    this._registerHotkeys();
   }
 
   protected updated(changed: Map<PropertyKey, unknown>): void {
@@ -113,6 +115,7 @@ export class RecordingPreview extends LitElement {
   }
 
   disconnectedCallback(): void {
+    getHotkeyManager().unregisterScope('recording-preview');
     this._controller.removeEventListener(
       WaveformEventType.VIEW_RANGE_CHANGE,
       this._handleViewRangeChange,
@@ -145,23 +148,26 @@ export class RecordingPreview extends LitElement {
           <ui-button
             variant="${this._playMode === 'source' ? 'primary' : 'secondary'}"
             ?disabled=${!canPlaySource}
+            title=${msg('播放原音 (Q)')}
             @click=${() => this._handlePlaySource()}
           >
-            ${msg('播放原音')}
+            ${msg('播放原音 (Q)')}
           </ui-button>
           <ui-button
             variant="${this._playMode === 'recording' ? 'primary' : 'secondary'}"
             ?disabled=${!canPlayRecording}
+            title=${msg('播放录音 (W)')}
             @click=${() => this._handlePlayRecording()}
           >
-            ${msg('播放录音')}
+            ${msg('播放录音 (W)')}
           </ui-button>
           <ui-button
             variant="${this._playMode === 'sync' ? 'primary' : 'secondary'}"
             ?disabled=${!canPlaySync}
+            title=${msg('同步播放 (E)')}
             @click=${() => this._handlePlaySync()}
           >
-            ${msg('同步播放')}
+            ${msg('同步播放 (E)')}
           </ui-button>
         </div>
 
@@ -195,6 +201,36 @@ export class RecordingPreview extends LitElement {
         return msg(html`正在同步播放片段${segmentLabel}`);
       default:
         return nothing;
+    }
+  }
+
+  private _registerHotkeys(): void {
+    getHotkeyManager().registerScope({
+      id: 'recording-preview',
+      handlers: {
+        playSource: () => {
+          void this._handlePlaySource();
+        },
+        playRecording: () => {
+          void this._handlePlayRecording();
+        },
+        playSync: () => {
+          void this._handlePlaySync();
+        },
+        togglePlay: () => {
+          this._togglePreviewPlayback();
+        },
+      },
+    });
+  }
+
+  private _togglePreviewPlayback(): void {
+    if (this._playMode !== 'idle') {
+      this._playback?.stop();
+      return;
+    }
+    if (this._controller.isPlaying) {
+      this._controller.pause();
     }
   }
 

@@ -25,6 +25,12 @@ import type {
 } from '../../types/models.js';
 import { getAppSettings } from '../../lib/app-settings.js';
 import {
+  VOLUME_HOTKEY_STEP,
+  getHotkeyCatalog,
+  getHotkeyManager,
+  stepPlaybackRate,
+} from '../../lib/hotkeys/index.js';
+import {
   ExtendedMediaEventType,
   formatStorageUsage,
   getPracticeSourceDuration,
@@ -214,6 +220,56 @@ export class PracticeView extends LitElement {
       gap: var(--space-block);
       width: 100%;
     }
+
+    .hotkeys-help-body {
+      display: grid;
+      gap: var(--space-inline);
+    }
+
+    .hotkeys-help-section {
+      display: grid;
+      gap: var(--space-sm);
+    }
+
+    .hotkeys-help-section h3 {
+      margin: 0;
+      font-size: 0.875rem;
+      font-weight: 600;
+    }
+
+    .hotkeys-help-list {
+      display: grid;
+      gap: var(--space-xs);
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .hotkeys-help-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-block);
+      font-size: 0.875rem;
+    }
+
+    .hotkeys-help-code {
+      flex-shrink: 0;
+      min-width: 3.5rem;
+      padding: 0.125rem 0.5rem;
+      border: 1px solid var(--color-border, #d9d9d9);
+      border-radius: var(--radius-sm, 4px);
+      background: var(--color-surface-secondary, #f5f5f5);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.8125rem;
+      text-align: center;
+    }
+
+    .hotkeys-help-note {
+      margin: 0;
+      font-size: 0.8125rem;
+      color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
+    }
   `;
 
   @property({ type: String })
@@ -277,6 +333,9 @@ export class PracticeView extends LitElement {
 
   @state()
   private _recordingsModalOpen = false;
+
+  @state()
+  private _hotkeysHelpOpen = false;
 
   private _echoSegment: SubtitleSegment | null = null;
 
@@ -342,6 +401,7 @@ export class PracticeView extends LitElement {
     typeof MediaRecorder !== 'undefined';
 
   disconnectedCallback(): void {
+    getHotkeyManager().unregisterScope('practice');
     if (this._echoListening) {
       this._cancelEchoListen();
     }
@@ -379,6 +439,56 @@ export class PracticeView extends LitElement {
     this._controller.addEventListener(ExtendedMediaEventType.TRACK_CHANGE, this._onTrackChange);
     this._timeTracker.attach(this._controller);
     this._timeTracker.setMode(this._resolveAnalyticsMode());
+    getHotkeyManager().registerScope({
+      id: 'practice',
+      enabled: () => this._practiceHotkeysEnabled(),
+      handlers: {
+        togglePlay: () => {
+          void this._controller.togglePlay();
+        },
+        previousSegment: () => {
+          this._controller.previousSegment();
+        },
+        nextSegment: () => {
+          this._controller.nextSegment();
+        },
+        volumeUp: () => {
+          this._nudgeVolume(VOLUME_HOTKEY_STEP);
+        },
+        volumeDown: () => {
+          this._nudgeVolume(-VOLUME_HOTKEY_STEP);
+        },
+        rateUp: () => {
+          this._nudgePlaybackRate(1);
+        },
+        rateDown: () => {
+          this._nudgePlaybackRate(-1);
+        },
+      },
+    });
+  }
+
+  private _practiceHotkeysEnabled(): boolean {
+    if (this._hotkeysHelpOpen) {
+      return false;
+    }
+    if (this._recording || this._echoListening) {
+      return false;
+    }
+    if (this._sessionPhase === 'countdown' || this._sessionPhase === 'recording') {
+      return false;
+    }
+    return true;
+  }
+
+  private _nudgeVolume(delta: number): void {
+    const current = this._controller.getSnapshot().volume;
+    this._controller.setVolume(current + delta);
+  }
+
+  private _nudgePlaybackRate(direction: 1 | -1): void {
+    const current = this._controller.getSnapshot().playbackRate;
+    this._controller.setPlaybackRate(stepPlaybackRate(current, direction));
   }
 
   private _resolveAnalyticsMode(): PracticeAnalyticsMode {
@@ -433,6 +543,14 @@ export class PracticeView extends LitElement {
       <section>
         <div class="header">
           <h2>${headerTitle}</h2>
+          <ui-button
+            variant="secondary"
+            title=${msg('快捷键')}
+            aria-label=${msg('快捷键')}
+            @click=${this._openHotkeysHelp}
+          >
+            ?
+          </ui-button>
         </div>
 
         <div class="mode-tabs">
@@ -606,7 +724,67 @@ export class PracticeView extends LitElement {
             ></echo-session-dock>`
           : nothing}
         ${this._renderTipsModal()} ${this._renderRecordingsModal()}
+        ${this._renderHotkeysHelpModal()}
       </section>
+    `;
+  }
+
+  private _openHotkeysHelp = (): void => {
+    this._hotkeysHelpOpen = true;
+  };
+
+  private _closeHotkeysHelp = (): void => {
+    this._hotkeysHelpOpen = false;
+  };
+
+  private _renderHotkeysHelpModal() {
+    if (!this._hotkeysHelpOpen) {
+      return nothing;
+    }
+
+    const catalog = getHotkeyCatalog();
+
+    return html`
+      <ui-modal
+        .open=${true}
+        .title=${msg('快捷键')}
+        .centered=${true}
+        .footer=${false}
+        ok-text="${msg('知道了')}"
+        @update:open=${(e: CustomEvent<{ open: boolean }>) => {
+          if (e.target !== e.currentTarget) {
+            return;
+          }
+          if (!e.detail.open) {
+            this._closeHotkeysHelp();
+          }
+        }}
+      >
+        <div class="hotkeys-help-body">
+          ${catalog.map(
+            (section) => html`
+              <section class="hotkeys-help-section">
+                <h3>${section.title}</h3>
+                <ul class="hotkeys-help-list">
+                  ${section.rows.map(
+                    (row) => html`
+                      <li class="hotkeys-help-row">
+                        <span>${row.actionLabel}</span>
+                        <kbd class="hotkeys-help-code">${row.codeLabel}</kbd>
+                      </li>
+                    `,
+                  )}
+                </ul>
+              </section>
+            `,
+          )}
+          <p class="hotkeys-help-note">${msg('暂不支持自定义快捷键。')}</p>
+        </div>
+        <div slot="footer" class="tips-modal-footer">
+          <span></span>
+          <ui-button variant="primary" @click=${this._closeHotkeysHelp}>${msg('知道了')}</ui-button>
+        </div>
+      </ui-modal>
     `;
   }
 

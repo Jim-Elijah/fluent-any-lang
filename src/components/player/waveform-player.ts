@@ -666,6 +666,11 @@ export class WaveformPlayer extends LitElement {
       return;
     }
 
+    if (controller.isPlaying && controller.activeId === target.id) {
+      controller.pause();
+      return;
+    }
+
     controller.setActiveId(target.id);
     controller.seek(clamped);
     await controller.play();

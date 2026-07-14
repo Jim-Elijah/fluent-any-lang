@@ -24,6 +24,7 @@ export default [
     rules: {
       ...tsPlugin.configs.recommended.rules,
       ...lit.configs.recommended.rules,
+      'no-undef': 'off',
     },
   },
   prettier,

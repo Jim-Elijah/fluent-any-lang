@@ -1,7 +1,8 @@
 import { html } from 'lit';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { PracticeSegment, SubtitleSegment } from '../../types/models.js';
+import { HotkeyManager, setHotkeyManagerForTests } from '../../lib/hotkeys/index.js';
 import { mount, flushUpdates } from '../ui/test-utils.js';
 import { Message } from '../ui/message.js';
 import './recording-preview.js';
@@ -33,12 +34,19 @@ const sampleSegments: SubtitleSegment[] = [
 type RecordingPreviewInternals = RecordingPreview & {
   _controller: {
     activeId: string | null;
+    isPlaying: boolean;
     setActiveId: (id: string) => void;
     setViewRange: (range: { start: number; end: number } | null) => void;
     addFromBlob: (blob: Blob, name?: string) => Promise<string>;
     getSnapshot: () => { viewRange: { start: number; end: number } | null };
+    pause: () => void;
   };
-  _playback: { playSyncFromSegment: (index: number) => Promise<void> } | null;
+  _playback: {
+    playSyncFromSegment: (index: number) => Promise<void>;
+    stop: () => void;
+    destroy: () => void;
+    setSegments: (segments: PracticeSegment[]) => void;
+  } | null;
   _sourceTrackId: string;
   _recordingTrackId: string;
   _playMode: string;
@@ -46,10 +54,18 @@ type RecordingPreviewInternals = RecordingPreview & {
 
 describe('recording-preview', () => {
   let cleanup: (() => void) | undefined;
+  let hotkeys: HotkeyManager;
+
+  beforeEach(() => {
+    hotkeys = new HotkeyManager();
+    setHotkeyManagerForTests(hotkeys);
+  });
 
   afterEach(() => {
     cleanup?.();
     cleanup = undefined;
+    hotkeys.reset();
+    setHotkeyManagerForTests(null);
     vi.restoreAllMocks();
   });
 
@@ -146,10 +162,25 @@ describe('recording-preview', () => {
   function createPlaybackMock(playSyncFromSegment = vi.fn().mockResolvedValue(undefined)) {
     return {
       playSyncFromSegment,
+      stop: vi.fn(),
       destroy: vi.fn(),
       setSegments: vi.fn(),
     };
   }
+
+  it('stops playback on Space while a preview play mode is active', async () => {
+    const el = await renderPreview();
+    const playback = createPlaybackMock();
+    el._playback = playback;
+    el._playMode = 'source';
+    await el.updateComplete;
+
+    document.dispatchEvent(
+      new KeyboardEvent('keydown', { code: 'Space', bubbles: true, cancelable: true }),
+    );
+
+    expect(playback.stop).toHaveBeenCalledTimes(1);
+  });
 
   it('resolves sync click on source track via subtitle timeline', async () => {
     const el = await renderPreview();
