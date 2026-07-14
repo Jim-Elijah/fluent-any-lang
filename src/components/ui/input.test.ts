@@ -42,6 +42,34 @@ describe('ui-input', () => {
       expect(handler.mock.calls[0][0].detail.value).toBe('new');
     });
 
+    it('reconciles DOM when controlled value stays the same after parent clamp', async () => {
+      const el = await render<UiInput>(html`<ui-input value="20"></ui-input>`);
+      const input = el.shadowRoot?.querySelector('input.control') as HTMLInputElement;
+
+      el.addEventListener('change', () => {
+        // Parent clamps but keeps the same controlled string → Lit skips binding.
+        el.value = '20';
+      });
+
+      input.value = '999';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      await el.updateComplete;
+      await new Promise<void>((resolve) => queueMicrotask(() => resolve()));
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+
+      expect(input.value).toBe('20');
+    });
+
+    it('forwards min/max/step for number inputs', async () => {
+      const el = await render<UiInput>(
+        html`<ui-input type="number" .min=${1} .max=${20} .step=${1}></ui-input>`,
+      );
+      const input = el.shadowRoot?.querySelector('input.control') as HTMLInputElement;
+      expect(input.min).toBe('1');
+      expect(input.max).toBe('20');
+      expect(input.step).toBe('1');
+    });
+
     it('dispatches press-enter on Enter key', async () => {
       const el = await render<UiInput>(html`<ui-input value="abc"></ui-input>`);
       const handler = vi.fn();

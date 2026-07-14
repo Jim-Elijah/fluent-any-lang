@@ -36,6 +36,11 @@ export async function getRecordingList(): Promise<PracticeRecord[]> {
   return items.reverse();
 }
 
+export async function getRecording(id: string): Promise<PracticeRecord | undefined> {
+  const db = await getDB();
+  return db.get(STORE_RECORDING, id);
+}
+
 export async function findRecordings(mediaId: string): Promise<PracticeRecord[]> {
   const db = await getDB();
   return db.getAllFromIndex(STORE_RECORDING, 'byMediaId', mediaId);

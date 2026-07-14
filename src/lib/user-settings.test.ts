@@ -10,7 +10,7 @@ import {
   USER_SETTINGS_STORAGE_KEY,
 } from './user-settings.js';
 
-describe('user-settings', () => {
+describe('user-settings (compat)', () => {
   beforeEach(() => {
     localStorage.clear();
   });
@@ -28,7 +28,6 @@ describe('user-settings', () => {
 
   it('persists skipRecordingCountdown', () => {
     setUserSettings({ skipRecordingCountdown: true });
-    expect(localStorage.getItem(USER_SETTINGS_STORAGE_KEY)).toContain('true');
     expect(getUserSettings().skipRecordingCountdown).toBe(true);
     expect(shouldSkipRecordingCountdown()).toBe(true);
   });

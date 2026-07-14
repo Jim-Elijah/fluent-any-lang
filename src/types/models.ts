@@ -153,6 +153,12 @@ export type AppSettings = {
   maxStorageMB: number;
   lowStorageThresholdPercent: number;
   repeatPausePercent: number;
+  /** When true, recording countdown overlay is skipped. */
+  skipRecordingCountdown: boolean;
+  /** When true, shadowing mode tips modal is skipped. */
+  skipShadowingTips: boolean;
+  /** When true, echo mode tips modal is skipped. */
+  skipEchoTips: boolean;
 };
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -161,7 +167,19 @@ export const DEFAULT_SETTINGS: AppSettings = {
   maxStorageMB: 200,
   lowStorageThresholdPercent: 10,
   repeatPausePercent: 100,
+  skipRecordingCountdown: false,
+  skipShadowingTips: false,
+  skipEchoTips: false,
 };
+
+/** Allowed ranges for persisted AppSettings numeric fields. */
+export const APP_SETTINGS_LIMITS = {
+  maxRecordingsPerMedia: { min: 1, max: 20 },
+  maxEchoPerSegment: { min: 1, max: 50 },
+  maxStorageMB: { min: 50, max: 2000 },
+  lowStorageThresholdPercent: { min: 5, max: 50 },
+  repeatPausePercent: { min: 100, max: 500, step: 10 },
+} as const;
 
 export type ImportError = {
   filename: string;

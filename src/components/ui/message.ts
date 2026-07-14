@@ -68,7 +68,10 @@ type ResolvedMessageOptions = Required<
 const MESSAGE_GAP = 16;
 const LEAVE_DURATION_MS = 200;
 
-let globalConfig: MessageConfig = {};
+let globalConfig: MessageConfig = {
+  duration: 2000,
+  grouping: true,
+};
 let idCounter = 0;
 
 const TYPE_ICONS: Record<MessageType, string> = {

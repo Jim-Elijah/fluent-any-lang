@@ -1,7 +1,7 @@
 import { html } from 'lit';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { USER_SETTINGS_STORAGE_KEY } from '../../lib/user-settings.js';
+import { APP_SETTINGS_STORAGE_KEY } from '../../lib/app-settings.js';
 import { mount } from './test-utils.js';
 import {
   Countdown,
@@ -75,7 +75,7 @@ describe('ui-countdown-overlay', () => {
     checkbox!.checked = true;
     checkbox!.dispatchEvent(new Event('change', { bubbles: true }));
 
-    expect(localStorage.getItem(USER_SETTINGS_STORAGE_KEY)).toContain('true');
+    expect(localStorage.getItem(APP_SETTINGS_STORAGE_KEY)).toContain('true');
   });
 });
 
@@ -123,7 +123,7 @@ describe('Countdown service', () => {
 
   it('skips overlay when user opted out', async () => {
     localStorage.setItem(
-      USER_SETTINGS_STORAGE_KEY,
+      APP_SETTINGS_STORAGE_KEY,
       JSON.stringify({ skipRecordingCountdown: true }),
     );
 

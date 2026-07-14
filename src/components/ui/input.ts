@@ -310,6 +310,33 @@ abstract class InputBase extends LitElement {
       this._internalValue = next;
     }
     this._emitChange(domEvent, next);
+    if (this._isControlledValue()) {
+      void this._reconcileControlledDomValue();
+    }
+  }
+
+  /**
+   * When controlled, parent may clamp/normalize but keep the same `.value` string
+   * (e.g. already at max). Lit then skips the binding write, leaving the DOM stale.
+   * Re-apply after the parent has had a chance to update `.value`.
+   */
+  protected async _reconcileControlledDomValue(): Promise<void> {
+    await this.updateComplete;
+    await new Promise<void>((resolve) => {
+      queueMicrotask(() => resolve());
+    });
+    if (!this._isControlledValue()) return;
+    this._writeControlDomValue(this._displayValue());
+  }
+
+  protected _writeControlDomValue(desired: string): void {
+    const el = this.renderRoot.querySelector(this._controlSelector()) as
+      | HTMLInputElement
+      | HTMLTextAreaElement
+      | null;
+    if (el && el.value !== desired) {
+      el.value = desired;
+    }
   }
 
   protected _handleFocus(): void {
@@ -318,6 +345,9 @@ abstract class InputBase extends LitElement {
 
   protected _handleBlur(): void {
     this._focused = false;
+    if (this._isControlledValue()) {
+      this._writeControlDomValue(this._displayValue());
+    }
   }
 
   protected _handleKeyDown(domEvent: KeyboardEvent): void {
@@ -341,6 +371,9 @@ abstract class InputBase extends LitElement {
     this._emitChange(domEvent, '');
     this._emitClear(domEvent);
     this._afterClear(domEvent);
+    if (this._isControlledValue()) {
+      void this._reconcileControlledDomValue();
+    }
     this._focusControl();
   }
 
@@ -419,6 +452,9 @@ abstract class InputBase extends LitElement {
 @customElement('ui-input')
 export class UiInput extends InputBase {
   @property({ type: String }) type = 'text';
+  @property({ type: Number }) min?: number;
+  @property({ type: Number }) max?: number;
+  @property({ type: Number }) step?: number;
 
   private get _inputEl(): HTMLInputElement | null {
     return this.renderRoot.querySelector('.control') as HTMLInputElement | null;
@@ -449,6 +485,9 @@ export class UiInput extends InputBase {
         id="${this.id || nothing}"
         autocomplete="${this.autocomplete || nothing}"
         maxlength="${this.maxLength ?? nothing}"
+        min="${this.min ?? nothing}"
+        max="${this.max ?? nothing}"
+        step="${this.step ?? nothing}"
         @input="${this._handleInput}"
         @focus="${this._handleFocus}"
         @blur="${this._handleBlur}"

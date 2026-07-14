@@ -1,6 +1,8 @@
 import { msg } from '@lit/localize';
+
+import { getAppSettings } from './app-settings.js';
 import { formatDate } from './playback-utils.js';
-import { DEFAULT_SETTINGS, type PracticeRecord } from '../types/models.js';
+import type { PracticeRecord } from '../types/models.js';
 import { getMedia, getRecordingBlob } from '../db/service.js';
 
 export function formatRecordingFileName(recording: PracticeRecord, title?: string): string {
@@ -35,7 +37,8 @@ export async function estimateStorage() {
   const usage = estimate.usage ?? 0;
   let quota = estimate.quota ?? 0;
   console.log('quota', quota);
-  quota = Math.min(DEFAULT_SETTINGS.maxStorageMB * 1024 * 1024, quota);
+  const maxStorageMB = getAppSettings().maxStorageMB;
+  quota = Math.min(maxStorageMB * 1024 * 1024, quota);
   const remaining = Math.max(quota - usage, 0);
   const remainingPercent = quota > 0 ? (remaining / quota) * 100 : 100;
 

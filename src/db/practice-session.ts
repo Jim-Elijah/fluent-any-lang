@@ -16,6 +16,11 @@ export async function addPracticeSession(session: PracticeSession): Promise<void
   await db.put(STORE_PRACTICE_SESSION, session);
 }
 
+export async function getPracticeSession(id: string): Promise<PracticeSession | undefined> {
+  const db = await getDB();
+  return db.get(STORE_PRACTICE_SESSION, id);
+}
+
 export async function getAllPracticeSessions(): Promise<PracticeSession[]> {
   const db = await getDB();
   const items = await db.getAllFromIndex(STORE_PRACTICE_SESSION, 'byStartedAt');

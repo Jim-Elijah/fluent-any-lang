@@ -8,13 +8,14 @@ import '../pages/home/index.js';
 import '../pages/library/index.js';
 import '../pages/practice/index.js';
 import '../pages/practice-stats/index.js';
+import '../pages/settings/index.js';
 import '../pages/not-found/index.js';
 import '../components/ui/locale-switcher.js';
 import '../components/ui/menu.js';
 import { MenuItem, MenuOpenChangeDetail, MenuSelectDetail } from '../components/ui/menu.js';
 import { getLocale, isLocale, Locale, LOCALE_STORAGE_KEY } from '../i18n/localization.js';
 
-type AppRoute = 'home' | 'practice' | 'library' | 'stats' | 'not-found';
+type AppRoute = 'home' | 'practice' | 'library' | 'stats' | 'settings' | 'not-found';
 type RouteRenderContext = {
   routeContext: RouteContext;
 };
@@ -25,6 +26,7 @@ const ROUTE_PAGES: Record<AppRoute, (ctx: RouteRenderContext) => TemplateResult>
     html`<practice-page .routeContext=${routeContext}></practice-page>`,
   library: () => html`<library-page></library-page>`,
   stats: () => html`<practice-stats-page></practice-stats-page>`,
+  settings: () => html`<settings-page></settings-page>`,
   'not-found': () => html`<not-found-page></not-found-page>`,
 };
 
@@ -200,6 +202,7 @@ export class MyApp extends RouterNavigatorApp {
       { key: 'practice', label: msg('练习'), link: '/practice', icon: 'practice' },
       { key: 'library', label: msg('库'), link: '/library', icon: 'media' },
       { key: 'stats', label: msg('统计'), link: '/stats', icon: 'stats' },
+      { key: 'settings', label: msg('设置'), link: '/settings', icon: 'setting' },
     ];
   }
 
@@ -228,6 +231,11 @@ export class MyApp extends RouterNavigatorApp {
         name: 'stats',
         pattern: 'stats',
         data: { title: 'Stats' },
+      },
+      {
+        name: 'settings',
+        pattern: 'settings',
+        data: { title: 'Settings' },
       },
       {
         name: 'not-found',

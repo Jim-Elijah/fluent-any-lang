@@ -294,10 +294,6 @@
   <source>切换模式</source>
 <target>Switch Mode</target>
   </trans-unit>
-<trans-unit id="s738aaee75681f360">
-  <source>倍速（<x id="0" equiv-text="${Number(snapshot.playbackRate).toFixed(1)}"/>x）</source>
-<target>Speed (<x id="0" equiv-text="${Number(snapshot.playbackRate).toFixed(1)}"/>x)</target>
-  </trans-unit>
 <trans-unit id="s390ace1a56bdad92">
   <source>固定时长</source>
 <target>Fixed Duration</target>
@@ -333,10 +329,6 @@
 <trans-unit id="s340c23398d548a5e">
   <source>录音失败，请重试。</source>
 <target>Recording failed. Please try again.</target>
-  </trans-unit>
-<trans-unit id="scf0a67e2e2c59a42">
-  <source>当前音频的已保存录音</source>
-<target>Saved recordings for this audio</target>
   </trans-unit>
 <trans-unit id="s609e55fed26fb3b0">
   <source>隐藏翻译</source>
@@ -454,10 +446,6 @@
   <source>媒体 "<x id="0" equiv-text="${this._mediaId}"/>" 不存在，回退到第一首媒体。</source>
 <target>Media "<x id="0" equiv-text="${this._mediaId}"/>" does not exist. Returning to the first media.</target>
 </trans-unit>
-<trans-unit id="sf7e0d9095a875b37">
-  <source>音量</source>
-  <target>Volume</target>
-  </trans-unit>
 <trans-unit id="scad6e385d22d3258">
   <source>无法定位到字幕句子</source>
   <target>Could not locate the subtitle sentence</target>
@@ -877,6 +865,255 @@
 <trans-unit id="sbff61b31a629c9e4">
   <source>录音文件未找到</source>
   <target>Recording file not found</target>
+</trans-unit>
+<trans-unit id="scd423a09356c197d">
+  <source>设置</source>
+</trans-unit>
+<trans-unit id="sd6ed09cfd108cf3c">
+  <source>录音中</source>
+</trans-unit>
+<trans-unit id="s679b006377577445">
+  <source>请开始跟读</source>
+</trans-unit>
+<trans-unit id="s0d11e3ba360b2d75">
+  <source>跟读完成后点击停止</source>
+</trans-unit>
+<trans-unit id="sb9be459c62ad8278">
+  <source>听完后将开始录音</source>
+</trans-unit>
+<trans-unit id="sc6ab818871dabc0d">
+  <source>5. 录音时底部会显示状态与波形，全屏字幕下也可看到。</source>
+</trans-unit>
+<trans-unit id="s23254af2ecd02e26">
+  <source>4. 录音时底部会显示状态与波形，全屏字幕下也可看到。</source>
+</trans-unit>
+<trans-unit id="sbcdd283f3d2adc5d">
+  <source>点击下方麦克风开始同步跟读；录音时底部显示状态与波形。</source>
+</trans-unit>
+<trans-unit id="sbc9c4d9fdc04d576">
+  <source>点击字幕行麦克风：先听原音，再录音；底部会显示状态与波形。</source>
+</trans-unit>
+<trans-unit id="sce5b1a0936ad7377">
+  <source>说明</source>
+</trans-unit>
+<trans-unit id="s8b87b5d37cf918fd">
+  <source>跟读说明</source>
+</trans-unit>
+<trans-unit id="sddaafd65e8604f7d">
+  <source>单句说明</source>
+</trans-unit>
+<trans-unit id="s717f240d6bfb47bd">
+  <source>知道了</source>
+</trans-unit>
+<trans-unit id="se2ecfc7c3f5987de">
+  <source>以后不再提醒</source>
+</trans-unit>
+<trans-unit id="s63ec61b31b4127a3">
+  <source>已保存 <x id="0" equiv-text="${this._shadowingCount}"/>/<x id="1" equiv-text="${this._shadowingLimit}"/></source>
+</trans-unit>
+<trans-unit id="sff4e4efc83c85d46">
+  <source>管理录音</source>
+</trans-unit>
+<trans-unit id="sbf85220dc2a27a7d">
+  <source>当前音频的跟读录音</source>
+</trans-unit>
+<trans-unit id="sf3f2633774f347b6">
+  <source>已导出备份（录音 <x id="0" equiv-text="${manifest.counts.recordings}"/>，学习记录 <x id="1" equiv-text="${manifest.counts.sessions}"/>，媒体 <x id="2" equiv-text="${manifest.counts.media}"/>）</source>
+</trans-unit>
+<trans-unit id="s1b3be8769609cc19">
+  <source>导出失败</source>
+</trans-unit>
+<trans-unit id="s5a58d869d325907b">
+  <source>无法读取备份</source>
+</trans-unit>
+<trans-unit id="sfc9f54cfbbb1bf00">
+  <source>导入完成，但有部分条目失败</source>
+</trans-unit>
+<trans-unit id="s6a417878bd3e8b56">
+  <source>导入完成</source>
+</trans-unit>
+<trans-unit id="s610d2978b54eb77c">
+  <source>导入失败</source>
+</trans-unit>
+<trans-unit id="s05b4d7f2aba528cd">
+  <source>备份预检</source>
+</trans-unit>
+<trans-unit id="s447fd8564d355faf">
+  <source>即将导入</source>
+</trans-unit>
+<trans-unit id="s0bd8fcf730ce3469">
+  <source>应用设置</source>
+</trans-unit>
+<trans-unit id="sf1a1af9a2db2dadd">
+  <source>将覆盖本地设置</source>
+</trans-unit>
+<trans-unit id="saf875d4c863e40bf">
+  <source>无</source>
+</trans-unit>
+<trans-unit id="s2e336508ae899412">
+  <source>媒体</source>
+</trans-unit>
+<trans-unit id="s2d941498d834f203">
+  <source>（包内无媒体）</source>
+</trans-unit>
+<trans-unit id="s106f15d676c512cc">
+  <source>学习记录</source>
+</trans-unit>
+<trans-unit id="sf4f37789cd3ff268">
+  <source>已存在的相同条目会跳过；设置将被覆盖。</source>
+</trans-unit>
+<trans-unit id="s18c71c4309c950c4">
+  <source>确认导入</source>
+</trans-unit>
+<trans-unit id="sc77746790d186435">
+  <source>导入结果</source>
+</trans-unit>
+<trans-unit id="sd860d64360d58a6a">
+  <source>设置：<x id="0" equiv-text="${result.settingsApplied ? '已覆盖' : '未变更'}"/>；媒体 <x id="1" equiv-text="${result.mediaImported}"/>/<x id="2" equiv-text="${result.mediaSkipped}"/>（导入/跳过）；录音 <x id="3" equiv-text="${result.recordingsImported}"/>/<x id="4" equiv-text="${result.recordingsSkipped}"/>；学习记录 <x id="5" equiv-text="${result.sessionsImported}"/>/<x id="6" equiv-text="${result.sessionsSkipped}"/></source>
+</trans-unit>
+<trans-unit id="s9be55c9df46a0944">
+  <source>错误 <x id="0" equiv-text="${result.errors.length}"/> 条：<x id="1" equiv-text="${result.errors[0]}"/></source>
+</trans-unit>
+<trans-unit id="s6125cd6135aebc0b">
+  <source>数据备份与迁移</source>
+</trans-unit>
+<trans-unit id="sc0dc83897c9457ff">
+  <source>导出备份可用于换设备迁移。设置始终包含在备份中。</source>
+</trans-unit>
+<trans-unit id="s6fc1d53f35ccc853">
+  <source>媒体文件若未纳入备份，请在库页用相同文件名重新导入原音视频与字幕，录音即可对齐。</source>
+</trans-unit>
+<trans-unit id="scc85a0c612e9cd64">
+  <source>媒体与字幕</source>
+</trans-unit>
+<trans-unit id="s6212418a41c4231d">
+  <source>默认关闭；体积可能很大</source>
+</trans-unit>
+<trans-unit id="s1b1fbc7695498f53">
+  <source>导出备份</source>
+</trans-unit>
+<trans-unit id="sade37fbbb2036940">
+  <source>处理中…</source>
+</trans-unit>
+<trans-unit id="s2b256308abd9c43a">
+  <source>导入</source>
+</trans-unit>
+<trans-unit id="se2d4f3e839bdd012">
+  <source>选择备份文件</source>
+</trans-unit>
+<trans-unit id="s1a37daf9ca5560b0">
+  <source>进阶资源</source>
+</trans-unit>
+<trans-unit id="s422d9d3bc7921c55">
+  <source>以下能力尚未开放，入口预留以便后续扩展。</source>
+</trans-unit>
+<trans-unit id="sbd53fcd19fe6be4e">
+  <source>噪音素材（辨音训练）</source>
+</trans-unit>
+<trans-unit id="s1456b759e01b8a57">
+  <source>导入环境噪音，用于听力辨音训练。</source>
+</trans-unit>
+<trans-unit id="scad05556becd2c42">
+  <source>即将推出</source>
+</trans-unit>
+<trans-unit id="s359dca6b936ea61d">
+  <source>媒体封面图</source>
+</trans-unit>
+<trans-unit id="s7bd18f28e37918c1">
+  <source>为音视频设置自定义封面。</source>
+</trans-unit>
+<trans-unit id="sc01fd23d69625994">
+  <source>已用 <x id="0" equiv-text="${formatStorageUsage(est.usage)}"/> / 上限 <x id="1" equiv-text="${formatStorageUsage(est.quota)}"/></source>
+</trans-unit>
+<trans-unit id="sb7c4030d52772e4c">
+  <source>允许范围 <x id="0" equiv-text="${min}"/>–<x id="1" equiv-text="${max}"/></source>
+</trans-unit>
+<trans-unit id="s1fd5a80b51b52f4f">
+  <source>练习与存储限额</source>
+</trans-unit>
+<trans-unit id="s57e5e35db495e525">
+  <source>调整后仅影响之后的新建录音与存储提示；不会删除已有录音。</source>
+</trans-unit>
+<trans-unit id="s67b140a0382aeffe">
+  <source>单个媒体最大跟读录音数</source>
+</trans-unit>
+<trans-unit id="sf7c16838868e3c46">
+  <source>每句最大回声录音数</source>
+</trans-unit>
+<trans-unit id="s2e654db7626b65c5">
+  <source>最大媒体容量（MB）</source>
+</trans-unit>
+<trans-unit id="s3ac1cc4551928731">
+  <source>低存储告警阈值（%）</source>
+</trans-unit>
+<trans-unit id="sa865cd5d7fdb3002">
+  <source>默认句间暂停百分比</source>
+</trans-unit>
+<trans-unit id="sfb9613db0964d8c0">
+  <source>已保存</source>
+</trans-unit>
+<trans-unit id="seebba62ee272769f">
+  <source>偏好与提示</source>
+</trans-unit>
+<trans-unit id="scb0d35d2b5ab6272">
+  <source>控制练习流程中的倒计时与模式说明是否自动跳过。</source>
+</trans-unit>
+<trans-unit id="s12827738fbbf7ce4">
+  <source>跳过录音倒计时</source>
+</trans-unit>
+<trans-unit id="s97bd609e50a1f7d1">
+  <source>开启后录音前不再显示 3 秒倒计时。</source>
+</trans-unit>
+<trans-unit id="s91e4204bfc1da277">
+  <source>跳过跟读模式提示</source>
+</trans-unit>
+<trans-unit id="s4bd30e8f2a2be7d9">
+  <source>开启后进入跟读模式时不再弹出说明。</source>
+</trans-unit>
+<trans-unit id="s0688bfda737de32f">
+  <source>跳过回声模式提示</source>
+</trans-unit>
+<trans-unit id="sa0976efe07696571">
+  <source>开启后进入回声模式时不再弹出说明。</source>
+</trans-unit>
+<trans-unit id="s0105a16d770fbb07">
+  <source>请至少选择一种数据导出</source>
+</trans-unit>
+<trans-unit id="sb8f0f4adebd10fc2">
+  <source>不支持的备份格式，请升级应用后再试</source>
+</trans-unit>
+<trans-unit id="se5598421767a1007">
+  <source>备份文件损坏：manifest 无效</source>
+</trans-unit>
+<trans-unit id="sbcf3fb0297090f94">
+  <source>无法打开备份文件，请确认是有效的 ZIP</source>
+</trans-unit>
+<trans-unit id="s2ccd5082cf1e46e2">
+  <source>备份文件缺少 manifest.json</source>
+</trans-unit>
+<trans-unit id="s1a996b42e66a5cb0">
+  <source>导入设置失败</source>
+</trans-unit>
+<trans-unit id="sa09a1e2ca26c9c16">
+  <source>缺少媒体文件：<x id="0" equiv-text="${item.filename || item.id}"/></source>
+</trans-unit>
+<trans-unit id="s8d3e52b04da1faf3">
+  <source>导入媒体失败：<x id="0" equiv-text="${item.id}"/></source>
+</trans-unit>
+<trans-unit id="sdf631ba42ef1e800">
+  <source>导入字幕失败：<x id="0" equiv-text="${track.id}"/></source>
+</trans-unit>
+<trans-unit id="sf42dc17b042e7bf5">
+  <source>缺少录音文件：<x id="0" equiv-text="${record.id}"/></source>
+</trans-unit>
+<trans-unit id="s0c3483aa85ae0374">
+  <source>导入录音失败：<x id="0" equiv-text="${record.id}"/></source>
+</trans-unit>
+<trans-unit id="s9528f5209b708b75">
+  <source>导入学习记录失败：<x id="0" equiv-text="${session.id}"/></source>
+</trans-unit>
+<trans-unit id="s37f2110af02e60ab">
+  <source>管理偏好、练习限额与数据备份。</source>
 </trans-unit>
 </body>
 </file>

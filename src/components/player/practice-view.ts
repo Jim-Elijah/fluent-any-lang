@@ -23,7 +23,7 @@ import type {
   RouteContext,
   SubtitleSegment,
 } from '../../types/models.js';
-import { DEFAULT_SETTINGS } from '../../types/models.js';
+import { getAppSettings } from '../../lib/app-settings.js';
 import {
   ExtendedMediaEventType,
   formatStorageUsage,
@@ -329,8 +329,12 @@ export class PracticeView extends LitElement {
   private readonly _controller = new MediaController();
   private readonly _timeTracker = new PracticeTimeTracker();
   private _lastRecordingId: string | null = null;
-  private readonly _shadowingLimit = DEFAULT_SETTINGS.maxRecordingsPerMedia;
-  private readonly _echoLimitPerSegment = DEFAULT_SETTINGS.maxEchoPerSegment;
+  private get _shadowingLimit() {
+    return getAppSettings().maxRecordingsPerMedia;
+  }
+  private get _echoLimitPerSegment() {
+    return getAppSettings().maxEchoPerSegment;
+  }
   private readonly _recordingSupported =
     typeof window !== 'undefined' &&
     typeof navigator !== 'undefined' &&
@@ -549,7 +553,7 @@ export class PracticeView extends LitElement {
               progress: true,
               previousNextTrack: true,
               previousNextSegment: true,
-              switchMode: true,
+              switchMode: false,
             }}"
           >
           </media-player>
@@ -723,7 +727,7 @@ export class PracticeView extends LitElement {
           (${Math.round(this._storageEstimate.remainingPercent)}% ${msg('剩余')})
         </div>
       </div>
-      ${this._storageEstimate.remainingPercent <= DEFAULT_SETTINGS.lowStorageThresholdPercent
+      ${this._storageEstimate.remainingPercent <= getAppSettings().lowStorageThresholdPercent
         ? html`<ui-alert type="warning">
             ${msg('磁盘存储空间不足，建议导出或删除旧录音。')}
           </ui-alert>`

@@ -15,7 +15,7 @@ import type {
   SleepMode,
   SubtitleSegment,
 } from '../types/models.js';
-import { DEFAULT_SETTINGS } from '../types/models.js';
+import { getAppSettings } from '../lib/app-settings.js';
 
 export type MediaControllerSnapshot = {
   playlist: MediaItem[];
@@ -63,7 +63,9 @@ const DEFAULT_PLAYER_SETTINGS = {
   sleepMinutes: 30,
   pauseMode: 'off' as PauseMode,
   pauseSeconds: 1,
-  pausePercent: DEFAULT_SETTINGS.repeatPausePercent,
+  get pausePercent() {
+    return getAppSettings().repeatPausePercent;
+  },
 };
 
 export class MediaController extends EventTarget {
