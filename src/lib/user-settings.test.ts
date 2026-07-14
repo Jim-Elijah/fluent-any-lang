@@ -4,7 +4,9 @@ import {
   DEFAULT_USER_SETTINGS,
   getUserSettings,
   setUserSettings,
+  shouldSkipEchoTips,
   shouldSkipRecordingCountdown,
+  shouldSkipShadowingTips,
   USER_SETTINGS_STORAGE_KEY,
 } from './user-settings.js';
 
@@ -20,6 +22,8 @@ describe('user-settings', () => {
   it('returns defaults when storage is empty', () => {
     expect(getUserSettings()).toEqual(DEFAULT_USER_SETTINGS);
     expect(shouldSkipRecordingCountdown()).toBe(false);
+    expect(shouldSkipShadowingTips()).toBe(false);
+    expect(shouldSkipEchoTips()).toBe(false);
   });
 
   it('persists skipRecordingCountdown', () => {
@@ -27,6 +31,14 @@ describe('user-settings', () => {
     expect(localStorage.getItem(USER_SETTINGS_STORAGE_KEY)).toContain('true');
     expect(getUserSettings().skipRecordingCountdown).toBe(true);
     expect(shouldSkipRecordingCountdown()).toBe(true);
+  });
+
+  it('persists tip skip preferences', () => {
+    setUserSettings({ skipShadowingTips: true, skipEchoTips: true });
+    expect(getUserSettings().skipShadowingTips).toBe(true);
+    expect(getUserSettings().skipEchoTips).toBe(true);
+    expect(shouldSkipShadowingTips()).toBe(true);
+    expect(shouldSkipEchoTips()).toBe(true);
   });
 
   it('falls back to defaults for invalid JSON', () => {

@@ -49,6 +49,14 @@ type PracticeViewInternals = PracticeView & {
     dispatchEvent: (event: Event) => boolean;
   };
   _echoListening: boolean;
+  _sessionPhase: string;
+  _recording: boolean;
+  _recordingsModalOpen: boolean;
+  _shadowingRecorderEl?: {
+    startRecording: () => Promise<void>;
+    stopRecording: () => Promise<void>;
+    waveformController: unknown;
+  };
 };
 
 describe('practice-view', () => {
@@ -71,6 +79,14 @@ describe('practice-view', () => {
         getUserMedia: vi.fn().mockResolvedValue({ getTracks: () => [] }),
       },
     });
+    localStorage.setItem(
+      'fluent-any-lang:user-settings',
+      JSON.stringify({
+        skipRecordingCountdown: true,
+        skipShadowingTips: true,
+        skipEchoTips: true,
+      }),
+    );
 
     mockLoadPlaylist.mockResolvedValue([
       {
@@ -97,6 +113,8 @@ describe('practice-view', () => {
   afterEach(() => {
     cleanup?.();
     cleanup = undefined;
+    localStorage.clear();
+    document.querySelector('[data-echo-session-dock-portal]')?.remove();
     vi.restoreAllMocks();
   });
 
@@ -285,5 +303,132 @@ describe('practice-view', () => {
 
     const mediaPlayer = el.shadowRoot!.querySelector('media-player') as { disabled: boolean };
     expect(mediaPlayer.disabled).toBe(true);
+  });
+
+  it('shows echo session dock while listening', async () => {
+    const el = await renderView();
+    await switchToEchoMode(el);
+    vi.spyOn(el._controller, 'play').mockResolvedValue(undefined);
+
+    await dispatchEchoRecordRequest(el);
+
+    expect(el._sessionPhase).toBe('listening');
+    const dock = el.shadowRoot!.querySelector('echo-session-dock') as { phase: string };
+    expect(dock.phase).toBe('listening');
+  });
+
+  it('shows tip summary and explanation button in echo mode', async () => {
+    const el = await renderView();
+    await switchToEchoMode(el);
+
+    const summary = el.shadowRoot!.querySelector('.tips-summary');
+    expect(summary?.textContent).toContain('字幕行麦克风');
+    expect(
+      Array.from(el.shadowRoot!.querySelectorAll('ui-button')).some((button) =>
+        button.textContent?.includes('说明'),
+      ),
+    ).toBe(true);
+  });
+
+  async function switchToShadowingMode(el: PracticeViewInternals) {
+    const speakingButton = Array.from(el.shadowRoot!.querySelectorAll('ui-button')).find((button) =>
+      button.textContent?.includes('口语'),
+    );
+    speakingButton?.click();
+    await el.updateComplete;
+  }
+
+  it('shows compact recordings entry instead of inline record-list in shadowing', async () => {
+    mockCountShadowingRecordings.mockResolvedValue(2);
+    const el = await renderView();
+    await switchToShadowingMode(el);
+    await el.updateComplete;
+
+    const summary = el.shadowRoot!.querySelector('.recordings-summary');
+    expect(summary?.textContent).toMatch(/已保存\s*2\s*\/\s*5|已保存 2\/5/);
+    expect(
+      Array.from(el.shadowRoot!.querySelectorAll('ui-button')).some((button) =>
+        button.textContent?.includes('管理录音'),
+      ),
+    ).toBe(true);
+    expect(el.shadowRoot!.querySelector('record-list')).toBeNull();
+  });
+
+  it('opens recordings manage modal from shadowing entry', async () => {
+    const el = await renderView();
+    await switchToShadowingMode(el);
+
+    const manageButton = Array.from(el.shadowRoot!.querySelectorAll('ui-button')).find((button) =>
+      button.textContent?.includes('管理录音'),
+    );
+    manageButton?.click();
+    await el.updateComplete;
+
+    expect(el.shadowRoot!.querySelector('record-list')).not.toBeNull();
+  });
+
+  it('ignores nested update:open when managing recordings modal', async () => {
+    const el = await renderView();
+    await switchToShadowingMode(el);
+
+    const manageButton = Array.from(el.shadowRoot!.querySelectorAll('ui-button')).find((button) =>
+      button.textContent?.includes('管理录音'),
+    );
+    manageButton?.click();
+    await el.updateComplete;
+    expect(el._recordingsModalOpen).toBe(true);
+
+    const recordList = el.shadowRoot!.querySelector('record-list');
+    expect(recordList).not.toBeNull();
+
+    // Simulate tooltip/preview emitting composed update:open={false} from inside.
+    recordList!.dispatchEvent(
+      new CustomEvent('update:open', {
+        detail: { open: false },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+    await el.updateComplete;
+
+    expect(el._recordingsModalOpen).toBe(true);
+    expect(el.shadowRoot!.querySelector('record-list')).not.toBeNull();
+  });
+
+  it('shows session dock while shadowing recording', async () => {
+    const el = await renderView();
+    await switchToShadowingMode(el);
+
+    const recorder = el.shadowRoot!.querySelector(
+      'audio-recorder#shadowing-recorder',
+    ) as HTMLElement & {
+      dispatchEvent: (event: Event) => boolean;
+      waveformController: unknown;
+    };
+    expect(recorder).not.toBeNull();
+
+    recorder.dispatchEvent(
+      new CustomEvent('recording-state-change', {
+        detail: { recording: true },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+    await el.updateComplete;
+
+    expect(el._sessionPhase).toBe('recording');
+    expect(el._recording).toBe(true);
+    const dock = el.shadowRoot!.querySelector('echo-session-dock') as { phase: string };
+    expect(dock.phase).toBe('recording');
+  });
+
+  it('hides shadowing recorder waveform in favor of session dock', async () => {
+    const el = await renderView();
+    await switchToShadowingMode(el);
+
+    const recorder = el.shadowRoot!.querySelector('audio-recorder#shadowing-recorder') as {
+      hideWaveform: boolean;
+    };
+    expect(recorder.hideWaveform).toBe(true);
   });
 });

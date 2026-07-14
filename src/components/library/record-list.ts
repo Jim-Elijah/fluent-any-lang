@@ -12,6 +12,7 @@ import {
 } from '../../db/service.js';
 import { exportRecording } from '../../lib/export-content.js';
 import { estimateListNaturalHeight, type ListMetricsDetail } from '../../lib/split-list-heights.js';
+import { Z_INDEX } from '../ui/internal/z-index.js';
 import '../ui/alert.js';
 import '../ui/button.js';
 import '../ui/modal.js';
@@ -205,6 +206,13 @@ export class RecordList extends LitElement {
   @property({ type: Boolean, reflect: true, attribute: 'fill-height' })
   fillHeight = false;
 
+  /**
+   * Elevate child popups (popconfirm, preview modal) above a parent modal.
+   * Pass `Z_INDEX.MODAL + 1` when embedding inside a modal.
+   */
+  @property({ type: Number })
+  popupZIndex: number | undefined;
+
   @state()
   private _items: PracticeRecord[] = [];
 
@@ -353,7 +361,11 @@ export class RecordList extends LitElement {
               `}
         <ui-modal
           title="${this._modalRecording?.mediaTitle ?? msg('录音预览')}"
-          @close="${() => this._handleModalClose()}"
+          .zIndex=${this.popupZIndex != null ? this.popupZIndex + 50 : Z_INDEX.MODAL}
+          @update:open="${(e: CustomEvent<{ open: boolean }>) => {
+            e.stopPropagation();
+            if (!e.detail.open) this._handleModalClose();
+          }}"
           ?open=${this._modalOpen}
           width="600px"
           centered
@@ -411,6 +423,7 @@ export class RecordList extends LitElement {
           <ui-popconfirm
             title=${msg('确定删除该录音吗？')}
             placement="bottom"
+            .zIndex=${this.popupZIndex ?? Z_INDEX.POPCONFIRM}
             ?confirm-loading=${this._deletingId === recording.id}
             @confirm=${() => this._handleDelete(recording)}
           >

@@ -98,6 +98,9 @@ const FULLSCREEN_PORTAL_STYLES = `
     min-height: 0;
     max-height: none;
     overflow-y: auto;
+    scroll-padding-bottom: var(--session-dock-inset, var(--echo-dock-inset, 0px));
+    /* Padding creates real space so content never slides under the dock. */
+    padding-bottom: var(--session-dock-inset, var(--echo-dock-inset, 0px));
   }
 
   .segment {
@@ -107,6 +110,7 @@ const FULLSCREEN_PORTAL_STYLES = `
     padding: 6px var(--space-inline);
     cursor: pointer;
     transition: background-color 0.15s ease;
+    scroll-margin-bottom: var(--session-dock-inset, 0px);
   }
 
   .segment:hover {
@@ -230,6 +234,8 @@ export class SubtitlePanel extends LitElement {
       padding: 6px var(--space-inline);
       cursor: pointer;
       transition: background-color 0.15s ease;
+      /* Keep active rows clear of the session dock on any scroll container. */
+      scroll-margin-bottom: var(--session-dock-inset, 0px);
     }
 
     .segment:hover {
@@ -904,10 +910,9 @@ export class SubtitlePanel extends LitElement {
     }
 
     const selector = `[data-segment-index="${index}"]`;
-    this.renderRoot
-      .querySelector(selector)
-      ?.scrollIntoView({ block: 'center', behavior: 'smooth' });
-    this._overlay?.getPopupEl(selector)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    const block = this.echoMode && this.echoRecordingSegmentIndex >= 0 ? 'nearest' : 'center';
+    this.renderRoot.querySelector(selector)?.scrollIntoView({ block, behavior: 'smooth' });
+    this._overlay?.getPopupEl(selector)?.scrollIntoView({ block, behavior: 'smooth' });
   }
 }
 

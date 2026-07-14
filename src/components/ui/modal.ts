@@ -40,15 +40,13 @@ export class UiModal extends LitElement {
       border-radius: 8px;
       box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
       overflow: hidden;
-      transform: translateY(-6px);
+      /* Avoid transform: it creates a containing block and traps nested
+         position:fixed overlays (e.g. recording preview inside another modal). */
       opacity: 0;
-      transition:
-        opacity 0.18s ease,
-        transform 0.18s ease;
+      transition: opacity 0.18s ease;
     }
 
     .overlay[data-open='true'] .dialog {
-      transform: translateY(0);
       opacity: 1;
     }
 

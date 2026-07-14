@@ -29,24 +29,36 @@ import {
   formatStorageUsage,
   getPracticeSourceDuration,
 } from '../../lib/playback-utils.js';
+import { Z_INDEX } from '../ui/internal/z-index.js';
 import '../ui/alert.js';
 import '../ui/button.js';
 import '../ui/icon.js';
+import '../ui/modal.js';
 import './media-player.js';
 import './subtitle-panel.js';
 import './audio-recorder.js';
+import './echo-session-dock.js';
 import {
   AudioRecorder,
   type RecordingCompleteDetail,
+  type RecordingCountdownEndDetail,
   type RecordingStateChangeDetail,
 } from './audio-recorder.js';
-import { RecordList } from '../library/record-list.js';
+import type { RecordingSessionPhase } from './echo-session-dock.js';
+import type { WaveformController } from '../../controllers/waveform-controller.js';
+import {
+  setUserSettings,
+  shouldSkipEchoTips,
+  shouldSkipShadowingTips,
+} from '../../lib/user-settings.js';
+import type { RecordList } from '../library/record-list.js';
 import { Message } from '../ui/message.js';
 import { Loading } from '../ui/loading.js';
 import { EchoRecordRequestDetail, SubtitlePanelFullscreenChangeDetail } from './subtitle-panel.js';
 
 type PracticeType = 'listening' | 'speaking';
 type SpeakingMode = 'shadowing' | 'echo';
+type TipsModalKind = 'shadowing' | 'echo' | null;
 
 type StorageEstimate = {
   usage: number;
@@ -134,6 +146,74 @@ export class PracticeView extends LitElement {
     .echo-recorder {
       margin-top: var(--space-sm);
     }
+
+    :host([data-session-dock]) {
+      padding-bottom: var(--session-dock-inset, var(--echo-dock-inset, 140px));
+    }
+
+    .tips-summary {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--space-sm);
+    }
+
+    .tips-summary p {
+      margin: 0;
+      flex: 1;
+      min-width: 12rem;
+    }
+
+    .recordings-summary {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--space-sm);
+    }
+
+    .recordings-summary p {
+      margin: 0;
+      flex: 1;
+      min-width: 10rem;
+    }
+
+    .recordings-modal-body {
+      min-height: 12rem;
+    }
+
+    .tips-modal-body {
+      display: grid;
+      gap: var(--space-sm);
+      font-size: 0.875rem;
+      color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
+    }
+
+    .tips-skip {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-sm);
+      margin: 0;
+      color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
+      font-size: 0.8125rem;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .tips-skip input {
+      width: 16px;
+      height: 16px;
+      margin: 0;
+      cursor: pointer;
+      accent-color: var(--color-primary, #1677ff);
+    }
+
+    .tips-modal-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-block);
+      width: 100%;
+    }
   `;
 
   @property({ type: String })
@@ -180,6 +260,24 @@ export class PracticeView extends LitElement {
   @state()
   private _echoListening = false;
 
+  @state()
+  private _sessionPhase: RecordingSessionPhase = 'idle';
+
+  @state()
+  private _sessionSpeakCue = false;
+
+  @state()
+  private _sessionWaveformController: WaveformController | null = null;
+
+  @state()
+  private _tipsModalKind: TipsModalKind = null;
+
+  @state()
+  private _tipsSkipChecked = false;
+
+  @state()
+  private _recordingsModalOpen = false;
+
   private _echoSegment: SubtitleSegment | null = null;
 
   private _didInitialLoad = false;
@@ -194,6 +292,7 @@ export class PracticeView extends LitElement {
       msg('2. 如果跟不上原音，可以设置倍速、单句暂停模式。'),
       msg('3. 录音前可以操作播放器设置，录音开始后播放器不可操作。'),
       msg('4. 除了倍速、音量、单句暂停模式，跟读模式会忽略其他的播放器设置。'),
+      msg('5. 录音时底部会显示状态与波形，全屏字幕下也可看到。'),
     ];
   }
 
@@ -206,11 +305,20 @@ export class PracticeView extends LitElement {
       msg('1. 建议使用耳机练习。'),
       msg('2. 每句最多保存若干条录音，可在字幕行右侧下拉查看。'),
       msg('3. 听音和录音期间播放器不可操作。'),
+      msg('4. 录音时底部会显示状态与波形，全屏字幕下也可看到。'),
     ];
   }
 
+  private _getShadowingSummary(): string {
+    return msg('点击下方麦克风开始同步跟读；录音时底部显示状态与波形。');
+  }
+
+  private _getEchoSummary(): string {
+    return msg('点击字幕行麦克风：先听原音，再录音；底部会显示状态与波形。');
+  }
+
   @query('record-list')
-  private _recordList?: RecordList;
+  private _manageRecordList?: RecordList;
 
   @query('audio-recorder#shadowing-recorder')
   private _shadowingRecorderEl?: AudioRecorder;
@@ -240,6 +348,12 @@ export class PracticeView extends LitElement {
   }
 
   protected updated(changed: Map<PropertyKey, unknown>): void {
+    const sessionDockActive =
+      this._sessionPhase === 'listening' ||
+      this._sessionPhase === 'countdown' ||
+      this._sessionPhase === 'recording';
+    this.toggleAttribute('data-session-dock', sessionDockActive);
+
     if (!changed.has('routeContext') && this._didInitialLoad) {
       return;
     }
@@ -358,10 +472,22 @@ export class PracticeView extends LitElement {
                   <div class="info-text">
                     ${this._recordingSupported
                       ? shadowingRemaining > 0
-                        ? html`${this._getShadowingTips().map((tip) => html`<div>${tip}</div>`)}`
-                        : msg(
-                            str`当前音频的跟读录音已达上限（${this._shadowingLimit}条），删除旧录音后可继续。`,
-                          )
+                        ? html`<div class="tips-summary">
+                            <p>${this._getShadowingSummary()}</p>
+                            <ui-button
+                              variant="secondary"
+                              @click=${() => this._openTipsModal('shadowing')}
+                            >
+                              ${msg('说明')}
+                            </ui-button>
+                          </div>`
+                        : html`<div class="tips-summary">
+                            <p>
+                              ${msg(
+                                str`当前音频的跟读录音已达上限（${this._shadowingLimit}条），删除旧录音后可继续。`,
+                              )}
+                            </p>
+                          </div>`
                       : msg('当前浏览器不支持录音。')}
                     ${keyed(
                       this._mediaId,
@@ -370,26 +496,18 @@ export class PracticeView extends LitElement {
                         .controller=${this._controller}
                         .collectSegments=${true}
                         .disabled=${!this._recordingSupported || shadowingRemaining <= 0}
+                        .hideWaveform=${true}
                         .beforeRecordingStart=${this._resetSettingsForShadowing}
                         @recording-complete=${this._onShadowingRecordingComplete}
                         @recording-state-change=${this._onRecordingStateChange}
+                        @recording-countdown-start=${this._onSessionCountdownStart}
+                        @recording-countdown-end=${this._onSessionCountdownEnd}
                       ></audio-recorder>`,
                     )}
                     ${this._recordingError
                       ? html`<ui-alert type="error">${this._recordingError}</ui-alert>`
                       : null}
-                    ${this._renderStorageInfo()}
-
-                    <div class="settings-group">
-                      <h3>${msg('当前音频的已保存录音')}</h3>
-                      <record-list
-                        .mediaId="${this._mediaId}"
-                        .modeFilter="${'shadowing'}"
-                        .showHeader="${false}"
-                        @recording-deleted="${(event: CustomEvent<{ id: string }>) =>
-                          this._onRecordingDeleted(event.detail.id)}"
-                      ></record-list>
-                    </div>
+                    ${this._renderStorageInfo()} ${this._renderShadowingRecordingsEntry()}
                   </div>
                 </div>
               </div>
@@ -400,7 +518,12 @@ export class PracticeView extends LitElement {
               <div class="settings-panel">
                 <div class="info-text">
                   ${this._recordingSupported
-                    ? html`${this._getEchoTips().map((tip) => html`<div>${tip}</div>`)}`
+                    ? html`<div class="tips-summary">
+                        <p>${this._getEchoSummary()}</p>
+                        <ui-button variant="secondary" @click=${() => this._openTipsModal('echo')}>
+                          ${msg('说明')}
+                        </ui-button>
+                      </div>`
                     : msg('当前浏览器不支持录音。')}
                   ${this._recordingError
                     ? html`<ui-alert type="error">${this._recordingError}</ui-alert>`
@@ -458,17 +581,134 @@ export class PracticeView extends LitElement {
                     .stopOnSegmentEnd=${false}
                     .pauseMediaOnSegmentEnd=${false}
                     .hideControls=${true}
+                    .hideWaveform=${true}
                     .beforeRecordingStart=${this._resetSettingsForEcho}
                     @recording-complete=${this._onEchoRecordingComplete}
                     @recording-state-change=${this._onRecordingStateChange}
+                    @recording-countdown-start=${this._onSessionCountdownStart}
+                    @recording-countdown-end=${this._onSessionCountdownEnd}
                   ></audio-recorder>`,
                 )}
               </div>`
             : null}
         </div>
+        ${isEcho || isShadowing
+          ? html`<echo-session-dock
+              .phase=${this._sessionPhase}
+              .waveformController=${this._sessionWaveformController}
+              .speakCue=${this._sessionSpeakCue}
+              @echo-session-stop=${this._onSessionDockStop}
+              @echo-session-cancel=${this._onSessionDockCancel}
+            ></echo-session-dock>`
+          : nothing}
+        ${this._renderTipsModal()} ${this._renderRecordingsModal()}
       </section>
     `;
   }
+
+  private _renderTipsModal() {
+    if (!this._tipsModalKind) {
+      return nothing;
+    }
+
+    const isShadowing = this._tipsModalKind === 'shadowing';
+    const tips = isShadowing ? this._getShadowingTips() : this._getEchoTips();
+    const title = isShadowing ? msg('跟读说明') : msg('单句说明');
+
+    return html`
+      <ui-modal
+        .open=${true}
+        .title=${title}
+        .centered=${true}
+        .footer=${false}
+        ok-text="${msg('知道了')}"
+        @update:open=${(e: CustomEvent<{ open: boolean }>) => {
+          if (e.target !== e.currentTarget) {
+            return;
+          }
+          if (!e.detail.open) {
+            this._closeTipsModal();
+          }
+        }}
+      >
+        <div class="tips-modal-body">${tips.map((tip) => html`<div>${tip}</div>`)}</div>
+        <div slot="footer" class="tips-modal-footer">
+          <label class="tips-skip">
+            <input
+              type="checkbox"
+              .checked=${this._tipsSkipChecked}
+              @change=${(event: Event) => {
+                this._tipsSkipChecked = (event.target as HTMLInputElement).checked;
+              }}
+            />
+            ${msg('以后不再提醒')}
+          </label>
+          <ui-button variant="primary" @click=${this._confirmTipsModal}>${msg('知道了')}</ui-button>
+        </div>
+      </ui-modal>
+    `;
+  }
+
+  private _renderShadowingRecordingsEntry() {
+    return html`
+      <div class="recordings-summary">
+        <p>${msg(str`已保存 ${this._shadowingCount}/${this._shadowingLimit}`)}</p>
+        <ui-button variant="secondary" @click=${this._openRecordingsModal}>
+          ${msg('管理录音')}
+        </ui-button>
+      </div>
+    `;
+  }
+
+  private _renderRecordingsModal() {
+    if (!this._recordingsModalOpen) {
+      return nothing;
+    }
+
+    return html`
+      <ui-modal
+        .open=${true}
+        .title=${msg('当前音频的跟读录音')}
+        .centered=${true}
+        .footer=${false}
+        @update:open=${(e: CustomEvent<{ open: boolean }>) => {
+          // Ignore nested overlays (record-list preview, tooltips, popconfirm)
+          // that also emit composed update:open.
+          if (e.target !== e.currentTarget) {
+            return;
+          }
+          if (!e.detail.open) {
+            this._closeRecordingsModal();
+          }
+        }}
+      >
+        <div class="recordings-modal-body">
+          <record-list
+            .mediaId=${this._mediaId}
+            .modeFilter=${'shadowing'}
+            .showHeader=${false}
+            .popupZIndex=${Z_INDEX.MODAL + 1}
+            @recording-deleted=${(event: CustomEvent<{ id: string }>) =>
+              this._onRecordingDeleted(event.detail.id)}
+          ></record-list>
+        </div>
+        <div slot="footer" class="tips-modal-footer">
+          <span></span>
+          <ui-button variant="primary" @click=${this._closeRecordingsModal}
+            >${msg('关闭')}</ui-button
+          >
+        </div>
+      </ui-modal>
+    `;
+  }
+
+  private _openRecordingsModal = (): void => {
+    this._recordingsModalOpen = true;
+  };
+
+  private _closeRecordingsModal = (): void => {
+    this._recordingsModalOpen = false;
+  };
 
   private _renderStorageInfo() {
     if (!this._storageEstimate) {
@@ -538,7 +778,11 @@ export class PracticeView extends LitElement {
     this._echoRecorderEl?.destroy();
     this._echoSegmentIndex = -1;
     this._echoSegment = null;
+    this._resetSessionUi();
     this._timeTracker.setMode(this._resolveAnalyticsMode());
+    if (type === 'speaking') {
+      this._maybeShowTipsForSpeakingMode(this._speakingMode);
+    }
   }
 
   private _setSpeakingMode(mode: SpeakingMode): void {
@@ -555,8 +799,42 @@ export class PracticeView extends LitElement {
     this._echoRecorderEl?.destroy();
     this._echoSegmentIndex = -1;
     this._echoSegment = null;
+    this._resetSessionUi();
+    this._recordingsModalOpen = false;
     this._timeTracker.setMode(this._resolveAnalyticsMode());
+    this._maybeShowTipsForSpeakingMode(mode);
   }
+
+  private _maybeShowTipsForSpeakingMode(mode: SpeakingMode): void {
+    if (mode === 'shadowing' && !shouldSkipShadowingTips()) {
+      this._openTipsModal('shadowing');
+      return;
+    }
+    if (mode === 'echo' && !shouldSkipEchoTips()) {
+      this._openTipsModal('echo');
+    }
+  }
+
+  private _openTipsModal(kind: 'shadowing' | 'echo'): void {
+    this._tipsSkipChecked = false;
+    this._tipsModalKind = kind;
+  }
+
+  private _closeTipsModal(): void {
+    this._tipsModalKind = null;
+    this._tipsSkipChecked = false;
+  }
+
+  private _confirmTipsModal = (): void => {
+    if (this._tipsSkipChecked && this._tipsModalKind) {
+      if (this._tipsModalKind === 'shadowing') {
+        setUserSettings({ skipShadowingTips: true });
+      } else {
+        setUserSettings({ skipEchoTips: true });
+      }
+    }
+    this._closeTipsModal();
+  };
 
   private _resetSettingsForShadowing = (): void => {
     const snapshot = this._controller.getSnapshot();
@@ -608,8 +886,64 @@ export class PracticeView extends LitElement {
   private _onRecordingStateChange = (event: CustomEvent<RecordingStateChangeDetail>): void => {
     this._recording = event.detail.recording;
     this._timeTracker.setFlags({ recording: this._recording });
-    if (!event.detail.recording && this._speakingMode === 'echo') {
-      this._echoSegmentIndex = -1;
+    if (this._speakingMode === 'echo') {
+      if (event.detail.recording) {
+        this._sessionPhase = 'recording';
+        this._sessionWaveformController = this._echoRecorderEl?.waveformController ?? null;
+      } else {
+        this._echoSegmentIndex = -1;
+        this._resetSessionUi();
+      }
+      return;
+    }
+
+    if (this._speakingMode === 'shadowing') {
+      if (event.detail.recording) {
+        this._sessionPhase = 'recording';
+        this._sessionWaveformController = this._shadowingRecorderEl?.waveformController ?? null;
+      } else {
+        this._resetSessionUi();
+      }
+    }
+  };
+
+  private _onSessionCountdownStart = (): void => {
+    this._sessionPhase = 'countdown';
+    this._sessionSpeakCue = false;
+  };
+
+  private _onSessionCountdownEnd = (event: CustomEvent<RecordingCountdownEndDetail>): void => {
+    const skipped = event.detail.skipped;
+    this._sessionPhase = 'recording';
+    this._sessionWaveformController =
+      this._speakingMode === 'echo'
+        ? (this._echoRecorderEl?.waveformController ?? null)
+        : (this._shadowingRecorderEl?.waveformController ?? null);
+    if (skipped) {
+      this._sessionSpeakCue = true;
+      Message.primary(msg('请开始跟读'));
+      try {
+        console.log('[practice-view] vibrate');
+        navigator.vibrate?.(40);
+      } catch {
+        console.error('[practice-view] vibrate may be unsupported / blocked');
+      }
+    } else {
+      this._sessionSpeakCue = false;
+    }
+  };
+
+  private _onSessionDockStop = async (): Promise<void> => {
+    if (this._speakingMode === 'echo') {
+      await this._onEchoRecordStop();
+      return;
+    }
+    await this._shadowingRecorderEl?.stopRecording();
+  };
+
+  private _onSessionDockCancel = async (): Promise<void> => {
+    if (this._speakingMode === 'echo') {
+      await this._onEchoRecordStop();
     }
   };
 
@@ -658,6 +992,13 @@ export class PracticeView extends LitElement {
     this._echoSegmentIndex = -1;
     this._echoSegment = null;
     this._timeTracker.setFlags({ echoListening: false });
+    this._resetSessionUi();
+  }
+
+  private _resetSessionUi(): void {
+    this._sessionPhase = 'idle';
+    this._sessionSpeakCue = false;
+    this._sessionWaveformController = null;
   }
 
   private _onEchoRecordRequest = async (
@@ -686,6 +1027,9 @@ export class PracticeView extends LitElement {
     this._echoSegment = segment;
     this._recordingError = '';
     this._echoRecorderEl?.clearWaveform();
+    this._sessionWaveformController = null;
+    this._sessionSpeakCue = false;
+    this._sessionPhase = 'listening';
     this._resetSettingsForEcho();
     this._echoListening = true;
     this._timeTracker.setFlags({ echoListening: true });
@@ -732,7 +1076,7 @@ export class PracticeView extends LitElement {
       await saveRecording(record, blob);
       this._lastRecordingId = record.id;
       await this._refreshRecordings();
-      await this._recordList?.refresh();
+      await this._manageRecordList?.refresh();
       Message.success(msg('录音已保存'));
     } catch {
       this._recordingError = msg('保存录音失败，请重试。');

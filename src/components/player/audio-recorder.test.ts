@@ -256,4 +256,38 @@ describe('audio-recorder component', () => {
     expect(lastRecorder).toBeNull();
     vi.useRealTimers();
   });
+
+  it('hides waveform when hideWaveform is set', async () => {
+    const result = mount(
+      html`<audio-recorder .countdownBeforeStart=${false} .hideWaveform=${true}></audio-recorder>`,
+    );
+    cleanup = result.cleanup;
+    const el = result.container.querySelector('audio-recorder') as AudioRecorder;
+    await el.updateComplete;
+
+    await el.startRecording();
+    await el.updateComplete;
+
+    expect(el.hasWaveform).toBe(true);
+    expect(el.waveformController).toBeTruthy();
+    expect(el.shadowRoot?.querySelector('waveform-player')).toBeNull();
+  });
+
+  it('emits countdown-end with skipped when user opted out', async () => {
+    localStorage.setItem(
+      'fluent-any-lang:user-settings',
+      JSON.stringify({ skipRecordingCountdown: true }),
+    );
+    const el = await renderRecorder(true);
+    const onStart = vi.fn();
+    const onEnd = vi.fn();
+    el.addEventListener('recording-countdown-start', onStart);
+    el.addEventListener('recording-countdown-end', onEnd);
+
+    await el.startRecording();
+
+    expect(onStart).not.toHaveBeenCalled();
+    expect(onEnd).toHaveBeenCalledTimes(1);
+    expect(onEnd.mock.calls[0][0].detail).toEqual({ skipped: true });
+  });
 });

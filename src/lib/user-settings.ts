@@ -4,14 +4,24 @@ export const USER_SETTINGS_STORAGE_KEY = 'fluent-any-lang:user-settings';
 export type UserSettings = {
   /** When true, recording countdown overlay is skipped. */
   skipRecordingCountdown: boolean;
+  /** When true, shadowing mode tips modal is skipped. */
+  skipShadowingTips: boolean;
+  /** When true, echo mode tips modal is skipped. */
+  skipEchoTips: boolean;
 };
 
 export const DEFAULT_USER_SETTINGS: UserSettings = {
   skipRecordingCountdown: false,
+  skipShadowingTips: false,
+  skipEchoTips: false,
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
+}
+
+function parseBoolean(value: unknown, fallback: boolean): boolean {
+  return typeof value === 'boolean' ? value : fallback;
 }
 
 function parseStoredSettings(raw: string | null): UserSettings {
@@ -26,10 +36,15 @@ function parseStoredSettings(raw: string | null): UserSettings {
     }
 
     return {
-      skipRecordingCountdown:
-        typeof parsed.skipRecordingCountdown === 'boolean'
-          ? parsed.skipRecordingCountdown
-          : DEFAULT_USER_SETTINGS.skipRecordingCountdown,
+      skipRecordingCountdown: parseBoolean(
+        parsed.skipRecordingCountdown,
+        DEFAULT_USER_SETTINGS.skipRecordingCountdown,
+      ),
+      skipShadowingTips: parseBoolean(
+        parsed.skipShadowingTips,
+        DEFAULT_USER_SETTINGS.skipShadowingTips,
+      ),
+      skipEchoTips: parseBoolean(parsed.skipEchoTips, DEFAULT_USER_SETTINGS.skipEchoTips),
     };
   } catch {
     return { ...DEFAULT_USER_SETTINGS };
@@ -53,4 +68,12 @@ export function setUserSettings(partial: Partial<UserSettings>): UserSettings {
 
 export function shouldSkipRecordingCountdown(): boolean {
   return getUserSettings().skipRecordingCountdown;
+}
+
+export function shouldSkipShadowingTips(): boolean {
+  return getUserSettings().skipShadowingTips;
+}
+
+export function shouldSkipEchoTips(): boolean {
+  return getUserSettings().skipEchoTips;
 }

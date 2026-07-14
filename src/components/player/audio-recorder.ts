@@ -7,6 +7,7 @@ import { WaveformController } from '../../controllers/waveform-controller.js';
 import { AudioRecorderController } from '../../lib/audio-recorder.js';
 import { ExtendedMediaEventType } from '../../lib/playback-utils.js';
 import { runRecordingCountdown } from '../ui/countdown-overlay.js';
+import { shouldSkipRecordingCountdown } from '../../lib/user-settings.js';
 import type { PracticeSegment, SubtitleSegment } from '../../types/models.js';
 import '../ui/alert.js';
 import '../ui/icon.js';
@@ -18,7 +19,13 @@ export const AudioRecorderEventType = {
   STATE_CHANGE: 'recording-state-change',
   COMPLETE: 'recording-complete',
   ERROR: 'recording-error',
+  COUNTDOWN_START: 'recording-countdown-start',
+  COUNTDOWN_END: 'recording-countdown-end',
 } as const;
+
+export type RecordingCountdownEndDetail = {
+  skipped: boolean;
+};
 
 export type RecordingCompleteDetail = {
   blob: Blob;
@@ -93,6 +100,10 @@ export class AudioRecorder extends LitElement {
 
   @property({ type: Number })
   countdownSeconds = 3;
+
+  /** When true, waveform is driven for external hosts (e.g. echo session dock). */
+  @property({ type: Boolean })
+  hideWaveform = false;
 
   @state()
   private _recording = false;
@@ -230,7 +241,7 @@ export class AudioRecorder extends LitElement {
             </div>
           `
         : null}
-      ${this._hasWaveform
+      ${this._hasWaveform && !this.hideWaveform
         ? html`
             <div class="recording-waveform">
               <waveform-player
@@ -268,11 +279,16 @@ export class AudioRecorder extends LitElement {
     this._stopReason = 'manual';
 
     if (this.countdownBeforeStart) {
-      try {
-        await runRecordingCountdown({ seconds: this.countdownSeconds });
-      } catch {
-        return;
+      const skipped = shouldSkipRecordingCountdown();
+      if (!skipped) {
+        this._dispatchCountdownStart();
+        try {
+          await runRecordingCountdown({ seconds: this.countdownSeconds });
+        } catch {
+          return;
+        }
       }
+      this._dispatchCountdownEnd({ skipped });
     }
 
     try {
@@ -327,6 +343,33 @@ export class AudioRecorder extends LitElement {
 
   get recording(): boolean {
     return this._recording;
+  }
+
+  get waveformController(): WaveformController {
+    return this._waveformController;
+  }
+
+  get hasWaveform(): boolean {
+    return this._hasWaveform;
+  }
+
+  private _dispatchCountdownStart(): void {
+    this.dispatchEvent(
+      new CustomEvent(AudioRecorderEventType.COUNTDOWN_START, {
+        bubbles: true,
+        composed: true,
+      }),
+    );
+  }
+
+  private _dispatchCountdownEnd(detail: RecordingCountdownEndDetail): void {
+    this.dispatchEvent(
+      new CustomEvent<RecordingCountdownEndDetail>(AudioRecorderEventType.COUNTDOWN_END, {
+        detail,
+        bubbles: true,
+        composed: true,
+      }),
+    );
   }
 
   private _onSegmentEnded = (event: Event): void => {
