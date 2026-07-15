@@ -4,6 +4,10 @@ import { customElement, property, state } from 'lit/decorators.js';
 
 import { getMediaBlob } from '../../db/media.js';
 import { getRecordingBlob } from '../../db/service.js';
+import {
+  dispatchRecordingPreviewClose,
+  dispatchRecordingPreviewOpen,
+} from '../../lib/audio-focus.js';
 import { MediaControllerHost } from '../../controllers/media-controller-host.js';
 import type {
   MediaController,
@@ -357,6 +361,12 @@ export class SubtitlePanel extends LitElement {
   @property({ type: Number })
   echoLimitPerSegment = 10;
 
+  /**
+   * When true, preview is blocked (e.g. active mic recording on the practice page).
+   */
+  @property({ type: Boolean })
+  previewDisabled = false;
+
   @state()
   private _controllerHost: MediaControllerHost | null = null;
 
@@ -681,6 +691,11 @@ export class SubtitlePanel extends LitElement {
   }
 
   private async _openPreview(record: PracticeRecord): Promise<void> {
+    if (this.previewDisabled) {
+      Message.warning(msg('录音中无法预览，请先结束录音。'));
+      return;
+    }
+
     const [recordingBlob, sourceBlob] = await Promise.all([
       getRecordingBlob(record.id),
       getMediaBlob(record.mediaId),
@@ -695,6 +710,7 @@ export class SubtitlePanel extends LitElement {
     this._modalSourceBlob = sourceBlob ?? null;
     this._modalSubtitleSegments = this._controllerHost?.snapshot?.segments ?? [];
     this._modalOpen = true;
+    dispatchRecordingPreviewOpen(this);
   }
 
   private _handleModalClose(): void {
@@ -703,6 +719,7 @@ export class SubtitlePanel extends LitElement {
     this._modalRecordingBlob = null;
     this._modalSourceBlob = null;
     this._modalSubtitleSegments = [];
+    dispatchRecordingPreviewClose(this);
   }
 
   private _fullscreenTemplate(): TemplateResult {
@@ -872,7 +889,11 @@ export class SubtitlePanel extends LitElement {
       </div>
       <ui-modal
         title="${this._modalRecording?.mediaTitle ?? msg('录音预览')}"
-        @close="${() => this._handleModalClose()}"
+        @close="${(e: Event) => {
+          // Ignore bubbled close from nested overlays (dropdown / tooltip).
+          if (e.target !== e.currentTarget) return;
+          this._handleModalClose();
+        }}"
         ?open=${this._modalOpen}
         width="600px"
         centered

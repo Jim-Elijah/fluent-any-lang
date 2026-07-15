@@ -11,6 +11,10 @@ import {
   getSubtitle,
 } from '../../db/service.js';
 import { exportRecording } from '../../lib/export-content.js';
+import {
+  dispatchRecordingPreviewClose,
+  dispatchRecordingPreviewOpen,
+} from '../../lib/audio-focus.js';
 import { estimateListNaturalHeight, type ListMetricsDetail } from '../../lib/split-list-heights.js';
 import { Z_INDEX } from '../ui/internal/z-index.js';
 import '../ui/alert.js';
@@ -28,6 +32,7 @@ import type {
   SubtitleSegment,
 } from '../../types/models.js';
 import { formatDate, formatTime } from '../../lib/playback-utils.js';
+import { Message } from '../ui/message.js';
 
 /** Row height including the --space-md (12px) gap below each card. */
 const RECORD_ROW_HEIGHT = 88;
@@ -213,6 +218,12 @@ export class RecordList extends LitElement {
   @property({ type: Number })
   popupZIndex: number | undefined;
 
+  /**
+   * When true, preview is blocked (e.g. active mic recording on the practice page).
+   */
+  @property({ type: Boolean })
+  previewDisabled = false;
+
   @state()
   private _items: PracticeRecord[] = [];
 
@@ -363,6 +374,8 @@ export class RecordList extends LitElement {
           title="${this._modalRecording?.mediaTitle ?? msg('录音预览')}"
           .zIndex=${this.popupZIndex != null ? this.popupZIndex + 50 : Z_INDEX.MODAL}
           @update:open="${(e: CustomEvent<{ open: boolean }>) => {
+            // Ignore bubbled update:open from nested overlays (dropdown / tooltip).
+            if (e.target !== e.currentTarget) return;
             e.stopPropagation();
             if (!e.detail.open) this._handleModalClose();
           }}"
@@ -446,9 +459,15 @@ export class RecordList extends LitElement {
     this._modalRecordingBlob = null;
     this._modalSourceBlob = null;
     this._modalSubtitleSegments = [];
+    dispatchRecordingPreviewClose(this);
   }
 
   private async _handleView(recording: PracticeRecord): Promise<void> {
+    if (this.previewDisabled) {
+      Message.warning(msg('录音中无法预览，请先结束录音。'));
+      return;
+    }
+
     const [recordingBlob, sourceBlob, subtitleTrack] = await Promise.all([
       getRecordingBlob(recording.id),
       getMediaBlob(recording.mediaId),
@@ -465,6 +484,7 @@ export class RecordList extends LitElement {
     this._modalSourceBlob = sourceBlob ?? null;
     this._modalSubtitleSegments = subtitleTrack?.segments ?? [];
     this._modalOpen = true;
+    dispatchRecordingPreviewOpen(this);
   }
 
   private async _handleExport(recording: PracticeRecord): Promise<void> {

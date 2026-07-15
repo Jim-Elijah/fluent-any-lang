@@ -8,6 +8,7 @@ import type {
   MediaControllerSnapshot,
 } from '../../controllers/media-controller.js';
 import { formatTime, FORWARDED_MEDIA_EVENTS, MAX_SLEEP_MINUTES } from '../../lib/playback-utils.js';
+import { supportsKeyboardShortcuts } from '../../lib/hotkeys/index.js';
 import '../ui/button.js';
 import '../ui/slider.js';
 import '../ui/tooltip.js';
@@ -548,6 +549,21 @@ export class MediaPlayer extends LitElement {
     this._showSettings = !this._showSettings;
   }
 
+  private _playPauseTitle(isPlaying: boolean): string {
+    if (supportsKeyboardShortcuts()) {
+      return isPlaying ? msg('暂停 (Space)') : msg('播放 (Space)');
+    }
+    return isPlaying ? msg('暂停') : msg('播放');
+  }
+
+  private _previousSegmentTitle(): string {
+    return supportsKeyboardShortcuts() ? msg('上一句 (←)') : msg('上一句');
+  }
+
+  private _nextSegmentTitle(): string {
+    return supportsKeyboardShortcuts() ? msg('下一句 (→)') : msg('下一句');
+  }
+
   private _renderSliderDropdown(options: {
     icon?: string;
     title: string;
@@ -587,7 +603,7 @@ export class MediaPlayer extends LitElement {
   private _renderRateControl(snapshot: MediaControllerSnapshot): TemplateResult {
     const rate = Number(snapshot.playbackRate);
     const rateLabel = `${rate.toFixed(1)}x`;
-    const rateTitle = `${rateLabel} ([) (])`;
+    const rateTitle = supportsKeyboardShortcuts() ? `${rateLabel} ([) (])` : `${rateLabel}`;
     return this._renderSliderDropdown({
       title: rateTitle,
       placement: 'left',
@@ -632,9 +648,10 @@ export class MediaPlayer extends LitElement {
   private _renderVolumeControl(snapshot: MediaControllerSnapshot): TemplateResult {
     const volume = Number(snapshot.volume);
     const percent = Math.round(volume * 100);
+    const percentTitle = supportsKeyboardShortcuts() ? `${percent}% (↑) (↓)` : `${percent}%`;
     return this._renderSliderDropdown({
       icon: volume === 0 ? 'volume-close' : 'volume',
-      title: `${percent}% (↑) (↓)`,
+      title: `${percentTitle}`,
       placement: 'left',
       overlay: html`
         <span class="overlay-panel-label">${percent}%</span>
@@ -708,7 +725,7 @@ export class MediaPlayer extends LitElement {
               <ui-icon-button
                 name="${snapshot.isPlaying ? 'pause' : 'play'}"
                 size="var(--icon-lg)"
-                title="${snapshot.isPlaying ? msg('暂停 (Space)') : msg('播放 (Space)')}"
+                title="${this._playPauseTitle(snapshot.isPlaying)}"
                 @click="${this._togglePlay}"
               ></ui-icon-button>
               ${this.controlsConfig.switchMode
@@ -820,7 +837,7 @@ export class MediaPlayer extends LitElement {
                 ${showSegments
                   ? html`<ui-icon-button
                       name="backward"
-                      title="${msg('上一句 (←)')}"
+                      title="${this._previousSegmentTitle()}"
                       size="var(--icon-lg)"
                       ?disabled="${!snapshot.canPreviousSegment || this.disabled}"
                       @click="${this._previousSegment}"
@@ -829,7 +846,7 @@ export class MediaPlayer extends LitElement {
                 ${this.controlsConfig.playPause
                   ? html`<ui-icon-button
                       name="${snapshot.isPlaying ? 'pause' : 'play'}"
-                      title="${snapshot.isPlaying ? msg('暂停 (Space)') : msg('播放 (Space)')}"
+                      title="${this._playPauseTitle(snapshot.isPlaying)}"
                       size="var(--icon-xl)"
                       ?disabled="${this.disabled}"
                       @click="${this._togglePlay}"
@@ -838,7 +855,7 @@ export class MediaPlayer extends LitElement {
                 ${showSegments
                   ? html`<ui-icon-button
                       name="forward"
-                      title="${msg('下一句 (→)')}"
+                      title="${this._nextSegmentTitle()}"
                       size="var(--icon-lg)"
                       ?disabled="${!snapshot.canNextSegment || this.disabled}"
                       @click="${this._nextSegment}"

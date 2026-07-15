@@ -7,6 +7,8 @@ export type DualTrackMode = 'idle' | 'source' | 'recording' | 'sync';
 export type DualTrackPlaybackState = {
   mode: DualTrackMode;
   syncSegmentIndex: number;
+  /** True when mode is active but audio is paused (e.g. Space). Mode stays non-idle. */
+  paused: boolean;
 };
 
 const SYNC_END_EPSILON = 0.05;
@@ -16,6 +18,7 @@ const SYNC_DRIFT_THROTTLE_MS = 100;
 export class DualTrackPlayback {
   private mode: DualTrackMode = 'idle';
   private syncSegmentIndex = 0;
+  private paused = false;
   private _syncSegment: PracticeSegment | null = null;
   private _syncSegmentIndex = -1;
   private _sourceEndTime: number | null = null;
@@ -37,7 +40,7 @@ export class DualTrackPlayback {
   }
 
   getState(): DualTrackPlaybackState {
-    return { mode: this.mode, syncSegmentIndex: this.syncSegmentIndex };
+    return { mode: this.mode, syncSegmentIndex: this.syncSegmentIndex, paused: this.paused };
   }
 
   setSegments(segments: PracticeSegment[]): void {
@@ -61,6 +64,7 @@ export class DualTrackPlayback {
     }
 
     this.mode = 'source';
+    this.paused = false;
     this._emitState();
     await this.sourceAudio.play();
   }
@@ -82,6 +86,7 @@ export class DualTrackPlayback {
     }
 
     this.mode = 'recording';
+    this.paused = false;
     this._emitState();
     await this.recordingAudio.play();
   }
@@ -99,8 +104,109 @@ export class DualTrackPlayback {
     this.sourceAudio.pause();
     this.recordingAudio.pause();
     this.mode = 'sync';
+    this.paused = false;
     this._emitState();
     this._startSyncSegment(index);
+  }
+
+  /** Jump to a practice segment while keeping the current play mode and pause state. */
+  async goToSegment(index: number): Promise<void> {
+    if (index < 0 || index >= this.segments.length || this.mode === 'idle') {
+      return;
+    }
+
+    const wasPaused = this.paused;
+    const segment = this.segments[index];
+
+    if (this.mode === 'sync') {
+      this.sourceAudio.pause();
+      this.recordingAudio.pause();
+      this.syncSegmentIndex = index;
+      this._syncSegment = segment;
+      this._syncSegmentIndex = index;
+      this.paused = wasPaused;
+      this.sourceAudio.currentTime = segment.sourceStartTime;
+      this.recordingAudio.currentTime = segment.recordingStartTime;
+      this._emitState();
+      if (!wasPaused) {
+        await this.sourceAudio.play();
+        await this.recordingAudio.play();
+      }
+      return;
+    }
+
+    if (this.mode === 'source') {
+      this.syncSegmentIndex = index;
+      this.sourceAudio.currentTime = segment.sourceStartTime;
+      this.paused = wasPaused;
+      this._emitState();
+      if (!wasPaused) {
+        await this.sourceAudio.play();
+      }
+      return;
+    }
+
+    if (this.mode === 'recording') {
+      this.syncSegmentIndex = index;
+      this.recordingAudio.currentTime = segment.recordingStartTime;
+      this.paused = wasPaused;
+      this._emitState();
+      if (!wasPaused) {
+        await this.recordingAudio.play();
+      }
+    }
+  }
+
+  /** Pause audio without leaving the current play mode. */
+  pause(): void {
+    if (this.mode === 'idle' || this.paused) {
+      return;
+    }
+    this.sourceAudio.pause();
+    this.recordingAudio.pause();
+    this.paused = true;
+    this._emitState();
+  }
+
+  /** Resume audio after {@link pause}, keeping the current play mode. */
+  async resume(): Promise<void> {
+    if (this.mode === 'idle' || !this.paused) {
+      return;
+    }
+
+    this.paused = false;
+    this._emitState();
+
+    if (this.mode === 'source') {
+      await this.sourceAudio.play();
+      return;
+    }
+    if (this.mode === 'recording') {
+      await this.recordingAudio.play();
+      return;
+    }
+
+    const segment = this._syncSegment;
+    if (!segment) {
+      return;
+    }
+    if (this.sourceAudio.currentTime < segment.sourceEndTime - SYNC_END_EPSILON) {
+      await this.sourceAudio.play();
+    }
+    if (this.recordingAudio.currentTime < segment.recordingEndTime - SYNC_END_EPSILON) {
+      await this.recordingAudio.play();
+    }
+  }
+
+  async togglePause(): Promise<void> {
+    if (this.mode === 'idle') {
+      return;
+    }
+    if (this.paused) {
+      await this.resume();
+      return;
+    }
+    this.pause();
   }
 
   stop(): void {
@@ -109,6 +215,7 @@ export class DualTrackPlayback {
     this.recordingAudio.pause();
     this.syncSegmentIndex = 0;
     this.mode = 'idle';
+    this.paused = false;
     this._emitState();
   }
 

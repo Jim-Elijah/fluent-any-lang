@@ -45,7 +45,7 @@ describe('DualTrackPlayback', () => {
   });
 
   it('starts in idle mode', () => {
-    expect(controller.getState()).toEqual({ mode: 'idle', syncSegmentIndex: 0 });
+    expect(controller.getState()).toEqual({ mode: 'idle', syncSegmentIndex: 0, paused: false });
   });
 
   it('plays source track and pauses recording', async () => {
@@ -96,6 +96,7 @@ describe('DualTrackPlayback', () => {
     const state = controller.getState();
     expect(state.mode).toBe('sync');
     expect(state.syncSegmentIndex).toBe(1);
+    expect(state.paused).toBe(false);
     expect(source.currentTime).toBe(5);
     expect(recording.currentTime).toBe(4.5);
   });
@@ -108,9 +109,78 @@ describe('DualTrackPlayback', () => {
   it('stops playback and resets state', async () => {
     await controller.playSource();
     controller.stop();
-    expect(controller.getState()).toEqual({ mode: 'idle', syncSegmentIndex: 0 });
+    expect(controller.getState()).toEqual({ mode: 'idle', syncSegmentIndex: 0, paused: false });
     expect(source.pause).toHaveBeenCalled();
     expect(recording.pause).toHaveBeenCalled();
+  });
+
+  it('pauses without leaving play mode and resumes from the same mode', async () => {
+    await controller.playSource();
+    vi.mocked(source.play).mockClear();
+    vi.mocked(source.pause).mockClear();
+
+    controller.pause();
+    expect(controller.getState()).toEqual({ mode: 'source', syncSegmentIndex: 0, paused: true });
+    expect(source.pause).toHaveBeenCalled();
+
+    await controller.resume();
+    expect(controller.getState()).toEqual({ mode: 'source', syncSegmentIndex: 0, paused: false });
+    expect(source.play).toHaveBeenCalled();
+  });
+
+  it('togglePause switches between paused and playing while keeping mode', async () => {
+    await controller.playRecording();
+    await controller.togglePause();
+    expect(controller.getState().paused).toBe(true);
+    expect(controller.getState().mode).toBe('recording');
+
+    await controller.togglePause();
+    expect(controller.getState().paused).toBe(false);
+    expect(controller.getState().mode).toBe('recording');
+  });
+
+  it('goToSegment seeks within source mode and keeps pause state', async () => {
+    await controller.playSource();
+    await controller.togglePause();
+    vi.mocked(source.play).mockClear();
+
+    await controller.goToSegment(1);
+    expect(controller.getState()).toEqual({ mode: 'source', syncSegmentIndex: 1, paused: true });
+    expect(source.currentTime).toBe(segments[1].sourceStartTime);
+    expect(source.play).not.toHaveBeenCalled();
+  });
+
+  it('goToSegment resumes source playback when not paused', async () => {
+    await controller.playSource();
+    vi.mocked(source.play).mockClear();
+
+    await controller.goToSegment(1);
+    expect(controller.getState().syncSegmentIndex).toBe(1);
+    expect(source.currentTime).toBe(segments[1].sourceStartTime);
+    expect(source.play).toHaveBeenCalled();
+  });
+
+  it('goToSegment seeks within sync mode while paused', async () => {
+    await controller.playSyncFromSegment(0);
+    controller.pause();
+    vi.mocked(source.play).mockClear();
+    vi.mocked(recording.play).mockClear();
+
+    await controller.goToSegment(1);
+    expect(controller.getState()).toEqual({ mode: 'sync', syncSegmentIndex: 1, paused: true });
+    expect(source.currentTime).toBe(segments[1].sourceStartTime);
+    expect(recording.currentTime).toBe(segments[1].recordingStartTime);
+    expect(source.play).not.toHaveBeenCalled();
+    expect(recording.play).not.toHaveBeenCalled();
+  });
+
+  it('ignores goToSegment while idle or out of range', async () => {
+    await controller.goToSegment(0);
+    expect(controller.getState().mode).toBe('idle');
+
+    await controller.playSource();
+    await controller.goToSegment(99);
+    expect(controller.getState().syncSegmentIndex).toBe(0);
   });
 
   it('stops when source ends in source mode', async () => {

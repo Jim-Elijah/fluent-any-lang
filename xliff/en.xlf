@@ -1179,6 +1179,55 @@
   <source>练习播放器</source>
   <target>Practice player</target>
 </trans-unit>
+<trans-unit id="se1055f11a5d9a573">
+  <source>无原音，无法播放</source>
+  <target>No original audio to play</target>
+</trans-unit>
+<trans-unit id="s207ba9dd5ab52409">
+  <source>无录音，无法播放</source>
+  <target>No recording to play</target>
+</trans-unit>
+<trans-unit id="sf72dfac0565c8b44">
+  <source>无原音，无法同步播放</source>
+  <target>No original audio for sync play</target>
+</trans-unit>
+<trans-unit id="s81cabd5eb6ac2b7a">
+  <source>无录音，无法同步播放</source>
+  <target>No recording for sync play</target>
+</trans-unit>
+<trans-unit id="sdcedcc85e99cb0ef">
+  <source>无练习片段，无法同步播放</source>
+  <target>No practice segments for sync play</target>
+</trans-unit>
+<trans-unit id="s85be1120ccd26da9">
+  <source>原音音量</source>
+  <target>Original volume</target>
+</trans-unit>
+<trans-unit id="sbee29f209f57ca43">
+  <source>录音音量</source>
+  <target>Recording volume</target>
+</trans-unit>
+<trans-unit id="h005078dd262274ad">
+  <source>已暂停原音片段<x id="0" equiv-text="${segmentLabel}"/></source>
+  <target>Paused original segment<x id="0" equiv-text="${segmentLabel}"/></target>
+</trans-unit>
+<trans-unit id="s80cb4c8dbc97e0bd">
+  <source>已暂停原音</source>
+  <target>Paused original audio</target>
+</trans-unit>
+<trans-unit id="haaefe7a6d5df7ba7">
+  <source>已暂停录音片段<x id="0" equiv-text="${segmentLabel}"/></source>
+  <target>Paused recording segment<x id="0" equiv-text="${segmentLabel}"/></target>
+</trans-unit>
+<trans-unit id="s547b448d95ff4e4b">
+  <source>已暂停录音</source>
+  <target>Paused recording</target>
+</trans-unit>
+<trans-unit id="h7bb884722405f76a">
+  <source>已暂停同步片段<x id="0" equiv-text="${segmentLabel}"/></source>
+  <target>Paused sync segment<x id="0" equiv-text="${segmentLabel}"/></target>
+</trans-unit>
 </body>
 </file>
 </xliff>
+

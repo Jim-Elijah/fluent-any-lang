@@ -25,10 +25,16 @@ import type {
 } from '../../types/models.js';
 import { getAppSettings } from '../../lib/app-settings.js';
 import {
+  AUDIO_FOCUS_REQUEST_EVENT,
+  RECORDING_PREVIEW_CLOSE_EVENT,
+  RECORDING_PREVIEW_OPEN_EVENT,
+} from '../../lib/audio-focus.js';
+import {
   VOLUME_HOTKEY_STEP,
   getHotkeyCatalog,
   getHotkeyManager,
   stepPlaybackRate,
+  supportsKeyboardShortcuts,
 } from '../../lib/hotkeys/index.js';
 import {
   ExtendedMediaEventType,
@@ -335,6 +341,9 @@ export class PracticeView extends LitElement {
   private _recordingsModalOpen = false;
 
   @state()
+  private _recordingPreviewOpen = false;
+
+  @state()
   private _hotkeysHelpOpen = false;
 
   private _echoSegment: SubtitleSegment | null = null;
@@ -401,7 +410,12 @@ export class PracticeView extends LitElement {
     typeof MediaRecorder !== 'undefined';
 
   disconnectedCallback(): void {
-    getHotkeyManager().unregisterScope('practice');
+    if (supportsKeyboardShortcuts()) {
+      getHotkeyManager().unregisterScope('practice');
+    }
+    this.removeEventListener(RECORDING_PREVIEW_OPEN_EVENT, this._onRecordingPreviewOpen);
+    this.removeEventListener(RECORDING_PREVIEW_CLOSE_EVENT, this._onRecordingPreviewClose);
+    this.removeEventListener(AUDIO_FOCUS_REQUEST_EVENT, this._onAudioFocusRequest);
     if (this._echoListening) {
       this._cancelEchoListen();
     }
@@ -439,37 +453,45 @@ export class PracticeView extends LitElement {
     this._controller.addEventListener(ExtendedMediaEventType.TRACK_CHANGE, this._onTrackChange);
     this._timeTracker.attach(this._controller);
     this._timeTracker.setMode(this._resolveAnalyticsMode());
-    getHotkeyManager().registerScope({
-      id: 'practice',
-      enabled: () => this._practiceHotkeysEnabled(),
-      handlers: {
-        togglePlay: () => {
-          void this._controller.togglePlay();
+    this.addEventListener(RECORDING_PREVIEW_OPEN_EVENT, this._onRecordingPreviewOpen);
+    this.addEventListener(RECORDING_PREVIEW_CLOSE_EVENT, this._onRecordingPreviewClose);
+    this.addEventListener(AUDIO_FOCUS_REQUEST_EVENT, this._onAudioFocusRequest);
+    if (supportsKeyboardShortcuts()) {
+      getHotkeyManager().registerScope({
+        id: 'practice',
+        enabled: () => this._practiceHotkeysEnabled(),
+        handlers: {
+          togglePlay: () => {
+            void this._controller.togglePlay();
+          },
+          previousSegment: () => {
+            this._controller.previousSegment();
+          },
+          nextSegment: () => {
+            this._controller.nextSegment();
+          },
+          volumeUp: () => {
+            this._nudgeVolume(VOLUME_HOTKEY_STEP);
+          },
+          volumeDown: () => {
+            this._nudgeVolume(-VOLUME_HOTKEY_STEP);
+          },
+          rateUp: () => {
+            this._nudgePlaybackRate(1);
+          },
+          rateDown: () => {
+            this._nudgePlaybackRate(-1);
+          },
         },
-        previousSegment: () => {
-          this._controller.previousSegment();
-        },
-        nextSegment: () => {
-          this._controller.nextSegment();
-        },
-        volumeUp: () => {
-          this._nudgeVolume(VOLUME_HOTKEY_STEP);
-        },
-        volumeDown: () => {
-          this._nudgeVolume(-VOLUME_HOTKEY_STEP);
-        },
-        rateUp: () => {
-          this._nudgePlaybackRate(1);
-        },
-        rateDown: () => {
-          this._nudgePlaybackRate(-1);
-        },
-      },
-    });
+      });
+    }
   }
 
   private _practiceHotkeysEnabled(): boolean {
     if (this._hotkeysHelpOpen) {
+      return false;
+    }
+    if (this._recordingPreviewOpen || this._recordingsModalOpen) {
       return false;
     }
     if (this._recording || this._echoListening) {
@@ -480,6 +502,33 @@ export class PracticeView extends LitElement {
     }
     return true;
   }
+
+  /** Pause practice media (and cancel echo listen) so recording review can own the speakers. */
+  private _yieldPlaybackToPreview(showTip = true): void {
+    const wasPlaying = this._controller.getSnapshot().isPlaying || this._echoListening;
+    if (this._echoListening) {
+      this._cancelEchoListen(true);
+    } else {
+      void this._controller.pause();
+    }
+    if (showTip && wasPlaying) {
+      Message.info(msg('练习音频已暂停'));
+    }
+  }
+
+  private _onRecordingPreviewOpen = (): void => {
+    this._recordingPreviewOpen = true;
+    this._yieldPlaybackToPreview(true);
+  };
+
+  private _onRecordingPreviewClose = (): void => {
+    this._recordingPreviewOpen = false;
+  };
+
+  private _onAudioFocusRequest = (): void => {
+    // Preview started/resumed — keep practice media paused without repeating the tip.
+    this._yieldPlaybackToPreview(false);
+  };
 
   private _nudgeVolume(delta: number): void {
     const current = this._controller.getSnapshot().volume;
@@ -543,14 +592,16 @@ export class PracticeView extends LitElement {
       <section>
         <div class="header">
           <h2>${headerTitle}</h2>
-          <ui-button
-            variant="secondary"
-            title=${msg('快捷键')}
-            aria-label=${msg('快捷键')}
-            @click=${this._openHotkeysHelp}
-          >
-            ?
-          </ui-button>
+          ${supportsKeyboardShortcuts()
+            ? html`<ui-button
+                variant="secondary"
+                title=${msg('快捷键')}
+                aria-label=${msg('快捷键')}
+                @click=${this._openHotkeysHelp}
+              >
+                ?
+              </ui-button>`
+            : nothing}
         </div>
 
         <div class="mode-tabs">
@@ -684,6 +735,9 @@ export class PracticeView extends LitElement {
             .echoRecordingSegmentIndex="${this._echoSegmentIndex}"
             .recordingSupported="${this._recordingSupported}"
             .echoLimitPerSegment="${this._echoLimitPerSegment}"
+            .previewDisabled=${this._recording ||
+            this._sessionPhase === 'countdown' ||
+            this._sessionPhase === 'recording'}
             @update:fullscreen="${(e: CustomEvent<SubtitlePanelFullscreenChangeDetail>) => {
               this._subtitlePanelFullscreen = e.detail.fullscreen;
             }}"
@@ -875,6 +929,9 @@ export class PracticeView extends LitElement {
             .modeFilter=${'shadowing'}
             .showHeader=${false}
             .popupZIndex=${Z_INDEX.MODAL + 1}
+            .previewDisabled=${this._recording ||
+            this._sessionPhase === 'countdown' ||
+            this._sessionPhase === 'recording'}
             @recording-deleted=${(event: CustomEvent<{ id: string }>) =>
               this._onRecordingDeleted(event.detail.id)}
           ></record-list>
@@ -895,6 +952,7 @@ export class PracticeView extends LitElement {
 
   private _closeRecordingsModal = (): void => {
     this._recordingsModalOpen = false;
+    this._recordingPreviewOpen = false;
   };
 
   private _renderStorageInfo() {
@@ -988,6 +1046,7 @@ export class PracticeView extends LitElement {
     this._echoSegment = null;
     this._resetSessionUi();
     this._recordingsModalOpen = false;
+    this._recordingPreviewOpen = false;
     this._timeTracker.setMode(this._resolveAnalyticsMode());
     this._maybeShowTipsForSpeakingMode(mode);
   }

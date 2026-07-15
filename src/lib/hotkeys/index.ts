@@ -13,6 +13,7 @@ export {
   getBindingsForScope,
 } from './default-map.js';
 export { HotkeyManager, getHotkeyManager, setHotkeyManagerForTests } from './hotkey-manager.js';
+export { KEYBOARD_SHORTCUTS_MQ, supportsKeyboardShortcuts } from './support.js';
 export type { HotkeyCatalogRow, HotkeyCatalogSection } from './catalog.js';
 export {
   PLAYBACK_RATE_HOTKEY_STEPS,

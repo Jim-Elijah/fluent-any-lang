@@ -13,6 +13,8 @@ vi.mock('../../lib/export-content.js', () => ({
 import './record-list.js';
 import type { RecordList } from './record-list.js';
 import { mount } from '../ui/test-utils.js';
+import { Message } from '../ui/message.js';
+import { RECORDING_PREVIEW_OPEN_EVENT } from '../../lib/audio-focus.js';
 
 const sampleRecord: PracticeRecord = {
   id: 'rec-1',
@@ -85,5 +87,66 @@ describe('record-list', () => {
     const el = await renderList(html`<record-list fill-height></record-list>`);
     expect(el.fillHeight).toBe(true);
     expect(el.hasAttribute('fill-height')).toBe(true);
+  });
+
+  it('blocks preview when previewDisabled and does not open modal', async () => {
+    vi.mocked(recordDb.getRecordingList).mockResolvedValue([sampleRecord]);
+    const warningSpy = vi
+      .spyOn(Message, 'warning')
+      .mockImplementation(() => ({ close: () => undefined }));
+    const openSpy = vi.fn();
+
+    const el = await renderList(html`<record-list .previewDisabled=${true}></record-list>`);
+    el.addEventListener(RECORDING_PREVIEW_OPEN_EVENT, openSpy);
+    await el.refresh();
+    await el.updateComplete;
+
+    const viewButton = el.shadowRoot!.querySelector(
+      'ui-button[aria-label="查看"]',
+    ) as HTMLElement | null;
+    expect(viewButton).not.toBeNull();
+    viewButton!.click();
+    await el.updateComplete;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(warningSpy).toHaveBeenCalled();
+    expect(openSpy).not.toHaveBeenCalled();
+    expect(el.shadowRoot?.querySelector('recording-preview')).toBeNull();
+  });
+
+  it('emits recording-preview-open when viewing a recording', async () => {
+    vi.mocked(recordDb.getRecordingList).mockResolvedValue([sampleRecord]);
+    vi.mocked(recordDb.getRecordingBlob).mockResolvedValue(
+      new Blob(['rec'], { type: 'audio/webm' }),
+    );
+    vi.mocked(mediaDb.getMediaBlob).mockResolvedValue(new Blob(['src'], { type: 'audio/mpeg' }));
+    vi.stubGlobal(
+      'AudioContext',
+      class {
+        decodeAudioData = vi.fn().mockResolvedValue({
+          length: 1,
+          sampleRate: 48000,
+          numberOfChannels: 1,
+          getChannelData: () => new Float32Array(1),
+        });
+        close = vi.fn();
+      },
+    );
+    const openSpy = vi.fn();
+
+    const el = await renderList();
+    el.addEventListener(RECORDING_PREVIEW_OPEN_EVENT, openSpy);
+    await el.refresh();
+    await el.updateComplete;
+
+    const viewButton = el.shadowRoot!.querySelector(
+      'ui-button[aria-label="查看"]',
+    ) as HTMLElement | null;
+    viewButton!.click();
+    await el.updateComplete;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await el.updateComplete;
+
+    expect(openSpy).toHaveBeenCalled();
   });
 });

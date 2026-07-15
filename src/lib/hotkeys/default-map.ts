@@ -15,6 +15,10 @@ export const RECORDING_PREVIEW_HOTKEY_BINDINGS: readonly HotkeyBinding[] = [
   { code: 'KeyW', action: 'playRecording' },
   { code: 'KeyE', action: 'playSync' },
   { code: 'Space', action: 'togglePlay' },
+  { code: 'ArrowLeft', action: 'previousSegment' },
+  { code: 'ArrowRight', action: 'nextSegment' },
+  { code: 'ArrowUp', action: 'volumeUp' },
+  { code: 'ArrowDown', action: 'volumeDown' },
 ] as const;
 
 const SCOPE_BINDINGS: Record<HotkeyScopeId, readonly HotkeyBinding[]> = {

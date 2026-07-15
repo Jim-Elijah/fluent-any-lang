@@ -38,6 +38,12 @@ vi.mock('../../db/service.js', () => ({
 import './practice-view.js';
 import type { PracticeView } from './practice-view.js';
 import { mount } from '../ui/test-utils.js';
+import { Message } from '../ui/message.js';
+import {
+  AUDIO_FOCUS_REQUEST_EVENT,
+  RECORDING_PREVIEW_CLOSE_EVENT,
+  RECORDING_PREVIEW_OPEN_EVENT,
+} from '../../lib/audio-focus.js';
 
 type PracticeViewInternals = PracticeView & {
   _controller: {
@@ -45,13 +51,18 @@ type PracticeViewInternals = PracticeView & {
     pause: () => Promise<void>;
     addEventListener: (type: string, listener: (event?: Event) => void) => void;
     removeEventListener: (type: string, listener: (event?: Event) => void) => void;
-    getSnapshot: () => { segments: SubtitleSegment[]; currentItem: { id: string } | null };
+    getSnapshot: () => {
+      segments: SubtitleSegment[];
+      currentItem: { id: string } | null;
+      isPlaying: boolean;
+    };
     dispatchEvent: (event: Event) => boolean;
   };
   _echoListening: boolean;
   _sessionPhase: string;
   _recording: boolean;
   _recordingsModalOpen: boolean;
+  _recordingPreviewOpen: boolean;
   _shadowingRecorderEl?: {
     startRecording: () => Promise<void>;
     stopRecording: () => Promise<void>;
@@ -430,5 +441,72 @@ describe('practice-view', () => {
       hideWaveform: boolean;
     };
     expect(recorder.hideWaveform).toBe(true);
+  });
+
+  it('pauses practice media when recording preview opens', async () => {
+    const el = await renderView();
+    const pauseSpy = vi.spyOn(el._controller, 'pause').mockResolvedValue(undefined);
+    vi.spyOn(el._controller, 'getSnapshot').mockReturnValue({
+      segments: sampleSegments,
+      currentItem: { id: 'media-1' },
+      isPlaying: true,
+    });
+    const infoSpy = vi
+      .spyOn(Message, 'info')
+      .mockImplementation(() => ({ close: () => undefined }));
+
+    el.dispatchEvent(
+      new CustomEvent(RECORDING_PREVIEW_OPEN_EVENT, { bubbles: true, composed: true }),
+    );
+    await el.updateComplete;
+
+    expect(el._recordingPreviewOpen).toBe(true);
+    expect(pauseSpy).toHaveBeenCalled();
+    expect(infoSpy).toHaveBeenCalled();
+
+    el.dispatchEvent(
+      new CustomEvent(RECORDING_PREVIEW_CLOSE_EVENT, { bubbles: true, composed: true }),
+    );
+    await el.updateComplete;
+    expect(el._recordingPreviewOpen).toBe(false);
+  });
+
+  it('cancels echo listen when recording preview opens', async () => {
+    const el = await renderView();
+    await switchToEchoMode(el);
+
+    vi.spyOn(el._controller, 'play').mockResolvedValue(undefined);
+    const pauseSpy = vi.spyOn(el._controller, 'pause').mockResolvedValue(undefined);
+    vi.spyOn(Message, 'info').mockImplementation(() => ({ close: () => undefined }));
+
+    await dispatchEchoRecordRequest(el);
+    expect(el._echoListening).toBe(true);
+
+    el.dispatchEvent(
+      new CustomEvent(RECORDING_PREVIEW_OPEN_EVENT, { bubbles: true, composed: true }),
+    );
+    await el.updateComplete;
+
+    expect(el._echoListening).toBe(false);
+    expect(pauseSpy).toHaveBeenCalled();
+  });
+
+  it('pauses practice media on audio-focus-request without tip', async () => {
+    const el = await renderView();
+    const pauseSpy = vi.spyOn(el._controller, 'pause').mockResolvedValue(undefined);
+    vi.spyOn(el._controller, 'getSnapshot').mockReturnValue({
+      segments: sampleSegments,
+      currentItem: { id: 'media-1' },
+      isPlaying: true,
+    });
+    const infoSpy = vi
+      .spyOn(Message, 'info')
+      .mockImplementation(() => ({ close: () => undefined }));
+
+    el.dispatchEvent(new CustomEvent(AUDIO_FOCUS_REQUEST_EVENT, { bubbles: true, composed: true }));
+    await el.updateComplete;
+
+    expect(pauseSpy).toHaveBeenCalled();
+    expect(infoSpy).not.toHaveBeenCalled();
   });
 });
