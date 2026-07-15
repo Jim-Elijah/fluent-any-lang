@@ -43,6 +43,11 @@ export type MediaControllerSnapshot = {
   canNextTrack: boolean;
   canPreviousSegment: boolean;
   canNextSegment: boolean;
+  navigationLocked: boolean;
+};
+
+export type SeekOptions = {
+  force?: boolean;
 };
 
 export type LoadedTrack = {
@@ -99,6 +104,7 @@ export class MediaController extends EventTarget {
   private sleepEndsAt: number | null = null;
   private _segmentPauseResumeAt: number | null = null;
   private _segmentPausePollId: ReturnType<typeof setInterval> | null = null;
+  private _navigationLocked = false;
 
   attachMediaElement(element: HTMLMediaElement): void {
     if (this.mediaElement === element) {
@@ -296,7 +302,16 @@ export class MediaController extends EventTarget {
         this.segments.length > 0 &&
         this.currentSegmentIndex >= 0 &&
         this.currentSegmentIndex < this.segments.length - 1,
+      navigationLocked: this._navigationLocked,
     };
+  }
+
+  setNavigationLocked(locked: boolean): void {
+    if (this._navigationLocked === locked) {
+      return;
+    }
+    this._navigationLocked = locked;
+    this._emitChange();
   }
 
   async play(): Promise<void> {
@@ -321,8 +336,11 @@ export class MediaController extends EventTarget {
     await this.play();
   }
 
-  seek(time: number): void {
+  seek(time: number, options?: SeekOptions): void {
     if (!this.mediaElement) {
+      return;
+    }
+    if (this._navigationLocked && !options?.force) {
       return;
     }
 
@@ -335,21 +353,28 @@ export class MediaController extends EventTarget {
     this._emitChange();
   }
 
-  seekToSegment(index: number, autoPlay = false): void {
+  seekToSegment(index: number, autoPlay = false, options?: SeekOptions): void {
+    if (this._navigationLocked && !options?.force) {
+      return;
+    }
+
     const segment = this.segments[index];
     if (!segment) {
       return;
     }
 
     this._setCurrentSegmentIndex(index);
-    this.seek(segment.startTime);
+    this.seek(segment.startTime, { force: true });
 
     if (autoPlay) {
       void this.play();
     }
   }
 
-  previousTrack(autoPlay = false): void {
+  previousTrack(autoPlay = false, options?: SeekOptions): void {
+    if (this._navigationLocked && !options?.force) {
+      return;
+    }
     if (this.playlist.length <= 1) {
       return;
     }
@@ -365,7 +390,10 @@ export class MediaController extends EventTarget {
     void this.loadTrack(nextIndex, autoPlay);
   }
 
-  nextTrack(autoPlay = false): void {
+  nextTrack(autoPlay = false, options?: SeekOptions): void {
+    if (this._navigationLocked && !options?.force) {
+      return;
+    }
     if (this.playlist.length <= 1) {
       return;
     }
@@ -385,6 +413,9 @@ export class MediaController extends EventTarget {
   }
 
   previousSegment(): void {
+    if (this._navigationLocked) {
+      return;
+    }
     if (this.currentSegmentIndex <= 0) {
       return;
     }
@@ -392,6 +423,9 @@ export class MediaController extends EventTarget {
   }
 
   nextSegment(): void {
+    if (this._navigationLocked) {
+      return;
+    }
     if (this.currentSegmentIndex < 0 || this.currentSegmentIndex >= this.segments.length - 1) {
       return;
     }
@@ -556,6 +590,7 @@ export class MediaController extends EventTarget {
     this._removeVisibilityListener();
     this.detachMediaElement();
     this._revokeObjectUrl();
+    this._navigationLocked = false;
     this.tracks = [];
     this.playlist = [];
     this.segments = [];
@@ -650,21 +685,21 @@ export class MediaController extends EventTarget {
 
     switch (this.loopMode) {
       case 'single':
-        this.seek(0);
+        this.seek(0, { force: true });
         void this.play();
         break;
       case 'list':
-        this.nextTrack(true);
+        this.nextTrack(true, { force: true });
         break;
       case 'shuffle':
-        this.nextTrack(true);
+        this.nextTrack(true, { force: true });
         break;
       case 'segment': {
         const loopIndex = this._resolveLoopSegmentIndex();
         if (loopIndex >= 0) {
-          this.seekToSegment(loopIndex, true);
+          this.seekToSegment(loopIndex, true, { force: true });
         } else {
-          this.seek(0);
+          this.seek(0, { force: true });
           void this.play();
         }
         break;
@@ -931,7 +966,7 @@ export class MediaController extends EventTarget {
     if (this.loopMode === 'segment') {
       const loopIndex = this._resolveLoopSegmentIndex();
       if (loopIndex >= 0 && this._shouldLoopSegment(loopIndex)) {
-        this.seekToSegment(loopIndex);
+        this.seekToSegment(loopIndex, false, { force: true });
       }
     }
     void this.play();

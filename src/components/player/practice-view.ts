@@ -367,7 +367,7 @@ export class PracticeView extends LitElement {
   private _getEchoTips(): string[] {
     return [
       msg(
-        '单句（Echo）：点击字幕行右侧【麦克风】：先播原音 → 倒计时提醒（默认开启）→ 录音；跟读完后手动停止录音。',
+        '回声（Echo）：按字幕逐句练习。点击字幕行右侧【麦克风】：先播原音 → 倒计时提醒（默认开启）→ 录音；跟读完后手动停止录音。',
       ),
       msg('温馨提示：'),
       msg('1. 建议使用耳机练习。'),
@@ -494,10 +494,7 @@ export class PracticeView extends LitElement {
     if (this._recordingPreviewOpen || this._recordingsModalOpen) {
       return false;
     }
-    if (this._recording || this._echoListening) {
-      return false;
-    }
-    if (this._sessionPhase === 'countdown' || this._sessionPhase === 'recording') {
+    if (this._sessionPhase !== 'idle') {
       return false;
     }
     return true;
@@ -583,6 +580,7 @@ export class PracticeView extends LitElement {
     const isSpeaking = this._practiceType === 'speaking';
     const isShadowing = isSpeaking && this._speakingMode === 'shadowing';
     const isEcho = isSpeaking && this._speakingMode === 'echo';
+    const sessionActive = this._sessionPhase !== 'idle';
 
     const headerTitle = this._practiceType === 'listening' ? msg('听力练习') : msg('口语练习');
 
@@ -632,7 +630,7 @@ export class PracticeView extends LitElement {
                       variant="${this._speakingMode === 'echo' ? 'primary' : 'secondary'}"
                       @click="${() => this._setSpeakingMode('echo')}"
                     >
-                      ${msg('单句 (Echo)')}
+                      ${msg('回声 (Echo)')}
                     </ui-button>`
                   : nothing}
               </div>
@@ -710,7 +708,7 @@ export class PracticeView extends LitElement {
         <div class="layout">
           <media-player
             .controller="${this._controller}"
-            ?disabled="${isSpeaking && (this._recording || this._echoListening)}"
+            ?disabled="${isSpeaking && sessionActive}"
             mode="normal"
             .controlsConfig="${{
               loopMode: true,
@@ -735,9 +733,8 @@ export class PracticeView extends LitElement {
             .echoRecordingSegmentIndex="${this._echoSegmentIndex}"
             .recordingSupported="${this._recordingSupported}"
             .echoLimitPerSegment="${this._echoLimitPerSegment}"
-            .previewDisabled=${this._recording ||
-            this._sessionPhase === 'countdown' ||
-            this._sessionPhase === 'recording'}
+            .seekDisabled=${sessionActive}
+            .previewDisabled=${sessionActive}
             @update:fullscreen="${(e: CustomEvent<SubtitlePanelFullscreenChangeDetail>) => {
               this._subtitlePanelFullscreen = e.detail.fullscreen;
             }}"
@@ -849,7 +846,7 @@ export class PracticeView extends LitElement {
 
     const isShadowing = this._tipsModalKind === 'shadowing';
     const tips = isShadowing ? this._getShadowingTips() : this._getEchoTips();
-    const title = isShadowing ? msg('跟读说明') : msg('单句说明');
+    const title = isShadowing ? msg('跟读说明') : msg('回声说明');
     const shouldSkipTips = isShadowing ? shouldSkipShadowingTips() : shouldSkipEchoTips();
 
     return html`
@@ -929,9 +926,7 @@ export class PracticeView extends LitElement {
             .modeFilter=${'shadowing'}
             .showHeader=${false}
             .popupZIndex=${Z_INDEX.MODAL + 1}
-            .previewDisabled=${this._recording ||
-            this._sessionPhase === 'countdown' ||
-            this._sessionPhase === 'recording'}
+            .previewDisabled=${this._sessionPhase !== 'idle'}
             @recording-deleted=${(event: CustomEvent<{ id: string }>) =>
               this._onRecordingDeleted(event.detail.id)}
           ></record-list>
@@ -1091,6 +1086,20 @@ export class PracticeView extends LitElement {
     this._controller.setPauseMode(snapshot.pauseMode);
     this._controller.setPauseSeconds(snapshot.pauseSeconds);
     this._controller.setPausePercent(snapshot.pausePercent);
+
+    // Align recording to a full sentence so PracticeSegment source/recording axes match.
+    // At t=0 (typical after load / rewind), always start from the first subtitle —
+    // its startTime may be > 0 when there is a non-subtitled intro.
+    if (snapshot.segments.length === 0) {
+      return;
+    }
+    const segmentIndex =
+      snapshot.currentTime <= 0
+        ? 0
+        : snapshot.currentSegmentIndex >= 0
+          ? snapshot.currentSegmentIndex
+          : 0;
+    this._controller.seekToSegment(segmentIndex, false, { force: true });
   };
 
   private _resetSettingsForEcho = (): void => {
@@ -1102,7 +1111,7 @@ export class PracticeView extends LitElement {
     this._controller.setPauseMode('off');
 
     if (this._echoSegmentIndex >= 0) {
-      this._controller.seekToSegment(this._echoSegmentIndex);
+      this._controller.seekToSegment(this._echoSegmentIndex, false, { force: true });
     }
   };
 
@@ -1134,7 +1143,7 @@ export class PracticeView extends LitElement {
     this._timeTracker.setFlags({ recording: this._recording });
     if (this._speakingMode === 'echo') {
       if (event.detail.recording) {
-        this._sessionPhase = 'recording';
+        this._setSessionPhase('recording');
         this._sessionWaveformController = this._echoRecorderEl?.waveformController ?? null;
       } else {
         this._echoSegmentIndex = -1;
@@ -1145,7 +1154,7 @@ export class PracticeView extends LitElement {
 
     if (this._speakingMode === 'shadowing') {
       if (event.detail.recording) {
-        this._sessionPhase = 'recording';
+        this._setSessionPhase('recording');
         this._sessionWaveformController = this._shadowingRecorderEl?.waveformController ?? null;
       } else {
         this._resetSessionUi();
@@ -1154,13 +1163,18 @@ export class PracticeView extends LitElement {
   };
 
   private _onSessionCountdownStart = (): void => {
-    this._sessionPhase = 'countdown';
+    this._setSessionPhase('countdown');
     this._sessionSpeakCue = false;
   };
 
   private _onSessionCountdownEnd = (event: CustomEvent<RecordingCountdownEndDetail>): void => {
+    if (event.detail.cancelled) {
+      this._resetSessionUi();
+      return;
+    }
+
     const skipped = event.detail.skipped;
-    this._sessionPhase = 'recording';
+    this._setSessionPhase('recording');
     this._sessionWaveformController =
       this._speakingMode === 'echo'
         ? (this._echoRecorderEl?.waveformController ?? null)
@@ -1242,9 +1256,14 @@ export class PracticeView extends LitElement {
   }
 
   private _resetSessionUi(): void {
-    this._sessionPhase = 'idle';
+    this._setSessionPhase('idle');
     this._sessionSpeakCue = false;
     this._sessionWaveformController = null;
+  }
+
+  private _setSessionPhase(phase: RecordingSessionPhase): void {
+    this._sessionPhase = phase;
+    this._controller.setNavigationLocked(phase !== 'idle');
   }
 
   private _onEchoRecordRequest = async (
@@ -1275,7 +1294,7 @@ export class PracticeView extends LitElement {
     this._echoRecorderEl?.clearWaveform();
     this._sessionWaveformController = null;
     this._sessionSpeakCue = false;
-    this._sessionPhase = 'listening';
+    this._setSessionPhase('listening');
     this._resetSettingsForEcho();
     this._echoListening = true;
     this._timeTracker.setFlags({ echoListening: true });

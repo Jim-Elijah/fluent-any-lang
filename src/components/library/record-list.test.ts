@@ -83,6 +83,38 @@ describe('record-list', () => {
     expect(el.shadowRoot?.textContent).toContain('Lesson');
   });
 
+  it('shows mode badge for shadowing and echo recordings', async () => {
+    const echoRecord: PracticeRecord = {
+      ...sampleRecord,
+      id: 'rec-2',
+      mode: 'echo',
+      mediaTitle: 'Echo lesson',
+    };
+    vi.mocked(recordDb.getRecordingList).mockResolvedValue([sampleRecord, echoRecord]);
+
+    const el = await renderList();
+    await el.refresh();
+    await el.updateComplete;
+
+    const badges = el.shadowRoot?.querySelectorAll('.badge');
+    expect(badges).toHaveLength(2);
+    expect(badges?.[0]?.classList.contains('shadowing')).toBe(true);
+    expect(badges?.[0]?.textContent?.trim()).toBe('跟读');
+    expect(badges?.[1]?.classList.contains('echo')).toBe(true);
+    expect(badges?.[1]?.textContent?.trim()).toBe('回声');
+  });
+
+  it('hides mode badge when modeFilter is set', async () => {
+    vi.mocked(recordDb.getRecordingList).mockResolvedValue([sampleRecord]);
+
+    const el = await renderList(html`<record-list .modeFilter=${'shadowing'}></record-list>`);
+    await el.refresh();
+    await el.updateComplete;
+
+    expect(el.shadowRoot?.querySelector('.badge')).toBeNull();
+    expect(el.shadowRoot?.textContent).toContain('Lesson');
+  });
+
   it('supports fill-height attribute', async () => {
     const el = await renderList(html`<record-list fill-height></record-list>`);
     expect(el.fillHeight).toBe(true);

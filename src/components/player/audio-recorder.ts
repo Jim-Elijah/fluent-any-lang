@@ -6,7 +6,7 @@ import { MediaController } from '../../controllers/media-controller.js';
 import { WaveformController } from '../../controllers/waveform-controller.js';
 import { AudioRecorderController } from '../../lib/audio-recorder.js';
 import { ExtendedMediaEventType } from '../../lib/playback-utils.js';
-import { runRecordingCountdown } from '../ui/countdown-overlay.js';
+import { CountdownCancelledError, runRecordingCountdown } from '../ui/countdown-overlay.js';
 import { shouldSkipRecordingCountdown } from '../../lib/user-settings.js';
 import type { PracticeSegment, SubtitleSegment } from '../../types/models.js';
 import '../ui/alert.js';
@@ -25,6 +25,7 @@ export const AudioRecorderEventType = {
 
 export type RecordingCountdownEndDetail = {
   skipped: boolean;
+  cancelled?: boolean;
 };
 
 export type RecordingCompleteDetail = {
@@ -284,7 +285,10 @@ export class AudioRecorder extends LitElement {
         this._dispatchCountdownStart();
         try {
           await runRecordingCountdown({ seconds: this.countdownSeconds });
-        } catch {
+        } catch (error) {
+          if (error instanceof CountdownCancelledError) {
+            this._dispatchCountdownEnd({ skipped: false, cancelled: true });
+          }
           return;
         }
       }

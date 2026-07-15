@@ -41,6 +41,7 @@ describe('subtitle-panel', () => {
       fullscreen?: boolean;
       defaultFullscreen?: boolean;
       showFullscreenIcon?: boolean;
+      seekDisabled?: boolean;
     } = {},
   ) {
     controller = new MediaController();
@@ -56,6 +57,7 @@ describe('subtitle-panel', () => {
         .fullscreen=${options.fullscreen}
         ?default-fullscreen=${options.defaultFullscreen ?? false}
         .showFullscreenIcon=${options.showFullscreenIcon ?? true}
+        .seekDisabled=${options.seekDisabled ?? false}
       ></subtitle-panel>
     `);
     cleanup = result.cleanup;
@@ -222,5 +224,39 @@ describe('subtitle-panel', () => {
       { key: 'middle', label: '录音 2' },
       { key: 'oldest', label: '录音 1' },
     ]);
+  });
+
+  it('does not seek when seekDisabled and marks list as navigation-locked', async () => {
+    const el = await renderPanel({ seekDisabled: true });
+    const seekSpy = vi.spyOn(controller, 'seekToSegment');
+
+    expect(el.shadowRoot?.querySelector('ul.list')?.classList.contains('navigation-locked')).toBe(
+      true,
+    );
+
+    const secondRow = el.shadowRoot?.querySelector(
+      '[data-segment-index="1"]',
+    ) as HTMLElement | null;
+    secondRow?.click();
+    await el.updateComplete;
+
+    expect(seekSpy).not.toHaveBeenCalled();
+  });
+
+  it('seeks on segment click when seek is enabled', async () => {
+    const el = await renderPanel();
+    const seekSpy = vi.spyOn(controller, 'seekToSegment');
+
+    expect(el.shadowRoot?.querySelector('ul.list')?.classList.contains('navigation-locked')).toBe(
+      false,
+    );
+
+    const secondRow = el.shadowRoot?.querySelector(
+      '[data-segment-index="1"]',
+    ) as HTMLElement | null;
+    secondRow?.click();
+    await el.updateComplete;
+
+    expect(seekSpy).toHaveBeenCalledWith(1);
   });
 });

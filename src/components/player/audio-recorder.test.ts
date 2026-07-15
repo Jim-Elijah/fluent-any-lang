@@ -243,6 +243,8 @@ describe('audio-recorder component', () => {
     localStorage.clear();
 
     const el = await renderRecorder(true);
+    const onEnd = vi.fn();
+    el.addEventListener('recording-countdown-end', onEnd);
     const startPromise = el.startRecording();
     await el.updateComplete;
 
@@ -254,6 +256,8 @@ describe('audio-recorder component', () => {
     await el.updateComplete;
 
     expect(lastRecorder).toBeNull();
+    expect(onEnd).toHaveBeenCalledTimes(1);
+    expect(onEnd.mock.calls[0][0].detail).toEqual({ skipped: false, cancelled: true });
     vi.useRealTimers();
   });
 

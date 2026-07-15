@@ -131,6 +131,22 @@ const FULLSCREEN_PORTAL_STYLES = `
     padding-left: calc(var(--space-inline) - 3px);
   }
 
+  .navigation-locked .segment {
+    cursor: default;
+  }
+
+  .navigation-locked .segment:not(.active) {
+    opacity: 0.45;
+  }
+
+  .navigation-locked .segment:not(.active):hover {
+    background: transparent;
+  }
+
+  .navigation-locked .segment:not(.active):hover .text {
+    text-decoration: none;
+  }
+
   .content {
     display: flex;
     align-items: center;
@@ -256,6 +272,22 @@ export class SubtitlePanel extends LitElement {
       padding-left: calc(var(--space-inline) - 3px);
     }
 
+    .navigation-locked .segment {
+      cursor: default;
+    }
+
+    .navigation-locked .segment:not(.active) {
+      opacity: 0.45;
+    }
+
+    .navigation-locked .segment:not(.active):hover {
+      background: transparent;
+    }
+
+    .navigation-locked .segment:not(.active):hover .text {
+      text-decoration: none;
+    }
+
     .content {
       display: flex;
       align-items: center;
@@ -366,6 +398,12 @@ export class SubtitlePanel extends LitElement {
    */
   @property({ type: Boolean })
   previewDisabled = false;
+
+  /**
+   * When true, segment row clicks do not seek (speaking session lock).
+   */
+  @property({ type: Boolean })
+  seekDisabled = false;
 
   @state()
   private _controllerHost: MediaControllerHost | null = null;
@@ -571,7 +609,8 @@ export class SubtitlePanel extends LitElement {
     listClass = 'list',
   ): TemplateResult {
     const activeIndex = this._getActiveSegmentIndex(snapshot);
-    return html`<ul class="${listClass}">
+    const lockedClass = this.seekDisabled ? 'navigation-locked' : '';
+    return html`<ul class="${listClass} ${lockedClass}">
       ${snapshot.segments.map(
         (segment, index) => html`
           <li
@@ -922,6 +961,9 @@ export class SubtitlePanel extends LitElement {
   }
 
   private _handleSegmentClick(index: number): void {
+    if (this.seekDisabled) {
+      return;
+    }
     this.controller?.seekToSegment(index);
   }
 

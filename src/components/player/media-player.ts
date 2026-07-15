@@ -882,6 +882,7 @@ export class MediaPlayer extends LitElement {
                   class="settings-toggle-btn ${this._showSettings ? 'active' : ''}"
                   title="${msg('高级设置')}"
                   size="var(--icon-lg)"
+                  ?disabled="${this.disabled}"
                   @click="${this._toggleSettings}"
                 ></ui-icon-button>
 

@@ -126,4 +126,44 @@ describe('MediaController', () => {
     expect(handler).toHaveBeenCalled();
     expect(handler.mock.calls.at(-1)?.[0]).toBeInstanceOf(CustomEvent);
   });
+
+  it('blocks seek and segment navigation while navigationLocked', async () => {
+    const segments: SubtitleSegment[] = [
+      { id: 's1', startTime: 0, endTime: 5, text: 'one' },
+      { id: 's2', startTime: 5, endTime: 10, text: 'two' },
+    ];
+    await controller.loadTracks([makeTrack('a', 'Track A', segments)]);
+    controller.seekToSegment(0);
+    expect(controller.currentTime).toBe(0);
+    expect(controller.currentSegmentIndex).toBe(0);
+
+    controller.setNavigationLocked(true);
+    expect(controller.getSnapshot().navigationLocked).toBe(true);
+
+    controller.seek(8);
+    controller.seekToSegment(1);
+    controller.nextSegment();
+    expect(controller.currentTime).toBe(0);
+    expect(controller.currentSegmentIndex).toBe(0);
+
+    controller.seekToSegment(1, false, { force: true });
+    expect(controller.currentTime).toBe(5);
+    expect(controller.currentSegmentIndex).toBe(1);
+
+    controller.setNavigationLocked(false);
+    controller.seekToSegment(0);
+    expect(controller.currentTime).toBe(0);
+    expect(controller.currentSegmentIndex).toBe(0);
+  });
+
+  it('blocks track navigation while navigationLocked unless forced', async () => {
+    await controller.loadTracks([makeTrack('a', 'A'), makeTrack('b', 'B')]);
+    controller.setNavigationLocked(true);
+
+    await controller.nextTrack(true);
+    expect(controller.getSnapshot().currentItem?.id).toBe('a');
+
+    await controller.nextTrack(true, { force: true });
+    expect(controller.getSnapshot().currentItem?.id).toBe('b');
+  });
 });

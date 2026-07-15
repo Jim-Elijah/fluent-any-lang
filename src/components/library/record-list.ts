@@ -147,15 +147,19 @@ export class RecordList extends LitElement {
       align-items: center;
       padding: 2px var(--space-sm);
       border-radius: 999px;
-      background: rgba(22, 119, 255, 0.08);
-      color: var(--color-primary, #1677ff);
       font-size: 0.75rem;
       font-weight: 500;
+      line-height: 1.2;
     }
 
-    .badge.muted {
-      background: rgba(0, 0, 0, 0.04);
-      color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
+    .badge.shadowing {
+      background: rgba(19, 194, 194, 0.12);
+      color: #08979c;
+    }
+
+    .badge.echo {
+      background: rgba(250, 140, 22, 0.12);
+      color: #d46b08;
     }
 
     .actions {
@@ -403,13 +407,23 @@ export class RecordList extends LitElement {
     `;
   }
 
+  private _modeLabel(mode: PracticeMode): string {
+    return mode === 'echo' ? msg('回声') : msg('跟读');
+  }
+
   private _renderItem = (item: unknown): unknown => {
     const recording = item as PracticeRecord;
+    const showModeBadge = !this.modeFilter;
     return html`
       <div class="item">
         <div class="meta">
           <p class="title">${recording.mediaTitle}</p>
           <p class="details">
+            ${showModeBadge
+              ? html`<span class="badge ${recording.mode}"
+                  >${this._modeLabel(recording.mode)}</span
+                >`
+              : null}
             <span>${formatTime(recording.recordingDuration)}</span>
             <span class="date">${formatDate(recording.createdAt, true)}</span>
           </p>

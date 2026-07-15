@@ -55,7 +55,12 @@ type PracticeViewInternals = PracticeView & {
       segments: SubtitleSegment[];
       currentItem: { id: string } | null;
       isPlaying: boolean;
+      navigationLocked: boolean;
+      currentSegmentIndex: number;
+      currentTime: number;
     };
+    seekToSegment: (index: number, autoPlay?: boolean, options?: { force?: boolean }) => void;
+    setNavigationLocked: (locked: boolean) => void;
     dispatchEvent: (event: Event) => boolean;
   };
   _echoListening: boolean;
@@ -316,6 +321,125 @@ describe('practice-view', () => {
     expect(mediaPlayer.disabled).toBe(true);
   });
 
+  it('locks navigation while echo listening and unlocks on cancel', async () => {
+    const el = await renderView();
+    await switchToEchoMode(el);
+    vi.spyOn(el._controller, 'play').mockResolvedValue(undefined);
+
+    await dispatchEchoRecordRequest(el);
+
+    expect(el._controller.getSnapshot().navigationLocked).toBe(true);
+    const subtitlePanel = el.shadowRoot!.querySelector('subtitle-panel') as {
+      seekDisabled: boolean;
+    };
+    expect(subtitlePanel.seekDisabled).toBe(true);
+
+    subtitlePanel.dispatchEvent(
+      new CustomEvent('echo-record-stop', {
+        bubbles: true,
+        composed: true,
+      }),
+    );
+    await el.updateComplete;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(el._controller.getSnapshot().navigationLocked).toBe(false);
+    expect(subtitlePanel.seekDisabled).toBe(false);
+  });
+
+  it('keeps echo target segment after blocked seek so SEGMENT_END still starts recording', async () => {
+    const el = await renderView();
+    await switchToEchoMode(el);
+
+    vi.spyOn(el._controller, 'play').mockResolvedValue(undefined);
+    vi.spyOn(el._controller, 'pause').mockResolvedValue(undefined);
+    const echoRecorder = el.shadowRoot!.querySelector('audio-recorder#echo-recorder') as {
+      startRecording: () => Promise<void>;
+      recording: boolean;
+    };
+    Object.defineProperty(echoRecorder, 'recording', {
+      configurable: true,
+      get: () => true,
+    });
+    const startRecordingSpy = vi.spyOn(echoRecorder, 'startRecording').mockResolvedValue(undefined);
+
+    await dispatchEchoRecordRequest(el);
+    expect(el._controller.getSnapshot().navigationLocked).toBe(true);
+
+    el._controller.seekToSegment(1);
+    expect(el._controller.getSnapshot().currentSegmentIndex).toBe(0);
+
+    el._controller.dispatchEvent(
+      new CustomEvent(ExtendedMediaEventType.SEGMENT_END, {
+        detail: { segmentIndex: 0, segment: sampleSegments[0] },
+      }),
+    );
+    await el.updateComplete;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(startRecordingSpy).toHaveBeenCalled();
+    expect(el._echoListening).toBe(false);
+  });
+
+  it('disables media player and locks navigation during shadowing countdown', async () => {
+    const el = await renderView();
+    await switchToShadowingMode(el);
+
+    const recorder = el.shadowRoot!.querySelector(
+      'audio-recorder#shadowing-recorder',
+    ) as HTMLElement;
+    recorder.dispatchEvent(
+      new CustomEvent('recording-countdown-start', {
+        bubbles: true,
+        composed: true,
+      }),
+    );
+    await el.updateComplete;
+
+    expect(el._sessionPhase).toBe('countdown');
+    expect(el._controller.getSnapshot().navigationLocked).toBe(true);
+    const mediaPlayer = el.shadowRoot!.querySelector('media-player') as { disabled: boolean };
+    expect(mediaPlayer.disabled).toBe(true);
+    const subtitlePanel = el.shadowRoot!.querySelector('subtitle-panel') as {
+      seekDisabled: boolean;
+    };
+    expect(subtitlePanel.seekDisabled).toBe(true);
+  });
+
+  it('re-enables media player when shadowing countdown is cancelled', async () => {
+    const el = await renderView();
+    await switchToShadowingMode(el);
+
+    const recorder = el.shadowRoot!.querySelector(
+      'audio-recorder#shadowing-recorder',
+    ) as HTMLElement;
+    recorder.dispatchEvent(
+      new CustomEvent('recording-countdown-start', {
+        bubbles: true,
+        composed: true,
+      }),
+    );
+    await el.updateComplete;
+
+    recorder.dispatchEvent(
+      new CustomEvent('recording-countdown-end', {
+        detail: { skipped: false, cancelled: true },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+    await el.updateComplete;
+
+    expect(el._sessionPhase).toBe('idle');
+    expect(el._controller.getSnapshot().navigationLocked).toBe(false);
+    const mediaPlayer = el.shadowRoot!.querySelector('media-player') as { disabled: boolean };
+    expect(mediaPlayer.disabled).toBe(false);
+    const subtitlePanel = el.shadowRoot!.querySelector('subtitle-panel') as {
+      seekDisabled: boolean;
+    };
+    expect(subtitlePanel.seekDisabled).toBe(false);
+  });
+
   it('shows echo session dock while listening', async () => {
     const el = await renderView();
     await switchToEchoMode(el);
@@ -348,6 +472,46 @@ describe('practice-view', () => {
     speakingButton?.click();
     await el.updateComplete;
   }
+
+  it('seeks to first segment when shadowing starts at currentTime 0', async () => {
+    const el = await renderView();
+    await switchToShadowingMode(el);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const snapshot = el._controller.getSnapshot();
+    vi.spyOn(el._controller, 'getSnapshot').mockReturnValue({
+      ...snapshot,
+      currentTime: 0,
+      currentSegmentIndex: -1,
+    });
+    const seekSpy = vi.spyOn(el._controller, 'seekToSegment');
+
+    (
+      el as PracticeViewInternals & { _resetSettingsForShadowing: () => void }
+    )._resetSettingsForShadowing();
+
+    expect(seekSpy).toHaveBeenCalledWith(0, false, { force: true });
+  });
+
+  it('seeks to current segment when shadowing starts mid-track', async () => {
+    const el = await renderView();
+    await switchToShadowingMode(el);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const snapshot = el._controller.getSnapshot();
+    vi.spyOn(el._controller, 'getSnapshot').mockReturnValue({
+      ...snapshot,
+      currentTime: 7,
+      currentSegmentIndex: 1,
+    });
+    const seekSpy = vi.spyOn(el._controller, 'seekToSegment');
+
+    (
+      el as PracticeViewInternals & { _resetSettingsForShadowing: () => void }
+    )._resetSettingsForShadowing();
+
+    expect(seekSpy).toHaveBeenCalledWith(1, false, { force: true });
+  });
 
   it('shows compact recordings entry instead of inline record-list in shadowing', async () => {
     mockCountShadowingRecordings.mockResolvedValue(2);

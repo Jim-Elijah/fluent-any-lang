@@ -446,10 +446,6 @@
   <source>跟读 (Shadowing)</source>
   <target>シャドーイング</target>
 </trans-unit>
-<trans-unit id="s2d09a6bc1467086d">
-  <source>单句 (Echo)</source>
-  <target>エコー</target>
-</trans-unit>
 <trans-unit id="sada555f61848b379">
   <source>当前音频的跟读录音已达上限（<x id="0" equiv-text="${this._shadowingLimit}"/>条），删除旧录音后可继续。</source>
   <target>この音声のシャドーイング録音が上限（<x id="0" equiv-text="${this._shadowingLimit}"/>件）に達しました。古い録音を削除すると続行できます。</target>
@@ -577,10 +573,6 @@
 <trans-unit id="sdbead5cea32ea044">
   <source>跟读（Shadowing）：点击下方【麦克风】开始【同步】跟读；录音前有倒计时提醒（默认开启），录音停止后自动保存。</source>
   <target>シャドーイング：下の【マイク】をタップして【同期】でシャドーイングを開始。録音前にカウントダウン通知があります（デフォルトでオン）。録音停止後に自動保存されます。</target>
-</trans-unit>
-<trans-unit id="s9c647547c219808f">
-  <source>单句（Echo）：点击字幕行右侧【麦克风】：先播原音 → 倒计时提醒（默认开启）→ 录音；跟读完后手动停止录音。</source>
-  <target>エコー：字幕行右側の【マイク】をタップ → まず原音再生 → カウントダウン通知（デフォルトでオン）→ 録音。読み終わったら手動で録音を停止してください。</target>
 </trans-unit>
 <trans-unit id="sd762e84ea1c74883">
   <source>今日练习</source>
@@ -870,9 +862,6 @@
 </trans-unit>
 <trans-unit id="s8b87b5d37cf918fd">
   <source>跟读说明</source>
-</trans-unit>
-<trans-unit id="sddaafd65e8604f7d">
-  <source>单句说明</source>
 </trans-unit>
 <trans-unit id="s717f240d6bfb47bd">
   <source>知道了</source>
@@ -1226,6 +1215,30 @@
 <trans-unit id="h7bb884722405f76a">
   <source>已暂停同步片段<x id="0" equiv-text="${segmentLabel}"/></source>
   <target>同期セグメントを一時停止<x id="0" equiv-text="${segmentLabel}"/></target>
+</trans-unit>
+<trans-unit id="s04bf46aa73c91b1a">
+  <source>录音中无法预览，请先结束录音。</source>
+</trans-unit>
+<trans-unit id="s7d282808180601fb">
+  <source>暂停</source>
+</trans-unit>
+<trans-unit id="s843808081e992b92">
+  <source>播放</source>
+</trans-unit>
+<trans-unit id="s510a1d83b88b20ea">
+  <source>回声（Echo）：按字幕逐句练习。点击字幕行右侧【麦克风】：先播原音 → 倒计时提醒（默认开启）→ 录音；跟读完后手动停止录音。</source>
+  <target>エコー：字幕を一文ずつ練習します。字幕行右側の【マイク】をタップ → 原音再生 → カウントダウン（既定でオン）→ 録音；話し終わったら手動で録音を停止。</target>
+</trans-unit>
+<trans-unit id="sbedede3b0d9e3d06">
+  <source>练习音频已暂停</source>
+</trans-unit>
+<trans-unit id="s22fc5b1b5785e829">
+  <source>回声 (Echo)</source>
+  <target>エコー</target>
+</trans-unit>
+<trans-unit id="se8497d6376eb14c1">
+  <source>回声说明</source>
+  <target>エコーの説明</target>
 </trans-unit>
 </body>
 </file>
