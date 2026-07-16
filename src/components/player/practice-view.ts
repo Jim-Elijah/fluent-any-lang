@@ -14,6 +14,7 @@ import {
   saveRecording,
 } from '../../db/service.js';
 import { estimateStorage } from '../../lib/export-content.js';
+import { reportError } from '../../lib/error-reporter.js';
 import { getMediaDuration } from '../../lib/file-validation.js';
 import type {
   MediaItem,
@@ -997,7 +998,7 @@ export class PracticeView extends LitElement {
       this._syncTimeTrackerMedia();
       await this._refreshRecordings();
     } catch (error) {
-      console.error('[practice-view] failed to load practice media', error);
+      void reportError(error, { where: 'practice-view._loadPractice' });
       Message.error(msg('加载媒体失败，请重试。'));
     } finally {
       loadingInstance.close();

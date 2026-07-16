@@ -5,6 +5,7 @@ import { resetDatabase } from '../test/db-helpers.js';
 import {
   DB_NAME,
   DB_VERSION,
+  STORE_ERROR_LOG,
   STORE_MEDIA,
   STORE_MEDIA_BLOB,
   STORE_PRACTICE_SESSION,
@@ -56,6 +57,7 @@ describe('getDB', () => {
         STORE_RECORDING,
         STORE_RECORDING_BLOB,
         STORE_PRACTICE_SESSION,
+        STORE_ERROR_LOG,
       ]),
     );
 
@@ -188,5 +190,30 @@ describe('subtitle mediaId migration', () => {
 
     const { loadPlaylistForPlayback } = await import('../lib/media-loader.js');
     expect(await loadPlaylistForPlayback()).toHaveLength(1);
+  });
+});
+
+describe('errorLog store migration', () => {
+  beforeEach(async () => {
+    await resetDatabase();
+  });
+
+  it('adds errorLog store when upgrading from v5 without it', async () => {
+    const v5 = await openDB(DB_NAME, 5, {
+      upgrade(db) {
+        createLegacyStores(db, { withByMediaId: true });
+      },
+    });
+    expect([...v5.objectStoreNames]).not.toContain(STORE_ERROR_LOG);
+    v5.close();
+
+    const { getDB } = await import('./index.js');
+    const db = await getDB();
+
+    expect(db.version).toBe(DB_VERSION);
+    expect([...db.objectStoreNames]).toContain(STORE_ERROR_LOG);
+    expect([...db.transaction(STORE_ERROR_LOG).objectStore(STORE_ERROR_LOG).indexNames]).toContain(
+      'byCreatedAt',
+    );
   });
 });

@@ -223,3 +223,28 @@ export type ImportResult = {
 };
 
 export type SortDirection = 'asc' | 'desc';
+
+export type ErrorLogSource =
+  | 'window.onerror'
+  | 'unhandledrejection'
+  | 'reportError'
+  | 'console.error';
+
+/** 持久化到 IndexedDB 的异常日志条目（仅 metadata） */
+export type ErrorLogEntry = {
+  id: string;
+  createdAt: number;
+  message: string;
+  name?: string;
+  stack?: string;
+  cause?: string;
+  source: ErrorLogSource;
+  appVersion: string;
+  commitHash: string;
+  userAgent: string;
+  locale: string;
+  route: string;
+  href: string;
+  offline: boolean;
+  extra?: Record<string, unknown>;
+};

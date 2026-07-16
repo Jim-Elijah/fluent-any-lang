@@ -13,6 +13,7 @@ import {
   type StatsRangePreset,
 } from '../../analytics/practice-stats-aggregate.js';
 import { getAllPracticeSessions } from '../../db/practice-session.js';
+import { reportError } from '../../lib/error-reporter.js';
 import type { PracticeAnalyticsMode } from '../../types/models.js';
 import '../../components/ui/input.js';
 import type { InputChangeDetail } from '../../components/ui/input.js';
@@ -370,7 +371,7 @@ export class PracticeStatsPage extends NavigatorElement {
         customTo: this._customTo || undefined,
       });
     } catch (err) {
-      console.warn('[practice-stats-page] failed to load', err);
+      void reportError(err, { where: 'practice-stats-page.load' });
       this._summary = aggregatePracticeStats([]);
     } finally {
       this._loading = false;

@@ -3,6 +3,7 @@ import { openDB, type IDBPTransaction } from 'idb';
 import {
   DB_NAME,
   DB_VERSION,
+  STORE_ERROR_LOG,
   STORE_MEDIA,
   STORE_MEDIA_BLOB,
   STORE_PRACTICE_SESSION,
@@ -112,6 +113,12 @@ export function getDB(): Promise<AppDatabase> {
           sessionStore.createIndex('byMediaId', 'mediaId');
           sessionStore.createIndex('byMode', 'mode');
           sessionStore.createIndex('byStartedAt', 'startedAt');
+        }
+
+        // error / exception diagnostics
+        if (!db.objectStoreNames.contains(STORE_ERROR_LOG)) {
+          const errorLogStore = db.createObjectStore(STORE_ERROR_LOG, { keyPath: 'id' });
+          errorLogStore.createIndex('byCreatedAt', 'createdAt');
         }
 
         // v3 briefly shipped without byMediaId for some upgrades; re-run through v4.

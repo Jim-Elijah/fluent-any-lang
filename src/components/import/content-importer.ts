@@ -3,6 +3,7 @@ import { css, html, LitElement } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 
 import { buildOverwriteOptions, importContentFiles } from '../../lib/import-content.js';
+import { reportError } from '../../lib/error-reporter.js';
 import type {
   ImportConflict,
   ImportError,
@@ -319,7 +320,8 @@ export class ContentImporter extends LitElement {
       }
 
       this._reportResult(result);
-    } catch {
+    } catch (error) {
+      void reportError(error, { where: 'content-importer.import' });
       Message.error({ message: msg('导入过程中发生未知错误') });
     } finally {
       this._importing = false;
@@ -401,7 +403,8 @@ export class ContentImporter extends LitElement {
         errors: [...partial.errors, ...second.errors],
         conflicts: second.conflicts,
       });
-    } catch {
+    } catch (error) {
+      void reportError(error, { where: 'content-importer.resolveConflicts' });
       Message.error({ message: msg('导入过程中发生未知错误') });
     } finally {
       this._importing = false;

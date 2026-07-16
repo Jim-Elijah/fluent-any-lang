@@ -9,6 +9,7 @@ import {
   type HomeDashboardData,
 } from '../../analytics/practice-stats-aggregate.js';
 import { getAllPracticeSessions } from '../../db/practice-session.js';
+import { reportError } from '../../lib/error-reporter.js';
 import '../ui/button.js';
 
 export type ContinuePracticeDetail = {
@@ -260,7 +261,7 @@ export class PracticeStatsDashboard extends NavigatorElement {
       const sessions = await getAllPracticeSessions();
       this._internal = buildHomeDashboard(sessions);
     } catch (err) {
-      console.warn('[practice-stats-dashboard] failed to load', err);
+      void reportError(err, { where: 'practice-stats-dashboard.load' });
       this._internal = buildHomeDashboard([]);
     } finally {
       this._loading = false;

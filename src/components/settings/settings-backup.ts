@@ -11,6 +11,7 @@ import {
   type BackupImportResult,
   type BackupPreview,
 } from '../../lib/backup/index.js';
+import { reportError } from '../../lib/error-reporter.js';
 import { settingsCardStyles } from './settings-styles.js';
 import '../ui/alert.js';
 import '../ui/button.js';
@@ -136,6 +137,7 @@ export class SettingsBackup extends LitElement {
         ),
       );
     } catch (error) {
+      void reportError(error, { where: 'settings-backup.export' });
       Message.error(error instanceof Error ? error.message : msg('导出失败'));
     } finally {
       this._busy = false;
@@ -160,6 +162,7 @@ export class SettingsBackup extends LitElement {
     } catch (error) {
       this._preview = null;
       this._pendingFile = null;
+      void reportError(error, { where: 'settings-backup.preview' });
       Message.error(error instanceof Error ? error.message : msg('无法读取备份'));
     } finally {
       this._busy = false;
@@ -193,6 +196,7 @@ export class SettingsBackup extends LitElement {
         Message.success(msg('导入完成'));
       }
     } catch (error) {
+      void reportError(error, { where: 'settings-backup.import' });
       Message.error(error instanceof Error ? error.message : msg('导入失败'));
     } finally {
       this._busy = false;

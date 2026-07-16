@@ -1,5 +1,6 @@
 import type { MediaController, MediaControllerSnapshot } from '../controllers/media-controller.js';
 import { addPracticeSession, toLocalDateKey } from '../db/practice-session.js';
+import { reportError } from '../lib/error-reporter.js';
 import type { MediaType, PracticeAnalyticsMode, PracticeSession } from '../types/models.js';
 
 /** 短于该阈值的会话不落库，避免点击抖动 */
@@ -259,7 +260,7 @@ export class PracticeTimeTracker {
     };
     this._resetSession();
     void this.saveSession(session).catch((err) => {
-      console.warn('[PracticeTimeTracker] failed to save session', err);
+      void reportError(err, { where: 'PracticeTimeTracker.saveSession' });
     });
   }
 

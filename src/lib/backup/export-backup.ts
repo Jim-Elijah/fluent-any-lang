@@ -2,6 +2,7 @@ import { zipSync, strToU8 } from 'fflate';
 import { msg } from '@lit/localize';
 
 import { getAppSettings } from '../app-settings.js';
+import { getAppBuildInfo } from '../app-build-info.js';
 import { downloadBlob } from '../export-content.js';
 import {
   getAllPracticeSessions,
@@ -91,7 +92,7 @@ export async function buildBackupZip(
   const manifest: BackupManifest = {
     version: BACKUP_FORMAT_VERSION,
     createdAt,
-    appVersion: '0.1.0',
+    appVersion: getAppBuildInfo().appVersion,
     flags: {
       includeMedia: opts.includeMedia,
       includeRecordings: opts.includeRecordings,

@@ -4,6 +4,7 @@ import { customElement, property, state } from 'lit/decorators.js';
 
 import { deleteMedia, getMediaList, deleteSubtitle } from '../../db/service.js';
 import { importSubtitleForMedia } from '../../lib/import-content.js';
+import { reportError } from '../../lib/error-reporter.js';
 import { formatTime, formatDate } from '../../lib/playback-utils.js';
 import { estimateListNaturalHeight, type ListMetricsDetail } from '../../lib/split-list-heights.js';
 import type { MediaItem, SortDirection, SubtitleTrack } from '../../types/models.js';
@@ -246,7 +247,8 @@ export class MediaList extends LitElement {
 
     try {
       this._items = await getMediaList();
-    } catch {
+    } catch (error) {
+      void reportError(error, { where: 'media-list.refresh' });
       this._error = msg('无法加载媒体库');
       this._items = [];
     } finally {
@@ -439,7 +441,8 @@ export class MediaList extends LitElement {
           }),
         );
       }
-    } catch {
+    } catch (error) {
+      void reportError(error, { where: 'media-list.importSubtitle', mediaId });
       Message.error({ message: msg('导入字幕失败，请重试') });
     } finally {
       this._importingSubtitleId = '';
@@ -469,7 +472,8 @@ export class MediaList extends LitElement {
           composed: true,
         }),
       );
-    } catch {
+    } catch (error) {
+      void reportError(error, { where: 'media-list.delete', mediaId: item.id });
       this._error = msg('删除失败，请重试');
     } finally {
       this._deletingId = '';
