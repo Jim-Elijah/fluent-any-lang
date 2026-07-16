@@ -86,6 +86,10 @@ function parseAppSettings(raw: unknown): AppSettings {
     ),
     skipShadowingTips: parseBoolean(raw.skipShadowingTips, DEFAULT_SETTINGS.skipShadowingTips),
     skipEchoTips: parseBoolean(raw.skipEchoTips, DEFAULT_SETTINGS.skipEchoTips),
+    lastPlayedPlaylistId:
+      typeof raw.lastPlayedPlaylistId === 'string'
+        ? raw.lastPlayedPlaylistId
+        : DEFAULT_SETTINGS.lastPlayedPlaylistId,
   };
 }
 

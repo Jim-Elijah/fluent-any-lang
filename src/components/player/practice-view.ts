@@ -6,7 +6,7 @@ import { customElement, property, query, state } from 'lit/decorators.js';
 import '../library/record-list.js';
 import { PracticeTimeTracker } from '../../analytics/practice-time-tracker.js';
 import { MediaController } from '../../controllers/media-controller.js';
-import { loadPlaylistForPlayback } from '../../lib/media-loader.js';
+import { loadMediaForPlayback, loadPlaylistForPlayback } from '../../lib/media-loader.js';
 import {
   countEchoRecordings,
   countShadowingRecordings,
@@ -24,7 +24,7 @@ import type {
   RouteContext,
   SubtitleSegment,
 } from '../../types/models.js';
-import { getAppSettings } from '../../lib/app-settings.js';
+import { getAppSettings, setAppSettings } from '../../lib/app-settings.js';
 import {
   AUDIO_FOCUS_REQUEST_EVENT,
   RECORDING_PREVIEW_CLOSE_EVENT,
@@ -79,6 +79,10 @@ type StorageEstimate = {
   remaining: number;
   remainingPercent: number;
 };
+
+type PracticeLaunchContext =
+  | { kind: 'single'; mediaId: string }
+  | { kind: 'playlist'; playlistId: string; mediaId?: string };
 
 @customElement('practice-view')
 @localized()
@@ -436,16 +440,15 @@ export class PracticeView extends LitElement {
     if (!changed.has('routeContext') && this._didInitialLoad) {
       return;
     }
-    const nextId = this.routeContext.params?.id ?? '';
+    const nextSignature = this._getPracticeRouteSignature();
     if (this._didInitialLoad) {
       const prevContext = changed.get('routeContext') as RouteContext | undefined;
-      const prevId = prevContext?.params?.id ?? '';
-      if (prevId === nextId) {
+      const prevSignature = this._getPracticeRouteSignature(prevContext);
+      if (prevSignature === nextSignature) {
         return;
       }
     }
     this._didInitialLoad = true;
-    this._mediaId = nextId;
     void this._loadPractice();
   }
 
@@ -977,21 +980,76 @@ export class PracticeView extends LitElement {
     this._mediaId = playlist[currentIndex]?.id ?? '';
   }
 
+  private _getPracticeQueryValue(
+    key: 'mediaId' | 'playlistId',
+    context: RouteContext = this.routeContext,
+  ): string {
+    const value = context.query?.[key];
+    return typeof value === 'string' ? value.trim() : '';
+  }
+
+  private _getPracticeRouteSignature(
+    context: RouteContext | undefined = this.routeContext,
+  ): string {
+    if (!context) {
+      return '';
+    }
+    const playlistId = this._getPracticeQueryValue('playlistId', context);
+    const mediaId = this._getPracticeQueryValue('mediaId', context);
+    return `${playlistId}\u0000${mediaId}`;
+  }
+
+  private _resolveLaunchContextFromRoute(): PracticeLaunchContext | null {
+    const playlistId = this._getPracticeQueryValue('playlistId');
+    const mediaId = this._getPracticeQueryValue('mediaId');
+
+    if (playlistId) {
+      return mediaId ? { kind: 'playlist', playlistId, mediaId } : { kind: 'playlist', playlistId };
+    }
+    if (mediaId) {
+      return { kind: 'single', mediaId };
+    }
+    return null;
+  }
+
   private async _loadPractice(): Promise<void> {
     const loadingInstance = Loading.service({ text: msg('加载媒体中…') });
     try {
-      const playlist = await loadPlaylistForPlayback();
-      if (playlist.length === 0) {
-        Message.error(msg('内容库为空，请先导入媒体。'));
+      const launchContext = this._resolveLaunchContextFromRoute();
+      if (!launchContext) {
+        Message.error(msg('请从媒体或播放列表进入练习。'));
         return;
       }
+
+      let playlist: Awaited<ReturnType<typeof loadPlaylistForPlayback>>;
+      if (launchContext.kind === 'single') {
+        const single = await loadMediaForPlayback(launchContext.mediaId);
+        playlist = single ? [single] : [];
+      } else {
+        playlist = await loadPlaylistForPlayback(launchContext.playlistId);
+      }
+
+      if (playlist.length === 0) {
+        if (launchContext.kind === 'single') {
+          Message.error(msg('该媒体不存在或无法加载。'));
+        } else {
+          Message.error(msg('当前播放列表为空，请先添加媒体。'));
+        }
+        return;
+      }
+
       let startIndex = 0;
-      if (this._mediaId) {
-        startIndex = playlist.findIndex((entry) => entry.item.id === this._mediaId);
+      if (launchContext.kind === 'playlist' && launchContext.mediaId) {
+        startIndex = playlist.findIndex((entry) => entry.item.id === launchContext.mediaId);
         if (startIndex === -1) {
-          Message.info(msg(str`媒体 "${this._mediaId}" 不存在，回退到第一首媒体。`));
+          Message.info(
+            msg(str`媒体 "${launchContext.mediaId}" 不在当前播放列表，已回退到第一首。`),
+          );
           startIndex = 0;
         }
+      }
+      if (launchContext.kind === 'playlist') {
+        setAppSettings({ lastPlayedPlaylistId: launchContext.playlistId });
       }
       await this._controller.loadTracks(playlist, startIndex);
       this._syncMediaIdFromController();

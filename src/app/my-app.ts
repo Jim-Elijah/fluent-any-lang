@@ -6,6 +6,7 @@ import { router, navigator, Routes } from 'lit-element-router';
 
 import '../pages/home/index.js';
 import '../pages/library/index.js';
+import '../pages/playlists/index.js';
 import '../pages/practice/index.js';
 import '../pages/practice-stats/index.js';
 import '../pages/settings/index.js';
@@ -15,7 +16,7 @@ import '../components/ui/menu.js';
 import { MenuItem, MenuOpenChangeDetail, MenuSelectDetail } from '../components/ui/menu.js';
 import { getLocale, isLocale, Locale, LOCALE_STORAGE_KEY } from '../i18n/localization.js';
 
-type AppRoute = 'home' | 'practice' | 'library' | 'stats' | 'settings' | 'not-found';
+type AppRoute = 'home' | 'practice' | 'library' | 'playlists' | 'stats' | 'settings' | 'not-found';
 type RouteRenderContext = {
   routeContext: RouteContext;
 };
@@ -25,6 +26,7 @@ const ROUTE_PAGES: Record<AppRoute, (ctx: RouteRenderContext) => TemplateResult>
   practice: ({ routeContext }) =>
     html`<practice-page .routeContext=${routeContext}></practice-page>`,
   library: () => html`<library-page></library-page>`,
+  playlists: () => html`<playlists-page></playlists-page>`,
   stats: () => html`<practice-stats-page></practice-stats-page>`,
   settings: () => html`<settings-page></settings-page>`,
   'not-found': () => html`<not-found-page></not-found-page>`,
@@ -84,12 +86,14 @@ export class MyApp extends RouterNavigatorApp {
 
     /* Home / library fill the main pane; lists scroll internally. */
     .main-content:has(home-page:not([compact])),
-    .main-content:has(library-page:not([compact])) {
+    .main-content:has(library-page:not([compact])),
+    .main-content:has(playlists-page:not([compact])) {
       overflow: hidden;
     }
 
     .main-content:has(home-page:not([compact])) > main,
-    .main-content:has(library-page:not([compact])) > main {
+    .main-content:has(library-page:not([compact])) > main,
+    .main-content:has(playlists-page:not([compact])) > main {
       flex: 1;
       min-height: 0;
       display: flex;
@@ -97,20 +101,23 @@ export class MyApp extends RouterNavigatorApp {
     }
 
     .main-content:has(home-page:not([compact])) > main > home-page,
-    .main-content:has(library-page:not([compact])) > main > library-page {
+    .main-content:has(library-page:not([compact])) > main > library-page,
+    .main-content:has(playlists-page:not([compact])) > main > playlists-page {
       flex: 1;
       min-height: 0;
     }
 
     /* Compact: page scrolls in .main-content so lists stay reachable. */
     .main-content:has(home-page[compact]) > main,
-    .main-content:has(library-page[compact]) > main {
+    .main-content:has(library-page[compact]) > main,
+    .main-content:has(playlists-page[compact]) > main {
       flex: none;
       min-height: 0;
     }
 
     .main-content:has(home-page[compact]) > main > home-page,
-    .main-content:has(library-page[compact]) > main > library-page {
+    .main-content:has(library-page[compact]) > main > library-page,
+    .main-content:has(playlists-page[compact]) > main > playlists-page {
       flex: none;
       height: auto;
       min-height: 0;
@@ -199,8 +206,8 @@ export class MyApp extends RouterNavigatorApp {
   private _getMenuItems(): Array<MenuItem & { link: string }> {
     return [
       { key: 'home', label: msg('首页'), link: '/', icon: 'home' },
-      { key: 'practice', label: msg('练习'), link: '/practice', icon: 'practice' },
       { key: 'library', label: msg('库'), link: '/library', icon: 'media' },
+      { key: 'playlists', label: msg('播放列表'), link: '/playlists', icon: 'media' },
       { key: 'stats', label: msg('统计'), link: '/stats', icon: 'stats' },
       { key: 'settings', label: msg('设置'), link: '/settings', icon: 'setting' },
     ];
@@ -220,12 +227,12 @@ export class MyApp extends RouterNavigatorApp {
         pattern: 'library',
       },
       {
-        name: 'practice',
-        pattern: 'practice',
+        name: 'playlists',
+        pattern: 'playlists',
       },
       {
         name: 'practice',
-        pattern: 'practice/:id',
+        pattern: 'practice',
       },
       {
         name: 'stats',

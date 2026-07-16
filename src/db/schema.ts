@@ -4,6 +4,7 @@ import type {
   ErrorLogEntry,
   MediaBlob,
   MediaItem,
+  Playlist,
   PracticeRecord,
   PracticeSession,
   SubtitleTrack,
@@ -11,7 +12,7 @@ import type {
 } from '../types/models.js';
 
 export const DB_NAME = 'fluent-any-lang';
-export const DB_VERSION = 6;
+export const DB_VERSION = 9;
 
 export const STORE_MEDIA = 'media';
 export const STORE_MEDIA_BLOB = 'mediaBlob';
@@ -20,6 +21,7 @@ export const STORE_RECORDING = 'record';
 export const STORE_RECORDING_BLOB = 'recordBlob';
 export const STORE_PRACTICE_SESSION = 'practiceSession';
 export const STORE_ERROR_LOG = 'errorLog';
+export const STORE_PLAYLIST = 'playlist';
 
 /** Max retained error log entries (oldest dropped first). */
 export const ERROR_LOG_MAX_ENTRIES = 200;
@@ -62,6 +64,11 @@ export interface FluentAnyLangDB {
     key: string;
     value: ErrorLogEntry;
     indexes: { byCreatedAt: number };
+  };
+  [STORE_PLAYLIST]: {
+    key: string;
+    value: Playlist;
+    indexes: { bySortOrder: number };
   };
 }
 

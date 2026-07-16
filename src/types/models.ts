@@ -147,6 +147,28 @@ export interface RouteContext {
   data: object; // 路由数据
 }
 
+export type PlaylistKind = 'favorites' | 'user';
+
+/** Entry in a playlist — references media + soft-deletion state. */
+export type PlaylistEntry = {
+  mediaId: string;
+  /** True when user removes from list or source media is deleted. */
+  removed: boolean;
+  /** Snapshot of title when added (fallback for removed/missing media). */
+  titleSnapshot?: string;
+};
+
+export type Playlist = {
+  id: string; // e.g. SHA-256('favorites') or randomUUID()
+  name: string;
+  kind: PlaylistKind;
+  sortOrder: number;
+  /** Ordered entries, includes removed placeholders. */
+  entries: PlaylistEntry[];
+  createdAt: number;
+  updatedAt: number;
+};
+
 export type AppSettings = {
   maxRecordingsPerMedia: number;
   maxEchoPerSegment: number;
@@ -159,7 +181,12 @@ export type AppSettings = {
   skipShadowingTips: boolean;
   /** When true, echo mode tips modal is skipped. */
   skipEchoTips: boolean;
+  /** ID of the last playlist loaded into practice. */
+  lastPlayedPlaylistId: string;
 };
+
+export const FAVORITES_PLAYLIST_ID =
+  'f42d0f9e4b0ec07df97f58277cd5e5ae2cde973c0bf96ae598827e4da1c3bad1';
 
 export const DEFAULT_SETTINGS: AppSettings = {
   maxRecordingsPerMedia: 5,
@@ -170,6 +197,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   skipRecordingCountdown: false,
   skipShadowingTips: false,
   skipEchoTips: false,
+  lastPlayedPlaylistId: '',
 };
 
 /** Allowed ranges for persisted AppSettings numeric fields. */

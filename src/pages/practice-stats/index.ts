@@ -627,7 +627,8 @@ export class PracticeStatsPage extends NavigatorElement {
                         type="button"
                         class="rank-title"
                         title=${item.mediaFilename || item.mediaTitle}
-                        @click=${() => this.navigate(`/practice/${item.mediaId}`)}
+                        @click=${() =>
+                          this.navigate(`/practice?mediaId=${encodeURIComponent(item.mediaId)}`)}
                       >
                         <span class="rank-type">
                           <ui-tooltip

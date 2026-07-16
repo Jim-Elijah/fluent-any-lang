@@ -102,10 +102,6 @@
   <source>加载媒体中…</source>
   <target>Loading media…</target>
   </trans-unit>
-<trans-unit id="s94839bb46b0c2a83">
-  <source>内容库为空，请先导入媒体。</source>
-  <target>Library is empty. Import media first.</target>
-  </trans-unit>
 <trans-unit id="s360d85b856727c52">
   <source>加载媒体失败，请重试。</source>
   <target>Failed to load media. Please try again.</target>
@@ -413,10 +409,6 @@
 <trans-unit id="sd6b69523824af28a">
   <source>4. 除了倍速、音量、单句暂停模式，跟读模式会忽略其他的播放器设置。</source>
 <target>4. Apart from playback speed, volume, and the single-sentence pause mode, the shadowing mode ignores other player settings..</target>
-</trans-unit>
-<trans-unit id="s83f5e5b64fb28eac">
-  <source>媒体 "<x id="0" equiv-text="${this._mediaId}"/>" 不存在，回退到第一首媒体。</source>
-<target>Media "<x id="0" equiv-text="${this._mediaId}"/>" does not exist. Returning to the first media.</target>
 </trans-unit>
 <trans-unit id="scad6e385d22d3258">
   <source>无法定位到字幕句子</source>
@@ -1288,6 +1280,234 @@
 <trans-unit id="s51bb7e1bd9232ef1">
   <source>管理偏好、练习限额、数据备份与诊断。</source>
   <target>Manage preferences, practice limits, backups, and diagnostics.</target>
+</trans-unit>
+<trans-unit id="s5412ed77b37800af">
+  <source>暂无播放列表</source>
+</trans-unit>
+<trans-unit id="sfbf87026b9af77ff">
+  <source>加入「<x id="0" equiv-text="${playlist.name}"/>」</source>
+</trans-unit>
+<trans-unit id="sdb2457129c7d19ad">
+  <source>取消喜欢</source>
+</trans-unit>
+<trans-unit id="s24569e08a66b229b">
+  <source>喜欢</source>
+</trans-unit>
+<trans-unit id="s62f58c81930b825a">
+  <source>加入播放列表</source>
+</trans-unit>
+<trans-unit id="s099dbe1242cfa740">
+  <source>已添加到喜欢</source>
+</trans-unit>
+<trans-unit id="s6dcb675812ec5938">
+  <source>已从喜欢移除</source>
+</trans-unit>
+<trans-unit id="se5c6daee74a663c5">
+  <source>操作失败，请重试</source>
+</trans-unit>
+<trans-unit id="s7f9a4fa1f12a9c95">
+  <source>播放列表</source>
+</trans-unit>
+<trans-unit id="s3cb8355a022ade8b">
+  <source>已添加到「<x id="0" equiv-text="${playlistName}"/>」</source>
+</trans-unit>
+<trans-unit id="s0d7e14dbc14dfc53">
+  <source>添加失败，请重试</source>
+</trans-unit>
+<trans-unit id="s36f7b9e1f4bfcc7a">
+  <source>请从媒体或播放列表进入练习。</source>
+</trans-unit>
+<trans-unit id="s85e0ce5c532b2a76">
+  <source>该媒体不存在或无法加载。</source>
+</trans-unit>
+<trans-unit id="s8285287fae288dfb">
+  <source>媒体 "<x id="0" equiv-text="${launchContext.mediaId}"/>" 不在当前播放列表，已回退到第一首。</source>
+</trans-unit>
+<trans-unit id="s6f6113080c54acb3">
+  <source>抽屉</source>
+</trans-unit>
+<trans-unit id="s569db59d56e18328">
+  <source>导入播放列表失败：<x id="0" equiv-text="${playlist.id}"/></source>
+</trans-unit>
+<trans-unit id="s4eeb21a3194685a4">
+  <source>加载播放列表失败</source>
+  <target>Failed to load playlists</target>
+</trans-unit>
+<trans-unit id="s2408e643e158a371">
+  <source>加载播放列表详情失败</source>
+  <target>Failed to load playlist details</target>
+</trans-unit>
+<trans-unit id="se97ee4185a0a2c37">
+  <source>开始练习</source>
+  <target>Start practice</target>
+</trans-unit>
+<trans-unit id="s0448cd088b7e8d92">
+  <source>上移</source>
+  <target>Move up</target>
+</trans-unit>
+<trans-unit id="s0444c5088b7a9723">
+  <source>下移</source>
+  <target>Move down</target>
+</trans-unit>
+<trans-unit id="s0f4fa4e775487241">
+  <source>该播放列表名称已存在</source>
+  <target>A playlist with this name already exists</target>
+</trans-unit>
+<trans-unit id="s2ef20f8ce138e01f">
+  <source>请输入播放列表名称</source>
+  <target>Enter a playlist name</target>
+</trans-unit>
+<trans-unit id="s33a8a00f857a5400">
+  <source>播放列表已创建</source>
+  <target>Playlist created</target>
+</trans-unit>
+<trans-unit id="s6c7e577a2a719832">
+  <source>创建失败</source>
+  <target>Failed to create</target>
+</trans-unit>
+<trans-unit id="sa0af5c0f086696a9">
+  <source>播放列表已更新</source>
+  <target>Playlist updated</target>
+</trans-unit>
+<trans-unit id="se9c99744d1ffa7d7">
+  <source>更新失败</source>
+  <target>Failed to update</target>
+</trans-unit>
+<trans-unit id="s33f1400f85e185c1">
+  <source>播放列表已删除</source>
+  <target>Playlist deleted</target>
+</trans-unit>
+<trans-unit id="s03259582cecb7f6f">
+  <source>删除失败</source>
+  <target>Failed to delete</target>
+</trans-unit>
+<trans-unit id="s16925aac35a2e26b">
+  <source>调整顺序失败</source>
+  <target>Failed to reorder</target>
+</trans-unit>
+<trans-unit id="s8e06f84a23f626f6">
+  <source>已从播放列表移除</source>
+  <target>Removed from playlist</target>
+</trans-unit>
+<trans-unit id="s85ae0ab2359041fc">
+  <source>移除失败</source>
+  <target>Failed to remove</target>
+</trans-unit>
+<trans-unit id="sfcfe38c44de7877a">
+  <source>当前播放列表为空，请先添加媒体。</source>
+  <target>This playlist is empty. Add media first.</target>
+</trans-unit>
+<trans-unit id="s258e6cf313f1a594">
+  <source>在这里快速开始练习，并集中管理播放列表中的音视频与顺序。</source>
+  <target>Start practice quickly and manage media and order in your playlists.</target>
+</trans-unit>
+<trans-unit id="sfdf7562ccba7b032">
+  <source>播放列表库</source>
+  <target>Playlists</target>
+</trans-unit>
+<trans-unit id="s008847a76b365c64">
+  <source><x id="0" equiv-text="${this._playlists.length}"/> 个列表</source>
+  <target><x id="0" equiv-text="${this._playlists.length}"/> playlists</target>
+</trans-unit>
+<trans-unit id="s5a1d7c45bef69cff">
+  <source>新建播放列表</source>
+  <target>New playlist</target>
+</trans-unit>
+<trans-unit id="s8063ce081ad52cef">
+  <source>新建</source>
+  <target>Create</target>
+</trans-unit>
+<trans-unit id="s541a50b7ab9715ef">
+  <source>上次练习</source>
+  <target>Last practiced</target>
+</trans-unit>
+<trans-unit id="s98d23b18d94249de">
+  <source><x id="0" equiv-text="${activeCount}"/> 项</source>
+  <target><x id="0" equiv-text="${activeCount}"/> items</target>
+</trans-unit>
+<trans-unit id="s9079ba182ffd7953">
+  <source>更新于 <x id="0" equiv-text="${formatDate(playlist.updatedAt, true)}"/></source>
+  <target>Updated <x id="0" equiv-text="${formatDate(playlist.updatedAt, true)}"/></target>
+</trans-unit>
+<trans-unit id="sbd4760084e8411be">
+  <source>管理</source>
+  <target>Manage</target>
+</trans-unit>
+<trans-unit id="s83bf1940b50a3a5a">
+  <source>更多操作</source>
+  <target>More actions</target>
+</trans-unit>
+<trans-unit id="sa4156d38884a34a0">
+  <source><x id="0" equiv-text="${activeEntryCount}"/> 项可练习</source>
+  <target><x id="0" equiv-text="${activeEntryCount}"/> items ready to practice</target>
+</trans-unit>
+<trans-unit id="sd372d71da982e5b7">
+  <source>总时长 <x id="0" equiv-text="${formatTime(totalDuration)}"/></source>
+  <target>Total <x id="0" equiv-text="${formatTime(totalDuration)}"/></target>
+</trans-unit>
+<trans-unit id="sda54f5423a46ee60">
+  <source>创建于 <x id="0" equiv-text="${formatDate(selectedPlaylist.createdAt, true)}"/></source>
+  <target>Created <x id="0" equiv-text="${formatDate(selectedPlaylist.createdAt, true)}"/></target>
+</trans-unit>
+<trans-unit id="s3bf2e6dab30ef3f6">
+  <source>重命名</source>
+  <target>Rename</target>
+</trans-unit>
+<trans-unit id="s49153c1e208c31a8">
+  <source>播放列表名称</source>
+  <target>Playlist name</target>
+</trans-unit>
+<trans-unit id="s035e62088a8f0790">
+  <source>保存</source>
+  <target>Save</target>
+</trans-unit>
+<trans-unit id="s6b1bc01e3d3b4145">
+  <source>播放列表为空</source>
+  <target>Playlist is empty</target>
+</trans-unit>
+<trans-unit id="s2a53fbcb71d2063c">
+  <source>(未知媒体)</source>
+  <target>(Unknown media)</target>
+</trans-unit>
+<trans-unit id="sb30c33dba4ca330a">
+  <source>已移除</source>
+  <target>Removed</target>
+</trans-unit>
+<trans-unit id="sf4ff7db4d023bdcf">
+  <source>媒体已不存在</source>
+  <target>Media no longer exists</target>
+</trans-unit>
+<trans-unit id="sa4b1052f9ed9cdda">
+  <source>第 <x id="0" equiv-text="${index + 1}"/> 项</source>
+  <target>Item <x id="0" equiv-text="${index + 1}"/></target>
+</trans-unit>
+<trans-unit id="sc0c311e8067abc77">
+  <source>从这里练习</source>
+  <target>Practice from here</target>
+</trans-unit>
+<trans-unit id="s8e128f9e2b1c46ea">
+  <source>确定将该媒体从播放列表移除吗？</source>
+  <target>Remove this media from the playlist?</target>
+</trans-unit>
+<trans-unit id="sc61b620856ba22ba">
+  <source>移除</source>
+  <target>Remove</target>
+</trans-unit>
+<trans-unit id="s3776ceb27b24cf37">
+  <source>上次练到这份播放列表，可直接继续。</source>
+  <target>You practiced this playlist last. Continue from here.</target>
+</trans-unit>
+<trans-unit id="sa5db5b74f7ccf97d">
+  <source><x id="0" equiv-text="${activeEntryCount}"/> 项可开始练习</source>
+  <target><x id="0" equiv-text="${activeEntryCount}"/> items ready to start practice</target>
+</trans-unit>
+<trans-unit id="s92c9c4c310e436b2">
+  <source>确定删除该播放列表吗？</source>
+  <target>Delete this playlist?</target>
+</trans-unit>
+<trans-unit id="s0eb8055eb13c5ad6">
+  <source>删除后不可恢复。</source>
+  <target>This cannot be undone.</target>
 </trans-unit>
 </body>
 </file>

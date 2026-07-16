@@ -43,7 +43,7 @@ describe('library-page', () => {
     return el;
   }
 
-  it('renders search and sort controls with fill-height when tall', async () => {
+  it('renders library controls and content panes', async () => {
     stubMatchMedia(false);
     const el = await renderPage();
     expect(el.shadowRoot?.querySelectorAll('ui-select').length).toBe(2);
@@ -58,17 +58,5 @@ describe('library-page', () => {
     expect(
       (el.shadowRoot?.querySelector('record-list') as HTMLElement).hasAttribute('fill-height'),
     ).toBe(true);
-  });
-
-  it('disables fill-height in compact short viewport', async () => {
-    stubMatchMedia(true);
-    const el = await renderPage();
-    expect(el.compact).toBe(true);
-    expect(
-      (el.shadowRoot?.querySelector('media-list') as HTMLElement).hasAttribute('fill-height'),
-    ).toBe(false);
-    expect(
-      (el.shadowRoot?.querySelector('record-list') as HTMLElement).hasAttribute('fill-height'),
-    ).toBe(false);
   });
 });

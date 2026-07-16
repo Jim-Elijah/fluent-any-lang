@@ -6,6 +6,7 @@ import {
   STORE_ERROR_LOG,
   STORE_MEDIA,
   STORE_MEDIA_BLOB,
+  STORE_PLAYLIST,
   STORE_PRACTICE_SESSION,
   STORE_RECORDING_BLOB,
   STORE_RECORDING,
@@ -13,9 +14,22 @@ import {
   type AppDatabase,
   type FluentAnyLangDB,
 } from './schema.js';
-import type { MediaItem, SubtitleTrack } from '../types/models.js';
+import type { MediaItem, Playlist, SubtitleTrack } from '../types/models.js';
+import { FAVORITES_PLAYLIST_ID } from '../types/models.js';
 
 let dbPromise: Promise<AppDatabase> | null = null;
+let favoritesSeeded = false;
+
+/** Reset dbPromise and favoritesSeeded for tests. */
+export function resetDbPromise() {
+  dbPromise = null;
+  favoritesSeeded = false;
+}
+
+export function resetDbSingleton() {
+  dbPromise = null;
+  favoritesSeeded = false;
+}
 
 function preferSubtitle(a: SubtitleTrack, b: SubtitleTrack): SubtitleTrack {
   if (a.segments.length !== b.segments.length) {
@@ -121,15 +135,42 @@ export function getDB(): Promise<AppDatabase> {
           errorLogStore.createIndex('byCreatedAt', 'createdAt');
         }
 
+        // playlist
+        if (!db.objectStoreNames.contains(STORE_PLAYLIST)) {
+          const playlistStore = db.createObjectStore(STORE_PLAYLIST, { keyPath: 'id' });
+          playlistStore.createIndex('bySortOrder', 'sortOrder');
+        }
+
         // v3 briefly shipped without byMediaId for some upgrades; re-run through v4.
         if (oldVersion > 0 && oldVersion < 4 && transaction) {
           await migrateSubtitlesToMediaId(transaction);
         }
       },
-    }).catch((error) => {
-      dbPromise = null;
-      throw error;
-    });
+    })
+      .then(async (db) => {
+        // Seed empty favorites once after opening v7 DB.
+        if (!favoritesSeeded) {
+          const existing = await db.get(STORE_PLAYLIST, FAVORITES_PLAYLIST_ID);
+          if (!existing) {
+            const favorites: Playlist = {
+              id: FAVORITES_PLAYLIST_ID,
+              name: '喜欢',
+              kind: 'favorites',
+              sortOrder: 0,
+              entries: [],
+              createdAt: Date.now(),
+              updatedAt: Date.now(),
+            };
+            await db.put(STORE_PLAYLIST, favorites);
+          }
+          favoritesSeeded = true;
+        }
+        return db;
+      })
+      .catch((error) => {
+        dbPromise = null;
+        throw error;
+      });
   }
 
   return dbPromise;

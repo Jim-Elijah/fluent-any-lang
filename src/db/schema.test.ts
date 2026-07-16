@@ -6,6 +6,7 @@ import {
   STORE_ERROR_LOG,
   STORE_MEDIA,
   STORE_MEDIA_BLOB,
+  STORE_PLAYLIST,
   STORE_PRACTICE_SESSION,
   STORE_RECORDING,
   STORE_RECORDING_BLOB,
@@ -15,7 +16,7 @@ import {
 describe('db schema constants', () => {
   it('defines stable database identity', () => {
     expect(DB_NAME).toBe('fluent-any-lang');
-    expect(DB_VERSION).toBe(6);
+    expect(DB_VERSION).toBe(9);
   });
 
   it('defines all object store names', () => {
@@ -27,6 +28,7 @@ describe('db schema constants', () => {
       STORE_RECORDING_BLOB,
       STORE_PRACTICE_SESSION,
       STORE_ERROR_LOG,
+      STORE_PLAYLIST,
     }).toEqual({
       STORE_MEDIA: 'media',
       STORE_MEDIA_BLOB: 'mediaBlob',
@@ -35,6 +37,7 @@ describe('db schema constants', () => {
       STORE_RECORDING_BLOB: 'recordBlob',
       STORE_PRACTICE_SESSION: 'practiceSession',
       STORE_ERROR_LOG: 'errorLog',
+      STORE_PLAYLIST: 'playlist',
     });
   });
 });

@@ -30,8 +30,8 @@ describe('practice-page', () => {
       html`<practice-page
         .routeContext=${{
           route: 'practice',
-          params: { id: 'media-1' },
-          query: {},
+          params: {},
+          query: { mediaId: 'media-1' },
           data: {},
         }}
       ></practice-page>`,

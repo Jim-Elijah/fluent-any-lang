@@ -90,4 +90,8 @@ describe('app-settings', () => {
     expect(normalized.skipRecordingCountdown).toBe(true);
     expect(normalized.maxStorageMB).toBe(DEFAULT_SETTINGS.maxStorageMB);
   });
+
+  it('does not prefill last played playlist by default', () => {
+    expect(getAppSettings().lastPlayedPlaylistId).toBe('');
+  });
 });

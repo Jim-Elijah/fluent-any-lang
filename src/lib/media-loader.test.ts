@@ -2,7 +2,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { resetDatabase } from '../test/db-helpers.js';
-import type { MediaBlob, MediaItem } from '../types/models.js';
+import { FAVORITES_PLAYLIST_ID, type MediaBlob, type MediaItem } from '../types/models.js';
 
 function makeMediaItem(overrides: Partial<MediaItem> = {}): MediaItem {
   return {
@@ -63,6 +63,33 @@ describe('media-loader', () => {
 
     expect(loaded?.item).toEqual(item);
     expect(loaded?.segments).toHaveLength(1);
-    expect(await loadPlaylistForPlayback()).toHaveLength(1);
+
+    // Playlist loader should return empty (no favorites entries).
+    expect(await loadPlaylistForPlayback(FAVORITES_PLAYLIST_ID)).toHaveLength(0);
+  });
+
+  it('loads playlist with removed entries filtered out', async () => {
+    const { addMedia } = await import('../db/media.js');
+    const { addMediaToPlaylist, removeMediaFromPlaylist } = await import('../db/playlist.js');
+    const { FAVORITES_PLAYLIST_ID } = await import('../types/models.js');
+
+    const item1 = makeMediaItem({ id: 'media-1', title: 'Track 1' });
+    const item2 = makeMediaItem({ id: 'media-2', title: 'Track 2' });
+    const blob1: MediaBlob = { mediaId: item1.id, blob: new Blob(['audio']) };
+    const blob2: MediaBlob = { mediaId: item2.id, blob: new Blob(['audio']) };
+
+    await addMedia(item1, blob1);
+    await addMedia(item2, blob2);
+    await addMediaToPlaylist(FAVORITES_PLAYLIST_ID, item1.id);
+    await addMediaToPlaylist(FAVORITES_PLAYLIST_ID, item2.id);
+
+    // Remove item1 (soft).
+    await removeMediaFromPlaylist(FAVORITES_PLAYLIST_ID, item1.id);
+
+    const { loadPlaylistForPlayback } = await import('./media-loader.js');
+    const playlist = await loadPlaylistForPlayback(FAVORITES_PLAYLIST_ID);
+
+    expect(playlist).toHaveLength(1);
+    expect(playlist[0]?.item.id).toBe(item2.id);
   });
 });

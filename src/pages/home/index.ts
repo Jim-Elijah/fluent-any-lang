@@ -196,8 +196,8 @@ export class HomePage extends NavigatorElement {
   }
 
   private _handleMediaSelected(event: CustomEvent<{ id: string }>): void {
-    console.log('_handleMediaSelected', event.detail.id);
-    this.navigate(`/practice/${event.detail.id}`);
+    const params = new URLSearchParams({ mediaId: event.detail.id });
+    this.navigate(`/practice?${params.toString()}`);
   }
 }
 

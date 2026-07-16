@@ -6,7 +6,9 @@ import {
   addMedia,
   addPracticeSession,
   addSubtitle,
+  ensureFavoritesPlaylist,
   getMedia,
+  getPlaylist,
   getPracticeSession,
   getRecording,
   getSubtitle,
@@ -15,16 +17,14 @@ import {
 } from '../../db/service.js';
 import type {
   MediaItem,
+  Playlist,
   PracticeRecord,
   PracticeSession,
   SubtitleTrack,
 } from '../../types/models.js';
-import {
-  BACKUP_FORMAT_VERSION,
-  type BackupImportResult,
-  type BackupManifest,
-  type BackupPreview,
-} from './types.js';
+import { type BackupImportResult, type BackupManifest, type BackupPreview } from './types.js';
+import { getDB } from '../../db/index.js';
+import { STORE_PLAYLIST } from '../../db/schema.js';
 
 type ZipFiles = Record<string, Uint8Array>;
 
@@ -45,13 +45,33 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function parseManifest(raw: unknown): BackupManifest {
-  if (!isRecord(raw) || raw.version !== BACKUP_FORMAT_VERSION) {
+  if (!isRecord(raw)) {
+    throw new Error(msg('备份文件损坏：manifest 无效'));
+  }
+
+  // Accept v1 or v2.
+  const version = raw.version as number;
+  if (version !== 1 && version !== 2) {
     throw new Error(msg('不支持的备份格式，请升级应用后再试'));
   }
+
   if (!isRecord(raw.flags) || !isRecord(raw.counts)) {
     throw new Error(msg('备份文件损坏：manifest 无效'));
   }
-  return raw as BackupManifest;
+
+  // Normalize v1 to v2 shape (playlists always false in v1).
+  return {
+    ...raw,
+    version: 2,
+    flags: {
+      ...raw.flags,
+      includePlaylists: (raw.flags as { includePlaylists?: boolean }).includePlaylists ?? false,
+    },
+    counts: {
+      ...raw.counts,
+      playlists: (raw.counts as { playlists?: number }).playlists ?? 0,
+    },
+  } as BackupManifest;
 }
 
 function readText(files: ZipFiles, path: string): string | null {
@@ -233,6 +253,27 @@ export async function importBackup(file: File): Promise<BackupImportResult> {
       );
     }
   }
+
+  // Import playlists (v2 backups only; v1 backups have no playlists).
+  const playlistsRaw = readJsonl<Playlist>(files, 'playlists/metadata.jsonl');
+  for (const playlist of playlistsRaw) {
+    try {
+      const existing = await getPlaylist(playlist.id);
+      if (existing) {
+        // Skip: playlists are user-curated; don't overwrite.
+        continue;
+      }
+      const db = await getDB();
+      await db.put(STORE_PLAYLIST, playlist);
+    } catch (error) {
+      result.errors.push(
+        error instanceof Error ? error.message : msg(str`导入播放列表失败：${playlist.id}`),
+      );
+    }
+  }
+
+  // Ensure favorites exists after import (v1 compat or if playlists were empty).
+  await ensureFavoritesPlaylist();
 
   return result;
 }

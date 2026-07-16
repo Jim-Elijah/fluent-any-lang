@@ -1,19 +1,34 @@
-import { msg, localized } from '@lit/localize';
+import { msg, str, localized } from '@lit/localize';
 import { css, html, LitElement } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 
-import { deleteMedia, getMediaList, deleteSubtitle } from '../../db/service.js';
+import {
+  deleteMedia,
+  getMediaList,
+  deleteSubtitle,
+  toggleFavorites,
+  getPlaylist,
+  getPlaylistList,
+  addMediaToPlaylist,
+} from '../../db/service.js';
 import { importSubtitleForMedia } from '../../lib/import-content.js';
 import { reportError } from '../../lib/error-reporter.js';
 import { formatTime, formatDate } from '../../lib/playback-utils.js';
 import { estimateListNaturalHeight, type ListMetricsDetail } from '../../lib/split-list-heights.js';
-import type { MediaItem, SortDirection, SubtitleTrack } from '../../types/models.js';
+import {
+  FAVORITES_PLAYLIST_ID,
+  type MediaItem,
+  type SortDirection,
+  type SubtitleTrack,
+} from '../../types/models.js';
 import '../ui/alert.js';
 import '../ui/button.js';
 import '../ui/popconfirm.js';
 import '../ui/icon.js';
 import '../ui/tooltip.js';
 import '../ui/virtual-grid.js';
+import '../ui/dropdown.js';
+import type { DropdownMenuClickDetail, DropdownMenuItem } from '../ui/dropdown.js';
 import { Message } from '../ui/message.js';
 
 /** Row height including the --space-md (12px) gap below each card. */
@@ -146,6 +161,19 @@ export class MediaList extends LitElement {
       flex-shrink: 0;
     }
 
+    .favorite-btn {
+      color: #faad14;
+      transition: transform 0.2s ease;
+    }
+
+    .favorite-btn.active {
+      color: #fa8c16;
+    }
+
+    .favorite-btn:hover {
+      transform: scale(1.1);
+    }
+
     .empty {
       padding: var(--space-stack);
       text-align: center;
@@ -211,6 +239,13 @@ export class MediaList extends LitElement {
   @state()
   private _importingSubtitleId = '';
 
+  @state()
+  private _favoriteStates = new Map<string, boolean>();
+
+  /** User playlists only (excludes favorites — favorites use the ★ button). */
+  @state()
+  private _playlists: Array<{ id: string; name: string }> = [];
+
   private _pendingSubtitleMediaId = '';
 
   private _visibleCount = 0;
@@ -246,14 +281,43 @@ export class MediaList extends LitElement {
     this._error = '';
 
     try {
-      this._items = await getMediaList();
+      const [items, playlists, favorites] = await Promise.all([
+        getMediaList(),
+        getPlaylistList(),
+        getPlaylist(FAVORITES_PLAYLIST_ID),
+      ]);
+      this._items = items;
+      this._playlists = playlists
+        .filter((playlist) => playlist.kind === 'user')
+        .map((playlist) => ({ id: playlist.id, name: playlist.name }));
+
+      const favoriteIds = new Set(
+        (favorites?.entries ?? []).filter((entry) => !entry.removed).map((entry) => entry.mediaId),
+      );
+      const favoriteStates = new Map<string, boolean>();
+      for (const item of items) {
+        favoriteStates.set(item.id, favoriteIds.has(item.id));
+      }
+      this._favoriteStates = favoriteStates;
     } catch (error) {
       void reportError(error, { where: 'media-list.refresh' });
       this._error = msg('无法加载媒体库');
       this._items = [];
+      this._playlists = [];
+      this._favoriteStates = new Map();
     } finally {
       this._loading = false;
     }
+  }
+
+  private _getAddToPlaylistMenuItems(): DropdownMenuItem[] {
+    if (this._playlists.length === 0) {
+      return [{ key: '__empty__', label: msg('暂无播放列表'), disabled: true }];
+    }
+    return this._playlists.map((playlist) => ({
+      key: playlist.id,
+      label: msg(str`加入「${playlist.name}」`),
+    }));
   }
 
   render() {
@@ -324,6 +388,8 @@ export class MediaList extends LitElement {
 
   private _renderItem = (item: unknown): unknown => {
     const media = item as MediaItem;
+    const isFavorite = this._favoriteStates.get(media.id) || false;
+
     return html`
       <div class="item">
         <div class="meta">
@@ -350,6 +416,17 @@ export class MediaList extends LitElement {
           </p>
         </div>
         <div class="actions">
+          <ui-tooltip title="${isFavorite ? msg('取消喜欢') : msg('喜欢')}">
+            <ui-button
+              variant="ghost"
+              aria-label="${isFavorite ? msg('取消喜欢') : msg('喜欢')}"
+              class="favorite-btn ${isFavorite ? 'active' : ''}"
+              @click="${() => this._handleToggleFavorite(media)}"
+            >
+              ${isFavorite ? '★' : '☆'}
+            </ui-button>
+          </ui-tooltip>
+
           ${!media.hasSubtitles
             ? html`
                 <ui-tooltip title="${msg('导入字幕')}">
@@ -387,10 +464,65 @@ export class MediaList extends LitElement {
               <ui-icon name="delete"></ui-icon>
             </ui-button>
           </ui-popconfirm>
+          <ui-dropdown
+            trigger="click"
+            placement="bottomRight"
+            .menu=${{ items: this._getAddToPlaylistMenuItems() }}
+            @menu-click=${(e: CustomEvent<DropdownMenuClickDetail>) =>
+              void this._handleAddToPlaylist(e, media)}
+          >
+            <ui-tooltip title="${msg('加入播放列表')}">
+              <ui-button variant="secondary" aria-label="${msg('加入播放列表')}">
+                <ui-icon name="more"></ui-icon>
+              </ui-button>
+            </ui-tooltip>
+          </ui-dropdown>
         </div>
       </div>
     `;
   };
+
+  private async _handleToggleFavorite(media: MediaItem): Promise<void> {
+    try {
+      const isNowFavorite = await toggleFavorites(media.id);
+      this._favoriteStates.set(media.id, isNowFavorite);
+      this.requestUpdate();
+      Message.success(isNowFavorite ? msg('已添加到喜欢') : msg('已从喜欢移除'));
+      this.dispatchEvent(
+        new CustomEvent('playlist-changed', {
+          bubbles: true,
+          composed: true,
+        }),
+      );
+    } catch (error) {
+      void reportError(error, { where: 'media-list.toggleFavorite', mediaId: media.id });
+      Message.error(msg('操作失败，请重试'));
+    }
+  }
+
+  private async _handleAddToPlaylist(
+    e: CustomEvent<DropdownMenuClickDetail>,
+    media: MediaItem,
+  ): Promise<void> {
+    const playlistId = e.detail.key;
+    if (!playlistId || playlistId === '__empty__') return;
+
+    try {
+      await addMediaToPlaylist(playlistId, media.id);
+      const playlistName =
+        this._playlists.find((p) => p.id === playlistId)?.name ?? msg('播放列表');
+      Message.success(msg(str`已添加到「${playlistName}」`));
+      this.dispatchEvent(
+        new CustomEvent('playlist-changed', {
+          bubbles: true,
+          composed: true,
+        }),
+      );
+    } catch (error) {
+      void reportError(error, { where: 'media-list.addToPlaylist', mediaId: media.id });
+      Message.error(msg('添加失败，请重试'));
+    }
+  }
 
   private _openSubtitlePicker(media: MediaItem): void {
     this._pendingSubtitleMediaId = media.id;

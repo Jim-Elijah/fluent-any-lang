@@ -9,9 +9,29 @@ const sampleSegments: SubtitleSegment[] = [
   { id: 's1', startTime: 5, endTime: 10, text: 'two' },
 ];
 
+function makeLoadedMedia(id: string) {
+  return {
+    item: {
+      id,
+      title: `Lesson ${id}`,
+      filename: `${id}.mp3`,
+      size: 1024,
+      type: 'audio' as const,
+      mimeType: 'audio/mpeg',
+      duration: 120,
+      createdAt: 1_000,
+      hasSubtitles: true,
+    },
+    blob: new Blob(['audio'], { type: 'audio/mpeg' }),
+    segments: sampleSegments,
+  };
+}
+
+const mockLoadMedia = vi.fn();
 const mockLoadPlaylist = vi.fn();
 
 vi.mock('../../lib/media-loader.js', () => ({
+  loadMediaForPlayback: (...args: unknown[]) => mockLoadMedia(...args),
   loadPlaylistForPlayback: (...args: unknown[]) => mockLoadPlaylist(...args),
 }));
 
@@ -104,23 +124,8 @@ describe('practice-view', () => {
       }),
     );
 
-    mockLoadPlaylist.mockResolvedValue([
-      {
-        item: {
-          id: 'media-1',
-          title: 'Lesson 1',
-          filename: 'lesson-1.mp3',
-          size: 1024,
-          type: 'audio',
-          mimeType: 'audio/mpeg',
-          duration: 120,
-          createdAt: 1_000,
-          hasSubtitles: true,
-        },
-        blob: new Blob(['audio'], { type: 'audio/mpeg' }),
-        segments: sampleSegments,
-      },
-    ]);
+    mockLoadMedia.mockResolvedValue(makeLoadedMedia('media-1'));
+    mockLoadPlaylist.mockResolvedValue([makeLoadedMedia('media-1'), makeLoadedMedia('media-2')]);
     mockCountEchoRecordings.mockResolvedValue(0);
     mockCountShadowingRecordings.mockResolvedValue(0);
     mockFindAllEchoRecordings.mockResolvedValue([]);
@@ -139,8 +144,8 @@ describe('practice-view', () => {
       html`<practice-view
         .routeContext=${{
           route: 'practice',
-          params: { id: 'media-1' },
-          query: {},
+          params: {},
+          query: { mediaId: 'media-1' },
           data: {},
         }}
       ></practice-view>`,
@@ -149,6 +154,11 @@ describe('practice-view', () => {
     const el = result.container.querySelector('practice-view') as PracticeViewInternals;
     await el.updateComplete;
     return el;
+  }
+
+  async function settleView(el: PracticeViewInternals) {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await el.updateComplete;
   }
 
   async function switchToEchoMode(el: PracticeViewInternals) {
@@ -171,13 +181,13 @@ describe('practice-view', () => {
     expect(el.shadowRoot?.querySelector('media-player')).not.toBeNull();
   });
 
-  it('loads the first track when route has no media id', async () => {
+  it('loads single media when only mediaId is provided', async () => {
     const result = mount(
       html`<practice-view
         .routeContext=${{
           route: 'practice',
           params: {},
-          query: {},
+          query: { mediaId: 'media-1' },
           data: {},
         }}
       ></practice-view>`,
@@ -185,11 +195,81 @@ describe('practice-view', () => {
     cleanup = result.cleanup;
     const el = result.container.querySelector('practice-view') as PracticeViewInternals;
     await el.updateComplete;
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    await el.updateComplete;
+    await settleView(el);
 
-    expect(mockLoadPlaylist).toHaveBeenCalled();
+    expect(mockLoadMedia).toHaveBeenCalledWith('media-1');
+    expect(mockLoadPlaylist).not.toHaveBeenCalled();
     expect(el._controller.getSnapshot().currentItem?.id).toBe('media-1');
+  });
+
+  it('loads playlist from first track when only playlistId is provided', async () => {
+    const result = mount(
+      html`<practice-view
+        .routeContext=${{
+          route: 'practice',
+          params: {},
+          query: { playlistId: 'playlist-1' },
+          data: {},
+        }}
+      ></practice-view>`,
+    );
+    cleanup = result.cleanup;
+    const el = result.container.querySelector('practice-view') as PracticeViewInternals;
+    await el.updateComplete;
+    await settleView(el);
+
+    expect(mockLoadPlaylist).toHaveBeenCalledWith('playlist-1');
+    expect(el._controller.getSnapshot().currentItem?.id).toBe('media-1');
+  });
+
+  it('starts from requested media when playlistId and mediaId are provided', async () => {
+    const result = mount(
+      html`<practice-view
+        .routeContext=${{
+          route: 'practice',
+          params: {},
+          query: { playlistId: 'playlist-1', mediaId: 'media-2' },
+          data: {},
+        }}
+      ></practice-view>`,
+    );
+    cleanup = result.cleanup;
+    const el = result.container.querySelector('practice-view') as PracticeViewInternals;
+    await el.updateComplete;
+    await settleView(el);
+
+    expect(mockLoadPlaylist).toHaveBeenCalledWith('playlist-1');
+    expect(el._controller.getSnapshot().currentItem?.id).toBe('media-2');
+  });
+
+  it('reloads when practice query changes without changing the path', async () => {
+    const result = mount(
+      html`<practice-view
+        .routeContext=${{
+          route: 'practice',
+          params: {},
+          query: { playlistId: 'playlist-1' },
+          data: {},
+        }}
+      ></practice-view>`,
+    );
+    cleanup = result.cleanup;
+    const el = result.container.querySelector('practice-view') as PracticeViewInternals;
+    await el.updateComplete;
+    await settleView(el);
+
+    mockLoadPlaylist.mockClear();
+
+    el.routeContext = {
+      route: 'practice',
+      params: {},
+      query: { playlistId: 'playlist-2' },
+      data: {},
+    };
+    await el.updateComplete;
+    await settleView(el);
+
+    expect(mockLoadPlaylist).toHaveBeenCalledWith('playlist-2');
   });
 
   async function dispatchEchoRecordRequest(el: PracticeViewInternals, segmentIndex = 0) {

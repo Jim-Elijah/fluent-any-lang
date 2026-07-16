@@ -365,7 +365,8 @@ export class LibraryPage extends NavigatorElement {
   }
 
   private _handleMediaSelected(event: CustomEvent<{ id: string }>): void {
-    this.navigate(`/practice/${event.detail.id}`);
+    const params = new URLSearchParams({ mediaId: event.detail.id });
+    this.navigate(`/practice?${params.toString()}`);
   }
 }
 

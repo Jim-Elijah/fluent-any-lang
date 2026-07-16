@@ -299,7 +299,8 @@ export class PracticeStatsDashboard extends NavigatorElement {
         composed: true,
       }),
     );
-    this.navigate(`/practice/${session.mediaId}`);
+    const params = new URLSearchParams({ mediaId: session.mediaId });
+    this.navigate(`/practice?${params.toString()}`);
   };
 
   render() {

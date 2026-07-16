@@ -1,6 +1,6 @@
 import type { AppSettings } from '../../types/models.js';
 
-export const BACKUP_FORMAT_VERSION = 1 as const;
+export const BACKUP_FORMAT_VERSION = 2 as const;
 
 export type BackupExportOptions = {
   /** Include media blobs + matching subtitles. Default false. */
@@ -20,12 +20,15 @@ export type BackupManifest = {
     includeRecordings: boolean;
     includeSessions: boolean;
     includeSettings: true;
+    /** Always true in v2; v1 did not include playlists. */
+    includePlaylists: true;
   };
   counts: {
     media: number;
     subtitles: number;
     recordings: number;
     sessions: number;
+    playlists: number;
   };
 };
 

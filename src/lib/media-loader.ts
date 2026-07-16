@@ -1,4 +1,4 @@
-import { getMedia, getMediaBlob, getSubtitle, getMediaList } from '../db/service.js';
+import { getMedia, getMediaBlob, getSubtitle, getPlaylist } from '../db/service.js';
 import type { MediaItem, SubtitleSegment } from '../types/models.js';
 
 export type LoadedMedia = {
@@ -26,14 +26,24 @@ export async function loadMediaForPlayback(id: string): Promise<LoadedMedia | nu
   };
 }
 
-export async function loadPlaylistForPlayback(): Promise<LoadedMedia[]> {
-  const items = await getMediaList();
+/**
+ * Load media from a playlist.
+ * Only returns entries with removed=false and existing blob.
+ */
+export async function loadPlaylistForPlayback(playlistId: string): Promise<LoadedMedia[]> {
+  const playlist = await getPlaylist(playlistId);
+
+  if (!playlist) {
+    return [];
+  }
+
+  const activeEntries = playlist.entries.filter((e) => !e.removed);
   const loaded: LoadedMedia[] = [];
 
-  for (const item of items) {
-    const entry = await loadMediaForPlayback(item.id);
-    if (entry) {
-      loaded.push(entry);
+  for (const entry of activeEntries) {
+    const media = await loadMediaForPlayback(entry.mediaId);
+    if (media) {
+      loaded.push(media);
     }
   }
 

@@ -9,11 +9,13 @@ import {
   getAllSubtitles,
   getMediaBlob,
   getMediaList,
+  getPlaylistList,
   getRecordingBlob,
   getRecordingList,
 } from '../../db/service.js';
 import type {
   MediaItem,
+  Playlist,
   PracticeRecord,
   PracticeSession,
   SubtitleTrack,
@@ -55,6 +57,10 @@ export async function buildBackupZip(
 
   const settings = getAppSettings();
   files['settings.json'] = strToU8(JSON.stringify(settings, null, 2));
+
+  // Playlists always included in v2.
+  const playlists: Playlist[] = await getPlaylistList();
+  files['playlists/metadata.jsonl'] = strToU8(toJsonl(playlists));
 
   let mediaItems: MediaItem[] = [];
   let subtitles: SubtitleTrack[] = [];
@@ -98,12 +104,14 @@ export async function buildBackupZip(
       includeRecordings: opts.includeRecordings,
       includeSessions: opts.includeSessions,
       includeSettings: true,
+      includePlaylists: true,
     },
     counts: {
       media: mediaItems.length,
       subtitles: subtitles.length,
       recordings: recordings.length,
       sessions: sessions.length,
+      playlists: playlists.length,
     },
   };
   files['manifest.json'] = strToU8(JSON.stringify(manifest, null, 2));

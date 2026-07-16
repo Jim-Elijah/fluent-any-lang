@@ -142,10 +142,10 @@ describe('subtitle mediaId migration', () => {
     expect(track?.segments).toHaveLength(2);
     expect(await db.getAll(STORE_SUBTITLE)).toHaveLength(1);
 
-    const { loadPlaylistForPlayback } = await import('../lib/media-loader.js');
-    const playlist = await loadPlaylistForPlayback();
-    expect(playlist).toHaveLength(1);
-    expect(playlist[0]?.segments).toHaveLength(2);
+    const { loadMediaForPlayback } = await import('../lib/media-loader.js');
+    const loaded = await loadMediaForPlayback('media-1');
+    expect(loaded).not.toBeNull();
+    expect(loaded?.segments).toHaveLength(2);
   });
 
   it('repairs stuck v3 DB that is missing byMediaId index', async () => {
@@ -188,8 +188,8 @@ describe('subtitle mediaId migration', () => {
     const track = await getSubtitle('media-1');
     expect(track?.segments).toHaveLength(1);
 
-    const { loadPlaylistForPlayback } = await import('../lib/media-loader.js');
-    expect(await loadPlaylistForPlayback()).toHaveLength(1);
+    const { loadMediaForPlayback } = await import('../lib/media-loader.js');
+    await expect(loadMediaForPlayback('media-1')).resolves.not.toBeNull();
   });
 });
 

@@ -1,6 +1,7 @@
 import { getDB } from './index.js';
 import { STORE_MEDIA, STORE_MEDIA_BLOB } from './schema.js';
 import type { MediaBlob, MediaItem } from '../types/models.js';
+import { markMediaRemovedInAllPlaylists } from './playlist.js';
 
 // create/insert
 // add media and its blob
@@ -60,4 +61,7 @@ export async function deleteMedia(id: string): Promise<void> {
   await tx.objectStore(STORE_MEDIA_BLOB).delete(id);
 
   await tx.done;
+
+  // Mark removed in all playlists (soft-delete).
+  await markMediaRemovedInAllPlaylists(id);
 }
