@@ -1277,10 +1277,6 @@
   <source>清空日志</source>
   <target>Clear logs</target>
 </trans-unit>
-<trans-unit id="s51bb7e1bd9232ef1">
-  <source>管理偏好、练习限额、数据备份与诊断。</source>
-  <target>Manage preferences, practice limits, backups, and diagnostics.</target>
-</trans-unit>
 <trans-unit id="s5412ed77b37800af">
   <source>暂无播放列表</source>
 </trans-unit>
@@ -1508,6 +1504,70 @@
 <trans-unit id="s0eb8055eb13c5ad6">
   <source>删除后不可恢复。</source>
   <target>This cannot be undone.</target>
+</trans-unit>
+<trans-unit id="sea8de92bb884f0b3">
+  <source>应用已可离线使用</source>
+  <target>App is ready for offline use</target>
+</trans-unit>
+<trans-unit id="s5d6ee382d7a4d13f">
+  <source>有新版本可用</source>
+  <target>A new version is available</target>
+</trans-unit>
+<trans-unit id="sbf6cb80850500002">
+  <source>稍后</source>
+  <target>Later</target>
+</trans-unit>
+<trans-unit id="s7520be837845612b">
+  <source>发现新版本，可立即更新</source>
+  <target>Update found — you can refresh now</target>
+</trans-unit>
+<trans-unit id="se8257762e12dbeba">
+  <source>已是最新版本</source>
+  <target>You are up to date</target>
+</trans-unit>
+<trans-unit id="s752de1569e02c29c">
+  <source>检查更新失败</source>
+  <target>Failed to check for updates</target>
+</trans-unit>
+<trans-unit id="s9a41a16e4b462971">
+  <source>应用与更新</source>
+  <target>App &amp; updates</target>
+</trans-unit>
+<trans-unit id="s291e9f9ede279f78">
+  <source>可将本应用安装到桌面或主屏幕。更新只刷新应用壳，不会删除本机媒体、字幕与录音。</source>
+  <target>Install this app to your desktop or home screen. Updates only refresh the app shell and do not delete local media, subtitles, or recordings.</target>
+</trans-unit>
+<trans-unit id="s04c9efd35bf03f9a">
+  <source>安装状态</source>
+  <target>Install status</target>
+</trans-unit>
+<trans-unit id="sb2344be6425d40d5">
+  <source>已安装（独立窗口）</source>
+  <target>Installed (standalone)</target>
+</trans-unit>
+<trans-unit id="s1b6973ca5e33e778">
+  <source>浏览器标签页（可从浏览器菜单添加到主屏幕）</source>
+  <target>Browser tab (add to home screen from the browser menu)</target>
+</trans-unit>
+<trans-unit id="sa65c5b083b9d87d8">
+  <source>状态</source>
+  <target>Status</target>
+</trans-unit>
+<trans-unit id="sf88e81f9a70a0bc9">
+  <source>有待安装的新版本</source>
+  <target>A new version is waiting to install</target>
+</trans-unit>
+<trans-unit id="s4af4b94e70819d5a">
+  <source>检查更新</source>
+  <target>Check for updates</target>
+</trans-unit>
+<trans-unit id="sa063a73f29522fd7">
+  <source>立即更新</source>
+  <target>Update now</target>
+</trans-unit>
+<trans-unit id="s74e844cdefea9b52">
+  <source>管理偏好、练习限额、数据备份、应用更新与诊断。</source>
+  <target>Manage preferences, practice limits, backups, app updates, and diagnostics.</target>
 </trans-unit>
 </body>
 </file>

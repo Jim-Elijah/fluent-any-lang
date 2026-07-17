@@ -1277,10 +1277,6 @@
   <source>清空日志</source>
   <target>清空日誌</target>
 </trans-unit>
-<trans-unit id="s51bb7e1bd9232ef1">
-  <source>管理偏好、练习限额、数据备份与诊断。</source>
-  <target>管理偏好、練習限額、資料備份與診斷。</target>
-</trans-unit>
 <trans-unit id="s5412ed77b37800af">
   <source>暂无播放列表</source>
 </trans-unit>
@@ -1472,6 +1468,70 @@
 <trans-unit id="s0eb8055eb13c5ad6">
   <source>删除后不可恢复。</source>
   <target>刪除後不可恢復。</target>
+</trans-unit>
+<trans-unit id="sea8de92bb884f0b3">
+  <source>应用已可离线使用</source>
+  <target>應用已可離線使用</target>
+</trans-unit>
+<trans-unit id="s5d6ee382d7a4d13f">
+  <source>有新版本可用</source>
+  <target>有新版本可用</target>
+</trans-unit>
+<trans-unit id="sbf6cb80850500002">
+  <source>稍后</source>
+  <target>稍後</target>
+</trans-unit>
+<trans-unit id="s7520be837845612b">
+  <source>发现新版本，可立即更新</source>
+  <target>發現新版本，可立即更新</target>
+</trans-unit>
+<trans-unit id="se8257762e12dbeba">
+  <source>已是最新版本</source>
+  <target>已是最新版本</target>
+</trans-unit>
+<trans-unit id="s752de1569e02c29c">
+  <source>检查更新失败</source>
+  <target>檢查更新失敗</target>
+</trans-unit>
+<trans-unit id="s9a41a16e4b462971">
+  <source>应用与更新</source>
+  <target>應用與更新</target>
+</trans-unit>
+<trans-unit id="s291e9f9ede279f78">
+  <source>可将本应用安装到桌面或主屏幕。更新只刷新应用壳，不会删除本机媒体、字幕与录音。</source>
+  <target>可將本應用安裝到桌面或主畫面。更新只會刷新應用殼，不會刪除本機媒體、字幕與錄音。</target>
+</trans-unit>
+<trans-unit id="s04c9efd35bf03f9a">
+  <source>安装状态</source>
+  <target>安裝狀態</target>
+</trans-unit>
+<trans-unit id="sb2344be6425d40d5">
+  <source>已安装（独立窗口）</source>
+  <target>已安裝（獨立視窗）</target>
+</trans-unit>
+<trans-unit id="s1b6973ca5e33e778">
+  <source>浏览器标签页（可从浏览器菜单添加到主屏幕）</source>
+  <target>瀏覽器分頁（可從瀏覽器選單加入主畫面）</target>
+</trans-unit>
+<trans-unit id="sa65c5b083b9d87d8">
+  <source>状态</source>
+  <target>狀態</target>
+</trans-unit>
+<trans-unit id="sf88e81f9a70a0bc9">
+  <source>有待安装的新版本</source>
+  <target>有待安裝的新版本</target>
+</trans-unit>
+<trans-unit id="s4af4b94e70819d5a">
+  <source>检查更新</source>
+  <target>檢查更新</target>
+</trans-unit>
+<trans-unit id="sa063a73f29522fd7">
+  <source>立即更新</source>
+  <target>立即更新</target>
+</trans-unit>
+<trans-unit id="s74e844cdefea9b52">
+  <source>管理偏好、练习限额、数据备份、应用更新与诊断。</source>
+  <target>管理偏好、練習限額、資料備份、應用更新與診斷。</target>
 </trans-unit>
 </body>
 </file>

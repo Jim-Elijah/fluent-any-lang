@@ -17,6 +17,7 @@
 - **媒体库与录音库** — 搜索、排序、筛选与导出。
 - **练习统计** — 有效练习时长、连续天数、模式占比与趋势（非墙上时钟时间）。
 - **本地优先、注重隐私** — 媒体、字幕与录音经 IndexedDB 存于浏览器，不会上传到服务器。
+- **可安装 PWA** — 可添加到主屏幕或桌面；首次访问后应用壳可离线打开。新版本会提示确认后再更新，避免打断练习。
 - **界面多语言** — 简体中文、英语、日语、繁体中文。
 
 ## 截图
@@ -40,7 +41,7 @@
 3. 从媒体进入 **听力** 或 **口语** 练习。
 4. 在统计页查看练习进度。
 
-日常使用无需安装。口语练习建议佩戴耳机，并在提示时授予麦克风权限。
+日常使用无需安装。口语练习建议佩戴耳机，并在提示时授予麦克风权限。也可通过浏览器菜单「安装应用」或「添加到主屏幕」以 PWA 方式使用。
 
 ## 隐私说明
 
@@ -48,7 +49,7 @@ FluentAnyLang 为纯前端应用。练习内容与录音保存在本地 IndexedD
 
 ## 技术栈
 
-Lit · Vite · TypeScript · IndexedDB（`idb`）· `@lit/localize`
+Lit · Vite · TypeScript · IndexedDB（`idb`）· `@lit/localize` · PWA（Service Worker）
 
 ## 本地开发
 
@@ -65,9 +66,10 @@ pnpm dev
 | --- | --- |
 | `pnpm build` | 本地化构建、类型检查与生产构建 |
 | `pnpm test` | 单元测试 |
-| `pnpm test:e2e` | Playwright 端到端测试 |
 | `pnpm lint` | ESLint |
 | `pnpm localize:extract` / `pnpm localize:build` | 提取 / 构建文案 |
+
+静态托管生产构建时，请配置 SPA 回退，使深链（`/library`、`/practice` 等）重写到 `index.html`。Service Worker（以及麦克风）需要 HTTPS。
 
 ## 许可证
 

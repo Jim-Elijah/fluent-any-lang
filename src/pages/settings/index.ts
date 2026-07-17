@@ -5,6 +5,7 @@ import { msg, localized } from '@lit/localize';
 import '../../components/settings/settings-preferences.js';
 import '../../components/settings/settings-limits.js';
 import '../../components/settings/settings-backup.js';
+import '../../components/settings/settings-pwa.js';
 import '../../components/settings/settings-diagnostics.js';
 import '../../components/settings/settings-extras.js';
 
@@ -34,10 +35,11 @@ export class SettingsPage extends LitElement {
   render() {
     return html`
       <div class="page">
-        <p class="intro">${msg('管理偏好、练习限额、数据备份与诊断。')}</p>
+        <p class="intro">${msg('管理偏好、练习限额、数据备份、应用更新与诊断。')}</p>
         <settings-preferences></settings-preferences>
         <settings-limits></settings-limits>
         <settings-backup></settings-backup>
+        <settings-pwa></settings-pwa>
         <settings-diagnostics></settings-diagnostics>
         <settings-extras></settings-extras>
       </div>

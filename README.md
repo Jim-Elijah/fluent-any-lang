@@ -17,6 +17,7 @@ A listening and speaking practice web app for any language. Import your own audi
 - **Media & recording libraries** — Search, sort, filter, and export.
 - **Practice statistics** — Effective practice time, streaks, mode mix, and trends (not wall-clock time).
 - **Local-first & private** — Media, subtitles, and recordings stay in your browser via IndexedDB; nothing is uploaded to a server.
+- **Installable PWA** — Add to your home screen or desktop; the app shell works offline after the first visit. Updates are prompted so practice is not interrupted mid-session.
 - **UI locales** — Simplified Chinese, English, Japanese, and Traditional Chinese (`@lit/localize`).
 
 ## Screenshots
@@ -40,7 +41,7 @@ A listening and speaking practice web app for any language. Import your own audi
 3. Start **Listening** or **Speaking** practice from a media item.
 4. Review progress on the statistics page.
 
-No install required for everyday use. Prefer headphones for speaking practice, and grant microphone permission when prompted.
+No install required for everyday use. Prefer headphones for speaking practice, and grant microphone permission when prompted. You can also install the app as a PWA from the browser menu (“Install” / “Add to Home Screen”).
 
 ## Privacy
 
@@ -48,7 +49,7 @@ FluentAnyLang is a client-side app. Practice content and recordings are stored l
 
 ## Tech stack
 
-Lit · Vite · TypeScript · IndexedDB (`idb`) · `@lit/localize`
+Lit · Vite · TypeScript · IndexedDB (`idb`) · `@lit/localize` · Progressive Web App (service worker)
 
 ## Development
 
@@ -68,6 +69,8 @@ Useful scripts:
 | `pnpm test:e2e` | Playwright end-to-end tests |
 | `pnpm lint` | ESLint |
 | `pnpm localize:extract` / `pnpm localize:build` | i18n extract / build |
+
+When hosting the production build as static files, configure SPA fallback so deep links (`/library`, `/practice`, …) rewrite to `index.html`. HTTPS is required for the service worker (and for microphone access).
 
 ## License
 
