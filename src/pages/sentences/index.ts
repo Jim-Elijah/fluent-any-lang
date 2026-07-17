@@ -486,7 +486,7 @@ export class SentencesPage extends NavigatorElement {
               ?disabled=${!entry.sourceAvailable}
               @click=${() => this._viewSource(entry)}
             >
-              <ui-icon name="media"></ui-icon>
+              <ui-icon name="locate"></ui-icon>
             </ui-button>
           </ui-tooltip>
           <ui-popconfirm

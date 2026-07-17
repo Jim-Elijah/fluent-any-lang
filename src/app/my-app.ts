@@ -240,7 +240,7 @@ export class MyApp extends RouterNavigatorApp {
       {
         name: 'home',
         pattern: '',
-        data: { title: 'Home' },
+        data: { title: msg('首页') },
       },
       {
         name: 'library',
@@ -265,12 +265,12 @@ export class MyApp extends RouterNavigatorApp {
       {
         name: 'stats',
         pattern: 'stats',
-        data: { title: 'Stats' },
+        data: { title: msg('统计') },
       },
       {
         name: 'settings',
         pattern: 'settings',
-        data: { title: 'Settings' },
+        data: { title: msg('设置') },
       },
       {
         name: 'not-found',

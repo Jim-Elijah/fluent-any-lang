@@ -3,6 +3,8 @@ import { STORE_PLAYLIST } from './schema.js';
 import type { Playlist, PlaylistEntry } from '../types/models.js';
 import { FAVORITES_PLAYLIST_ID } from '../types/models.js';
 import { getMedia } from './media.js';
+import { msg } from '@lit/localize';
+
 export const PLAYLIST_NAME_CONFLICT_ERROR = 'PLAYLIST_NAME_CONFLICT';
 
 export class PlaylistNameConflictError extends Error {
@@ -12,6 +14,22 @@ export class PlaylistNameConflictError extends Error {
     super(`Playlist name already exists: ${name}`);
     this.name = 'PlaylistNameConflictError';
   }
+}
+
+/** Display name for a playlist (favorites uses localized label). */
+export function getPlaylistDisplayName(playlist: Playlist): string {
+  return playlist.kind === 'favorites' ? msg('喜欢') : playlist.name;
+}
+
+/** Resolve entry title for UI; empty / legacy sentinel → localized fallback. */
+export function getPlaylistEntryDisplayTitle(
+  mediaTitle: string | undefined,
+  titleSnapshot: string | undefined,
+): string {
+  const snap = titleSnapshot?.trim();
+  if (mediaTitle) return mediaTitle;
+  if (snap && snap !== '(未知媒体)') return snap;
+  return msg('(未知媒体)');
 }
 
 export function isPlaylistNameConflictError(error: unknown): error is PlaylistNameConflictError {
@@ -175,7 +193,7 @@ export async function addMediaToPlaylist(
   if (!playlist) return null;
 
   const media = await getMedia(mediaId);
-  const titleSnapshot = media?.title ?? '(未知媒体)';
+  const titleSnapshot = media?.title ?? '';
 
   const existingIndex = playlist.entries.findIndex((e: PlaylistEntry) => e.mediaId === mediaId);
   if (existingIndex >= 0) {
@@ -232,7 +250,7 @@ export async function toggleFavorites(mediaId: string): Promise<boolean> {
     favorites.entries.push({
       mediaId,
       removed: false,
-      titleSnapshot: media?.title ?? '(未知媒体)',
+      titleSnapshot: media?.title ?? '',
     });
   }
 

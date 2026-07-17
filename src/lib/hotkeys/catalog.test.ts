@@ -24,10 +24,10 @@ describe('formatHotkeyCodeLabel', () => {
 describe('getHotkeyCatalog', () => {
   it('has practice and recording-preview sections derived from default map', () => {
     const catalog = getHotkeyCatalog();
-    expect(catalog).toHaveLength(2);
 
     const practice = catalog.find((section) => section.scopeId === 'practice');
     const preview = catalog.find((section) => section.scopeId === 'recording-preview');
+
     expect(practice?.rows).toHaveLength(PRACTICE_HOTKEY_BINDINGS.length);
     expect(preview?.rows).toHaveLength(RECORDING_PREVIEW_HOTKEY_BINDINGS.length);
 

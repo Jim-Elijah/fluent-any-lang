@@ -1,5 +1,5 @@
 import { msg, str, localized } from '@lit/localize';
-import { css, html, LitElement } from 'lit';
+import { css, html, LitElement, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 
 import {
@@ -15,6 +15,7 @@ import { importSubtitleForMedia } from '../../lib/import-content.js';
 import { reportError } from '../../lib/error-reporter.js';
 import { formatTime, formatDate } from '../../lib/playback-utils.js';
 import { estimateListNaturalHeight, type ListMetricsDetail } from '../../lib/split-list-heights.js';
+import { NARROW_VIEWPORT_MQ } from '../../lib/layout-compact.js';
 import {
   FAVORITES_PLAYLIST_ID,
   type MediaItem,
@@ -33,6 +34,8 @@ import { Message } from '../ui/message.js';
 
 /** Row height including the --space-md (12px) gap below each card. */
 const MEDIA_ROW_HEIGHT = 96;
+/** Narrow: meta + actions stacked; includes the same gap below each card. */
+const MEDIA_ROW_HEIGHT_NARROW = 140;
 const MEDIA_LIST_HEIGHT = 480;
 
 @customElement('media-list')
@@ -193,6 +196,8 @@ export class MediaList extends LitElement {
 
     @media (max-width: 767px) {
       .item {
+        grid-template-columns: 1fr;
+        align-items: start;
         gap: var(--space-sm);
         height: calc(100% - var(--space-sm));
         padding: var(--space-sm) var(--space-md);
@@ -201,8 +206,10 @@ export class MediaList extends LitElement {
       .details {
         gap: var(--space-xs);
       }
+
       .actions {
         gap: var(--space-xs);
+        justify-content: flex-end;
       }
     }
   `;
@@ -246,25 +253,47 @@ export class MediaList extends LitElement {
   @state()
   private _playlists: Array<{ id: string; name: string }> = [];
 
+  @state()
+  private _narrow = false;
+
   private _pendingSubtitleMediaId = '';
 
   private _visibleCount = 0;
 
   private _lastMetricsKey = '';
 
+  private _narrowMq?: MediaQueryList;
+
   connectedCallback(): void {
     super.connectedCallback();
+    this._narrowMq = window.matchMedia(NARROW_VIEWPORT_MQ);
+    this._narrow = this._narrowMq.matches;
+    this._narrowMq.addEventListener('change', this._onNarrowMqChange);
     void this.refresh();
   }
 
+  disconnectedCallback(): void {
+    this._narrowMq?.removeEventListener('change', this._onNarrowMqChange);
+    super.disconnectedCallback();
+  }
+
+  private _onNarrowMqChange = (e: MediaQueryListEvent) => {
+    this._narrow = e.matches;
+  };
+
+  private _rowHeight(): number {
+    return this._narrow ? MEDIA_ROW_HEIGHT_NARROW : MEDIA_ROW_HEIGHT;
+  }
+
   protected updated(): void {
+    const rowHeight = this._rowHeight();
     const naturalHeight = estimateListNaturalHeight({
       itemCount: this._visibleCount,
-      rowHeight: MEDIA_ROW_HEIGHT,
+      rowHeight,
       hasError: Boolean(this._error),
       loading: this._loading,
     });
-    const key = `${naturalHeight}:${this._visibleCount}:${this._loading}:${this._error}`;
+    const key = `${naturalHeight}:${this._visibleCount}:${this._loading}:${this._error}:${rowHeight}`;
     if (key === this._lastMetricsKey) return;
     this._lastMetricsKey = key;
     this.dispatchEvent(
@@ -349,9 +378,10 @@ export class MediaList extends LitElement {
 
     this._visibleCount = renderedItems.length;
 
+    const rowHeight = this._rowHeight();
     const listHeight = this.fillHeight
       ? '100%'
-      : Math.min(Math.max(renderedItems.length, 1) * MEDIA_ROW_HEIGHT, MEDIA_LIST_HEIGHT);
+      : Math.min(Math.max(renderedItems.length, 1) * rowHeight, MEDIA_LIST_HEIGHT);
 
     return html`
       <section>
@@ -374,7 +404,7 @@ export class MediaList extends LitElement {
                 <div class="list-viewport">
                   <ui-virtual-grid
                     .items=${renderedItems}
-                    .itemHeight=${MEDIA_ROW_HEIGHT}
+                    .itemHeight=${rowHeight}
                     .containerHeight=${listHeight}
                     .gridItems=${1}
                     .renderItem=${this._renderItem}
@@ -405,14 +435,15 @@ export class MediaList extends LitElement {
             </span>
             <span>${formatTime(media.duration)}</span>
             <span class="date">${formatDate(media.createdAt, true)}</span>
-            <span class="badge ${media.hasSubtitles ? '' : 'muted'}">
-              <ui-tooltip title="${media.hasSubtitles ? msg('含字幕') : msg('无字幕')}">
-                <ui-icon
-                  name="${media.hasSubtitles ? 'subtitle' : 'subtitle-off'}"
-                  size="var(--icon-md)"
-                ></ui-icon>
-              </ui-tooltip>
-            </span>
+            ${media.hasSubtitles
+              ? html`
+                  <span class="badge">
+                    <ui-tooltip title="${msg('含字幕')}">
+                      <ui-icon name="subtitle-on" size="var(--icon-md)"></ui-icon>
+                    </ui-tooltip>
+                  </span>
+                `
+              : nothing}
           </p>
         </div>
         <div class="actions">
@@ -473,7 +504,7 @@ export class MediaList extends LitElement {
           >
             <ui-tooltip title="${msg('加入播放列表')}">
               <ui-button variant="secondary" aria-label="${msg('加入播放列表')}">
-                <ui-icon name="more"></ui-icon>
+                <ui-icon name="add-to-playlist"></ui-icon>
               </ui-button>
             </ui-tooltip>
           </ui-dropdown>

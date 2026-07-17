@@ -139,7 +139,6 @@ describe('playlists-page', () => {
     expect(el.shadowRoot?.textContent).toContain('Daily Practice');
     expect(drawer?.textContent).toContain('Lesson 1');
     expect(el.shadowRoot?.textContent).toContain('上次练习');
-    expect(drawer?.textContent).toContain('继续练习');
     expect(drawer?.textContent).not.toContain('上次播放的播放列表');
 
     drawer?.dispatchEvent(
@@ -199,12 +198,10 @@ describe('playlists-page', () => {
 
     const navigateSpy = vi.fn();
     el.navigate = navigateSpy;
-    const actionButtons = Array.from(
-      el.shadowRoot?.querySelectorAll('.playlist-actions ui-button') ?? [],
-    );
-    const resumeButton = actionButtons.find((button) =>
-      button.textContent?.includes('继续练习'),
-    ) as HTMLElement | undefined;
+    const resumeTooltip = Array.from(
+      el.shadowRoot?.querySelectorAll('.playlist-actions ui-tooltip') ?? [],
+    ).find((tooltip) => (tooltip as { title?: string }).title === '继续练习');
+    const resumeButton = resumeTooltip?.querySelector('ui-button') as HTMLElement | undefined;
 
     expect(resumeButton).toBeTruthy();
     resumeButton?.click();

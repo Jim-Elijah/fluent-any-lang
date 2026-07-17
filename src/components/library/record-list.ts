@@ -16,6 +16,7 @@ import {
   dispatchRecordingPreviewOpen,
 } from '../../lib/audio-focus.js';
 import { estimateListNaturalHeight, type ListMetricsDetail } from '../../lib/split-list-heights.js';
+import { NARROW_VIEWPORT_MQ } from '../../lib/layout-compact.js';
 import { Z_INDEX } from '../ui/internal/z-index.js';
 import '../ui/alert.js';
 import '../ui/button.js';
@@ -36,6 +37,8 @@ import { Message } from '../ui/message.js';
 
 /** Row height including the --space-md (12px) gap below each card. */
 const RECORD_ROW_HEIGHT = 88;
+/** Narrow: meta + actions stacked; includes the same gap below each card. */
+const RECORD_ROW_HEIGHT_NARROW = 132;
 const RECORD_LIST_HEIGHT = 480;
 
 @customElement('record-list')
@@ -179,6 +182,8 @@ export class RecordList extends LitElement {
 
     @media (max-width: 767px) {
       .item {
+        grid-template-columns: 1fr;
+        align-items: start;
         gap: var(--space-sm);
         height: calc(100% - var(--space-sm));
         padding: var(--space-sm) var(--space-md);
@@ -187,8 +192,10 @@ export class RecordList extends LitElement {
       .details {
         gap: var(--space-xs);
       }
+
       .actions {
         gap: var(--space-xs);
+        justify-content: flex-end;
       }
     }
   `;
@@ -259,13 +266,30 @@ export class RecordList extends LitElement {
 
   private _lastMetricsKey = '';
 
-  constructor() {
-    super();
-  }
+  @state()
+  private _narrow = false;
+
+  private _narrowMq?: MediaQueryList;
 
   connectedCallback(): void {
     super.connectedCallback();
+    this._narrowMq = window.matchMedia(NARROW_VIEWPORT_MQ);
+    this._narrow = this._narrowMq.matches;
+    this._narrowMq.addEventListener('change', this._onNarrowMqChange);
     void this.refresh();
+  }
+
+  disconnectedCallback(): void {
+    this._narrowMq?.removeEventListener('change', this._onNarrowMqChange);
+    super.disconnectedCallback();
+  }
+
+  private _onNarrowMqChange = (e: MediaQueryListEvent) => {
+    this._narrow = e.matches;
+  };
+
+  private _rowHeight(): number {
+    return this._narrow ? RECORD_ROW_HEIGHT_NARROW : RECORD_ROW_HEIGHT;
   }
 
   protected updated(changed: Map<PropertyKey, unknown>): void {
@@ -273,14 +297,15 @@ export class RecordList extends LitElement {
       void this.refresh();
     }
 
+    const rowHeight = this._rowHeight();
     const naturalHeight = estimateListNaturalHeight({
       itemCount: this._visibleCount,
-      rowHeight: RECORD_ROW_HEIGHT,
+      rowHeight,
       hasHeader: this.showHeader,
       hasError: Boolean(this._error),
       loading: this._loading,
     });
-    const key = `${naturalHeight}:${this._visibleCount}:${this._loading}:${this._error}:${this.showHeader}`;
+    const key = `${naturalHeight}:${this._visibleCount}:${this._loading}:${this._error}:${this.showHeader}:${rowHeight}`;
     if (key === this._lastMetricsKey) return;
     this._lastMetricsKey = key;
     this.dispatchEvent(
@@ -344,9 +369,10 @@ export class RecordList extends LitElement {
 
     this._visibleCount = renderedItems.length;
 
+    const rowHeight = this._rowHeight();
     const listHeight = this.fillHeight
       ? '100%'
-      : Math.min(Math.max(renderedItems.length, 1) * RECORD_ROW_HEIGHT, RECORD_LIST_HEIGHT);
+      : Math.min(Math.max(renderedItems.length, 1) * rowHeight, RECORD_LIST_HEIGHT);
 
     const emptyMessage = this.keyword ? msg('无匹配录音') : msg('暂无录音');
 
@@ -367,7 +393,7 @@ export class RecordList extends LitElement {
                 <div class="list-viewport">
                   <ui-virtual-grid
                     .items=${renderedItems}
-                    .itemHeight=${RECORD_ROW_HEIGHT}
+                    .itemHeight=${rowHeight}
                     .containerHeight=${listHeight}
                     .gridItems=${1}
                     .renderItem=${this._renderItem}

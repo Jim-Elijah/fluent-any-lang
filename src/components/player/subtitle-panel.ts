@@ -946,7 +946,7 @@ export class SubtitlePanel extends LitElement {
                 >
                   <ui-icon
                     size="var(--icon-xl)"
-                    name="${snapshot.subtitlesVisible ? 'subtitle-off' : 'subtitle'}"
+                    name="${snapshot.subtitlesVisible ? 'subtitle-off' : 'subtitle-on'}"
                   ></ui-icon>
                 </ui-button>
               </ui-tooltip>`

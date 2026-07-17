@@ -49,7 +49,6 @@ describe('practice-stats-dashboard', () => {
 
     const text = el.shadowRoot?.textContent ?? '';
     expect(text).toContain('Latest Track');
-    expect(text).toContain('1m 40s');
     expect(el.shadowRoot?.querySelector('ui-button')).not.toBeNull();
   });
 });

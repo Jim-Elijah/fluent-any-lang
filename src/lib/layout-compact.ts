@@ -13,6 +13,9 @@ export const EXIT_LIBRARY_STACK_PX = 360;
 /** Short viewport fallback (matches prior compact MQ). */
 export const COMPACT_VIEWPORT_MQ = '(max-height: 739px)';
 
+/** Narrow screen: list rows stack actions under text. */
+export const NARROW_VIEWPORT_MQ = '(max-width: 767px)';
+
 /**
  * Vertical space inside `.main-content` for a routed page host (below the app header).
  * Returns 0 when the page is not mounted under the app shell.

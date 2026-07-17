@@ -30,11 +30,11 @@ function makeSession(overrides: Partial<PracticeSession> = {}): PracticeSession 
 
 describe('formatActiveDuration', () => {
   it('formats seconds, minutes, and hours', () => {
-    expect(formatActiveDuration(0)).toBe('0s');
-    expect(formatActiveDuration(45_000)).toBe('45s');
-    expect(formatActiveDuration(90_000)).toBe('1m 30s');
-    expect(formatActiveDuration(3_600_000)).toBe('1h');
-    expect(formatActiveDuration(3_900_000)).toBe('1h 5m');
+    expect(formatActiveDuration(0)).toBe('0 秒');
+    expect(formatActiveDuration(45_000)).toBe('45 秒');
+    expect(formatActiveDuration(90_000)).toBe('1 分 30 秒');
+    expect(formatActiveDuration(3_600_000)).toBe('1 时');
+    expect(formatActiveDuration(3_900_000)).toBe('1 时 5 分');
   });
 });
 

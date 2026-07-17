@@ -1,3 +1,5 @@
+import { msg, str } from '@lit/localize';
+
 import type { PauseMode, PracticeSegment, SubtitleSegment } from '../types/models.js';
 import { getLocale } from '../i18n/localization.js';
 
@@ -53,7 +55,7 @@ export const EXPANDED_MEDIA_EVENTS = Object.values(ExtendedMediaEventType);
 export const FORWARDED_MEDIA_EVENTS = [...NATIVE_MEDIA_EVENTS, ...EXPANDED_MEDIA_EVENTS] as const;
 
 export function formatStorageUsage(usage: number): string {
-  return (usage / 1024 / 1024).toFixed(1) + ' MB';
+  return msg(str`${(usage / 1024 / 1024).toFixed(1)} MB`);
 }
 
 /**

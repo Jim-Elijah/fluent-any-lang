@@ -767,7 +767,7 @@ export class UiInputPassword extends InputBase {
     if (!this.visibilityToggle) {
       return nothing;
     }
-    const label = this._isPasswordVisible ? 'Hide password' : 'Show password';
+    const label = this._isPasswordVisible ? msg('隐藏密码') : msg('显示密码');
     const icon = this._isPasswordVisible ? '🙈' : '👁';
     return html`
       <button

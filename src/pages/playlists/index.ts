@@ -1,5 +1,5 @@
 import { msg, str, localized } from '@lit/localize';
-import { css, html, LitElement } from 'lit';
+import { css, html, LitElement, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { navigator } from 'lit-element-router';
 
@@ -8,6 +8,8 @@ import {
   deletePlaylist,
   getMedia,
   getPlaylist,
+  getPlaylistDisplayName,
+  getPlaylistEntryDisplayTitle,
   getPlaylistList,
   isPlaylistNameConflictError,
   removeMediaFromPlaylist,
@@ -59,12 +61,12 @@ export class PlaylistsPage extends NavigatorElement {
       overflow: visible;
     }
 
-    .page {
+    .layout {
       display: flex;
       flex-direction: column;
-      gap: var(--space-inline);
       flex: 1;
       min-height: 0;
+      gap: var(--space-sm);
     }
 
     .intro {
@@ -74,80 +76,83 @@ export class PlaylistsPage extends NavigatorElement {
       flex-shrink: 0;
     }
 
-    .layout {
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      flex-shrink: 0;
+    }
+
+    .toolbar ui-input {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .list-section {
       display: flex;
       flex-direction: column;
       flex: 1;
       min-height: 0;
-    }
-
-    .panel {
-      display: flex;
-      flex-direction: column;
-      min-height: 0;
-      background: var(--color-surface, #fff);
-      border: 1px solid var(--color-border, #d9d9d9);
-      border-radius: var(--radius-lg, 12px);
       overflow: hidden;
     }
 
-    .panel-header {
+    :host([compact]) .list-section {
+      flex: none;
+      overflow: visible;
+    }
+
+    .header {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: var(--space-block);
-      padding: var(--space-inline);
-      border-bottom: 1px solid var(--color-border, #f0f0f0);
+      margin-bottom: var(--space-block);
       flex-shrink: 0;
     }
 
-    .panel-header h2,
-    .panel-header h3 {
+    .header h2 {
       margin: 0;
-      font-size: 1rem;
+      font-size: 1.125rem;
       font-weight: 600;
     }
 
-    .panel-header p {
-      margin: 0;
+    .count {
       color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
-      font-size: 0.8125rem;
+      font-size: 0.875rem;
     }
 
-    .panel-body {
+    .list-viewport {
       flex: 1;
       min-height: 0;
       overflow: auto;
     }
 
-    .create-bar {
-      display: flex;
-      gap: var(--space-sm);
-      padding: var(--space-inline);
-      border-bottom: 1px solid var(--color-border, #f0f0f0);
-      flex-shrink: 0;
-    }
-
-    .create-bar ui-input {
-      flex: 1;
-      min-width: 0;
+    :host([compact]) .list-viewport {
+      flex: none;
+      overflow: visible;
     }
 
     .playlist-list {
       display: flex;
       flex-direction: column;
+      gap: var(--space-md);
     }
 
     .playlist-item {
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
-      gap: var(--space-sm);
+      gap: var(--space-md);
       align-items: center;
-      padding: var(--space-inline);
-      border-bottom: 1px solid var(--color-border, #f0f0f0);
+      padding: var(--space-md) var(--space-lg);
+      background: var(--color-surface, #fff);
+      border: 1px solid var(--color-border, #d9d9d9);
+      border-radius: var(--radius-md, 8px);
+      box-shadow: var(--shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.06));
+      box-sizing: border-box;
     }
 
     .playlist-item.active {
+      border-color: var(--color-primary, #1677ff);
       background: rgba(22, 119, 255, 0.08);
     }
 
@@ -164,6 +169,7 @@ export class PlaylistsPage extends NavigatorElement {
     }
 
     .playlist-name {
+      font-size: 1rem;
       font-weight: 600;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -174,8 +180,9 @@ export class PlaylistsPage extends NavigatorElement {
       display: flex;
       flex-wrap: wrap;
       gap: var(--space-sm);
+      margin: 0;
       color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
-      font-size: 0.75rem;
+      font-size: 0.8125rem;
     }
 
     .playlist-actions,
@@ -186,6 +193,7 @@ export class PlaylistsPage extends NavigatorElement {
       flex-wrap: wrap;
       gap: var(--space-xs);
       align-items: center;
+      flex-shrink: 0;
     }
 
     .tag {
@@ -329,10 +337,15 @@ export class PlaylistsPage extends NavigatorElement {
       padding: var(--space-stack);
       text-align: center;
       color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
+      background: var(--color-surface, #fff);
+      border: 1px dashed var(--color-border, #d9d9d9);
+      border-radius: var(--radius-md, 8px);
     }
 
     .drawer-empty {
       padding-inline: 0;
+      border: none;
+      background: transparent;
     }
 
     .drawer-footer {
@@ -348,23 +361,29 @@ export class PlaylistsPage extends NavigatorElement {
     }
 
     .error {
-      margin: var(--space-inline);
+      flex-shrink: 0;
     }
 
     @media (max-width: 767px) {
-      .panel,
       .drawer-content {
         min-height: auto;
-      }
-
-      .panel-body {
-        overflow: visible;
       }
 
       .detail-title-row,
       .entry-item,
       .playlist-item {
         grid-template-columns: 1fr;
+      }
+
+      .playlist-item {
+        align-items: start;
+        gap: var(--space-sm);
+        padding: var(--space-sm) var(--space-md);
+      }
+
+      .playlist-actions,
+      .entry-actions {
+        justify-content: flex-end;
       }
     }
   `;
@@ -532,11 +551,13 @@ export class PlaylistsPage extends NavigatorElement {
         key: 'move-up',
         label: msg('上移'),
         disabled: index <= 1 || busy,
+        icon: 'move-up',
       },
       {
         key: 'move-down',
         label: msg('下移'),
         disabled: index >= this._playlists.length - 1 || busy,
+        icon: 'move-down',
       },
       { key: 'divider', label: '', type: 'divider' },
       {
@@ -544,6 +565,7 @@ export class PlaylistsPage extends NavigatorElement {
         label: msg('删除'),
         danger: true,
         disabled: this._busyKey === `delete:${playlistId}`,
+        icon: 'delete',
       },
     ];
   }
@@ -554,11 +576,13 @@ export class PlaylistsPage extends NavigatorElement {
         key: 'move-up',
         label: msg('上移'),
         disabled: index === 0,
+        icon: 'move-up',
       },
       {
         key: 'move-down',
         label: msg('下移'),
         disabled: index === this._entryViews.length - 1,
+        icon: 'move-down',
       },
     ];
   }
@@ -816,126 +840,126 @@ export class PlaylistsPage extends NavigatorElement {
     const drawerSize = this.compact ? '88vh' : 'min(640px, 92vw)';
 
     return html`
-      <div class="page">
+      <div class="layout">
         <p class="intro">${msg('在这里快速开始练习，并集中管理播放列表中的音视频与顺序。')}</p>
 
         ${this._error ? html`<ui-alert class="error" type="error">${this._error}</ui-alert>` : null}
 
-        <div class="layout">
-          <section class="panel">
-            <div class="panel-header">
-              <div>
-                <h2>${msg('播放列表库')}</h2>
-                <p>${msg(str`${this._playlists.length} 个列表`)}</p>
-              </div>
-            </div>
+        <div class="toolbar">
+          <ui-input
+            .value=${this._newPlaylistName}
+            placeholder="${msg('新建播放列表')}"
+            aria-label="${msg('新建播放列表')}"
+            @change=${(event: CustomEvent<InputChangeDetail>) => {
+              this._newPlaylistName = event.detail.value || '';
+            }}
+            @keydown=${(event: KeyboardEvent) => {
+              if (event.key === 'Enter') {
+                void this._handleCreatePlaylist();
+              }
+            }}
+          ></ui-input>
+          <ui-button
+            variant="primary"
+            ?disabled=${this._busyKey === 'create'}
+            @click=${() => void this._handleCreatePlaylist()}
+          >
+            ${msg('新建')}
+          </ui-button>
+        </div>
 
-            <div class="create-bar">
-              <ui-input
-                .value=${this._newPlaylistName}
-                placeholder="${msg('新建播放列表')}"
-                aria-label="${msg('新建播放列表')}"
-                @change=${(event: CustomEvent<InputChangeDetail>) => {
-                  this._newPlaylistName = event.detail.value || '';
-                }}
-                @keydown=${(event: KeyboardEvent) => {
-                  if (event.key === 'Enter') {
-                    void this._handleCreatePlaylist();
-                  }
-                }}
-              ></ui-input>
-              <ui-button
-                variant="primary"
-                ?disabled=${this._busyKey === 'create'}
-                @click=${() => void this._handleCreatePlaylist()}
-              >
-                ${msg('新建')}
-              </ui-button>
-            </div>
+        <div class="list-section">
+          <div class="header">
+            <h2>${msg('播放列表库')}</h2>
+            <span class="count">${this._playlists.length} ${msg('项')}</span>
+          </div>
 
-            <div class="panel-body">
-              ${this._loading
-                ? html`<div class="empty">${msg('加载中…')}</div>`
-                : this._playlists.length === 0
-                  ? html`<div class="empty">${msg('暂无播放列表')}</div>`
-                  : html`
-                      <div class="playlist-list">
-                        ${this._playlists.map((playlist, index) => {
-                          const isActive = playlist.id === this._selectedPlaylistId;
-                          const activeCount = this._getActiveEntryCount(playlist);
-                          const isLastPlayed = this._isLastPlayedPlaylist(playlist.id);
-                          return html`
-                            <div class="playlist-item ${isActive ? 'active' : ''}">
-                              <div class="playlist-main">
-                                <div class="playlist-name-row">
-                                  <span class="playlist-name">${playlist.name}</span>
-                                  ${isLastPlayed
-                                    ? html`<span class="tag muted">${msg('上次练习')}</span>`
-                                    : null}
-                                </div>
-                                <div class="playlist-meta">
-                                  <span>${msg(str`${activeCount} 项`)}</span>
-                                  <span
-                                    >${msg(
-                                      str`更新于 ${formatDate(playlist.updatedAt, true)}`,
-                                    )}</span
-                                  >
-                                </div>
+          <div class="list-viewport">
+            ${this._loading
+              ? html`<div class="empty">${msg('加载中…')}</div>`
+              : this._playlists.length === 0
+                ? html`<div class="empty">${msg('暂无播放列表')}</div>`
+                : html`
+                    <div class="playlist-list">
+                      ${this._playlists.map((playlist, index) => {
+                        const isActive = playlist.id === this._selectedPlaylistId;
+                        const activeCount = this._getActiveEntryCount(playlist);
+                        const isLastPlayed = this._isLastPlayedPlaylist(playlist.id);
+                        return html`
+                          <div class="playlist-item ${isActive ? 'active' : ''}">
+                            <div class="playlist-main">
+                              <div class="playlist-name-row">
+                                <span class="playlist-name"
+                                  >${getPlaylistDisplayName(playlist)}</span
+                                >
+                                ${isLastPlayed
+                                  ? html`<span class="tag muted">${msg('上次练习')}</span>`
+                                  : null}
                               </div>
+                              <div class="playlist-meta">
+                                <span>${msg(str`${activeCount} 项`)}</span>
+                                <span
+                                  >${msg(str`更新于 ${formatDate(playlist.updatedAt, true)}`)}</span
+                                >
+                              </div>
+                            </div>
 
-                              <div class="playlist-actions">
+                            <div class="playlist-actions">
+                              <ui-tooltip
+                                title=${this._getPlaylistPrimaryActionLabel(playlist.id)}
+                                ?disabled=${activeCount === 0}
+                              >
                                 <ui-button
                                   variant=${isLastPlayed ? 'primary' : 'secondary'}
                                   ?disabled=${activeCount === 0}
                                   @click=${() => this._startPractice(playlist)}
                                 >
                                   <ui-icon name="practice"></ui-icon>
-                                  ${this._getPlaylistPrimaryActionLabel(playlist.id)}
                                 </ui-button>
-                                <ui-tooltip title=${msg('管理')}>
-                                  <ui-button
-                                    variant="secondary"
-                                    aria-label=${msg('管理')}
-                                    @click=${() => void this._selectPlaylist(playlist.id)}
-                                  >
-                                    <ui-icon name="setting"></ui-icon>
-                                  </ui-button>
-                                </ui-tooltip>
-                                ${playlist.kind === 'user'
-                                  ? html`
-                                      <ui-dropdown
-                                        trigger="click"
-                                        placement="bottomRight"
-                                        .menu=${{
-                                          items: this._getPlaylistMenuItems(index, playlist.id),
-                                        }}
-                                        @menu-click=${(e: CustomEvent<DropdownMenuClickDetail>) =>
-                                          this._handlePlaylistMenuClick(e, playlist.id)}
-                                      >
-                                        <ui-tooltip title=${msg('更多操作')}>
-                                          <ui-button
-                                            variant="secondary"
-                                            aria-label=${msg('更多操作')}
-                                          >
-                                            <ui-icon name="more"></ui-icon>
-                                          </ui-button>
-                                        </ui-tooltip>
-                                      </ui-dropdown>
-                                    `
-                                  : null}
-                              </div>
+                              </ui-tooltip>
+                              <ui-tooltip title=${msg('管理')}>
+                                <ui-button
+                                  variant="secondary"
+                                  aria-label=${msg('管理')}
+                                  @click=${() => void this._selectPlaylist(playlist.id)}
+                                >
+                                  <ui-icon name="setting"></ui-icon>
+                                </ui-button>
+                              </ui-tooltip>
+                              ${playlist.kind === 'user'
+                                ? html`
+                                    <ui-dropdown
+                                      trigger="click"
+                                      placement="bottomRight"
+                                      .menu=${{
+                                        items: this._getPlaylistMenuItems(index, playlist.id),
+                                      }}
+                                      @menu-click=${(e: CustomEvent<DropdownMenuClickDetail>) =>
+                                        this._handlePlaylistMenuClick(e, playlist.id)}
+                                    >
+                                      <ui-tooltip title=${msg('更多操作')}>
+                                        <ui-button
+                                          variant="secondary"
+                                          aria-label=${msg('更多操作')}
+                                        >
+                                          <ui-icon name="more"></ui-icon>
+                                        </ui-button>
+                                      </ui-tooltip>
+                                    </ui-dropdown>
+                                  `
+                                : null}
                             </div>
-                          `;
-                        })}
-                      </div>
-                    `}
-            </div>
-          </section>
+                          </div>
+                        `;
+                      })}
+                    </div>
+                  `}
+          </div>
         </div>
 
         <ui-drawer
           .open=${drawerOpen}
-          .title=${selectedPlaylist?.name ?? msg('播放列表')}
+          .title=${selectedPlaylist ? getPlaylistDisplayName(selectedPlaylist) : msg('播放列表')}
           .direction=${drawerDirection}
           .size=${drawerSize}
           ?destroy-on-close=${true}
@@ -946,7 +970,11 @@ export class PlaylistsPage extends NavigatorElement {
                 <div slot="header" class="detail-header">
                   <div class="detail-title-row">
                     <div class="detail-title-group">
-                      <h2>${selectedPlaylist?.name ?? msg('播放列表')}</h2>
+                      <h2>
+                        ${selectedPlaylist
+                          ? getPlaylistDisplayName(selectedPlaylist)
+                          : msg('播放列表')}
+                      </h2>
                       <div class="detail-meta">
                         ${selectedPlaylist
                           ? html`
@@ -974,7 +1002,6 @@ export class PlaylistsPage extends NavigatorElement {
                               @click=${() => this._requestDeletePlaylist(selectedPlaylist.id)}
                             >
                               <ui-icon name="delete"></ui-icon>
-                              ${msg('删除')}
                             </ui-button>
                           `
                         : null}
@@ -1022,8 +1049,10 @@ export class PlaylistsPage extends NavigatorElement {
                       : html`
                           <div class="entry-list">
                             ${this._entryViews.map((item, index) => {
-                              const title =
-                                item.media?.title || item.entry.titleSnapshot || msg('(未知媒体)');
+                              const title = getPlaylistEntryDisplayTitle(
+                                item.media?.title,
+                                item.entry.titleSnapshot,
+                              );
                               return html`
                                 <div class="entry-item">
                                   <div class="entry-main">
@@ -1052,34 +1081,37 @@ export class PlaylistsPage extends NavigatorElement {
                                       <span class="entry-position"
                                         >${msg(str`第 ${index + 1} 项`)}</span
                                       >
-                                      <span
-                                        class="badge ${item.media?.hasSubtitles ? '' : 'muted'}"
-                                      >
-                                        <ui-tooltip
-                                          title=${item.media?.hasSubtitles
-                                            ? msg('含字幕')
-                                            : msg('无字幕')}
-                                          .zIndex=${Z_INDEX.MODAL + 1}
-                                        >
-                                          <ui-icon
-                                            name=${item.media?.hasSubtitles
-                                              ? 'subtitle'
-                                              : 'subtitle-off'}
-                                            size="var(--icon-md)"
-                                          ></ui-icon>
-                                        </ui-tooltip>
-                                      </span>
+                                      ${item.media?.hasSubtitles
+                                        ? html`
+                                            <span class="badge">
+                                              <ui-tooltip
+                                                title=${msg('含字幕')}
+                                                .zIndex=${Z_INDEX.MODAL + 1}
+                                              >
+                                                <ui-icon
+                                                  name="subtitle-on"
+                                                  size="var(--icon-md)"
+                                                ></ui-icon>
+                                              </ui-tooltip>
+                                            </span>
+                                          `
+                                        : nothing}
                                     </div>
                                   </div>
 
                                   <div class="entry-actions">
-                                    <ui-button
-                                      variant="secondary"
-                                      @click=${() =>
-                                        this._startPractice(selectedPlaylist!, item.entry.mediaId)}
-                                    >
-                                      ${msg('从这里练习')}
-                                    </ui-button>
+                                    <ui-tooltip title=${msg('练习')} .zIndex=${Z_INDEX.MODAL + 1}>
+                                      <ui-button
+                                        variant="secondary"
+                                        @click=${() =>
+                                          this._startPractice(
+                                            selectedPlaylist!,
+                                            item.entry.mediaId,
+                                          )}
+                                      >
+                                        <ui-icon name="practice"></ui-icon>
+                                      </ui-button>
+                                    </ui-tooltip>
                                     <ui-popconfirm
                                       title=${msg('确定将该媒体从播放列表移除吗？')}
                                       placement="bottom"
@@ -1095,7 +1127,6 @@ export class PlaylistsPage extends NavigatorElement {
                                         `remove-entry:${item.entry.mediaId}`}
                                       >
                                         <ui-icon name="delete"></ui-icon>
-                                        ${msg('移除')}
                                       </ui-button>
                                     </ui-popconfirm>
                                     <ui-dropdown
@@ -1136,14 +1167,19 @@ export class PlaylistsPage extends NavigatorElement {
                             ? msg('上次练到这份播放列表，可直接继续。')
                             : msg(str`${activeEntryCount} 项可开始练习`)}
                         </div>
-                        <ui-button
-                          variant="primary"
+                        <ui-tooltip
+                          title=${this._getPlaylistPrimaryActionLabel(selectedPlaylist.id)}
                           ?disabled=${activeEntryCount === 0}
-                          @click=${() => this._startPractice(selectedPlaylist)}
+                          .zIndex=${Z_INDEX.MODAL + 1}
                         >
-                          <ui-icon name="practice"></ui-icon>
-                          ${this._getPlaylistPrimaryActionLabel(selectedPlaylist.id)}
-                        </ui-button>
+                          <ui-button
+                            variant="primary"
+                            ?disabled=${activeEntryCount === 0}
+                            @click=${() => this._startPractice(selectedPlaylist)}
+                          >
+                            <ui-icon name="practice"></ui-icon>
+                          </ui-button>
+                        </ui-tooltip>
                       </div>
                     `
                   : null}

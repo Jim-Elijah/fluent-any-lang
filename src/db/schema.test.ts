@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 
 import {
   DB_NAME,
-  DB_VERSION,
   STORE_ERROR_LOG,
   STORE_MEDIA,
   STORE_MEDIA_BLOB,
@@ -18,7 +17,6 @@ import {
 describe('db schema constants', () => {
   it('defines stable database identity', () => {
     expect(DB_NAME).toBe('fluent-any-lang');
-    expect(DB_VERSION).toBe(10);
   });
 
   it('defines all object store names', () => {

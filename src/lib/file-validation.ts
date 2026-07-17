@@ -174,14 +174,14 @@ export function getMediaDuration(file: Blob, mimeType: string): Promise<number> 
       const duration = element.duration;
       cleanup();
       if (!Number.isFinite(duration) || duration <= 0) {
-        reject(new Error('Unable to read media duration'));
+        reject(new Error(msg('无法读取媒体时长')));
         return;
       }
       resolve(duration);
     };
     element.onerror = () => {
       cleanup();
-      reject(new Error('Unable to load media file'));
+      reject(new Error(msg('无法加载媒体文件')));
     };
     element.src = url;
   });

@@ -100,7 +100,7 @@ async function unzipFile(file: File): Promise<ZipFiles> {
     buffer = await new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(new Uint8Array(reader.result as ArrayBuffer));
-      reader.onerror = () => reject(reader.error ?? new Error('Failed to read file'));
+      reader.onerror = () => reject(reader.error ?? new Error(msg('无法读取文件')));
       reader.readAsArrayBuffer(file);
     });
   }

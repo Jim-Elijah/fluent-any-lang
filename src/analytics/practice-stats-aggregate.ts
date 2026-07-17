@@ -1,3 +1,5 @@
+import { msg, str } from '@lit/localize';
+
 import type { MediaType, PracticeAnalyticsMode, PracticeSession } from '../types/models.js';
 import { toLocalDateKey } from '../db/practice-session.js';
 
@@ -60,16 +62,16 @@ export function emptyModeBreakdown(): ModeBreakdown {
 export function formatActiveDuration(ms: number): string {
   const totalSec = Math.max(0, Math.round(ms / 1000));
   if (totalSec < 60) {
-    return `${totalSec}s`;
+    return msg(str`${totalSec} 秒`);
   }
   const totalMin = Math.floor(totalSec / 60);
   if (totalMin < 60) {
     const sec = totalSec % 60;
-    return sec > 0 ? `${totalMin}m ${sec}s` : `${totalMin}m`;
+    return sec > 0 ? msg(str`${totalMin} 分 ${sec} 秒`) : msg(str`${totalMin} 分`);
   }
   const hours = Math.floor(totalMin / 60);
   const min = totalMin % 60;
-  return min > 0 ? `${hours}h ${min}m` : `${hours}h`;
+  return min > 0 ? msg(str`${hours} 时 ${min} 分`) : msg(str`${hours} 时`);
 }
 
 export function parseDateKey(dateKey: string): { y: number; m: number; d: number } {
