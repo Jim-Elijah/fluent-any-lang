@@ -3,7 +3,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { mount } from '../../components/ui/test-utils.js';
 import type { UiDrawer } from '../../components/ui/drawer.js';
-import { addMedia, addMediaToPlaylist, createPlaylist } from '../../db/service.js';
+import {
+  addMedia,
+  addMediaToPlaylist,
+  createPlaylist,
+  removeMediaFromPlaylist,
+} from '../../db/service.js';
 import { Message } from '../../components/ui/message.js';
 import { getAppSettings, setAppSettings } from '../../lib/app-settings.js';
 import { resetDatabase } from '../../test/db-helpers.js';
@@ -149,6 +154,35 @@ describe('playlists-page', () => {
     expect(getDrawer(el)?.open).toBe(false);
     expect(el.shadowRoot?.querySelector('.playlist-item.active')).toBeNull();
     expect(getDrawer(el)?.textContent ?? '').not.toContain('Lesson 1');
+  });
+
+  it('hides soft-deleted playlist entries from the drawer', async () => {
+    stubMatchMedia(false);
+    const active = makeMedia('m1', 'Active Lesson');
+    const removed = makeMedia('m2', 'Removed Lesson');
+    await addMedia(active, { mediaId: active.id, blob: new Blob(['a']) });
+    await addMedia(removed, { mediaId: removed.id, blob: new Blob(['b']) });
+    const playlist = await createPlaylist('Mixed List');
+    await addMediaToPlaylist(playlist.id, active.id);
+    await addMediaToPlaylist(playlist.id, removed.id);
+    await removeMediaFromPlaylist(playlist.id, removed.id);
+
+    const el = await renderPage();
+    await settlePage(el);
+
+    const playlistItems = Array.from(el.shadowRoot?.querySelectorAll('.playlist-item') ?? []);
+    const targetItem = playlistItems.find((item) => item.textContent?.includes('Mixed List'));
+    const manageButton = targetItem?.querySelector(
+      '.playlist-actions ui-button[aria-label="管理"]',
+    ) as HTMLElement | null;
+    manageButton?.click();
+    await settlePage(el);
+
+    const drawer = getDrawer(el);
+    await waitForText(el, 'Active Lesson');
+    expect(drawer?.textContent).toContain('Active Lesson');
+    expect(drawer?.textContent).not.toContain('Removed Lesson');
+    expect(drawer?.textContent).not.toContain('已移除');
   });
 
   it('uses direct practice actions and clears stale last-played state after deletion', async () => {

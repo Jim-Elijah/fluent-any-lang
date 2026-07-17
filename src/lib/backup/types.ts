@@ -1,6 +1,6 @@
 import type { AppSettings } from '../../types/models.js';
 
-export const BACKUP_FORMAT_VERSION = 2 as const;
+export const BACKUP_FORMAT_VERSION = 3 as const;
 
 export type BackupExportOptions = {
   /** Include media blobs + matching subtitles. Default false. */
@@ -9,6 +9,8 @@ export type BackupExportOptions = {
   includeRecordings: boolean;
   /** Include practice session analytics. Default true. */
   includeSessions: boolean;
+  /** Include sentence bank entries + clipped blobs. Default true. */
+  includeSentenceBank: boolean;
 };
 
 export type BackupManifest = {
@@ -20,8 +22,9 @@ export type BackupManifest = {
     includeRecordings: boolean;
     includeSessions: boolean;
     includeSettings: true;
-    /** Always true in v2; v1 did not include playlists. */
+    /** Always true in v2+; v1 did not include playlists. */
     includePlaylists: true;
+    includeSentenceBank: boolean;
   };
   counts: {
     media: number;
@@ -29,6 +32,7 @@ export type BackupManifest = {
     recordings: number;
     sessions: number;
     playlists: number;
+    sentenceBank: number;
   };
 };
 
@@ -38,6 +42,7 @@ export type BackupPreview = {
   hasMediaBlobs: boolean;
   hasRecordings: boolean;
   hasSessions: boolean;
+  hasSentenceBank: boolean;
 };
 
 export type BackupImportResult = {
@@ -50,6 +55,8 @@ export type BackupImportResult = {
   recordingsSkipped: number;
   sessionsImported: number;
   sessionsSkipped: number;
+  sentenceBankImported: number;
+  sentenceBankSkipped: number;
   errors: string[];
 };
 
@@ -57,4 +64,5 @@ export const DEFAULT_BACKUP_EXPORT_OPTIONS: BackupExportOptions = {
   includeMedia: false,
   includeRecordings: true,
   includeSessions: true,
+  includeSentenceBank: true,
 };

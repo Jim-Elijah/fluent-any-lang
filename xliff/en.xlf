@@ -870,9 +870,6 @@
 <trans-unit id="sbf85220dc2a27a7d">
   <source>当前音频的跟读录音</source>
 </trans-unit>
-<trans-unit id="sf3f2633774f347b6">
-  <source>已导出备份（录音 <x id="0" equiv-text="${manifest.counts.recordings}"/>，学习记录 <x id="1" equiv-text="${manifest.counts.sessions}"/>，媒体 <x id="2" equiv-text="${manifest.counts.media}"/>）</source>
-</trans-unit>
 <trans-unit id="s1b3be8769609cc19">
   <source>导出失败</source>
 </trans-unit>
@@ -1568,6 +1565,143 @@
 <trans-unit id="s74e844cdefea9b52">
   <source>管理偏好、练习限额、数据备份、应用更新与诊断。</source>
   <target>Manage preferences, practice limits, backups, app updates, and diagnostics.</target>
+</trans-unit>
+<trans-unit id="sec8400be2aca8aa1">
+  <source>无法定位到来源句子</source>
+  <target>Could not locate the source sentence</target>
+</trans-unit>
+<trans-unit id="s2b3bd8f653449d45">
+  <source>正在加入句库…</source>
+  <target>Adding to sentence bank…</target>
+</trans-unit>
+<trans-unit id="s33c5a622586500b1">
+  <source>该句已在句库</source>
+  <target>Already in sentence bank</target>
+</trans-unit>
+<trans-unit id="s5f5e46ed8f9c6256">
+  <source>已加入句库</source>
+  <target>Added to sentence bank</target>
+</trans-unit>
+<trans-unit id="sdc12328f3e2e6b2b">
+  <source>加入句库失败，请重试</source>
+  <target>Failed to add to sentence bank. Please try again.</target>
+</trans-unit>
+<trans-unit id="scf75fafc5cd64e06">
+  <source>加入句库</source>
+  <target>Add to sentence bank</target>
+</trans-unit>
+<trans-unit id="see4e88e6d56da880">
+  <source>已导出备份（录音 <x id="0" equiv-text="${manifest.counts.recordings}"/>，学习记录 <x id="1" equiv-text="${manifest.counts.sessions}"/>，句库 <x id="2" equiv-text="${manifest.counts.sentenceBank}"/>，媒体 <x id="3" equiv-text="${manifest.counts.media}"/>）</source>
+  <target>Backup exported (recordings <x id="0" equiv-text="${manifest.counts.recordings}"/>, sessions <x id="1" equiv-text="${manifest.counts.sessions}"/>, sentences <x id="2" equiv-text="${manifest.counts.sentenceBank}"/>, media <x id="3" equiv-text="${manifest.counts.media}"/>)</target>
+</trans-unit>
+<trans-unit id="scd789d2e6a2af520">
+  <source>句库：导入 <x id="0" equiv-text="${result.sentenceBankImported}"/>，跳过 <x id="1" equiv-text="${result.sentenceBankSkipped}"/></source>
+  <target>Sentence bank: imported <x id="0" equiv-text="${result.sentenceBankImported}"/>, skipped <x id="1" equiv-text="${result.sentenceBankSkipped}"/></target>
+</trans-unit>
+<trans-unit id="sd637c87de97f9608">
+  <source>缺少句库音频：<x id="0" equiv-text="${entry.id}"/></source>
+  <target>Missing sentence audio: <x id="0" equiv-text="${entry.id}"/></target>
+</trans-unit>
+<trans-unit id="s0ca1c0c33406c604">
+  <source>导入句库失败：<x id="0" equiv-text="${entry.id}"/></source>
+  <target>Failed to import sentence: <x id="0" equiv-text="${entry.id}"/></target>
+</trans-unit>
+<trans-unit id="s9e601d1b61250646">
+  <source>缺少句子 ID</source>
+  <target>Missing sentence ID</target>
+</trans-unit>
+<trans-unit id="seeb420330b0b47dc">
+  <source>加载句子中…</source>
+  <target>Loading sentence…</target>
+</trans-unit>
+<trans-unit id="sda528df1bc505a92">
+  <source>该句子不存在或无法加载</source>
+  <target>This sentence does not exist or could not be loaded</target>
+</trans-unit>
+<trans-unit id="s3f7ba346c1cbdccb">
+  <source>加载失败，请重试</source>
+  <target>Failed to load. Please try again.</target>
+</trans-unit>
+<trans-unit id="s01906485c27a72cb">
+  <source>句子练习</source>
+  <target>Sentence practice</target>
+</trans-unit>
+<trans-unit id="sb23590b3781b3b2f">
+  <source>返回句库</source>
+  <target>Back to sentence bank</target>
+</trans-unit>
+<trans-unit id="s7834b40813a8e25e">
+  <source>来自</source>
+  <target>From</target>
+</trans-unit>
+<trans-unit id="s22d29823dc9695c8">
+  <source>加载句库失败</source>
+  <target>Failed to load sentence bank</target>
+</trans-unit>
+<trans-unit id="s858e54c6033f20a4">
+  <source>源媒体已删除，无法查看来源</source>
+  <target>Source media was deleted; cannot view source</target>
+</trans-unit>
+<trans-unit id="se73f7b894aad7b32">
+  <source>已从句库移除</source>
+  <target>Removed from sentence bank</target>
+</trans-unit>
+<trans-unit id="sa4836058dbebe678">
+  <source>收藏喜欢的句子，单独练习或跳回原媒体上下文。</source>
+  <target>Save favorite sentences, practice them alone, or jump back to the original media context.</target>
+</trans-unit>
+<trans-unit id="s1021dd0895543e89">
+  <source>句库</source>
+  <target>Sentence bank</target>
+</trans-unit>
+<trans-unit id="s9896c718d8dd43c2">
+  <source><x id="0" equiv-text="${visibleEntries.length}"/> 句</source>
+  <target><x id="0" equiv-text="${this._entries.length}"/> sentence(s)</target>
+</trans-unit>
+<trans-unit id="sef218683966963b5">
+  <source>句库为空。在练习页点击字幕旁的 ☆ 即可加入。</source>
+  <target>Sentence bank is empty. Tap ☆ next to a subtitle on the practice page to add one.</target>
+</trans-unit>
+<trans-unit id="sb799440972680616">
+  <source>来自：<x id="0" equiv-text="${entry.sourceTitleSnapshot}"/></source>
+  <target>From: <x id="0" equiv-text="${entry.sourceTitleSnapshot}"/></target>
+</trans-unit>
+<trans-unit id="s903429b28c3b80ce">
+  <source>源媒体已删除</source>
+  <target>Source media deleted</target>
+</trans-unit>
+<trans-unit id="s8f5d5ccbbf434d84">
+  <source>查看来源</source>
+  <target>View source</target>
+</trans-unit>
+<trans-unit id="s9e277af97f3cbd8a">
+  <source>确定从句库移除该句吗？</source>
+  <target>Remove this sentence from the bank?</target>
+</trans-unit>
+<trans-unit id="s8a99ee2f7fe6b697">
+  <source>正在从句库移除…</source>
+  <target>Removing from sentence bank…</target>
+</trans-unit>
+<trans-unit id="s5ad84b565244743a">
+  <source>该句不在句库</source>
+  <target>Not in sentence bank</target>
+</trans-unit>
+<trans-unit id="s9508747af122491f">
+  <source>从句库移除失败，请重试</source>
+  <target>Failed to remove from sentence bank. Please try again.</target>
+</trans-unit>
+<trans-unit id="see17b3fdc4f1ac62">
+  <source>从句库移除</source>
+  <target>Remove from sentence bank</target>
+</trans-unit>
+<trans-unit id="s7851da0813da69f0">
+  <source>来源</source>
+</trans-unit>
+<trans-unit id="s10261a08955b7230">
+  <source>句子</source>
+</trans-unit>
+<trans-unit id="sab2b4b426618115f">
+  <source>搜索句子 / 来源标题</source>
 </trans-unit>
 </body>
 </file>

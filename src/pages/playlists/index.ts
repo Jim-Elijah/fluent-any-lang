@@ -266,10 +266,6 @@ export class PlaylistsPage extends NavigatorElement {
       background: var(--color-surface, #fff);
     }
 
-    .entry-item.removed {
-      opacity: 0.6;
-    }
-
     .entry-main {
       display: grid;
       gap: var(--space-xs);
@@ -489,10 +485,12 @@ export class PlaylistsPage extends NavigatorElement {
       }
 
       const entryViews = await Promise.all(
-        playlist.entries.map(async (entry) => ({
-          entry,
-          media: entry.mediaId ? await getMedia(entry.mediaId) : undefined,
-        })),
+        playlist.entries
+          .filter((entry) => !entry.removed)
+          .map(async (entry) => ({
+            entry,
+            media: entry.mediaId ? await getMedia(entry.mediaId) : undefined,
+          })),
       );
 
       this._selectedPlaylist = playlist;
@@ -512,7 +510,7 @@ export class PlaylistsPage extends NavigatorElement {
 
   private _getPlaylistDuration(): number {
     return this._entryViews.reduce((total, item) => {
-      if (!item.entry.removed && item.media) {
+      if (item.media) {
         return total + item.media.duration;
       }
       return total;
@@ -550,17 +548,17 @@ export class PlaylistsPage extends NavigatorElement {
     ];
   }
 
-  private _getEntryMenuItems(index: number, removed: boolean): DropdownMenuItem[] {
+  private _getEntryMenuItems(index: number): DropdownMenuItem[] {
     return [
       {
         key: 'move-up',
         label: msg('上移'),
-        disabled: index === 0 || removed,
+        disabled: index === 0,
       },
       {
         key: 'move-down',
         label: msg('下移'),
-        disabled: index === this._entryViews.length - 1 || removed,
+        disabled: index === this._entryViews.length - 1,
       },
     ];
   }
@@ -750,11 +748,16 @@ export class PlaylistsPage extends NavigatorElement {
   private async _handleMoveEntry(index: number, direction: -1 | 1): Promise<void> {
     const playlist = this._selectedPlaylist;
     if (!playlist) return;
-    const targetIndex = index + direction;
-    if (targetIndex < 0 || targetIndex >= playlist.entries.length) return;
+
+    const activeIndexes = playlist.entries
+      .map((entry, entryIndex) => (entry.removed ? -1 : entryIndex))
+      .filter((entryIndex) => entryIndex >= 0);
+    const fromIndex = activeIndexes[index];
+    const toIndex = activeIndexes[index + direction];
+    if (fromIndex == null || toIndex == null) return;
 
     const nextEntries = [...playlist.entries];
-    [nextEntries[index], nextEntries[targetIndex]] = [nextEntries[targetIndex], nextEntries[index]];
+    [nextEntries[fromIndex], nextEntries[toIndex]] = [nextEntries[toIndex], nextEntries[fromIndex]];
 
     this._busyKey = `move-entry:${index}`;
     try {
@@ -1022,13 +1025,10 @@ export class PlaylistsPage extends NavigatorElement {
                               const title =
                                 item.media?.title || item.entry.titleSnapshot || msg('(未知媒体)');
                               return html`
-                                <div class="entry-item ${item.entry.removed ? 'removed' : ''}">
+                                <div class="entry-item">
                                   <div class="entry-main">
                                     <div class="entry-title-row">
                                       <span class="entry-title">${title}</span>
-                                      ${item.entry.removed
-                                        ? html`<span class="tag muted">${msg('已移除')}</span>`
-                                        : null}
                                     </div>
                                     <div class="entry-meta">
                                       <span class="badge ${item.media ? '' : 'muted'}">
@@ -1075,7 +1075,6 @@ export class PlaylistsPage extends NavigatorElement {
                                   <div class="entry-actions">
                                     <ui-button
                                       variant="secondary"
-                                      ?disabled=${item.entry.removed}
                                       @click=${() =>
                                         this._startPractice(selectedPlaylist!, item.entry.mediaId)}
                                     >
@@ -1092,8 +1091,8 @@ export class PlaylistsPage extends NavigatorElement {
                                     >
                                       <ui-button
                                         variant="danger"
-                                        ?disabled=${item.entry.removed ||
-                                        this._busyKey === `remove-entry:${item.entry.mediaId}`}
+                                        ?disabled=${this._busyKey ===
+                                        `remove-entry:${item.entry.mediaId}`}
                                       >
                                         <ui-icon name="delete"></ui-icon>
                                         ${msg('移除')}
@@ -1104,7 +1103,7 @@ export class PlaylistsPage extends NavigatorElement {
                                       placement="bottomRight"
                                       .zIndex=${Z_INDEX.MODAL + 1}
                                       .menu=${{
-                                        items: this._getEntryMenuItems(index, item.entry.removed),
+                                        items: this._getEntryMenuItems(index),
                                       }}
                                       @menu-click=${(e: CustomEvent<DropdownMenuClickDetail>) =>
                                         this._handleEntryMenuClick(e, index)}

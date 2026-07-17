@@ -133,7 +133,7 @@ export function parseSrt(content: string): SubtitleSegment[] {
     }
 
     segments.push({
-      id: crypto.randomUUID(),
+      id: '',
       startTime: parseSrtTimestamp(match[1], match[2], match[3], match[4]),
       endTime: parseSrtTimestamp(match[5], match[6], match[7], match[8]),
       text,
@@ -183,7 +183,7 @@ export function parseLrc(content: string): SubtitleSegment[] {
     }
 
     segments.push({
-      id: crypto.randomUUID(),
+      id: '',
       startTime,
       endTime: startTime,
       text,

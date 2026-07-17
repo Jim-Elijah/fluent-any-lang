@@ -166,4 +166,18 @@ describe('MediaController', () => {
     await controller.nextTrack(true, { force: true });
     expect(controller.getSnapshot().currentItem?.id).toBe('b');
   });
+
+  it('snaps currentTime to duration when playback ends naturally', async () => {
+    await controller.loadTracks([makeTrack('a', 'Track A')]);
+    Object.defineProperty(audio, 'currentTime', { configurable: true, value: 29.7 });
+    Object.defineProperty(audio, 'duration', { configurable: true, value: 30 });
+    Object.defineProperty(audio, 'paused', { configurable: true, value: false });
+
+    audio.dispatchEvent(new Event('ended'));
+
+    const snapshot = controller.getSnapshot();
+    expect(snapshot.isPlaying).toBe(false);
+    expect(snapshot.currentTime).toBe(30);
+    expect(snapshot.duration).toBe(30);
+  });
 });

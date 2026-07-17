@@ -123,8 +123,9 @@ export class SettingsBackup extends LitElement {
 
   private async _onExport() {
     if (this._busy) return;
-    const { includeMedia, includeRecordings, includeSessions } = this._exportOptions;
-    if (!includeMedia && !includeRecordings && !includeSessions) {
+    const { includeMedia, includeRecordings, includeSessions, includeSentenceBank } =
+      this._exportOptions;
+    if (!includeMedia && !includeRecordings && !includeSessions && !includeSentenceBank) {
       Message.warning(msg('请至少选择一种数据导出'));
       return;
     }
@@ -133,7 +134,7 @@ export class SettingsBackup extends LitElement {
       const manifest = await exportBackup(this._exportOptions);
       Message.success(
         msg(
-          str`已导出备份（录音 ${manifest.counts.recordings}，学习记录 ${manifest.counts.sessions}，媒体 ${manifest.counts.media}）`,
+          str`已导出备份（录音 ${manifest.counts.recordings}，学习记录 ${manifest.counts.sessions}，句库 ${manifest.counts.sentenceBank}，媒体 ${manifest.counts.media}）`,
         ),
       );
     } catch (error) {
@@ -216,6 +217,7 @@ export class SettingsBackup extends LitElement {
         <li>${msg('字幕')}：${manifest.counts.subtitles}</li>
         <li>${msg('录音')}：${manifest.counts.recordings}</li>
         <li>${msg('学习记录')}：${manifest.counts.sessions}</li>
+        <li>${msg('句库')}：${manifest.counts.sentenceBank ?? 0}</li>
       </ul>
       <p class="hint" style="margin-top: var(--space-sm)">
         ${msg('当前库已有同名条目时将跳过，不会覆盖；设置将被覆盖。')}
@@ -235,6 +237,11 @@ export class SettingsBackup extends LitElement {
           </div>
           <div>
             ${msg(str`学习记录：导入 ${result.sessionsImported}，跳过 ${result.sessionsSkipped}`)}
+          </div>
+          <div>
+            ${msg(
+              str`句库：导入 ${result.sentenceBankImported}，跳过 ${result.sentenceBankSkipped}`,
+            )}
           </div>
           ${result.errors.length
             ? html`<div>${msg(str`错误 ${result.errors.length} 条：${result.errors[0]}`)}</div>`
@@ -286,6 +293,18 @@ export class SettingsBackup extends LitElement {
                   this._setExportFlag('includeSessions', (e.target as HTMLInputElement).checked)}
               />
               <span>${msg('学习记录')}</span>
+            </label>
+            <label class="check">
+              <input
+                type="checkbox"
+                .checked=${opts.includeSentenceBank}
+                @change=${(e: Event) =>
+                  this._setExportFlag(
+                    'includeSentenceBank',
+                    (e.target as HTMLInputElement).checked,
+                  )}
+              />
+              <span>${msg('句库')}</span>
             </label>
           </div>
           <div class="actions">

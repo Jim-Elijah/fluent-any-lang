@@ -423,7 +423,7 @@ export class MediaList extends LitElement {
               class="favorite-btn ${isFavorite ? 'active' : ''}"
               @click="${() => this._handleToggleFavorite(media)}"
             >
-              ${isFavorite ? '★' : '☆'}
+              <ui-icon name="${isFavorite ? 'like-fill' : 'like'}" style="color: red"></ui-icon>
             </ui-button>
           </ui-tooltip>
 

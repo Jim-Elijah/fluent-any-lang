@@ -12,12 +12,15 @@ import {
   getPlaylistList,
   getRecordingBlob,
   getRecordingList,
+  getSentenceBankBlob,
+  getSentenceBankList,
 } from '../../db/service.js';
 import type {
   MediaItem,
   Playlist,
   PracticeRecord,
   PracticeSession,
+  SentenceBankEntry,
   SubtitleTrack,
 } from '../../types/models.js';
 import {
@@ -48,7 +51,12 @@ export async function buildBackupZip(
   options: Partial<BackupExportOptions> = {},
 ): Promise<{ blob: Blob; manifest: BackupManifest }> {
   const opts: BackupExportOptions = { ...DEFAULT_BACKUP_EXPORT_OPTIONS, ...options };
-  if (!opts.includeMedia && !opts.includeRecordings && !opts.includeSessions) {
+  if (
+    !opts.includeMedia &&
+    !opts.includeRecordings &&
+    !opts.includeSessions &&
+    !opts.includeSentenceBank
+  ) {
     throw new Error(msg('请至少选择一种数据导出'));
   }
 
@@ -58,14 +66,18 @@ export async function buildBackupZip(
   const settings = getAppSettings();
   files['settings.json'] = strToU8(JSON.stringify(settings, null, 2));
 
-  // Playlists always included in v2.
-  const playlists: Playlist[] = await getPlaylistList();
+  // Playlists always included in v2+. Soft-deleted entries are omitted (delete = gone for users).
+  const playlists: Playlist[] = (await getPlaylistList()).map((playlist) => ({
+    ...playlist,
+    entries: playlist.entries.filter((entry) => !entry.removed),
+  }));
   files['playlists/metadata.jsonl'] = strToU8(toJsonl(playlists));
 
   let mediaItems: MediaItem[] = [];
   let subtitles: SubtitleTrack[] = [];
   let recordings: PracticeRecord[] = [];
   let sessions: PracticeSession[] = [];
+  let sentenceBank: SentenceBankEntry[] = [];
 
   if (opts.includeMedia) {
     mediaItems = await getMediaList();
@@ -95,6 +107,16 @@ export async function buildBackupZip(
     files['sessions/metadata.jsonl'] = strToU8(toJsonl(sessions));
   }
 
+  if (opts.includeSentenceBank) {
+    sentenceBank = await getSentenceBankList();
+    files['sentence-bank/metadata.jsonl'] = strToU8(toJsonl(sentenceBank));
+    for (const entry of sentenceBank) {
+      const blobRecord = await getSentenceBankBlob(entry.id);
+      if (!blobRecord) continue;
+      files[`sentence-bank/blobs/${entry.id}`] = await blobToUint8Array(blobRecord.blob);
+    }
+  }
+
   const manifest: BackupManifest = {
     version: BACKUP_FORMAT_VERSION,
     createdAt,
@@ -105,6 +127,7 @@ export async function buildBackupZip(
       includeSessions: opts.includeSessions,
       includeSettings: true,
       includePlaylists: true,
+      includeSentenceBank: opts.includeSentenceBank,
     },
     counts: {
       media: mediaItems.length,
@@ -112,6 +135,7 @@ export async function buildBackupZip(
       recordings: recordings.length,
       sessions: sessions.length,
       playlists: playlists.length,
+      sentenceBank: sentenceBank.length,
     },
   };
   files['manifest.json'] = strToU8(JSON.stringify(manifest, null, 2));

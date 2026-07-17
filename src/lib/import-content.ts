@@ -28,6 +28,7 @@ import {
   validateMediaFile,
 } from './file-validation.js';
 import { validateSrtContent, validateLrcContent } from './srt-parser.js';
+import { assignSegmentIds } from './segment-id.js';
 import type {
   ConflictDecision,
   ImportConflict,
@@ -173,6 +174,7 @@ async function buildSubtitleTrack(
   segments: SubtitleSegment[],
   contentHash: string,
 ): Promise<SubtitleTrack> {
+  const resolvedSegments = await assignSegmentIds(mediaId, segments);
   return {
     id: await hashAny(`${mediaId}:${file.name}`),
     mediaId,
@@ -180,7 +182,7 @@ async function buildSubtitleTrack(
     filename: file.name,
     type,
     contentHash,
-    segments,
+    segments: resolvedSegments,
   };
 }
 

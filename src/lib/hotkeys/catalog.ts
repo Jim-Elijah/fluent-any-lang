@@ -1,6 +1,10 @@
 import { msg } from '@lit/localize';
 
-import { PRACTICE_HOTKEY_BINDINGS, RECORDING_PREVIEW_HOTKEY_BINDINGS } from './default-map.js';
+import {
+  PRACTICE_HOTKEY_BINDINGS,
+  RECORDING_PREVIEW_HOTKEY_BINDINGS,
+  SENTENCE_PRACTICE_HOTKEY_BINDINGS,
+} from './default-map.js';
 import type { HotkeyAction, HotkeyBinding, HotkeyScopeId } from './types.js';
 
 export type HotkeyCatalogRow = {
@@ -97,6 +101,11 @@ export function getHotkeyCatalog(): HotkeyCatalogSection[] {
       scopeId: 'recording-preview',
       title: msg('录音预览'),
       rows: rowsFromBindings(RECORDING_PREVIEW_HOTKEY_BINDINGS),
+    },
+    {
+      scopeId: 'sentence-practice',
+      title: msg('句库练习'),
+      rows: rowsFromBindings(SENTENCE_PRACTICE_HOTKEY_BINDINGS),
     },
   ];
 }

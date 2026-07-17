@@ -7,12 +7,14 @@ import type {
   Playlist,
   PracticeRecord,
   PracticeSession,
+  SentenceBankBlob,
+  SentenceBankEntry,
   SubtitleTrack,
   PracticeRecordBlob,
 } from '../types/models.js';
 
 export const DB_NAME = 'fluent-any-lang';
-export const DB_VERSION = 9;
+export const DB_VERSION = 11;
 
 export const STORE_MEDIA = 'media';
 export const STORE_MEDIA_BLOB = 'mediaBlob';
@@ -22,6 +24,8 @@ export const STORE_RECORDING_BLOB = 'recordBlob';
 export const STORE_PRACTICE_SESSION = 'practiceSession';
 export const STORE_ERROR_LOG = 'errorLog';
 export const STORE_PLAYLIST = 'playlist';
+export const STORE_SENTENCE_BANK = 'sentenceBank';
+export const STORE_SENTENCE_BANK_BLOB = 'sentenceBankBlob';
 
 /** Max retained error log entries (oldest dropped first). */
 export const ERROR_LOG_MAX_ENTRIES = 200;
@@ -69,6 +73,19 @@ export interface FluentAnyLangDB {
     key: string;
     value: Playlist;
     indexes: { bySortOrder: number };
+  };
+  [STORE_SENTENCE_BANK]: {
+    key: string;
+    value: SentenceBankEntry;
+    indexes: {
+      byContentHash: string;
+      byCreatedAt: number;
+      bySourceMediaId: string;
+    };
+  };
+  [STORE_SENTENCE_BANK_BLOB]: {
+    key: string;
+    value: SentenceBankBlob;
   };
 }
 

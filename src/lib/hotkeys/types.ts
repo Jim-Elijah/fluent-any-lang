@@ -1,4 +1,4 @@
-export type HotkeyScopeId = 'practice' | 'recording-preview';
+export type HotkeyScopeId = 'practice' | 'recording-preview' | 'sentence-practice';
 
 export type HotkeyAction =
   | 'togglePlay'

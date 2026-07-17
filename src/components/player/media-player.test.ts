@@ -103,4 +103,25 @@ describe('media-player', () => {
 
     controller.destroy();
   });
+
+  it('hides advanced settings when advancedSetting is false', async () => {
+    const controller = new MediaController();
+    await controller.loadTracks([makeTrack()]);
+
+    const result = mount(
+      html`<media-player
+        .controller=${controller}
+        .controlsConfig=${{ advancedSetting: false }}
+      ></media-player>`,
+    );
+    cleanup = result.cleanup;
+    const el = result.container.querySelector('media-player') as MediaPlayer;
+    await el.updateComplete;
+    await flushUpdates();
+
+    expect(el.shadowRoot?.querySelector('.settings-toggle-btn')).toBeNull();
+    expect(el.shadowRoot?.querySelector('.settings-panel')).toBeNull();
+
+    controller.destroy();
+  });
 });

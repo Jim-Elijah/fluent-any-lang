@@ -133,6 +133,8 @@ export interface MediaControlsConfig {
   pauseMode?: boolean;
   /** 切换模式 normal fixed mini */
   switchMode?: boolean;
+  /** 是否显示高级设置（齿轮按钮及设置抽屉） */
+  advancedSetting?: boolean;
 }
 
 /** 路由上下文， 参考 lit-element-router/lit-element-router.d.ts */
@@ -152,9 +154,9 @@ export type PlaylistKind = 'favorites' | 'user';
 /** Entry in a playlist — references media + soft-deletion state. */
 export type PlaylistEntry = {
   mediaId: string;
-  /** True when user removes from list or source media is deleted. */
+  /** True when user removes from list or source media is deleted. Hidden in UI; omitted from backup export. */
   removed: boolean;
-  /** Snapshot of title when added (fallback for removed/missing media). */
+  /** Snapshot of title when added (used when re-adding). */
   titleSnapshot?: string;
 };
 
@@ -163,7 +165,7 @@ export type Playlist = {
   name: string;
   kind: PlaylistKind;
   sortOrder: number;
-  /** Ordered entries, includes removed placeholders. */
+  /** Ordered entries; soft-deleted (`removed`) stay in DB for re-add but are hidden in UI. */
   entries: PlaylistEntry[];
   createdAt: number;
   updatedAt: number;
@@ -187,6 +189,34 @@ export type AppSettings = {
 
 export const FAVORITES_PLAYLIST_ID =
   'f42d0f9e4b0ec07df97f58277cd5e5ae2cde973c0bf96ae598827e4da1c3bad1';
+
+/** Saved sentence metadata (audio blob stored separately). */
+export type SentenceBankEntry = {
+  id: string;
+  /** Dedup key: normalize(text)+translation+mediaId+startTime */
+  contentHash: string;
+  text: string;
+  translation?: string;
+  sourceMediaId: string;
+  sourceSegmentId: string;
+  sourceStartTime: number;
+  sourceEndTime: number;
+  sourceTitleSnapshot: string;
+  /** Snapshot of source media type at save time (for icon / filter after media deletion). */
+  sourceMediaType: MediaType;
+  /** False when source media was deleted; clipped audio may still exist. */
+  sourceAvailable: boolean;
+  /** True when user removes from sentence bank. Hidden in UI; omitted from backup export. */
+  removed: boolean;
+  createdAt: number;
+};
+
+export type SentenceBankBlob = {
+  entryId: string;
+  blob: Blob;
+  mimeType: string;
+  duration: number;
+};
 
 export const DEFAULT_SETTINGS: AppSettings = {
   maxRecordingsPerMedia: 5,

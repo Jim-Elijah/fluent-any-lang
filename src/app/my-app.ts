@@ -7,6 +7,8 @@ import { router, navigator, Routes } from 'lit-element-router';
 import '../pages/home/index.js';
 import '../pages/library/index.js';
 import '../pages/playlists/index.js';
+import '../pages/sentences/index.js';
+import '../pages/sentence-practice/index.js';
 import '../pages/practice/index.js';
 import '../pages/practice-stats/index.js';
 import '../pages/settings/index.js';
@@ -16,7 +18,16 @@ import '../components/ui/menu.js';
 import { MenuItem, MenuOpenChangeDetail, MenuSelectDetail } from '../components/ui/menu.js';
 import { getLocale, isLocale, Locale, LOCALE_STORAGE_KEY } from '../i18n/localization.js';
 
-type AppRoute = 'home' | 'practice' | 'library' | 'playlists' | 'stats' | 'settings' | 'not-found';
+type AppRoute =
+  | 'home'
+  | 'practice'
+  | 'library'
+  | 'playlists'
+  | 'sentences'
+  | 'sentence-practice'
+  | 'stats'
+  | 'settings'
+  | 'not-found';
 type RouteRenderContext = {
   routeContext: RouteContext;
 };
@@ -27,6 +38,9 @@ const ROUTE_PAGES: Record<AppRoute, (ctx: RouteRenderContext) => TemplateResult>
     html`<practice-page .routeContext=${routeContext}></practice-page>`,
   library: () => html`<library-page></library-page>`,
   playlists: () => html`<playlists-page></playlists-page>`,
+  sentences: () => html`<sentences-page></sentences-page>`,
+  'sentence-practice': ({ routeContext }) =>
+    html`<sentence-practice-page .routeContext=${routeContext}></sentence-practice-page>`,
   stats: () => html`<practice-stats-page></practice-stats-page>`,
   settings: () => html`<settings-page></settings-page>`,
   'not-found': () => html`<not-found-page></not-found-page>`,
@@ -87,13 +101,15 @@ export class MyApp extends RouterNavigatorApp {
     /* Home / library fill the main pane; lists scroll internally. */
     .main-content:has(home-page:not([compact])),
     .main-content:has(library-page:not([compact])),
-    .main-content:has(playlists-page:not([compact])) {
+    .main-content:has(playlists-page:not([compact])),
+    .main-content:has(sentences-page:not([compact])) {
       overflow: hidden;
     }
 
     .main-content:has(home-page:not([compact])) > main,
     .main-content:has(library-page:not([compact])) > main,
-    .main-content:has(playlists-page:not([compact])) > main {
+    .main-content:has(playlists-page:not([compact])) > main,
+    .main-content:has(sentences-page:not([compact])) > main {
       flex: 1;
       min-height: 0;
       display: flex;
@@ -102,7 +118,8 @@ export class MyApp extends RouterNavigatorApp {
 
     .main-content:has(home-page:not([compact])) > main > home-page,
     .main-content:has(library-page:not([compact])) > main > library-page,
-    .main-content:has(playlists-page:not([compact])) > main > playlists-page {
+    .main-content:has(playlists-page:not([compact])) > main > playlists-page,
+    .main-content:has(sentences-page:not([compact])) > main > sentences-page {
       flex: 1;
       min-height: 0;
     }
@@ -110,14 +127,16 @@ export class MyApp extends RouterNavigatorApp {
     /* Compact: page scrolls in .main-content so lists stay reachable. */
     .main-content:has(home-page[compact]) > main,
     .main-content:has(library-page[compact]) > main,
-    .main-content:has(playlists-page[compact]) > main {
+    .main-content:has(playlists-page[compact]) > main,
+    .main-content:has(sentences-page[compact]) > main {
       flex: none;
       min-height: 0;
     }
 
     .main-content:has(home-page[compact]) > main > home-page,
     .main-content:has(library-page[compact]) > main > library-page,
-    .main-content:has(playlists-page[compact]) > main > playlists-page {
+    .main-content:has(playlists-page[compact]) > main > playlists-page,
+    .main-content:has(sentences-page[compact]) > main > sentences-page {
       flex: none;
       height: auto;
       min-height: 0;
@@ -207,7 +226,8 @@ export class MyApp extends RouterNavigatorApp {
     return [
       { key: 'home', label: msg('首页'), link: '/', icon: 'home' },
       { key: 'library', label: msg('库'), link: '/library', icon: 'media' },
-      { key: 'playlists', label: msg('播放列表'), link: '/playlists', icon: 'media' },
+      { key: 'playlists', label: msg('播放列表'), link: '/playlists', icon: 'playlist' },
+      { key: 'sentences', label: msg('句库'), link: '/sentences', icon: 'dialog' },
       { key: 'stats', label: msg('统计'), link: '/stats', icon: 'stats' },
       { key: 'settings', label: msg('设置'), link: '/settings', icon: 'setting' },
     ];
@@ -229,6 +249,14 @@ export class MyApp extends RouterNavigatorApp {
       {
         name: 'playlists',
         pattern: 'playlists',
+      },
+      {
+        name: 'sentences',
+        pattern: 'sentences',
+      },
+      {
+        name: 'sentence-practice',
+        pattern: 'sentence-practice',
       },
       {
         name: 'practice',
@@ -289,7 +317,8 @@ export class MyApp extends RouterNavigatorApp {
       query,
       data,
     };
-    this.selectedKeys = [route || 'home'];
+    const menuKey = route === 'sentence-practice' ? 'sentences' : route || 'home';
+    this.selectedKeys = [menuKey];
   }
 
   private _handleMenuSelect(event: CustomEvent<MenuSelectDetail>) {

@@ -10,12 +10,17 @@ import {
   STORE_PRACTICE_SESSION,
   STORE_RECORDING_BLOB,
   STORE_RECORDING,
+  STORE_SENTENCE_BANK,
+  STORE_SENTENCE_BANK_BLOB,
   STORE_SUBTITLE,
   type AppDatabase,
   type FluentAnyLangDB,
 } from './schema.js';
 import type { MediaItem, Playlist, SubtitleTrack } from '../types/models.js';
 import { FAVORITES_PLAYLIST_ID } from '../types/models.js';
+import { migrateSegmentIdsToDeterministic } from './migrate-segment-ids.js';
+import { migrateSentenceBankRemoved } from './migrate-sentence-bank-removed.js';
+import { migrateSentenceBankSourceMediaType } from './migrate-sentence-bank-source-media-type.js';
 
 let dbPromise: Promise<AppDatabase> | null = null;
 let favoritesSeeded = false;
@@ -141,6 +146,17 @@ export function getDB(): Promise<AppDatabase> {
           playlistStore.createIndex('bySortOrder', 'sortOrder');
         }
 
+        // sentence bank metadata + clipped audio blobs
+        if (!db.objectStoreNames.contains(STORE_SENTENCE_BANK)) {
+          const sentenceStore = db.createObjectStore(STORE_SENTENCE_BANK, { keyPath: 'id' });
+          sentenceStore.createIndex('byContentHash', 'contentHash', { unique: true });
+          sentenceStore.createIndex('byCreatedAt', 'createdAt');
+          sentenceStore.createIndex('bySourceMediaId', 'sourceMediaId');
+        }
+        if (!db.objectStoreNames.contains(STORE_SENTENCE_BANK_BLOB)) {
+          db.createObjectStore(STORE_SENTENCE_BANK_BLOB, { keyPath: 'entryId' });
+        }
+
         // v3 briefly shipped without byMediaId for some upgrades; re-run through v4.
         if (oldVersion > 0 && oldVersion < 4 && transaction) {
           await migrateSubtitlesToMediaId(transaction);
@@ -165,6 +181,12 @@ export function getDB(): Promise<AppDatabase> {
           }
           favoritesSeeded = true;
         }
+
+        // Full migration of legacy UUID segment ids → deterministic hashes.
+        await migrateSegmentIdsToDeterministic(db);
+        await migrateSentenceBankSourceMediaType(db);
+        await migrateSentenceBankRemoved(db);
+
         return db;
       })
       .catch((error) => {

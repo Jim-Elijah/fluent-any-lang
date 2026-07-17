@@ -16,19 +16,25 @@ import {
 } from '../../db/schema.js';
 import {
   addMedia,
+  addMediaToPlaylist,
   addPracticeSession,
   addSubtitle,
+  createPlaylist,
+  getAllPracticeSessions,
   getMedia,
   getRecording,
-  getAllPracticeSessions,
+  removeMediaFromPlaylist,
   saveRecording,
 } from '../../db/service.js';
 import type {
   MediaItem,
+  Playlist,
   PracticeRecord,
   PracticeSession,
+  SentenceBankEntry,
   SubtitleTrack,
 } from '../../types/models.js';
+import { STORE_PLAYLIST, STORE_SENTENCE_BANK } from '../../db/schema.js';
 
 async function clearAllStores() {
   const db = await getDB();
@@ -183,5 +189,59 @@ describe('backup export/import', () => {
     });
     const file = new File([bad], 'bad.zip', { type: 'application/zip' });
     await expect(previewBackup(file)).rejects.toThrow(/不支持的备份格式/);
+  });
+
+  it('omits soft-deleted playlist entries and sentence bank entries from export', async () => {
+    const media = makeMedia();
+    await addMedia(media, {
+      mediaId: media.id,
+      blob: new Blob(['abc'], { type: 'audio/mpeg' }),
+    });
+
+    const playlist = await createPlaylist('Practice');
+    await addMediaToPlaylist(playlist.id, media.id);
+    await removeMediaFromPlaylist(playlist.id, media.id);
+
+    const db = await getDB();
+    const sentenceEntry: SentenceBankEntry = {
+      id: 'sentence-1',
+      contentHash: 'hash-sentence',
+      text: 'hi',
+      sourceMediaId: media.id,
+      sourceSegmentId: 's1',
+      sourceStartTime: 0,
+      sourceEndTime: 1,
+      sourceTitleSnapshot: media.title,
+      sourceMediaType: 'audio',
+      sourceAvailable: true,
+      removed: true,
+      createdAt: 1,
+    };
+    await db.put(STORE_SENTENCE_BANK, sentenceEntry);
+
+    const storedPlaylist = (await db.get(STORE_PLAYLIST, playlist.id)) as Playlist;
+    expect(storedPlaylist.entries.some((entry) => entry.removed)).toBe(true);
+
+    const { blob, manifest } = await buildBackupZip({
+      includeMedia: true,
+      includeRecordings: false,
+      includeSessions: false,
+      includeSentenceBank: true,
+    });
+
+    expect(manifest.counts.sentenceBank).toBe(0);
+
+    const files = unzipSync(new Uint8Array(await blob.arrayBuffer()));
+    const playlists = strFromU8(files['playlists/metadata.jsonl'])
+      .split('\n')
+      .filter(Boolean)
+      .map((line) => JSON.parse(line) as Playlist);
+    const exportedPlaylist = playlists.find((item) => item.id === playlist.id);
+    expect(exportedPlaylist?.entries).toEqual([]);
+
+    const sentenceLines = strFromU8(files['sentence-bank/metadata.jsonl'] ?? strToU8(''))
+      .split('\n')
+      .filter(Boolean);
+    expect(sentenceLines).toHaveLength(0);
   });
 });

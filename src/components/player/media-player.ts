@@ -33,6 +33,7 @@ const defaultControlConfig: MediaControlsConfig = {
   previousNextTrack: true,
   previousNextSegment: false,
   switchMode: false,
+  advancedSetting: true,
 };
 
 @customElement('media-player')
@@ -469,6 +470,9 @@ export class MediaPlayer extends LitElement {
   }
 
   protected willUpdate(changed: Map<PropertyKey, unknown>): void {
+    if (changed.has('controlsConfig') && this.controlsConfig.advancedSetting === false) {
+      this._showSettings = false;
+    }
     if (changed.has('controller') && this.controller !== this._boundController) {
       if (this._boundController) {
         this._unbindControllerEvents(this._boundController);
@@ -875,16 +879,16 @@ export class MediaPlayer extends LitElement {
               <div class="action-buttons">
                 ${this.controlsConfig.playbackRate ? this._renderRateControl(snapshot) : ''}
                 ${this.controlsConfig.volume ? this._renderVolumeControl(snapshot) : ''}
-
-                <!-- Settings drawer button -->
-                <ui-icon-button
-                  name="setting"
-                  class="settings-toggle-btn ${this._showSettings ? 'active' : ''}"
-                  title="${msg('高级设置')}"
-                  size="var(--icon-lg)"
-                  ?disabled="${this.disabled}"
-                  @click="${this._toggleSettings}"
-                ></ui-icon-button>
+                ${this.controlsConfig.advancedSetting !== false
+                  ? html`<ui-icon-button
+                      name="setting"
+                      class="settings-toggle-btn ${this._showSettings ? 'active' : ''}"
+                      title="${msg('高级设置')}"
+                      size="var(--icon-lg)"
+                      ?disabled="${this.disabled}"
+                      @click="${this._toggleSettings}"
+                    ></ui-icon-button>`
+                  : ''}
 
                 <!-- Change Mode button -->
                 ${this.controlsConfig.switchMode
@@ -912,153 +916,153 @@ export class MediaPlayer extends LitElement {
             : ''}
         </div>
 
-        <!-- Collapsible Settings Panel -->
-        <div class="settings-panel ${this._showSettings ? 'expanded' : ''}">
-          <div class="settings-grid">
-            ${showLoopMode
-              ? html`<div class="setting-item">
-                  <span class="setting-label">${msg('循环模式')}</span>
-                  <ui-select
-                    ?disabled="${this.disabled}"
-                    .value=${snapshot.loopMode}
-                    .options=${[
-                      { value: 'none', label: msg('关闭') },
-                      { value: 'single', label: msg('单曲循环') },
-                      {
-                        value: 'segment',
-                        label: msg('单句循环'),
-                        disabled: !snapshot.hasSubtitles,
-                      },
-                      { value: 'list', label: msg('列表循环') },
-                      { value: 'shuffle', label: msg('随机播放') },
-                    ]}
-                    @change=${this._handleLoopModeChange}
-                  ></ui-select>
-                </div>`
-              : ''}
-            ${showPauseMode
-              ? html`
-                  <div class="setting-item">
-                    <span class="setting-label">${msg('单句暂停模式')}</span>
-                    <ui-select
-                      ?disabled="${this.disabled}"
-                      .value=${snapshot.pauseMode}
-                      .options=${[
-                        { value: 'off', label: msg('关闭') },
-                        { value: 'seconds', label: msg('固定时长') },
-                        {
-                          value: 'percentage',
-                          label: msg('句长百分比'),
-                        },
-                      ]}
-                      @change=${this._handlePauseModeChange}
-                    ></ui-select>
-                  </div>
-                  ${snapshot.pauseMode === 'seconds'
-                    ? html`
-                        <div class="setting-item">
-                          <span class="setting-label"
-                            >${msg(str`固定时长（${Number(snapshot.pauseSeconds)}秒）`)}</span
-                          >
-                          <ui-slider
-                            ?disabled="${this.disabled}"
-                            .value=${Number(snapshot.pauseSeconds)}
-                            min="1"
-                            max="30"
-                            step="1"
-                            .marks=${{
-                              1: '1',
-                              3: '3',
-                              5: '5',
-                              10: '10',
-                              30: '30',
-                            }}
-                            .tooltip=${{
-                              formatter: (v: number) => `${v} ${msg('秒')}`,
-                              placement: 'top',
-                            }}
-                            @change=${this._handlePauseSecondsChange}
-                          ></ui-slider>
-                        </div>
-                      `
-                    : null}
-                  ${snapshot.pauseMode === 'percentage'
-                    ? html`
-                        <div class="setting-item">
-                          <span class="setting-label"
-                            >${msg(str`句长百分比（${Number(snapshot.pausePercent)}%）`)}</span
-                          >
-                          <ui-slider
-                            ?disabled="${this.disabled}"
-                            .value=${Number(snapshot.pausePercent)}
-                            min="100"
-                            max="500"
-                            step="10"
-                            .marks=${{
-                              100: '100',
-                              200: '200',
-                              300: '300',
-                              400: '400',
-                              500: '500',
-                            }}
-                            .tooltip=${{
-                              formatter: (v: number) => `${v}%`,
-                              placement: 'top',
-                            }}
-                            @change=${this._handlePausePercentChange}
-                          ></ui-slider>
-                        </div>
-                      `
-                    : null}
-                `
-              : null}
-            ${this.controlsConfig.sleepMode
-              ? html`<div class="setting-item">
-                  <span class="setting-label">${msg('睡眠模式')}</span>
-                  <ui-select
-                    ?disabled="${this.disabled}"
-                    .value=${snapshot.sleepMode}
-                    .options=${[
-                      { value: 'off', label: msg('关闭') },
-                      { value: 'minutes', label: msg('定时暂停') },
-                      { value: 'until-end', label: msg('播完本集暂停') },
-                    ]}
-                    @change=${this._handleSleepModeChange}
-                  ></ui-select>
-                </div>`
-              : ''}
-            ${snapshot.sleepMode === 'minutes'
-              ? html`
-                  <div class="setting-item">
-                    <span class="setting-label"
-                      >${msg(str`定时关闭（${Number(snapshot.sleepMinutes)}分钟）`)}</span
-                    >
-                    <ui-slider
-                      ?disabled="${this.disabled}"
-                      .value=${Number(snapshot.sleepMinutes)}
-                      min="1"
-                      max="${MAX_SLEEP_MINUTES}"
-                      step="1"
-                      .marks=${{
-                        0: '0',
-                        10: '10',
-                        20: '20',
-                        30: '30',
-                        60: '60',
-                        [MAX_SLEEP_MINUTES]: `${MAX_SLEEP_MINUTES}`,
-                      }}
-                      .tooltip=${{
-                        formatter: (v: number) => `${v} ${msg('分钟')}`,
-                        placement: 'top',
-                      }}
-                      @change=${this._handleSleepMinutesChange}
-                    ></ui-slider>
-                  </div>
-                `
-              : null}
-          </div>
-        </div>
-
+        ${this.controlsConfig.advancedSetting !== false
+          ? html`<div class="settings-panel ${this._showSettings ? 'expanded' : ''}">
+              <div class="settings-grid">
+                ${showLoopMode
+                  ? html`<div class="setting-item">
+                      <span class="setting-label">${msg('循环模式')}</span>
+                      <ui-select
+                        ?disabled="${this.disabled}"
+                        .value=${snapshot.loopMode}
+                        .options=${[
+                          { value: 'none', label: msg('关闭') },
+                          { value: 'single', label: msg('单曲循环') },
+                          {
+                            value: 'segment',
+                            label: msg('单句循环'),
+                            disabled: !snapshot.hasSubtitles,
+                          },
+                          { value: 'list', label: msg('列表循环') },
+                          { value: 'shuffle', label: msg('随机播放') },
+                        ]}
+                        @change=${this._handleLoopModeChange}
+                      ></ui-select>
+                    </div>`
+                  : ''}
+                ${showPauseMode
+                  ? html`
+                      <div class="setting-item">
+                        <span class="setting-label">${msg('单句暂停模式')}</span>
+                        <ui-select
+                          ?disabled="${this.disabled}"
+                          .value=${snapshot.pauseMode}
+                          .options=${[
+                            { value: 'off', label: msg('关闭') },
+                            { value: 'seconds', label: msg('固定时长') },
+                            {
+                              value: 'percentage',
+                              label: msg('句长百分比'),
+                            },
+                          ]}
+                          @change=${this._handlePauseModeChange}
+                        ></ui-select>
+                      </div>
+                      ${snapshot.pauseMode === 'seconds'
+                        ? html`
+                            <div class="setting-item">
+                              <span class="setting-label"
+                                >${msg(str`固定时长（${Number(snapshot.pauseSeconds)}秒）`)}</span
+                              >
+                              <ui-slider
+                                ?disabled="${this.disabled}"
+                                .value=${Number(snapshot.pauseSeconds)}
+                                min="1"
+                                max="30"
+                                step="1"
+                                .marks=${{
+                                  1: '1',
+                                  3: '3',
+                                  5: '5',
+                                  10: '10',
+                                  30: '30',
+                                }}
+                                .tooltip=${{
+                                  formatter: (v: number) => `${v} ${msg('秒')}`,
+                                  placement: 'top',
+                                }}
+                                @change=${this._handlePauseSecondsChange}
+                              ></ui-slider>
+                            </div>
+                          `
+                        : null}
+                      ${snapshot.pauseMode === 'percentage'
+                        ? html`
+                            <div class="setting-item">
+                              <span class="setting-label"
+                                >${msg(str`句长百分比（${Number(snapshot.pausePercent)}%）`)}</span
+                              >
+                              <ui-slider
+                                ?disabled="${this.disabled}"
+                                .value=${Number(snapshot.pausePercent)}
+                                min="100"
+                                max="500"
+                                step="10"
+                                .marks=${{
+                                  100: '100',
+                                  200: '200',
+                                  300: '300',
+                                  400: '400',
+                                  500: '500',
+                                }}
+                                .tooltip=${{
+                                  formatter: (v: number) => `${v}%`,
+                                  placement: 'top',
+                                }}
+                                @change=${this._handlePausePercentChange}
+                              ></ui-slider>
+                            </div>
+                          `
+                        : null}
+                    `
+                  : null}
+                ${this.controlsConfig.sleepMode
+                  ? html`<div class="setting-item">
+                      <span class="setting-label">${msg('睡眠模式')}</span>
+                      <ui-select
+                        ?disabled="${this.disabled}"
+                        .value=${snapshot.sleepMode}
+                        .options=${[
+                          { value: 'off', label: msg('关闭') },
+                          { value: 'minutes', label: msg('定时暂停') },
+                          { value: 'until-end', label: msg('播完本集暂停') },
+                        ]}
+                        @change=${this._handleSleepModeChange}
+                      ></ui-select>
+                    </div>`
+                  : ''}
+                ${snapshot.sleepMode === 'minutes'
+                  ? html`
+                      <div class="setting-item">
+                        <span class="setting-label"
+                          >${msg(str`定时关闭（${Number(snapshot.sleepMinutes)}分钟）`)}</span
+                        >
+                        <ui-slider
+                          ?disabled="${this.disabled}"
+                          .value=${Number(snapshot.sleepMinutes)}
+                          min="1"
+                          max="${MAX_SLEEP_MINUTES}"
+                          step="1"
+                          .marks=${{
+                            0: '0',
+                            10: '10',
+                            20: '20',
+                            30: '30',
+                            60: '60',
+                            [MAX_SLEEP_MINUTES]: `${MAX_SLEEP_MINUTES}`,
+                          }}
+                          .tooltip=${{
+                            formatter: (v: number) => `${v} ${msg('分钟')}`,
+                            placement: 'top',
+                          }}
+                          @change=${this._handleSleepMinutesChange}
+                        ></ui-slider>
+                      </div>
+                    `
+                  : null}
+              </div>
+            </div>`
+          : ''}
         ${snapshot.sleepActive
           ? html`
               <div class="sleep-status">

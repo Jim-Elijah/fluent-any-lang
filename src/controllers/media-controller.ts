@@ -676,6 +676,16 @@ export class MediaController extends EventTarget {
     }
   };
 
+  /** Align UI time with the true end when natural playback finishes. */
+  private _snapPlaybackToEnd(): void {
+    const endTime = this.mediaElement?.duration || this.duration;
+    if (!Number.isFinite(endTime) || endTime <= 0) {
+      return;
+    }
+    this.duration = endTime;
+    this.currentTime = endTime;
+  }
+
   private _handleEnded = (): void => {
     if (this.sleepMode === 'until-end') {
       this.setSleepMode('off');
@@ -706,6 +716,7 @@ export class MediaController extends EventTarget {
       }
       default:
         this.isPlaying = false;
+        this._snapPlaybackToEnd();
         this._emitChange();
         break;
     }

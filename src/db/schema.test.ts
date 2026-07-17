@@ -10,13 +10,15 @@ import {
   STORE_PRACTICE_SESSION,
   STORE_RECORDING,
   STORE_RECORDING_BLOB,
+  STORE_SENTENCE_BANK,
+  STORE_SENTENCE_BANK_BLOB,
   STORE_SUBTITLE,
 } from './schema.js';
 
 describe('db schema constants', () => {
   it('defines stable database identity', () => {
     expect(DB_NAME).toBe('fluent-any-lang');
-    expect(DB_VERSION).toBe(9);
+    expect(DB_VERSION).toBe(10);
   });
 
   it('defines all object store names', () => {
@@ -29,6 +31,8 @@ describe('db schema constants', () => {
       STORE_PRACTICE_SESSION,
       STORE_ERROR_LOG,
       STORE_PLAYLIST,
+      STORE_SENTENCE_BANK,
+      STORE_SENTENCE_BANK_BLOB,
     }).toEqual({
       STORE_MEDIA: 'media',
       STORE_MEDIA_BLOB: 'mediaBlob',
@@ -38,6 +42,8 @@ describe('db schema constants', () => {
       STORE_PRACTICE_SESSION: 'practiceSession',
       STORE_ERROR_LOG: 'errorLog',
       STORE_PLAYLIST: 'playlist',
+      STORE_SENTENCE_BANK: 'sentenceBank',
+      STORE_SENTENCE_BANK_BLOB: 'sentenceBankBlob',
     });
   });
 });

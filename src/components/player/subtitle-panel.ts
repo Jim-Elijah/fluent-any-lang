@@ -353,6 +353,17 @@ export class SubtitlePanel extends LitElement {
       padding: var(--space-xs) var(--space-sm);
     }
 
+    .row-actions {
+      display: flex;
+      align-items: center;
+      gap: var(--space-xs);
+      flex-shrink: 0;
+    }
+
+    .row-actions ui-button button {
+      padding: var(--space-xs) var(--space-sm);
+    }
+
     @media (max-width: 767px) {
       .content {
         align-items: flex-start;
@@ -404,6 +415,13 @@ export class SubtitlePanel extends LitElement {
    */
   @property({ type: Boolean })
   seekDisabled = false;
+
+  /** Segment ids already saved in the sentence bank for the current media. */
+  @property({ attribute: false })
+  sentenceBankSegmentIds: string[] = [];
+
+  @property({ type: Boolean })
+  sentenceBankBusy = false;
 
   @state()
   private _controllerHost: MediaControllerHost | null = null;
@@ -627,11 +645,12 @@ export class SubtitlePanel extends LitElement {
                   </p>`
                 : ''}
             </div>
-            ${this.echoMode
-              ? html`<div class="echo-controls" @click="${this._stopRowClick}">
-                  ${this._renderEchoRecordButton(index)} ${this._renderEchoSelect(segment.id)}
-                </div>`
-              : nothing}
+            <div class="row-actions" @click="${this._stopRowClick}">
+              ${this._renderSentenceBankButton(segment)}
+              ${this.echoMode
+                ? html`${this._renderEchoRecordButton(index)} ${this._renderEchoSelect(segment.id)}`
+                : nothing}
+            </div>
           </li>
         `,
       )}
@@ -640,6 +659,44 @@ export class SubtitlePanel extends LitElement {
 
   private _stopRowClick(event: Event): void {
     event.stopPropagation();
+  }
+
+  private _renderSentenceBankButton(segment: SubtitleSegment): TemplateResult {
+    const saved = this.sentenceBankSegmentIds.includes(segment.id);
+    const label = saved ? msg('从句库移除') : msg('加入句库');
+    return html`
+      <ui-tooltip
+        title="${label}"
+        .zIndex=${this._isFullscreen() ? Z_INDEX.POPUP_ABOVE_FULLSCREEN : Z_INDEX.TOOLTIP}
+      >
+        <ui-button
+          variant="ghost"
+          aria-label="${label}"
+          ?disabled=${this.sentenceBankBusy}
+          @click="${() => this._handleSentenceBankToggle(segment)}"
+        >
+          <ui-icon
+            name="${saved ? 'like-fill' : 'like'}"
+            style="color: red"
+            size="var(--icon-md)"
+          ></ui-icon>
+        </ui-button>
+      </ui-tooltip>
+    `;
+  }
+
+  private _handleSentenceBankToggle(segment: SubtitleSegment): void {
+    if (this.sentenceBankBusy) {
+      return;
+    }
+    const saved = this.sentenceBankSegmentIds.includes(segment.id);
+    this.dispatchEvent(
+      new CustomEvent(saved ? 'sentence-bank-remove' : 'sentence-bank-add', {
+        detail: { segment },
+        bubbles: true,
+        composed: true,
+      }),
+    );
   }
 
   private _renderEchoRecordButton(segmentIndex: number): TemplateResult {

@@ -11,8 +11,10 @@ import {
   getPlaylist,
   getPracticeSession,
   getRecording,
+  getSentenceBankEntry,
   getSubtitle,
   getSubtitleById,
+  putSentenceBankEntry,
   saveRecording,
 } from '../../db/service.js';
 import type {
@@ -20,6 +22,7 @@ import type {
   Playlist,
   PracticeRecord,
   PracticeSession,
+  SentenceBankEntry,
   SubtitleTrack,
 } from '../../types/models.js';
 import { type BackupImportResult, type BackupManifest, type BackupPreview } from './types.js';
@@ -49,9 +52,9 @@ function parseManifest(raw: unknown): BackupManifest {
     throw new Error(msg('备份文件损坏：manifest 无效'));
   }
 
-  // Accept v1 or v2.
+  // Accept v1–v3.
   const version = raw.version as number;
-  if (version !== 1 && version !== 2) {
+  if (version !== 1 && version !== 2 && version !== 3) {
     throw new Error(msg('不支持的备份格式，请升级应用后再试'));
   }
 
@@ -59,17 +62,20 @@ function parseManifest(raw: unknown): BackupManifest {
     throw new Error(msg('备份文件损坏：manifest 无效'));
   }
 
-  // Normalize v1 to v2 shape (playlists always false in v1).
+  // Normalize older manifests to v3 shape.
   return {
     ...raw,
-    version: 2,
+    version: 3,
     flags: {
       ...raw.flags,
       includePlaylists: (raw.flags as { includePlaylists?: boolean }).includePlaylists ?? false,
+      includeSentenceBank:
+        (raw.flags as { includeSentenceBank?: boolean }).includeSentenceBank ?? false,
     },
     counts: {
       ...raw.counts,
       playlists: (raw.counts as { playlists?: number }).playlists ?? 0,
+      sentenceBank: (raw.counts as { sentenceBank?: number }).sentenceBank ?? 0,
     },
   } as BackupManifest;
 }
@@ -129,6 +135,7 @@ export async function previewBackup(file: File): Promise<BackupPreview> {
     hasMediaBlobs: Boolean(files['media/metadata.jsonl']),
     hasRecordings: Boolean(files['recordings/metadata.jsonl']),
     hasSessions: Boolean(files['sessions/metadata.jsonl']),
+    hasSentenceBank: Boolean(files['sentence-bank/metadata.jsonl']),
   };
 }
 
@@ -150,6 +157,8 @@ export async function importBackup(file: File): Promise<BackupImportResult> {
     recordingsSkipped: 0,
     sessionsImported: 0,
     sessionsSkipped: 0,
+    sentenceBankImported: 0,
+    sentenceBankSkipped: 0,
     errors: [],
   };
 
@@ -274,6 +283,33 @@ export async function importBackup(file: File): Promise<BackupImportResult> {
 
   // Ensure favorites exists after import (v1 compat or if playlists were empty).
   await ensureFavoritesPlaylist();
+
+  const sentenceBank = readJsonl<SentenceBankEntry>(files, 'sentence-bank/metadata.jsonl');
+  for (const entry of sentenceBank) {
+    try {
+      const existing = await getSentenceBankEntry(entry.id);
+      if (existing) {
+        result.sentenceBankSkipped += 1;
+        continue;
+      }
+      const blobData = files[`sentence-bank/blobs/${entry.id}`];
+      if (!blobData) {
+        result.errors.push(msg(str`缺少句库音频：${entry.id}`));
+        continue;
+      }
+      await putSentenceBankEntry(entry, {
+        entryId: entry.id,
+        blob: uint8ToBlob(blobData, 'audio/wav'),
+        mimeType: 'audio/wav',
+        duration: Math.max(0, entry.sourceEndTime - entry.sourceStartTime),
+      });
+      result.sentenceBankImported += 1;
+    } catch (error) {
+      result.errors.push(
+        error instanceof Error ? error.message : msg(str`导入句库失败：${entry.id}`),
+      );
+    }
+  }
 
   return result;
 }

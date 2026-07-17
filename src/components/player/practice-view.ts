@@ -68,6 +68,11 @@ import type { RecordList } from '../library/record-list.js';
 import { Message } from '../ui/message.js';
 import { Loading } from '../ui/loading.js';
 import { EchoRecordRequestDetail, SubtitlePanelFullscreenChangeDetail } from './subtitle-panel.js';
+import {
+  addToSentenceBank,
+  getSentenceBankList,
+  removeFromSentenceBank,
+} from '../../db/service.js';
 
 type PracticeType = 'listening' | 'speaking';
 type SpeakingMode = 'shadowing' | 'echo';
@@ -314,6 +319,12 @@ export class PracticeView extends LitElement {
 
   @state()
   private _echoRecordingsBySegmentId: Record<string, PracticeRecord[]> = {};
+
+  @state()
+  private _sentenceBankSegmentIds: string[] = [];
+
+  @state()
+  private _sentenceBankBusy = false;
 
   @state()
   private _storageEstimate: StorageEstimate | null = null;
@@ -569,6 +580,7 @@ export class PracticeView extends LitElement {
     this._syncMediaIdFromController();
     this._syncTimeTrackerMedia();
     void this._refreshRecordings();
+    void this._refreshSentenceBankIds();
   };
 
   private _onRecordingDeleted = (id: string): void => {
@@ -725,6 +737,7 @@ export class PracticeView extends LitElement {
               previousNextTrack: true,
               previousNextSegment: true,
               switchMode: false,
+              advancedSetting: true,
             }}"
           >
           </media-player>
@@ -739,11 +752,15 @@ export class PracticeView extends LitElement {
             .echoLimitPerSegment="${this._echoLimitPerSegment}"
             .seekDisabled=${sessionActive}
             .previewDisabled=${sessionActive}
+            .sentenceBankSegmentIds=${this._sentenceBankSegmentIds}
+            .sentenceBankBusy=${this._sentenceBankBusy}
             @update:fullscreen="${(e: CustomEvent<SubtitlePanelFullscreenChangeDetail>) => {
               this._subtitlePanelFullscreen = e.detail.fullscreen;
             }}"
             @echo-record-request="${this._onEchoRecordRequest}"
             @echo-record-stop="${this._onEchoRecordStop}"
+            @sentence-bank-add="${this._onSentenceBankAdd}"
+            @sentence-bank-remove="${this._onSentenceBankRemove}"
           ></subtitle-panel>
           ${isEcho
             ? html`<div class="echo-recorder">
@@ -797,7 +814,9 @@ export class PracticeView extends LitElement {
       return nothing;
     }
 
-    const catalog = getHotkeyCatalog();
+    const catalog = getHotkeyCatalog().filter(
+      (section) => section.scopeId === 'practice' || section.scopeId === 'sentence-practice',
+    );
 
     return html`
       <ui-modal
@@ -981,7 +1000,7 @@ export class PracticeView extends LitElement {
   }
 
   private _getPracticeQueryValue(
-    key: 'mediaId' | 'playlistId',
+    key: 'mediaId' | 'playlistId' | 'segmentId',
     context: RouteContext = this.routeContext,
   ): string {
     const value = context.query?.[key];
@@ -996,7 +1015,8 @@ export class PracticeView extends LitElement {
     }
     const playlistId = this._getPracticeQueryValue('playlistId', context);
     const mediaId = this._getPracticeQueryValue('mediaId', context);
-    return `${playlistId}\u0000${mediaId}`;
+    const segmentId = this._getPracticeQueryValue('segmentId', context);
+    return `${playlistId}\u0000${mediaId}\u0000${segmentId}`;
   }
 
   private _resolveLaunchContextFromRoute(): PracticeLaunchContext | null {
@@ -1010,6 +1030,19 @@ export class PracticeView extends LitElement {
       return { kind: 'single', mediaId };
     }
     return null;
+  }
+
+  private _seekToSegmentId(segmentId: string): void {
+    if (!segmentId) {
+      return;
+    }
+    const { segments } = this._controller.getSnapshot();
+    const index = segments.findIndex((segment) => segment.id === segmentId);
+    if (index < 0) {
+      Message.warning(msg('无法定位到来源句子'));
+      return;
+    }
+    this._controller.seekToSegment(index, false, { force: true });
   }
 
   private async _loadPractice(): Promise<void> {
@@ -1055,6 +1088,12 @@ export class PracticeView extends LitElement {
       this._syncMediaIdFromController();
       this._syncTimeTrackerMedia();
       await this._refreshRecordings();
+      await this._refreshSentenceBankIds();
+
+      const segmentId = this._getPracticeQueryValue('segmentId');
+      if (segmentId) {
+        this._seekToSegmentId(segmentId);
+      }
     } catch (error) {
       void reportError(error, { where: 'practice-view._loadPractice' });
       Message.error(msg('加载媒体失败，请重试。'));
@@ -1471,6 +1510,92 @@ export class PracticeView extends LitElement {
       this._storageEstimate = await estimateStorage();
     } catch {
       this._storageEstimate = null;
+    }
+  }
+
+  private async _refreshSentenceBankIds(): Promise<void> {
+    if (!this._mediaId) {
+      this._sentenceBankSegmentIds = [];
+      return;
+    }
+    try {
+      const entries = await getSentenceBankList();
+      this._sentenceBankSegmentIds = entries
+        .filter((entry) => entry.sourceMediaId === this._mediaId)
+        .map((entry) => entry.sourceSegmentId);
+    } catch (error) {
+      void reportError(error, { where: 'practice-view._refreshSentenceBankIds' });
+      this._sentenceBankSegmentIds = [];
+    }
+  }
+
+  private async _onSentenceBankAdd(
+    event: CustomEvent<{ segment: SubtitleSegment }>,
+  ): Promise<void> {
+    const segment = event.detail.segment;
+    const currentItem = this._controller.getSnapshot().currentItem;
+    if (!currentItem || !segment) {
+      return;
+    }
+    if (this._sentenceBankBusy) {
+      return;
+    }
+
+    this._sentenceBankBusy = true;
+    const loading = Loading.service({ text: msg('正在加入句库…') });
+    try {
+      const result = await addToSentenceBank({ media: currentItem, segment });
+      if (result.status === 'duplicate') {
+        Message.info(msg('该句已在句库'));
+      } else {
+        Message.success(msg('已加入句库'));
+      }
+      await this._refreshSentenceBankIds();
+    } catch (error) {
+      void reportError(error, {
+        where: 'practice-view._onSentenceBankAdd',
+        mediaId: currentItem.id,
+        segmentId: segment.id,
+      });
+      Message.error(msg('加入句库失败，请重试'));
+    } finally {
+      loading.close();
+      this._sentenceBankBusy = false;
+    }
+  }
+
+  private async _onSentenceBankRemove(
+    event: CustomEvent<{ segment: SubtitleSegment }>,
+  ): Promise<void> {
+    const segment = event.detail.segment;
+    const currentItem = this._controller.getSnapshot().currentItem;
+    if (!currentItem || !segment) {
+      return;
+    }
+    if (this._sentenceBankBusy) {
+      return;
+    }
+
+    this._sentenceBankBusy = true;
+    const loading = Loading.service({ text: msg('正在从句库移除…') });
+    try {
+      const result = await removeFromSentenceBank({ media: currentItem, segment });
+      if (result.status === 'missing') {
+        Message.info(msg('该句不在句库'));
+      } else {
+        Message.success(msg('已从句库移除'));
+      }
+      await this._refreshSentenceBankIds();
+    } catch (error) {
+      void reportError(error, {
+        where: 'practice-view._onSentenceBankRemove',
+        mediaId: currentItem.id,
+        segmentId: segment.id,
+      });
+      Message.error(msg('从句库移除失败，请重试'));
+    } finally {
+      loading.close();
+      this._sentenceBankBusy = false;
     }
   }
 }
