@@ -144,6 +144,9 @@ export class PracticeStatsDashboard extends NavigatorElement {
     .dot.listening {
       background: var(--color-primary, #1677ff);
     }
+    .dot.discrimination {
+      background: #722ed1;
+    }
     .dot.shadowing {
       background: #13c2c2;
     }
@@ -177,6 +180,9 @@ export class PracticeStatsDashboard extends NavigatorElement {
 
     .stack-bar .listening {
       background: var(--color-primary, #1677ff);
+    }
+    .stack-bar .discrimination {
+      background: #722ed1;
     }
     .stack-bar .shadowing {
       background: #13c2c2;
@@ -273,7 +279,7 @@ export class PracticeStatsDashboard extends NavigatorElement {
       this.data ??
       this._internal ?? {
         todayMs: 0,
-        byMode: { listening: 0, shadowing: 0, echo: 0 },
+        byMode: { listening: 0, discrimination: 0, shadowing: 0, echo: 0 },
         lastSession: null,
         streakDays: 0,
       }
@@ -315,7 +321,7 @@ export class PracticeStatsDashboard extends NavigatorElement {
     const dash = this._dash;
     const total = dash.todayMs;
     const hasAny = total > 0 || dash.lastSession !== null || dash.streakDays > 0;
-    const { listening, shadowing, echo } = dash.byMode;
+    const { listening, discrimination, shadowing, echo } = dash.byMode;
 
     return html`
       <section class="card" aria-label=${msg('今日练习')}>
@@ -353,6 +359,12 @@ export class PracticeStatsDashboard extends NavigatorElement {
                 </div>
                 <div class="mode" role="listitem">
                   <div class="mode-name">
+                    <span class="dot discrimination" aria-hidden="true"></span>${msg('辨音')}
+                  </div>
+                  <div class="mode-value">${formatActiveDuration(discrimination)}</div>
+                </div>
+                <div class="mode" role="listitem">
+                  <div class="mode-name">
                     <span class="dot shadowing" aria-hidden="true"></span>${msg('跟读')}
                   </div>
                   <div class="mode-value">${formatActiveDuration(shadowing)}</div>
@@ -373,6 +385,13 @@ export class PracticeStatsDashboard extends NavigatorElement {
                             class="listening"
                             style="flex:${listening}"
                             title=${msg('听力')}
+                          ></span>`
+                        : nothing}
+                      ${discrimination > 0
+                        ? html`<span
+                            class="discrimination"
+                            style="flex:${discrimination}"
+                            title=${msg('辨音')}
                           ></span>`
                         : nothing}
                       ${shadowing > 0

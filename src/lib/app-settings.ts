@@ -1,4 +1,15 @@
-import { APP_SETTINGS_LIMITS, DEFAULT_SETTINGS, type AppSettings } from '../types/models.js';
+import {
+  APP_SETTINGS_LIMITS,
+  DEFAULT_DISCRIMINATION_SETTINGS,
+  DEFAULT_SETTINGS,
+  DISCRIMINATION_LADDER_COUNT_MAX,
+  DISCRIMINATION_LADDER_COUNT_MIN,
+  DISCRIMINATION_MAX_NOISE_TRACKS,
+  DISCRIMINATION_RATE_STEPS,
+  type AppSettings,
+  type DiscriminationNoiseSelection,
+  type DiscriminationSettings,
+} from '../types/models.js';
 
 export const APP_SETTINGS_STORAGE_KEY = 'fluent-any-lang:app-settings';
 
@@ -7,13 +18,14 @@ export const USER_SETTINGS_STORAGE_KEY = 'fluent-any-lang:user-settings';
 
 export type UserSettings = Pick<
   AppSettings,
-  'skipRecordingCountdown' | 'skipShadowingTips' | 'skipEchoTips'
+  'skipRecordingCountdown' | 'skipShadowingTips' | 'skipEchoTips' | 'skipDiscriminationTips'
 >;
 
 export const DEFAULT_USER_SETTINGS: UserSettings = {
   skipRecordingCountdown: DEFAULT_SETTINGS.skipRecordingCountdown,
   skipShadowingTips: DEFAULT_SETTINGS.skipShadowingTips,
   skipEchoTips: DEFAULT_SETTINGS.skipEchoTips,
+  skipDiscriminationTips: DEFAULT_SETTINGS.skipDiscriminationTips,
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -42,9 +54,83 @@ function clampNumber(
   return n;
 }
 
+function snapRate(value: unknown, fallback: number): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return fallback;
+  }
+  const steps: readonly number[] = DISCRIMINATION_RATE_STEPS;
+  let best = steps[0];
+  let bestDist = Math.abs(value - best);
+  for (const step of steps) {
+    const dist = Math.abs(value - step);
+    if (dist < bestDist) {
+      best = step;
+      bestDist = dist;
+    }
+  }
+  return best;
+}
+
+function parseDiscriminationSelection(raw: unknown): DiscriminationNoiseSelection[] {
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+  const out: DiscriminationNoiseSelection[] = [];
+  for (const entry of raw) {
+    if (!isRecord(entry) || typeof entry.noiseId !== 'string' || !entry.noiseId) {
+      continue;
+    }
+    out.push({
+      noiseId: entry.noiseId,
+      volume: clampNumber(entry.volume, 0.5, 0, 1),
+    });
+    if (out.length >= DISCRIMINATION_MAX_NOISE_TRACKS) {
+      break;
+    }
+  }
+  return out;
+}
+
+export function normalizeDiscriminationSettings(raw: unknown): DiscriminationSettings {
+  const defaults = DEFAULT_DISCRIMINATION_SETTINGS;
+  if (!isRecord(raw)) {
+    return {
+      selected: [],
+      ladderCount: defaults.ladderCount,
+      ladderRates: [...defaults.ladderRates],
+    };
+  }
+
+  const ladderCount = clampNumber(
+    raw.ladderCount,
+    defaults.ladderCount,
+    DISCRIMINATION_LADDER_COUNT_MIN,
+    DISCRIMINATION_LADDER_COUNT_MAX,
+  );
+
+  const rawRates = Array.isArray(raw.ladderRates) ? raw.ladderRates : [];
+  const ladderRates: number[] = [];
+  for (let i = 0; i < ladderCount; i += 1) {
+    ladderRates.push(snapRate(rawRates[i], defaults.ladderRates[0] ?? 1));
+  }
+
+  return {
+    selected: parseDiscriminationSelection(raw.selected),
+    ladderCount,
+    ladderRates,
+  };
+}
+
 function parseAppSettings(raw: unknown): AppSettings {
   if (!isRecord(raw)) {
-    return { ...DEFAULT_SETTINGS };
+    return {
+      ...DEFAULT_SETTINGS,
+      discrimination: {
+        selected: [],
+        ladderCount: DEFAULT_DISCRIMINATION_SETTINGS.ladderCount,
+        ladderRates: [...DEFAULT_DISCRIMINATION_SETTINGS.ladderRates],
+      },
+    };
   }
 
   const limits = APP_SETTINGS_LIMITS;
@@ -86,10 +172,15 @@ function parseAppSettings(raw: unknown): AppSettings {
     ),
     skipShadowingTips: parseBoolean(raw.skipShadowingTips, DEFAULT_SETTINGS.skipShadowingTips),
     skipEchoTips: parseBoolean(raw.skipEchoTips, DEFAULT_SETTINGS.skipEchoTips),
+    skipDiscriminationTips: parseBoolean(
+      raw.skipDiscriminationTips,
+      DEFAULT_SETTINGS.skipDiscriminationTips,
+    ),
     lastPlayedPlaylistId:
       typeof raw.lastPlayedPlaylistId === 'string'
         ? raw.lastPlayedPlaylistId
         : DEFAULT_SETTINGS.lastPlayedPlaylistId,
+    discrimination: normalizeDiscriminationSettings(raw.discrimination),
   };
 }
 
@@ -150,23 +241,31 @@ export function getAppSettings(): AppSettings {
     try {
       return parseAppSettings(JSON.parse(stored));
     } catch {
-      return { ...DEFAULT_SETTINGS };
+      return parseAppSettings(null);
     }
   }
 
   const legacy = loadLegacyUserSettings();
   if (legacy) {
-    const migrated = { ...DEFAULT_SETTINGS, ...legacy };
+    const migrated = parseAppSettings({ ...DEFAULT_SETTINGS, ...legacy });
     writeLocalStorage(APP_SETTINGS_STORAGE_KEY, JSON.stringify(migrated));
     removeLocalStorage(USER_SETTINGS_STORAGE_KEY);
     return migrated;
   }
 
-  return { ...DEFAULT_SETTINGS };
+  return parseAppSettings(null);
 }
 
 export function setAppSettings(partial: Partial<AppSettings>): AppSettings {
-  const next = parseAppSettings({ ...getAppSettings(), ...partial });
+  const current = getAppSettings();
+  const merged: Record<string, unknown> = { ...current, ...partial };
+  if (partial.discrimination) {
+    merged.discrimination = {
+      ...current.discrimination,
+      ...partial.discrimination,
+    };
+  }
+  const next = parseAppSettings(merged);
   writeLocalStorage(APP_SETTINGS_STORAGE_KEY, JSON.stringify(next));
   return next;
 }
@@ -178,6 +277,7 @@ export function getUserSettings(): UserSettings {
     skipRecordingCountdown: s.skipRecordingCountdown,
     skipShadowingTips: s.skipShadowingTips,
     skipEchoTips: s.skipEchoTips,
+    skipDiscriminationTips: s.skipDiscriminationTips,
   };
 }
 
@@ -188,6 +288,7 @@ export function setUserSettings(partial: Partial<UserSettings>): UserSettings {
     skipRecordingCountdown: next.skipRecordingCountdown,
     skipShadowingTips: next.skipShadowingTips,
     skipEchoTips: next.skipEchoTips,
+    skipDiscriminationTips: next.skipDiscriminationTips,
   };
 }
 
@@ -201,4 +302,8 @@ export function shouldSkipShadowingTips(): boolean {
 
 export function shouldSkipEchoTips(): boolean {
   return getAppSettings().skipEchoTips;
+}
+
+export function shouldSkipDiscriminationTips(): boolean {
+  return getAppSettings().skipDiscriminationTips;
 }

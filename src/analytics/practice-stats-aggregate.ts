@@ -9,6 +9,7 @@ export type StatsBucketGranularity = 'day' | 'week' | 'month';
 
 export const PRACTICE_MODES: readonly PracticeAnalyticsMode[] = [
   'listening',
+  'discrimination',
   'shadowing',
   'echo',
 ] as const;
@@ -55,7 +56,7 @@ export type DateRangeBounds = {
 };
 
 export function emptyModeBreakdown(): ModeBreakdown {
-  return { listening: 0, shadowing: 0, echo: 0 };
+  return { listening: 0, discrimination: 0, shadowing: 0, echo: 0 };
 }
 
 /** 将有效练习毫秒格式化为可读时长 */

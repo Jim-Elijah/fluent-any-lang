@@ -9,37 +9,82 @@ export function allocateStackedHeights(
   available: number,
   minScrollable = 120,
 ): [number, number] {
-  if (available <= 0) return [0, 0];
+  const [a, b] = allocateStackedHeightsN([naturalA, naturalB], available, minScrollable);
+  return [a ?? 0, b ?? 0];
+}
 
-  const a = Math.max(0, naturalA);
-  const b = Math.max(0, naturalB);
+/**
+ * Split available vertical space across N stacked lists.
+ * Fits lists that wholly fit (shortest first); remaining space is shared
+ * proportionally among the rest, respecting a per-list minimum.
+ */
+export function allocateStackedHeightsN(
+  naturals: number[],
+  available: number,
+  minScrollable = 120,
+): number[] {
+  const n = naturals.length;
+  if (n === 0) return [];
+  if (available <= 0) return naturals.map(() => 0);
 
-  if (a + b <= available) {
-    return [a, b];
+  const values = naturals.map((v) => Math.max(0, v));
+  const totalNatural = values.reduce((sum, v) => sum + v, 0);
+  if (totalNatural <= available) {
+    return values;
   }
 
-  const minEach = Math.min(minScrollable, available / 2);
+  const minEach = Math.min(minScrollable, available / n);
+  const alloc = new Array<number>(n).fill(0);
+  const remainingIdx = new Set(values.map((_, i) => i));
+  let remainingSpace = available;
 
-  if (a <= b && a <= available - minEach) {
-    return [a, available - a];
+  // Greedily assign lists that fit while leaving minEach for each other remaining list.
+  let progressed = true;
+  while (progressed && remainingIdx.size > 0) {
+    progressed = false;
+    const ordered = [...remainingIdx].sort((a, b) => values[a] - values[b]);
+    for (const i of ordered) {
+      const others = remainingIdx.size - 1;
+      const reserve = others * minEach;
+      if (values[i] <= remainingSpace - reserve) {
+        alloc[i] = values[i];
+        remainingSpace -= values[i];
+        remainingIdx.delete(i);
+        progressed = true;
+        break;
+      }
+    }
   }
-  if (b < a && b <= available - minEach) {
-    return [available - b, b];
+
+  if (remainingIdx.size === 0) {
+    return alloc;
   }
 
-  const total = a + b || 1;
-  let allocA = (available * a) / total;
-  let allocB = available - allocA;
-
-  if (allocA < minEach) {
-    allocA = minEach;
-    allocB = available - allocA;
-  } else if (allocB < minEach) {
-    allocB = minEach;
-    allocA = available - allocB;
+  const remTotal = [...remainingIdx].reduce((sum, i) => sum + values[i], 0) || 1;
+  const flexible = [...remainingIdx];
+  let used = 0;
+  for (let k = 0; k < flexible.length; k += 1) {
+    const i = flexible[k];
+    const isLast = k === flexible.length - 1;
+    let share = isLast ? remainingSpace - used : (remainingSpace * values[i]) / remTotal;
+    share = Math.max(minEach, share);
+    alloc[i] = share;
+    used += share;
   }
 
-  return [allocA, allocB];
+  // If mins overshot, scale flexible shares down proportionally into remainingSpace.
+  const flexSum = flexible.reduce((sum, i) => sum + alloc[i], 0);
+  if (flexSum > remainingSpace && flexSum > 0) {
+    let scaledUsed = 0;
+    for (let k = 0; k < flexible.length; k += 1) {
+      const i = flexible[k];
+      const isLast = k === flexible.length - 1;
+      alloc[i] = isLast ? remainingSpace - scaledUsed : (remainingSpace * alloc[i]) / flexSum;
+      scaledUsed += alloc[i];
+    }
+  }
+
+  return alloc;
 }
 
 export type ListNaturalHeightOptions = {

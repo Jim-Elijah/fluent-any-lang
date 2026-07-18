@@ -227,6 +227,7 @@ describe('backup export/import', () => {
       includeRecordings: false,
       includeSessions: false,
       includeSentenceBank: true,
+      includeNoise: false,
     });
 
     expect(manifest.counts.sentenceBank).toBe(0);

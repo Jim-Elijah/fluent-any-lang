@@ -123,9 +123,15 @@ export class SettingsBackup extends LitElement {
 
   private async _onExport() {
     if (this._busy) return;
-    const { includeMedia, includeRecordings, includeSessions, includeSentenceBank } =
+    const { includeMedia, includeRecordings, includeSessions, includeSentenceBank, includeNoise } =
       this._exportOptions;
-    if (!includeMedia && !includeRecordings && !includeSessions && !includeSentenceBank) {
+    if (
+      !includeMedia &&
+      !includeRecordings &&
+      !includeSessions &&
+      !includeSentenceBank &&
+      !includeNoise
+    ) {
       Message.warning(msg('请至少选择一种数据导出'));
       return;
     }
@@ -134,7 +140,7 @@ export class SettingsBackup extends LitElement {
       const manifest = await exportBackup(this._exportOptions);
       Message.success(
         msg(
-          str`已导出备份（录音 ${manifest.counts.recordings}，学习记录 ${manifest.counts.sessions}，句库 ${manifest.counts.sentenceBank}，媒体 ${manifest.counts.media}）`,
+          str`已导出备份（录音 ${manifest.counts.recordings}，学习记录 ${manifest.counts.sessions}，句库 ${manifest.counts.sentenceBank}，噪音 ${manifest.counts.noise}，媒体 ${manifest.counts.media}）`,
         ),
       );
     } catch (error) {
@@ -218,6 +224,7 @@ export class SettingsBackup extends LitElement {
         <li>${msg('录音')}：${manifest.counts.recordings}</li>
         <li>${msg('学习记录')}：${manifest.counts.sessions}</li>
         <li>${msg('句库')}：${manifest.counts.sentenceBank ?? 0}</li>
+        <li>${msg('噪音素材')}：${manifest.counts.noise ?? 0}</li>
       </ul>
       <p class="hint" style="margin-top: var(--space-sm)">
         ${msg('当前库已有同名条目时将跳过，不会覆盖；设置将被覆盖。')}
@@ -243,6 +250,7 @@ export class SettingsBackup extends LitElement {
               str`句库：导入 ${result.sentenceBankImported}，跳过 ${result.sentenceBankSkipped}`,
             )}
           </div>
+          <div>${msg(str`噪音：导入 ${result.noiseImported}，跳过 ${result.noiseSkipped}`)}</div>
           ${result.errors.length
             ? html`<div>${msg(str`错误 ${result.errors.length} 条：${result.errors[0]}`)}</div>`
             : nothing}
@@ -305,6 +313,15 @@ export class SettingsBackup extends LitElement {
                   )}
               />
               <span>${msg('句库')}</span>
+            </label>
+            <label class="check">
+              <input
+                type="checkbox"
+                .checked=${opts.includeNoise}
+                @change=${(e: Event) =>
+                  this._setExportFlag('includeNoise', (e.target as HTMLInputElement).checked)}
+              />
+              <span>${msg('噪音素材')}</span>
             </label>
           </div>
           <div class="actions">

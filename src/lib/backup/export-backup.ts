@@ -9,6 +9,8 @@ import {
   getAllSubtitles,
   getMediaBlob,
   getMediaList,
+  getNoiseBlob,
+  getNoiseList,
   getPlaylistList,
   getRecordingBlob,
   getRecordingList,
@@ -17,6 +19,7 @@ import {
 } from '../../db/service.js';
 import type {
   MediaItem,
+  NoiseItem,
   Playlist,
   PracticeRecord,
   PracticeSession,
@@ -55,7 +58,8 @@ export async function buildBackupZip(
     !opts.includeMedia &&
     !opts.includeRecordings &&
     !opts.includeSessions &&
-    !opts.includeSentenceBank
+    !opts.includeSentenceBank &&
+    !opts.includeNoise
   ) {
     throw new Error(msg('请至少选择一种数据导出'));
   }
@@ -78,6 +82,7 @@ export async function buildBackupZip(
   let recordings: PracticeRecord[] = [];
   let sessions: PracticeSession[] = [];
   let sentenceBank: SentenceBankEntry[] = [];
+  let noiseItems: NoiseItem[] = [];
 
   if (opts.includeMedia) {
     mediaItems = await getMediaList();
@@ -117,6 +122,16 @@ export async function buildBackupZip(
     }
   }
 
+  if (opts.includeNoise) {
+    noiseItems = await getNoiseList();
+    files['noise/metadata.jsonl'] = strToU8(toJsonl(noiseItems));
+    for (const item of noiseItems) {
+      const blob = await getNoiseBlob(item.id);
+      if (!blob) continue;
+      files[`noise/blobs/${item.id}`] = await blobToUint8Array(blob);
+    }
+  }
+
   const manifest: BackupManifest = {
     version: BACKUP_FORMAT_VERSION,
     createdAt,
@@ -128,6 +143,7 @@ export async function buildBackupZip(
       includeSettings: true,
       includePlaylists: true,
       includeSentenceBank: opts.includeSentenceBank,
+      includeNoise: opts.includeNoise,
     },
     counts: {
       media: mediaItems.length,
@@ -136,6 +152,7 @@ export async function buildBackupZip(
       sessions: sessions.length,
       playlists: playlists.length,
       sentenceBank: sentenceBank.length,
+      noise: noiseItems.length,
     },
   };
   files['manifest.json'] = strToU8(JSON.stringify(manifest, null, 2));

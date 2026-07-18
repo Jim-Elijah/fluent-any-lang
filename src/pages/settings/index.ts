@@ -7,7 +7,6 @@ import '../../components/settings/settings-limits.js';
 import '../../components/settings/settings-backup.js';
 import '../../components/settings/settings-pwa.js';
 import '../../components/settings/settings-diagnostics.js';
-import '../../components/settings/settings-extras.js';
 
 @customElement('settings-page')
 @localized()
@@ -41,7 +40,6 @@ export class SettingsPage extends LitElement {
         <settings-backup></settings-backup>
         <settings-pwa></settings-pwa>
         <settings-diagnostics></settings-diagnostics>
-        <settings-extras></settings-extras>
       </div>
     `;
   }

@@ -4,10 +4,12 @@ import { msg, str } from '@lit/localize';
 import { normalizeAppSettings, setAppSettings } from '../app-settings.js';
 import {
   addMedia,
+  addNoise,
   addPracticeSession,
   addSubtitle,
   ensureFavoritesPlaylist,
   getMedia,
+  getNoise,
   getPlaylist,
   getPracticeSession,
   getRecording,
@@ -19,6 +21,7 @@ import {
 } from '../../db/service.js';
 import type {
   MediaItem,
+  NoiseItem,
   Playlist,
   PracticeRecord,
   PracticeSession,
@@ -52,9 +55,9 @@ function parseManifest(raw: unknown): BackupManifest {
     throw new Error(msg('备份文件损坏：manifest 无效'));
   }
 
-  // Accept v1–v3.
+  // Accept v1–v4.
   const version = raw.version as number;
-  if (version !== 1 && version !== 2 && version !== 3) {
+  if (version !== 1 && version !== 2 && version !== 3 && version !== 4) {
     throw new Error(msg('不支持的备份格式，请升级应用后再试'));
   }
 
@@ -62,20 +65,22 @@ function parseManifest(raw: unknown): BackupManifest {
     throw new Error(msg('备份文件损坏：manifest 无效'));
   }
 
-  // Normalize older manifests to v3 shape.
+  // Normalize older manifests to v4 shape.
   return {
     ...raw,
-    version: 3,
+    version: 4,
     flags: {
       ...raw.flags,
       includePlaylists: (raw.flags as { includePlaylists?: boolean }).includePlaylists ?? false,
       includeSentenceBank:
         (raw.flags as { includeSentenceBank?: boolean }).includeSentenceBank ?? false,
+      includeNoise: (raw.flags as { includeNoise?: boolean }).includeNoise ?? false,
     },
     counts: {
       ...raw.counts,
       playlists: (raw.counts as { playlists?: number }).playlists ?? 0,
       sentenceBank: (raw.counts as { sentenceBank?: number }).sentenceBank ?? 0,
+      noise: (raw.counts as { noise?: number }).noise ?? 0,
     },
   } as BackupManifest;
 }
@@ -136,6 +141,7 @@ export async function previewBackup(file: File): Promise<BackupPreview> {
     hasRecordings: Boolean(files['recordings/metadata.jsonl']),
     hasSessions: Boolean(files['sessions/metadata.jsonl']),
     hasSentenceBank: Boolean(files['sentence-bank/metadata.jsonl']),
+    hasNoise: Boolean(files['noise/metadata.jsonl']),
   };
 }
 
@@ -159,6 +165,8 @@ export async function importBackup(file: File): Promise<BackupImportResult> {
     sessionsSkipped: 0,
     sentenceBankImported: 0,
     sentenceBankSkipped: 0,
+    noiseImported: 0,
+    noiseSkipped: 0,
     errors: [],
   };
 
@@ -307,6 +315,31 @@ export async function importBackup(file: File): Promise<BackupImportResult> {
     } catch (error) {
       result.errors.push(
         error instanceof Error ? error.message : msg(str`导入句库失败：${entry.id}`),
+      );
+    }
+  }
+
+  const noiseItems = readJsonl<NoiseItem>(files, 'noise/metadata.jsonl');
+  for (const item of noiseItems) {
+    try {
+      const existing = await getNoise(item.id);
+      if (existing) {
+        result.noiseSkipped += 1;
+        continue;
+      }
+      const blobData = files[`noise/blobs/${item.id}`];
+      if (!blobData) {
+        result.errors.push(msg(str`缺少噪音文件：${item.filename || item.id}`));
+        continue;
+      }
+      await addNoise(item, {
+        noiseId: item.id,
+        blob: uint8ToBlob(blobData, item.mimeType || 'audio/mpeg'),
+      });
+      result.noiseImported += 1;
+    } catch (error) {
+      result.errors.push(
+        error instanceof Error ? error.message : msg(str`导入噪音素材失败：${item.id}`),
       );
     }
   }

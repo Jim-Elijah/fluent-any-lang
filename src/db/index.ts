@@ -12,6 +12,8 @@ import {
   STORE_RECORDING,
   STORE_SENTENCE_BANK,
   STORE_SENTENCE_BANK_BLOB,
+  STORE_NOISE,
+  STORE_NOISE_BLOB,
   STORE_SUBTITLE,
   type AppDatabase,
   type FluentAnyLangDB,
@@ -155,6 +157,16 @@ export function getDB(): Promise<AppDatabase> {
         }
         if (!db.objectStoreNames.contains(STORE_SENTENCE_BANK_BLOB)) {
           db.createObjectStore(STORE_SENTENCE_BANK_BLOB, { keyPath: 'entryId' });
+        }
+
+        // ambient noise assets for discrimination listening
+        if (!db.objectStoreNames.contains(STORE_NOISE)) {
+          const noiseStore = db.createObjectStore(STORE_NOISE, { keyPath: 'id' });
+          noiseStore.createIndex('byCreatedAt', 'createdAt');
+          noiseStore.createIndex('byContentHash', 'contentHash', { unique: true });
+        }
+        if (!db.objectStoreNames.contains(STORE_NOISE_BLOB)) {
+          db.createObjectStore(STORE_NOISE_BLOB, { keyPath: 'noiseId' });
         }
 
         // v3 briefly shipped without byMediaId for some upgrades; re-run through v4.

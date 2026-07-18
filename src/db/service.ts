@@ -5,3 +5,4 @@ export * from './subtitle';
 export * from './error-log';
 export * from './playlist';
 export * from './sentence-bank';
+export * from './noise';

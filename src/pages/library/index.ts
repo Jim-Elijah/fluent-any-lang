@@ -6,12 +6,13 @@ import { styleMap } from 'lit/directives/style-map.js';
 
 import '../../components/library/media-list.js';
 import '../../components/library/record-list.js';
+import '../../components/library/noise-list.js';
 import '../../components/ui/select.js';
 import '../../components/ui/input.js';
 import '../../components/ui/icon.js';
 import type { SelectChangeDetail } from '../../components/ui/select.js';
 import { InputChangeDetail } from '../../components/ui/input.js';
-import { allocateStackedHeights, type ListMetricsDetail } from '../../lib/split-list-heights.js';
+import { allocateStackedHeightsN, type ListMetricsDetail } from '../../lib/split-list-heights.js';
 import {
   COMPACT_VIEWPORT_MQ,
   EXIT_LIBRARY_STACK_PX,
@@ -22,6 +23,8 @@ import {
 import { SortDirection } from '../../types/models.js';
 
 const STACK_GAP_FALLBACK_PX = 16;
+/** Three sections → two gaps between them. */
+const STACK_SECTION_COUNT = 3;
 
 const NavigatorElement = navigator(LitElement);
 @customElement('library-page')
@@ -104,18 +107,21 @@ export class LibraryPage extends NavigatorElement {
     }
 
     media-list,
-    record-list {
+    record-list,
+    noise-list {
       min-height: 0;
       overflow: hidden;
     }
 
     :host([compact]) media-list,
-    :host([compact]) record-list {
+    :host([compact]) record-list,
+    :host([compact]) noise-list {
       overflow: visible;
     }
 
     media-list.pending,
-    record-list.pending {
+    record-list.pending,
+    noise-list.pending {
       flex: 1;
     }
   `;
@@ -141,9 +147,14 @@ export class LibraryPage extends NavigatorElement {
   @state()
   private _recordHeight = 0;
 
+  @state()
+  private _noiseHeight = 0;
+
   private _mediaNatural = 128;
 
   private _recordNatural = 128;
+
+  private _noiseNatural = 128;
 
   private _resizeObserver: ResizeObserver | null = null;
 
@@ -209,6 +220,7 @@ export class LibraryPage extends NavigatorElement {
     if (next) {
       this._mediaHeight = 0;
       this._recordHeight = 0;
+      this._noiseHeight = 0;
     } else {
       this._reallocate();
     }
@@ -273,17 +285,22 @@ export class LibraryPage extends NavigatorElement {
 
   private _reallocate(): void {
     if (this.compact) return;
-    const available = Math.max(0, (this._stack?.clientHeight ?? 0) - this._getStackGapPx());
-    const [mediaHeight, recordHeight] = allocateStackedHeights(
-      this._mediaNatural,
-      this._recordNatural,
+    const gapTotal = this._getStackGapPx() * (STACK_SECTION_COUNT - 1);
+    const available = Math.max(0, (this._stack?.clientHeight ?? 0) - gapTotal);
+    const [mediaHeight, recordHeight, noiseHeight] = allocateStackedHeightsN(
+      [this._mediaNatural, this._recordNatural, this._noiseNatural],
       available,
     );
-    if (mediaHeight === this._mediaHeight && recordHeight === this._recordHeight) {
+    if (
+      mediaHeight === this._mediaHeight &&
+      recordHeight === this._recordHeight &&
+      noiseHeight === this._noiseHeight
+    ) {
       return;
     }
-    this._mediaHeight = mediaHeight;
-    this._recordHeight = recordHeight;
+    this._mediaHeight = mediaHeight ?? 0;
+    this._recordHeight = recordHeight ?? 0;
+    this._noiseHeight = noiseHeight ?? 0;
   }
 
   private _handleMediaMetrics = (event: CustomEvent<ListMetricsDetail>): void => {
@@ -296,8 +313,14 @@ export class LibraryPage extends NavigatorElement {
     this._reallocate();
   };
 
+  private _handleNoiseMetrics = (event: CustomEvent<ListMetricsDetail>): void => {
+    this._noiseNatural = event.detail.naturalHeight;
+    this._reallocate();
+  };
+
   render() {
-    const sized = !this.compact && this._mediaHeight > 0 && this._recordHeight > 0;
+    const sized =
+      !this.compact && this._mediaHeight > 0 && this._recordHeight > 0 && this._noiseHeight > 0;
 
     return html`
       <div class="layout">
@@ -306,8 +329,8 @@ export class LibraryPage extends NavigatorElement {
             class="search"
             .value=${this._keyword}
             allow-clear
-            placeholder="${msg('搜索媒体 / 录音标题')}"
-            aria-label="${msg('搜索媒体 / 录音标题')}"
+            placeholder="${msg('搜索媒体 / 录音 / 噪音标题')}"
+            aria-label="${msg('搜索媒体 / 录音 / 噪音标题')}"
             @change=${(e: CustomEvent<InputChangeDetail>) => {
               this._keyword = (e.detail.value || '').trim();
             }}
@@ -338,7 +361,7 @@ export class LibraryPage extends NavigatorElement {
             ></ui-select>
           </div>
         </div>
-        <p class="hint">${msg('筛选与排序同时作用于下方媒体库与录音库')}</p>
+        <p class="hint">${msg('筛选与排序同时作用于下方媒体库、录音库与噪音素材')}</p>
         <div class="stack">
           <media-list
             class=${sized || this.compact ? '' : 'pending'}
@@ -359,6 +382,15 @@ export class LibraryPage extends NavigatorElement {
             .sortDirection=${this._sortDirection}
             @list-metrics=${this._handleRecordMetrics}
           ></record-list>
+          <noise-list
+            class=${sized || this.compact ? '' : 'pending'}
+            ?fill-height=${!this.compact}
+            style=${styleMap(sized ? { height: `${this._noiseHeight}px`, flex: 'none' } : {})}
+            .keyword=${this._keyword}
+            .sortBy=${this._sortBy}
+            .sortDirection=${this._sortDirection}
+            @list-metrics=${this._handleNoiseMetrics}
+          ></noise-list>
         </div>
       </div>
     `;

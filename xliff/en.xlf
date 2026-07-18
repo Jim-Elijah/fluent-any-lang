@@ -19,8 +19,8 @@
   <target>Some files failed to import:</target>
   </trans-unit>
 <trans-unit id="s22d17da692264656">
-  <source><x id="0" equiv-text="${result.imported.length}" /> 个内容已导入</source>
-  <target><x id="0" equiv-text="${result.imported.length}" /> item(s) imported</target>
+  <source><x id="0" equiv-text="${result.imported.length}"/> 个内容已导入</source>
+  <target><x id="0" equiv-text="${result.imported.length}"/> item(s) imported</target>
   </trans-unit>
 <trans-unit id="saffbf44c87045d54">
   <source>项</source>
@@ -135,8 +135,8 @@
   <target>min</target>
   </trans-unit>
 <trans-unit id="sa6cb923eef917b5d">
-  <source>将在 <x id="0" equiv-text="${formatTime(snapshot.sleepRemainingSeconds)}" /> 后暂停</source>
-  <target>Pausing in <x id="0" equiv-text="${formatTime(snapshot.sleepRemainingSeconds)}" /></target>
+  <source>将在 <x id="0" equiv-text="${formatTime(snapshot.sleepRemainingSeconds)}"/> 后暂停</source>
+  <target>Pausing in <x id="0" equiv-text="${formatTime(snapshot.sleepRemainingSeconds)}"/></target>
   </trans-unit>
 <trans-unit id="s747f0ac7d07a0726">
   <source>将在当前集播放结束后暂停</source>
@@ -263,20 +263,20 @@
 <target>Fixed Duration</target>
   </trans-unit>
 <trans-unit id="sc1b49b5fc8036e5d">
-  <source>固定时长（<x id="0" equiv-text="${Number(snapshot.pauseSeconds)}" />秒）</source>
-<target>Fixed Duration (<x id="0" equiv-text="${Number(snapshot.pauseSeconds)}" />s)</target>
+  <source>固定时长（<x id="0" equiv-text="${Number(snapshot.pauseSeconds)}"/>秒）</source>
+<target>Fixed Duration (<x id="0" equiv-text="${Number(snapshot.pauseSeconds)}"/>s)</target>
   </trans-unit>
 <trans-unit id="saf9b8f4c866091b5">
   <source>秒</source>
 <target>s</target>
   </trans-unit>
 <trans-unit id="s4890826333dc3c0b">
-  <source>句长百分比（<x id="0" equiv-text="${Number(snapshot.pausePercent)}" />%）</source>
-<target>Sentence Length (<x id="0" equiv-text="${Number(snapshot.pausePercent)}" />%)</target>
+  <source>句长百分比（<x id="0" equiv-text="${Number(snapshot.pausePercent)}"/>%）</source>
+<target>Sentence Length (<x id="0" equiv-text="${Number(snapshot.pausePercent)}"/>%)</target>
   </trans-unit>
 <trans-unit id="sdc454893a50fbf0f">
-  <source>定时关闭（<x id="0" equiv-text="${Number(snapshot.sleepMinutes)}" />分钟）</source>
-<target>Sleep Timer (<x id="0" equiv-text="${Number(snapshot.sleepMinutes)}" /> min)</target>
+  <source>定时关闭（<x id="0" equiv-text="${Number(snapshot.sleepMinutes)}"/>分钟）</source>
+<target>Sleep Timer (<x id="0" equiv-text="${Number(snapshot.sleepMinutes)}"/> min)</target>
   </trans-unit>
 <trans-unit id="s5289efcad3778518">
   <source>温馨提示：</source>
@@ -331,12 +331,12 @@
 <target>Unsupported media format</target>
   </trans-unit>
 <trans-unit id="s8a5b8747bb37cc7a">
-  <source>同一标题「<x id="0" equiv-text="${baseName}" />」已存在重复的音频文件</source>
-<target>An audio file with the same title "<x id="0" equiv-text="${baseName}" />" already exists</target>
+  <source>同一标题「<x id="0" equiv-text="${baseName}"/>」已存在重复的音频文件</source>
+<target>An audio file with the same title "<x id="0" equiv-text="${baseName}"/>" already exists</target>
   </trans-unit>
 <trans-unit id="s284f850d4a1a8466">
-  <source>同一标题「<x id="0" equiv-text="${baseName}" />」已存在重复的 <x id="1" equiv-text="${subtitleType}" /> 文件</source>
-<target>A <x id="1" equiv-text="${subtitleType}" /> file with the same title "<x id="0" equiv-text="${baseName}" />" already exists</target>
+  <source>同一标题「<x id="0" equiv-text="${baseName}"/>」已存在重复的 <x id="1" equiv-text="${subtitleType}"/> 文件</source>
+<target>A <x id="1" equiv-text="${subtitleType}"/> file with the same title "<x id="0" equiv-text="${baseName}"/>" already exists</target>
   </trans-unit>
 <trans-unit id="sea0723ac2f4955af">
   <source>不支持的文件类型</source>
@@ -367,8 +367,8 @@
 <target>Page not found</target>
   </trans-unit>
 <trans-unit id="s8aa06e3a15bb5ae6">
-  <source><x id="0" equiv-text="${this._countdown}" /> 秒后返回首页…</source>
-<target>Returning to homepage in <x id="0" equiv-text="${this._countdown}" /> second(s)…</target>
+  <source><x id="0" equiv-text="${this._countdown}"/> 秒后返回首页…</source>
+<target>Returning to homepage in <x id="0" equiv-text="${this._countdown}"/> second(s)…</target>
   </trans-unit>
 <trans-unit id="s253cca08a6b1c098">
   <source>名称</source>
@@ -435,12 +435,12 @@
   <target>Shadowing</target>
 </trans-unit>
 <trans-unit id="sada555f61848b379">
-  <source>当前音频的跟读录音已达上限（<x id="0" equiv-text="${this._shadowingLimit}" />条），删除旧录音后可继续。</source>
-  <target>Shadowing recordings for this audio have reached the limit (<x id="0" equiv-text="${this._shadowingLimit}" />). Delete older ones to continue.</target>
+  <source>当前音频的跟读录音已达上限（<x id="0" equiv-text="${this._shadowingLimit}"/>条），删除旧录音后可继续。</source>
+  <target>Shadowing recordings for this audio have reached the limit (<x id="0" equiv-text="${this._shadowingLimit}"/>). Delete older ones to continue.</target>
 </trans-unit>
 <trans-unit id="s3fd93394e75f5977">
-  <source>该句录音已达上限（<x id="0" equiv-text="${this._echoLimitPerSegment}" />条），删除旧录音后可继续。</source>
-  <target>Recordings for this sentence have reached the limit (<x id="0" equiv-text="${this._echoLimitPerSegment}" />). Delete older ones to continue.</target>
+  <source>该句录音已达上限（<x id="0" equiv-text="${this._echoLimitPerSegment}"/>条），删除旧录音后可继续。</source>
+  <target>Recordings for this sentence have reached the limit (<x id="0" equiv-text="${this._echoLimitPerSegment}"/>). Delete older ones to continue.</target>
 </trans-unit>
 <trans-unit id="s19575e089d1dae1b">
   <source>停止</source>
@@ -459,12 +459,12 @@
   <target>Fullscreen</target>
 </trans-unit>
 <trans-unit id="h3a9e2536cd23b555">
-  <source>正在播放片段<x id="0" equiv-text="${segmentLabel}" /></source>
-  <target>Playing segment <x id="0" equiv-text="${segmentLabel}" /></target>
+  <source>正在播放片段<x id="0" equiv-text="${segmentLabel}"/></source>
+  <target>Playing segment <x id="0" equiv-text="${segmentLabel}"/></target>
 </trans-unit>
 <trans-unit id="h01c1e14ddec5eda4">
-  <source>正在同步播放片段<x id="0" equiv-text="${segmentLabel}" /></source>
-  <target>Playing segment in sync <x id="0" equiv-text="${segmentLabel}" /></target>
+  <source>正在同步播放片段<x id="0" equiv-text="${segmentLabel}"/></source>
+  <target>Playing segment in sync <x id="0" equiv-text="${segmentLabel}"/></target>
 </trans-unit>
 <trans-unit id="sce48874caca5fd31">
   <source>倒计时结束后请跟读</source>
@@ -519,8 +519,8 @@
   <target>An unknown error occurred during import</target>
 </trans-unit>
 <trans-unit id="s57afe3b4d1acc570">
-  <source>已跳过 <x id="0" equiv-text="${result.skipped.length}" /> 个重复文件</source>
-  <target>Skipped <x id="0" equiv-text="${result.skipped.length}" /> duplicate file(s)</target>
+  <source>已跳过 <x id="0" equiv-text="${result.skipped.length}"/> 个重复文件</source>
+  <target>Skipped <x id="0" equiv-text="${result.skipped.length}"/> duplicate file(s)</target>
 </trans-unit>
 <trans-unit id="seefa8e1f27653e1b">
   <source>已跳过冲突文件</source>
@@ -607,8 +607,8 @@
   <target>Continue practice</target>
 </trans-unit>
 <trans-unit id="s430caf309d342127">
-  <source>同一标题「<x id="0" equiv-text="${baseName}" />」已存在重复的视频文件</source>
-  <target>A duplicate video already exists for the title 「<x id="0" equiv-text="${baseName}" />」</target>
+  <source>同一标题「<x id="0" equiv-text="${baseName}"/>」已存在重复的视频文件</source>
+  <target>A duplicate video already exists for the title 「<x id="0" equiv-text="${baseName}"/>」</target>
 </trans-unit>
 <trans-unit id="s10a759220ab02b91">
   <source>字幕已存在且内容相同，已跳过</source>
@@ -627,8 +627,8 @@
   <target>Media already exists with the same content; skipped</target>
 </trans-unit>
 <trans-unit id="sc41c5b2d4a749748">
-  <source>已存在同标题「<x id="0" equiv-text="${title}" />」的<x id="1" equiv-text="${type === 'video' ? '视频' : '音频'}" />（<x id="2" equiv-text="${existing.filename}" />）。覆盖将删除旧文件；练习记录不会自动迁移</source>
-  <target>Media titled 「<x id="0" equiv-text="${title}" />」 already exists as <x id="1" equiv-text="${type === 'video' ? '视频' : '音频'}" /> (<x id="2" equiv-text="${existing.filename}" />). Overwriting deletes the old file; practice history is not migrated automatically</target>
+  <source>已存在同标题「<x id="0" equiv-text="${title}"/>」的<x id="1" equiv-text="${type === 'video' ? '视频' : '音频'}"/>（<x id="2" equiv-text="${existing.filename}"/>）。覆盖将删除旧文件；练习记录不会自动迁移</source>
+  <target>Media titled 「<x id="0" equiv-text="${title}"/>」 already exists as <x id="1" equiv-text="${type === 'video' ? '视频' : '音频'}"/> (<x id="2" equiv-text="${existing.filename}"/>). Overwriting deletes the old file; practice history is not migrated automatically</target>
 </trans-unit>
 <trans-unit id="sa14327492d1492f3">
   <source>字幕文件没有有效片段</source>
@@ -654,10 +654,6 @@
   <source>任意语言的听说练习平台。导入音视频后即可开始练习，字幕可稍后补充。</source>
   <target>A listening and speaking practice platform for any language. Import audio or video to get started; subtitles can be added later.</target>
 </trans-unit>
-<trans-unit id="s1934b3cdfe20e408">
-  <source>搜索媒体 / 录音标题</source>
-  <target>Search media / recording titles</target>
-</trans-unit>
 <trans-unit id="s6c62390809c7474e">
   <source>排序</source>
   <target>Sort</target>
@@ -665,10 +661,6 @@
 <trans-unit id="s8ff19f8357274d0a">
   <source>排序字段</source>
   <target>Sort field</target>
-</trans-unit>
-<trans-unit id="sd60b8e064504fc55">
-  <source>筛选与排序同时作用于下方媒体库与录音库</source>
-  <target>Filters and sorting apply to both the media library and recordings below</target>
 </trans-unit>
 <trans-unit id="s06241b088c7bd45c">
   <source>今天</source>
@@ -747,8 +739,8 @@
   <target>Most practiced materials</target>
 </trans-unit>
 <trans-unit id="s422bd01f5c5c935f">
-  <source>录音 <x id="0" equiv-text="${index + 1}" /></source>
-  <target>Recording <x id="0" equiv-text="${index + 1}" /></target>
+  <source>录音 <x id="0" equiv-text="${index + 1}"/></source>
+  <target>Recording <x id="0" equiv-text="${index + 1}"/></target>
 </trans-unit>
 <trans-unit id="sf2224b0955929227">
   <source>选项</source>
@@ -858,8 +850,8 @@
   <source>以后不再提醒</source>
 <target>Don't remind me again</target></trans-unit>
 <trans-unit id="s63ec61b31b4127a3">
-  <source>已保存 <x id="0" equiv-text="${this._shadowingCount}" />/<x id="1" equiv-text="${this._shadowingLimit}" /></source>
-<target>Saved <x id="0" equiv-text="${this._shadowingCount}" />/<x id="1" equiv-text="${this._shadowingLimit}" /></target></trans-unit>
+  <source>已保存 <x id="0" equiv-text="${this._shadowingCount}"/>/<x id="1" equiv-text="${this._shadowingLimit}"/></source>
+<target>Saved <x id="0" equiv-text="${this._shadowingCount}"/>/<x id="1" equiv-text="${this._shadowingLimit}"/></target></trans-unit>
 <trans-unit id="sff4e4efc83c85d46">
   <source>管理录音</source>
 <target>Manage Recordings</target></trans-unit>
@@ -909,8 +901,8 @@
   <source>导入结果</source>
 <target>Import Result</target></trans-unit>
 <trans-unit id="s9be55c9df46a0944">
-  <source>错误 <x id="0" equiv-text="${result.errors.length}" /> 条：<x id="1" equiv-text="${result.errors[0]}" /></source>
-<target>Error <x id="0" equiv-text="${result.errors.length}" /> item(s): <x id="1" equiv-text="${result.errors[0]}" /></target></trans-unit>
+  <source>错误 <x id="0" equiv-text="${result.errors.length}"/> 条：<x id="1" equiv-text="${result.errors[0]}"/></source>
+<target>Error <x id="0" equiv-text="${result.errors.length}"/> item(s): <x id="1" equiv-text="${result.errors[0]}"/></target></trans-unit>
 <trans-unit id="s6125cd6135aebc0b">
   <source>数据备份与迁移</source>
 <target>Data Backup &amp; Migration</target></trans-unit>
@@ -941,15 +933,9 @@
 <trans-unit id="s1a37daf9ca5560b0">
   <source>进阶资源</source>
 <target>Advanced Resources</target></trans-unit>
-<trans-unit id="s422d9d3bc7921c55">
-  <source>以下能力尚未开放，入口预留以便后续扩展。</source>
-<target>The following features are not yet available; entry points are reserved for future updates.</target></trans-unit>
 <trans-unit id="sbd53fcd19fe6be4e">
   <source>噪音素材（辨音训练）</source>
 <target>Noise materials (phoneme discrimination training)</target></trans-unit>
-<trans-unit id="s1456b759e01b8a57">
-  <source>导入环境噪音，用于听力辨音训练。</source>
-<target>Import ambient noise for listening discrimination training.</target></trans-unit>
 <trans-unit id="scad05556becd2c42">
   <source>即将推出</source>
 <target>Coming soon</target></trans-unit>
@@ -960,11 +946,11 @@
   <source>为音视频设置自定义封面。</source>
 <target>Set custom cover for audio and video.</target></trans-unit>
 <trans-unit id="sc01fd23d69625994">
-  <source>已用 <x id="0" equiv-text="${formatStorageUsage(est.usage)}" /> / 上限 <x id="1" equiv-text="${formatStorageUsage(est.quota)}" /></source>
-<target>Used <x id="0" equiv-text="${formatStorageUsage(est.usage)}" /> / Max <x id="1" equiv-text="${formatStorageUsage(est.quota)}" /></target></trans-unit>
+  <source>已用 <x id="0" equiv-text="${formatStorageUsage(est.usage)}"/> / 上限 <x id="1" equiv-text="${formatStorageUsage(est.quota)}"/></source>
+<target>Used <x id="0" equiv-text="${formatStorageUsage(est.usage)}"/> / Max <x id="1" equiv-text="${formatStorageUsage(est.quota)}"/></target></trans-unit>
 <trans-unit id="sb7c4030d52772e4c">
-  <source>允许范围 <x id="0" equiv-text="${min}" />–<x id="1" equiv-text="${max}" /></source>
-<target>Allowed range <x id="0" equiv-text="${min}" />–<x id="1" equiv-text="${max}" /></target></trans-unit>
+  <source>允许范围 <x id="0" equiv-text="${min}"/>–<x id="1" equiv-text="${max}"/></source>
+<target>Allowed range <x id="0" equiv-text="${min}"/>–<x id="1" equiv-text="${max}"/></target></trans-unit>
 <trans-unit id="s1fd5a80b51b52f4f">
   <source>练习与存储限额</source>
 <target>Practice &amp; Storage Limits</target></trans-unit>
@@ -1032,23 +1018,23 @@
   <source>导入设置失败</source>
 <target>Failed to import settings</target></trans-unit>
 <trans-unit id="sa09a1e2ca26c9c16">
-  <source>缺少媒体文件：<x id="0" equiv-text="${item.filename || item.id}" /></source>
-<target>Missing media file: <x id="0" equiv-text="${item.filename || item.id}" /></target></trans-unit>
+  <source>缺少媒体文件：<x id="0" equiv-text="${item.filename || item.id}"/></source>
+<target>Missing media file: <x id="0" equiv-text="${item.filename || item.id}"/></target></trans-unit>
 <trans-unit id="s8d3e52b04da1faf3">
-  <source>导入媒体失败：<x id="0" equiv-text="${item.id}" /></source>
-<target>Failed to import media: <x id="0" equiv-text="${item.id}" /></target></trans-unit>
+  <source>导入媒体失败：<x id="0" equiv-text="${item.id}"/></source>
+<target>Failed to import media: <x id="0" equiv-text="${item.id}"/></target></trans-unit>
 <trans-unit id="sdf631ba42ef1e800">
-  <source>导入字幕失败：<x id="0" equiv-text="${track.id}" /></source>
-<target>Failed to import subtitles: <x id="0" equiv-text="${track.id}" /></target></trans-unit>
+  <source>导入字幕失败：<x id="0" equiv-text="${track.id}"/></source>
+<target>Failed to import subtitles: <x id="0" equiv-text="${track.id}"/></target></trans-unit>
 <trans-unit id="sf42dc17b042e7bf5">
-  <source>缺少录音文件：<x id="0" equiv-text="${record.id}" /></source>
-<target>Missing recording file: <x id="0" equiv-text="${record.id}" /></target></trans-unit>
+  <source>缺少录音文件：<x id="0" equiv-text="${record.id}"/></source>
+<target>Missing recording file: <x id="0" equiv-text="${record.id}"/></target></trans-unit>
 <trans-unit id="s0c3483aa85ae0374">
-  <source>导入录音失败：<x id="0" equiv-text="${record.id}" /></source>
-<target>Failed to import recording: <x id="0" equiv-text="${record.id}" /></target></trans-unit>
+  <source>导入录音失败：<x id="0" equiv-text="${record.id}"/></source>
+<target>Failed to import recording: <x id="0" equiv-text="${record.id}"/></target></trans-unit>
 <trans-unit id="s9528f5209b708b75">
-  <source>导入学习记录失败：<x id="0" equiv-text="${session.id}" /></source>
-<target>Failed to import study records: <x id="0" equiv-text="${session.id}" /></target></trans-unit>
+  <source>导入学习记录失败：<x id="0" equiv-text="${session.id}"/></source>
+<target>Failed to import study records: <x id="0" equiv-text="${session.id}"/></target></trans-unit>
 <trans-unit id="sf4837aae1c678d2a">
   <source>暂停 (Space)</source>
   <target>Pause (Space)</target>
@@ -1075,14 +1061,14 @@
   <source>未变更</source>
 <target>Unchanged</target></trans-unit>
 <trans-unit id="s57451b7247723b23">
-  <source>媒体：导入 <x id="0" equiv-text="${result.mediaImported}" />，跳过 <x id="1" equiv-text="${result.mediaSkipped}" /></source>
-<target>Media: Imported <x id="0" equiv-text="${result.mediaImported}" />, Skipped <x id="1" equiv-text="${result.mediaSkipped}" /></target></trans-unit>
+  <source>媒体：导入 <x id="0" equiv-text="${result.mediaImported}"/>，跳过 <x id="1" equiv-text="${result.mediaSkipped}"/></source>
+<target>Media: Imported <x id="0" equiv-text="${result.mediaImported}"/>, Skipped <x id="1" equiv-text="${result.mediaSkipped}"/></target></trans-unit>
 <trans-unit id="sd6e43015e3959770">
-  <source>录音：导入 <x id="0" equiv-text="${result.recordingsImported}" />，跳过 <x id="1" equiv-text="${result.recordingsSkipped}" /></source>
-<target>Recordings: Imported <x id="0" equiv-text="${result.recordingsImported}" />, Skipped <x id="1" equiv-text="${result.recordingsSkipped}" /></target></trans-unit>
+  <source>录音：导入 <x id="0" equiv-text="${result.recordingsImported}"/>，跳过 <x id="1" equiv-text="${result.recordingsSkipped}"/></source>
+<target>Recordings: Imported <x id="0" equiv-text="${result.recordingsImported}"/>, Skipped <x id="1" equiv-text="${result.recordingsSkipped}"/></target></trans-unit>
 <trans-unit id="saa6832a82ff07f89">
-  <source>学习记录：导入 <x id="0" equiv-text="${result.sessionsImported}" />，跳过 <x id="1" equiv-text="${result.sessionsSkipped}" /></source>
-<target>Study Records: Imported <x id="0" equiv-text="${result.sessionsImported}" />, Skipped <x id="1" equiv-text="${result.sessionsSkipped}" /></target></trans-unit>
+  <source>学习记录：导入 <x id="0" equiv-text="${result.sessionsImported}"/>，跳过 <x id="1" equiv-text="${result.sessionsSkipped}"/></source>
+<target>Study Records: Imported <x id="0" equiv-text="${result.sessionsImported}"/>, Skipped <x id="1" equiv-text="${result.sessionsSkipped}"/></target></trans-unit>
 <trans-unit id="sfa7d40c63e620e58">
   <source>当前存储用量</source>
 <target>Current Storage Usage</target></trans-unit>
@@ -1179,24 +1165,24 @@
   <target>Recording volume</target>
 </trans-unit>
 <trans-unit id="h005078dd262274ad">
-  <source>已暂停原音片段<x id="0" equiv-text="${segmentLabel}" /></source>
-  <target>Paused original segment<x id="0" equiv-text="${segmentLabel}" /></target>
+  <source>已暂停原音片段<x id="0" equiv-text="${segmentLabel}"/></source>
+  <target>Paused original segment<x id="0" equiv-text="${segmentLabel}"/></target>
 </trans-unit>
 <trans-unit id="s80cb4c8dbc97e0bd">
   <source>已暂停原音</source>
   <target>Paused original audio</target>
 </trans-unit>
 <trans-unit id="haaefe7a6d5df7ba7">
-  <source>已暂停录音片段<x id="0" equiv-text="${segmentLabel}" /></source>
-  <target>Paused recording segment<x id="0" equiv-text="${segmentLabel}" /></target>
+  <source>已暂停录音片段<x id="0" equiv-text="${segmentLabel}"/></source>
+  <target>Paused recording segment<x id="0" equiv-text="${segmentLabel}"/></target>
 </trans-unit>
 <trans-unit id="s547b448d95ff4e4b">
   <source>已暂停录音</source>
   <target>Paused recording</target>
 </trans-unit>
 <trans-unit id="h7bb884722405f76a">
-  <source>已暂停同步片段<x id="0" equiv-text="${segmentLabel}" /></source>
-  <target>Paused sync segment<x id="0" equiv-text="${segmentLabel}" /></target>
+  <source>已暂停同步片段<x id="0" equiv-text="${segmentLabel}"/></source>
+  <target>Paused sync segment<x id="0" equiv-text="${segmentLabel}"/></target>
 </trans-unit>
 <trans-unit id="s04bf46aa73c91b1a">
   <source>录音中无法预览，请先结束录音。</source>
@@ -1223,8 +1209,8 @@
   <target>Echo tips</target>
 </trans-unit>
 <trans-unit id="s5577689d602ba428">
-  <source>已导出 <x id="0" equiv-text="${payload.entries.length}" /> 条异常日志</source>
-  <target>Exported <x id="0" equiv-text="${payload.entries.length}" /> error log(s)</target>
+  <source>已导出 <x id="0" equiv-text="${payload.entries.length}"/> 条异常日志</source>
+  <target>Exported <x id="0" equiv-text="${payload.entries.length}"/> error log(s)</target>
 </trans-unit>
 <trans-unit id="s3c709136dae5ddcb">
   <source>确定清空全部异常日志？此操作不可恢复。</source>
@@ -1274,8 +1260,8 @@
   <source>暂无播放列表</source>
 <target>No playlists yet</target></trans-unit>
 <trans-unit id="sfbf87026b9af77ff">
-  <source>加入「<x id="0" equiv-text="${playlist.name}" />」</source>
-<target>Add to "<x id="0" equiv-text="${playlist.name}" />"</target></trans-unit>
+  <source>加入「<x id="0" equiv-text="${playlist.name}"/>」</source>
+<target>Add to "<x id="0" equiv-text="${playlist.name}"/>"</target></trans-unit>
 <trans-unit id="sdb2457129c7d19ad">
   <source>取消喜欢</source>
 <target>Unlike</target></trans-unit>
@@ -1298,8 +1284,8 @@
   <source>播放列表</source>
 <target>Playlist</target></trans-unit>
 <trans-unit id="s3cb8355a022ade8b">
-  <source>已添加到「<x id="0" equiv-text="${playlistName}" />」</source>
-<target>Added to "<x id="0" equiv-text="${playlistName}" />"</target></trans-unit>
+  <source>已添加到「<x id="0" equiv-text="${playlistName}"/>」</source>
+<target>Added to "<x id="0" equiv-text="${playlistName}"/>"</target></trans-unit>
 <trans-unit id="s0d7e14dbc14dfc53">
   <source>添加失败，请重试</source>
 <target>Failed to add. Please try again.</target></trans-unit>
@@ -1310,14 +1296,14 @@
   <source>该媒体不存在或无法加载。</source>
 <target>This media does not exist or failed to load.</target></trans-unit>
 <trans-unit id="s8285287fae288dfb">
-  <source>媒体 "<x id="0" equiv-text="${launchContext.mediaId}" />" 不在当前播放列表，已回退到第一首。</source>
-<target>Media "<x id="0" equiv-text="${launchContext.mediaId}" />" is not in the current playlist, reverted to the first track.</target></trans-unit>
+  <source>媒体 "<x id="0" equiv-text="${launchContext.mediaId}"/>" 不在当前播放列表，已回退到第一首。</source>
+<target>Media "<x id="0" equiv-text="${launchContext.mediaId}"/>" is not in the current playlist, reverted to the first track.</target></trans-unit>
 <trans-unit id="s6f6113080c54acb3">
   <source>抽屉</source>
 <target>Drawer</target></trans-unit>
 <trans-unit id="s569db59d56e18328">
-  <source>导入播放列表失败：<x id="0" equiv-text="${playlist.id}" /></source>
-<target>Failed to import playlist: <x id="0" equiv-text="${playlist.id}" /></target></trans-unit>
+  <source>导入播放列表失败：<x id="0" equiv-text="${playlist.id}"/></source>
+<target>Failed to import playlist: <x id="0" equiv-text="${playlist.id}"/></target></trans-unit>
 <trans-unit id="s4eeb21a3194685a4">
   <source>加载播放列表失败</source>
   <target>Failed to load playlists</target>
@@ -1407,12 +1393,12 @@
   <target>Last practiced</target>
 </trans-unit>
 <trans-unit id="s98d23b18d94249de">
-  <source><x id="0" equiv-text="${activeCount}" /> 项</source>
-  <target><x id="0" equiv-text="${activeCount}" /> items</target>
+  <source><x id="0" equiv-text="${activeCount}"/> 项</source>
+  <target><x id="0" equiv-text="${activeCount}"/> items</target>
 </trans-unit>
 <trans-unit id="s9079ba182ffd7953">
-  <source>更新于 <x id="0" equiv-text="${formatDate(playlist.updatedAt, true)}" /></source>
-  <target>Updated <x id="0" equiv-text="${formatDate(playlist.updatedAt, true)}" /></target>
+  <source>更新于 <x id="0" equiv-text="${formatDate(playlist.updatedAt, true)}"/></source>
+  <target>Updated <x id="0" equiv-text="${formatDate(playlist.updatedAt, true)}"/></target>
 </trans-unit>
 <trans-unit id="sbd4760084e8411be">
   <source>管理</source>
@@ -1423,16 +1409,16 @@
   <target>More actions</target>
 </trans-unit>
 <trans-unit id="sa4156d38884a34a0">
-  <source><x id="0" equiv-text="${activeEntryCount}" /> 项可练习</source>
-  <target><x id="0" equiv-text="${activeEntryCount}" /> items ready to practice</target>
+  <source><x id="0" equiv-text="${activeEntryCount}"/> 项可练习</source>
+  <target><x id="0" equiv-text="${activeEntryCount}"/> items ready to practice</target>
 </trans-unit>
 <trans-unit id="sd372d71da982e5b7">
-  <source>总时长 <x id="0" equiv-text="${formatTime(totalDuration)}" /></source>
-  <target>Total <x id="0" equiv-text="${formatTime(totalDuration)}" /></target>
+  <source>总时长 <x id="0" equiv-text="${formatTime(totalDuration)}"/></source>
+  <target>Total <x id="0" equiv-text="${formatTime(totalDuration)}"/></target>
 </trans-unit>
 <trans-unit id="sda54f5423a46ee60">
-  <source>创建于 <x id="0" equiv-text="${formatDate(selectedPlaylist.createdAt, true)}" /></source>
-  <target>Created <x id="0" equiv-text="${formatDate(selectedPlaylist.createdAt, true)}" /></target>
+  <source>创建于 <x id="0" equiv-text="${formatDate(selectedPlaylist.createdAt, true)}"/></source>
+  <target>Created <x id="0" equiv-text="${formatDate(selectedPlaylist.createdAt, true)}"/></target>
 </trans-unit>
 <trans-unit id="s3bf2e6dab30ef3f6">
   <source>重命名</source>
@@ -1459,8 +1445,8 @@
   <target>Media no longer exists</target>
 </trans-unit>
 <trans-unit id="sa4b1052f9ed9cdda">
-  <source>第 <x id="0" equiv-text="${index + 1}" /> 项</source>
-  <target>Item <x id="0" equiv-text="${index + 1}" /></target>
+  <source>第 <x id="0" equiv-text="${index + 1}"/> 项</source>
+  <target>Item <x id="0" equiv-text="${index + 1}"/></target>
 </trans-unit>
 <trans-unit id="s8e128f9e2b1c46ea">
   <source>确定将该媒体从播放列表移除吗？</source>
@@ -1471,8 +1457,8 @@
   <target>You practiced this playlist last. Continue from here.</target>
 </trans-unit>
 <trans-unit id="sa5db5b74f7ccf97d">
-  <source><x id="0" equiv-text="${activeEntryCount}" /> 项可开始练习</source>
-  <target><x id="0" equiv-text="${activeEntryCount}" /> items ready to start practice</target>
+  <source><x id="0" equiv-text="${activeEntryCount}"/> 项可开始练习</source>
+  <target><x id="0" equiv-text="${activeEntryCount}"/> items ready to start practice</target>
 </trans-unit>
 <trans-unit id="s92c9c4c310e436b2">
   <source>确定删除该播放列表吗？</source>
@@ -1570,21 +1556,17 @@
   <source>加入句库</source>
   <target>Add to sentence bank</target>
 </trans-unit>
-<trans-unit id="see4e88e6d56da880">
-  <source>已导出备份（录音 <x id="0" equiv-text="${manifest.counts.recordings}" />，学习记录 <x id="1" equiv-text="${manifest.counts.sessions}" />，句库 <x id="2" equiv-text="${manifest.counts.sentenceBank}" />，媒体 <x id="3" equiv-text="${manifest.counts.media}" />）</source>
-  <target>Backup exported (recordings <x id="0" equiv-text="${manifest.counts.recordings}" />, sessions <x id="1" equiv-text="${manifest.counts.sessions}" />, sentences <x id="2" equiv-text="${manifest.counts.sentenceBank}" />, media <x id="3" equiv-text="${manifest.counts.media}" />)</target>
-</trans-unit>
 <trans-unit id="scd789d2e6a2af520">
-  <source>句库：导入 <x id="0" equiv-text="${result.sentenceBankImported}" />，跳过 <x id="1" equiv-text="${result.sentenceBankSkipped}" /></source>
-  <target>Sentence bank: imported <x id="0" equiv-text="${result.sentenceBankImported}" />, skipped <x id="1" equiv-text="${result.sentenceBankSkipped}" /></target>
+  <source>句库：导入 <x id="0" equiv-text="${result.sentenceBankImported}"/>，跳过 <x id="1" equiv-text="${result.sentenceBankSkipped}"/></source>
+  <target>Sentence bank: imported <x id="0" equiv-text="${result.sentenceBankImported}"/>, skipped <x id="1" equiv-text="${result.sentenceBankSkipped}"/></target>
 </trans-unit>
 <trans-unit id="sd637c87de97f9608">
-  <source>缺少句库音频：<x id="0" equiv-text="${entry.id}" /></source>
-  <target>Missing sentence audio: <x id="0" equiv-text="${entry.id}" /></target>
+  <source>缺少句库音频：<x id="0" equiv-text="${entry.id}"/></source>
+  <target>Missing sentence audio: <x id="0" equiv-text="${entry.id}"/></target>
 </trans-unit>
 <trans-unit id="s0ca1c0c33406c604">
-  <source>导入句库失败：<x id="0" equiv-text="${entry.id}" /></source>
-  <target>Failed to import sentence: <x id="0" equiv-text="${entry.id}" /></target>
+  <source>导入句库失败：<x id="0" equiv-text="${entry.id}"/></source>
+  <target>Failed to import sentence: <x id="0" equiv-text="${entry.id}"/></target>
 </trans-unit>
 <trans-unit id="s9e601d1b61250646">
   <source>缺少句子 ID</source>
@@ -1635,16 +1617,16 @@
   <target>Sentence bank</target>
 </trans-unit>
 <trans-unit id="s9896c718d8dd43c2">
-  <source><x id="0" equiv-text="${visibleEntries.length}" /> 句</source>
-  <target><x id="0" equiv-text="${this._entries.length}" /> sentence(s)</target>
+  <source><x id="0" equiv-text="${visibleEntries.length}"/> 句</source>
+  <target><x id="0" equiv-text="${this._entries.length}"/> sentence(s)</target>
 </trans-unit>
 <trans-unit id="sef218683966963b5">
   <source>句库为空。在练习页点击字幕旁的 ☆ 即可加入。</source>
   <target>Sentence bank is empty. Tap ☆ next to a subtitle on the practice page to add one.</target>
 </trans-unit>
 <trans-unit id="sb799440972680616">
-  <source>来自：<x id="0" equiv-text="${entry.sourceTitleSnapshot}" /></source>
-  <target>From: <x id="0" equiv-text="${entry.sourceTitleSnapshot}" /></target>
+  <source>来自：<x id="0" equiv-text="${entry.sourceTitleSnapshot}"/></source>
+  <target>From: <x id="0" equiv-text="${entry.sourceTitleSnapshot}"/></target>
 </trans-unit>
 <trans-unit id="s903429b28c3b80ce">
   <source>源媒体已删除</source>
@@ -1687,24 +1669,24 @@
   <source>句库练习</source>
 <target>Sentence Library Practice</target></trans-unit>
 <trans-unit id="s98709218d89c57b3">
-  <source><x id="0" equiv-text="${totalSec}" /> 秒</source>
-  <target><x id="0" equiv-text="${totalSec}" />s</target>
+  <source><x id="0" equiv-text="${totalSec}"/> 秒</source>
+  <target><x id="0" equiv-text="${totalSec}"/>s</target>
 </trans-unit>
 <trans-unit id="s80f0e5cd632e746b">
-  <source><x id="0" equiv-text="${totalMin}" /> 分 <x id="1" equiv-text="${sec}" /> 秒</source>
-  <target><x id="0" equiv-text="${totalMin}" />m <x id="1" equiv-text="${sec}" />s</target>
+  <source><x id="0" equiv-text="${totalMin}"/> 分 <x id="1" equiv-text="${sec}"/> 秒</source>
+  <target><x id="0" equiv-text="${totalMin}"/>m <x id="1" equiv-text="${sec}"/>s</target>
 </trans-unit>
 <trans-unit id="s98986618d8e004ef">
-  <source><x id="0" equiv-text="${totalMin}" /> 分</source>
-  <target><x id="0" equiv-text="${totalMin}" />m</target>
+  <source><x id="0" equiv-text="${totalMin}"/> 分</source>
+  <target><x id="0" equiv-text="${totalMin}"/>m</target>
 </trans-unit>
 <trans-unit id="s7d2bcba110bb52f7">
-  <source><x id="0" equiv-text="${hours}" /> 时 <x id="1" equiv-text="${min}" /> 分</source>
-  <target><x id="0" equiv-text="${hours}" />h <x id="1" equiv-text="${min}" />m</target>
+  <source><x id="0" equiv-text="${hours}"/> 时 <x id="1" equiv-text="${min}"/> 分</source>
+  <target><x id="0" equiv-text="${hours}"/>h <x id="1" equiv-text="${min}"/>m</target>
 </trans-unit>
 <trans-unit id="s986cb618d895c8df">
-  <source><x id="0" equiv-text="${hours}" /> 时</source>
-  <target><x id="0" equiv-text="${hours}" />h</target>
+  <source><x id="0" equiv-text="${hours}"/> 时</source>
+  <target><x id="0" equiv-text="${hours}"/>h</target>
 </trans-unit>
 <trans-unit id="se502e9fe68f166a9">
   <source>隐藏密码</source>
@@ -1723,8 +1705,156 @@
   <target>Unable to load media file</target>
 </trans-unit>
 <trans-unit id="s212b3f37a2d2a628">
-  <source><x id="0" equiv-text="${(usage / 1024 / 1024).toFixed(1)}" /> MB</source>
-  <target><x id="0" equiv-text="${(usage / 1024 / 1024).toFixed(1)}" /> MB</target>
+  <source><x id="0" equiv-text="${(usage / 1024 / 1024).toFixed(1)}"/> MB</source>
+  <target><x id="0" equiv-text="${(usage / 1024 / 1024).toFixed(1)}"/> MB</target>
+</trans-unit>
+<trans-unit id="se2a4863556e5172a">
+  <source>无法加载噪音素材</source>
+  <target>Unable to load noise materials</target>
+</trans-unit>
+<trans-unit id="s784f93f8ab5f9d55">
+  <source>已导入 <x id="0" equiv-text="${result.imported.length}"/> 个噪音素材</source>
+  <target>Imported <x id="0" equiv-text="${result.imported.length}"/> noise material(s)</target>
+</trans-unit>
+<trans-unit id="s8a6ac52222a407df">
+  <source>导入噪音素材失败</source>
+  <target>Failed to import noise materials</target>
+</trans-unit>
+<trans-unit id="sfa46c2e9ff809b76">
+  <source>已删除噪音素材</source>
+  <target>Noise material deleted</target>
+</trans-unit>
+<trans-unit id="s3124e250f4f53dc1">
+  <source>删除此噪音素材？</source>
+  <target>Delete this noise material?</target>
+</trans-unit>
+<trans-unit id="s53a0c1ff65d39ba2">
+  <source>无匹配噪音素材</source>
+  <target>No matching noise materials</target>
+</trans-unit>
+<trans-unit id="s766b7895d96b16ca">
+  <source>噪音素材</source>
+  <target>Noise materials</target>
+</trans-unit>
+<trans-unit id="s6d651d2f2cdd812a">
+  <source>辨音：在环境噪音背景下听主音频。可多选噪音并分别调音量；速听阶梯控制主轨倍速（噪音不变速）。</source>
+  <target>Discrimination: listen to the main track over ambient noise. Select one or more noises with separate volumes; the speed ladder controls main-track rate (noise stays at 1x).</target>
+</trans-unit>
+<trans-unit id="s36f73936d8998126">
+  <source>3. 辨音模式下不显示倍速与高级设置，倍速由阶梯独占。</source>
+  <target>3. Discrimination mode hides rate and advanced settings; the ladder owns playback rate.</target>
+</trans-unit>
+<trans-unit id="s3f05208b40809ed8">
+  <source>自由听</source>
+  <target>Free listen</target>
+</trans-unit>
+<trans-unit id="s4f927bdc69d2af2d">
+  <source>当前阶梯：第 <x id="0" equiv-text="${this._ladderDisplayIndex + 1}"/>/<x id="1" equiv-text="${seq.length}"/> 步（<x id="2" equiv-text="${this._rateLadder.getCurrentRate()}"/>x）</source>
+  <target>Ladder: step <x id="0" equiv-text="${this._ladderDisplayIndex + 1}"/>/<x id="1" equiv-text="${seq.length}"/> (<x id="2" equiv-text="${this._rateLadder.getCurrentRate()}"/>x)</target>
+</trans-unit>
+<trans-unit id="s1fdad508a2e2040a">
+  <source>噪音</source>
+  <target>Noise</target>
+</trans-unit>
+<trans-unit id="sb58f4c4b1dd0894d">
+  <source>速听阶梯</source>
+  <target>Speed ladder</target>
+</trans-unit>
+<trans-unit id="s855d52081f258074">
+  <source>次数</source>
+  <target>Steps</target>
+</trans-unit>
+<trans-unit id="s4d093e6b477349e4">
+  <source>第 <x id="0" equiv-text="${index + 1}"/> 档倍速</source>
+  <target>Rate step <x id="0" equiv-text="${index + 1}"/></target>
+</trans-unit>
+<trans-unit id="s58e3cc277bb06d33">
+  <source>最多选择 <x id="0" equiv-text="${DISCRIMINATION_MAX_NOISE_TRACKS}"/> 条噪音</source>
+  <target>Select up to <x id="0" equiv-text="${DISCRIMINATION_MAX_NOISE_TRACKS}"/> noise tracks</target>
+</trans-unit>
+<trans-unit id="s54fad7305b4b1c72">
+  <source>辨音说明</source>
+  <target>Discrimination tips</target>
+</trans-unit>
+<trans-unit id="s09b6271fff16003d">
+  <source>已导出备份（录音 <x id="0" equiv-text="${manifest.counts.recordings}"/>，学习记录 <x id="1" equiv-text="${manifest.counts.sessions}"/>，句库 <x id="2" equiv-text="${manifest.counts.sentenceBank}"/>，噪音 <x id="3" equiv-text="${manifest.counts.noise}"/>，媒体 <x id="4" equiv-text="${manifest.counts.media}"/>）</source>
+  <target>Backup exported (recordings <x id="0" equiv-text="${manifest.counts.recordings}"/>, sessions <x id="1" equiv-text="${manifest.counts.sessions}"/>, sentence bank <x id="2" equiv-text="${manifest.counts.sentenceBank}"/>, noise <x id="3" equiv-text="${manifest.counts.noise}"/>, media <x id="4" equiv-text="${manifest.counts.media}"/>)</target>
+</trans-unit>
+<trans-unit id="s9aae08e72d7a488b">
+  <source>噪音：导入 <x id="0" equiv-text="${result.noiseImported}"/>，跳过 <x id="1" equiv-text="${result.noiseSkipped}"/></source>
+  <target>Noise: imported <x id="0" equiv-text="${result.noiseImported}"/>, skipped <x id="1" equiv-text="${result.noiseSkipped}"/></target>
+</trans-unit>
+<trans-unit id="s21092c787f4155a9">
+  <source>导入中…</source>
+  <target>Importing…</target>
+</trans-unit>
+<trans-unit id="sdb9ac509426855ec">
+  <source>辨音</source>
+  <target>Discrimination</target>
+</trans-unit>
+<trans-unit id="sb39931ab94d4d98e">
+  <source>缺少噪音文件：<x id="0" equiv-text="${item.filename || item.id}"/></source>
+  <target>Missing noise file: <x id="0" equiv-text="${item.filename || item.id}"/></target>
+</trans-unit>
+<trans-unit id="s07987c79c68c5393">
+  <source>导入噪音素材失败：<x id="0" equiv-text="${item.id}"/></source>
+  <target>Failed to import noise material: <x id="0" equiv-text="${item.id}"/></target>
+</trans-unit>
+<trans-unit id="sc84cbec67e080db8">
+  <source>仅支持音频文件作为噪音素材</source>
+  <target>Only audio files are supported as noise materials</target>
+</trans-unit>
+<trans-unit id="saa1f1b21630ce73e">
+  <source>已存在相同内容的噪音素材</source>
+  <target>An identical noise material already exists</target>
+</trans-unit>
+<trans-unit id="sfa98099584a84be6">
+  <source>搜索媒体 / 录音 / 噪音标题</source>
+  <target>Search media / recordings / noise titles</target>
+</trans-unit>
+<trans-unit id="s4590594157893af7">
+  <source>筛选与排序同时作用于下方媒体库、录音库与噪音素材</source>
+  <target>Filter and sort apply to media, recordings, and noise materials below</target>
+</trans-unit>
+<trans-unit id="s1979d2557f8e15b4">
+  <source>将播放：</source>
+  <target>Will play:</target>
+</trans-unit>
+<trans-unit id="sf7e0d9095a875b37">
+  <source>音量</source>
+  <target>Volume</target>
+</trans-unit>
+<trans-unit id="sfc0bf0363d964d04">
+  <source>暂无噪音素材，请先导入</source>
+  <target>No noise assets yet. Import some first.</target>
+</trans-unit>
+<trans-unit id="s60779d74857e9562">
+  <source>1. 噪音跟随主轨播放/暂停；单条噪音播完会自动循环。播放中改选噪音或音量会立即生效。</source>
+  <target>1. Noise follows the main track play/pause; each clip loops when it ends. Changing noise or volume while playing takes effect immediately.</target>
+</trans-unit>
+<trans-unit id="s7a3923ebaeb9c3fc">
+  <source>2. 速听阶梯按「正序再回落」播放完整主轨；播放中改阶梯会重置到第一档并立即应用。切歌后阶梯进度重置，设置保留。</source>
+  <target>2. The speed ladder plays the full main track ascending then descending; changing the ladder while playing resets to the first step and applies immediately. Switching tracks resets ladder progress but keeps settings.</target>
+</trans-unit>
+<trans-unit id="sd10944495e3b97eb">
+  <source>可随时调整噪音与速听阶梯；噪音跟随主轨，倍速由阶梯控制。</source>
+  <target>Adjust noise and the speed ladder anytime; noise follows the main track, and rate is controlled by the ladder.</target>
+</trans-unit>
+<trans-unit id="sffed4b6d4b94a981">
+  <source>暂无噪音素材。请在资料库中导入。</source>
+  <target>No noise assets yet. Import them in the Library.</target>
+</trans-unit>
+<trans-unit id="s1956085b6455374d">
+  <source>噪音等进阶素材在资料库中管理；部分能力仍在陆续开放。</source>
+  <target>Advanced assets such as noise are managed in the Library; more capabilities are coming.</target>
+</trans-unit>
+<trans-unit id="s249931eb84d06e01">
+  <source>前往资料库导入与管理环境噪音。</source>
+  <target>Go to the Library to import and manage ambient noise.</target>
+</trans-unit>
+<trans-unit id="sfb82bd9c75fb0f3e">
+  <source>去资料库</source>
+  <target>Go to Library</target>
 </trans-unit>
 </body>
 </file>

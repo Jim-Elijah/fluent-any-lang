@@ -10,5 +10,6 @@ export {
   shouldSkipRecordingCountdown,
   shouldSkipShadowingTips,
   shouldSkipEchoTips,
+  shouldSkipDiscriminationTips,
   type UserSettings,
 } from './app-settings.js';

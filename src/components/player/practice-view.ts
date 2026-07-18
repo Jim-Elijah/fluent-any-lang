@@ -2,6 +2,7 @@ import { msg, str, localized } from '@lit/localize';
 import { css, html, LitElement, nothing } from 'lit';
 import { keyed } from 'lit/directives/keyed.js';
 import { customElement, property, query, state } from 'lit/decorators.js';
+import { navigator as Navigator } from 'lit-element-router';
 
 import '../library/record-list.js';
 import { PracticeTimeTracker } from '../../analytics/practice-time-tracker.js';
@@ -17,14 +18,29 @@ import { estimateStorage } from '../../lib/export-content.js';
 import { reportError } from '../../lib/error-reporter.js';
 import { getMediaDuration } from '../../lib/file-validation.js';
 import type {
+  DiscriminationSettings,
+  ListeningMode,
   MediaItem,
+  NoiseItem,
   PracticeAnalyticsMode,
   PracticeRecord,
   PracticeSegment,
   RouteContext,
   SubtitleSegment,
 } from '../../types/models.js';
-import { getAppSettings, setAppSettings } from '../../lib/app-settings.js';
+import {
+  DISCRIMINATION_MAX_NOISE_TRACKS,
+  DISCRIMINATION_RATE_STEPS,
+  DEFAULT_DISCRIMINATION_SETTINGS,
+} from '../../types/models.js';
+import {
+  getAppSettings,
+  setAppSettings,
+  shouldSkipDiscriminationTips,
+} from '../../lib/app-settings.js';
+import { NoiseMixer } from '../../lib/noise-mixer.js';
+import { RateLadder } from '../../lib/rate-ladder.js';
+import { getNoiseBlob, getNoiseList } from '../../db/noise.js';
 import {
   AUDIO_FOCUS_REQUEST_EVENT,
   RECORDING_PREVIEW_CLOSE_EVENT,
@@ -39,6 +55,7 @@ import {
 } from '../../lib/hotkeys/index.js';
 import {
   ExtendedMediaEventType,
+  MediaEventType,
   formatStorageUsage,
   getPracticeSourceDuration,
 } from '../../lib/playback-utils.js';
@@ -47,6 +64,10 @@ import '../ui/alert.js';
 import '../ui/button.js';
 import '../ui/icon.js';
 import '../ui/modal.js';
+import '../ui/select.js';
+import '../ui/volume-control.js';
+import type { SelectChangeDetail } from '../ui/select.js';
+import type { VolumeControlChangeDetail } from '../ui/volume-control.js';
 import './media-player.js';
 import './subtitle-panel.js';
 import './audio-recorder.js';
@@ -76,7 +97,7 @@ import {
 
 type PracticeType = 'listening' | 'speaking';
 type SpeakingMode = 'shadowing' | 'echo';
-type TipsModalKind = 'shadowing' | 'echo' | null;
+type TipsModalKind = 'shadowing' | 'echo' | 'discrimination' | null;
 
 type StorageEstimate = {
   usage: number;
@@ -89,9 +110,11 @@ type PracticeLaunchContext =
   | { kind: 'single'; mediaId: string }
   | { kind: 'playlist'; playlistId: string; mediaId?: string };
 
+const NavigatorElement = Navigator(LitElement);
+
 @customElement('practice-view')
 @localized()
-export class PracticeView extends LitElement {
+export class PracticeView extends NavigatorElement {
   static styles = css`
     :host {
       display: block;
@@ -128,6 +151,68 @@ export class PracticeView extends LitElement {
       flex-wrap: wrap;
       gap: var(--space-sm);
       margin-bottom: var(--space-block);
+    }
+
+    .discrimination-noise-row {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-xs);
+      margin-top: var(--space-sm);
+    }
+
+    .noise-item-row {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+    }
+
+    .discrimination-noise-row label.noise-check {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      min-width: 0;
+      font-size: 0.875rem;
+      cursor: pointer;
+    }
+
+    .discrimination-ladder-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--space-sm);
+      margin-top: var(--space-sm);
+    }
+
+    .discrimination-ladder-row > ui-select {
+      width: 4.5rem;
+      flex-shrink: 0;
+    }
+
+    .ladder-sequence-preview {
+      flex: 1;
+      min-width: 0;
+      font-size: 0.8125rem;
+      color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
+      line-height: 1.5;
+      word-break: break-word;
+    }
+
+    .discrimination-ladder-rates {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: var(--space-sm);
+      margin-top: var(--space-sm);
+    }
+
+    .discrimination-ladder-rates ui-select {
+      width: 100%;
+      min-width: 0;
+    }
+
+    .ladder-progress {
+      margin: var(--space-xs) 0 0;
+      font-size: 0.8125rem;
+      color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
     }
 
     .settings-panel {
@@ -306,7 +391,23 @@ export class PracticeView extends LitElement {
   private _practiceType: PracticeType = 'listening';
 
   @state()
+  private _listeningMode: ListeningMode = 'free';
+
+  @state()
   private _speakingMode: SpeakingMode = 'shadowing';
+
+  @state()
+  private _discriminationSettings: DiscriminationSettings = {
+    selected: [],
+    ladderCount: DEFAULT_DISCRIMINATION_SETTINGS.ladderCount,
+    ladderRates: [...DEFAULT_DISCRIMINATION_SETTINGS.ladderRates],
+  };
+
+  @state()
+  private _noiseItems: NoiseItem[] = [];
+
+  @state()
+  private _ladderDisplayIndex = 0;
 
   @state()
   private _recording = false;
@@ -393,8 +494,26 @@ export class PracticeView extends LitElement {
     ];
   }
 
+  private _getDiscriminationTips(): string[] {
+    return [
+      msg(
+        '辨音：在环境噪音背景下听主音频。可多选噪音并分别调音量；速听阶梯控制主轨倍速（噪音不变速）。',
+      ),
+      msg('温馨提示：'),
+      msg('1. 噪音跟随主轨播放/暂停；单条噪音播完会自动循环。播放中改选噪音或音量会立即生效。'),
+      msg(
+        '2. 速听阶梯按「正序再回落」播放完整主轨；播放中改阶梯会重置到第一档并立即应用。切歌后阶梯进度重置，设置保留。',
+      ),
+      msg('3. 辨音模式下不显示倍速与高级设置，倍速由阶梯独占。'),
+    ];
+  }
+
   private _getShadowingSummary(): string {
     return msg('点击下方麦克风开始同步跟读；录音时底部显示状态与波形。');
+  }
+
+  private _getDiscriminationSummary(): string {
+    return msg('可随时调整噪音与速听阶梯；噪音跟随主轨，倍速由阶梯控制。');
   }
 
   private _getEchoSummary(): string {
@@ -412,6 +531,10 @@ export class PracticeView extends LitElement {
 
   private readonly _controller = new MediaController();
   private readonly _timeTracker = new PracticeTimeTracker();
+  private readonly _noiseMixer = new NoiseMixer();
+  private readonly _rateLadder = new RateLadder();
+  private _discriminationActive = false;
+  private _ladderAdvancing = false;
   private _lastRecordingId: string | null = null;
   private get _shadowingLimit() {
     return getAppSettings().maxRecordingsPerMedia;
@@ -435,8 +558,13 @@ export class PracticeView extends LitElement {
     if (this._echoListening) {
       this._cancelEchoListen();
     }
+    this._teardownDiscrimination();
+    this._noiseMixer.destroy();
     this._timeTracker.dispose();
     this._controller.removeEventListener(ExtendedMediaEventType.TRACK_CHANGE, this._onTrackChange);
+    this._controller.removeEventListener(MediaEventType.PLAY, this._onMainPlay);
+    this._controller.removeEventListener(MediaEventType.PAUSE, this._onMainPause);
+    this._controller.removeEventListener(MediaEventType.ENDED, this._onMainEnded);
     this._controller.destroy();
     super.disconnectedCallback();
   }
@@ -465,12 +593,23 @@ export class PracticeView extends LitElement {
 
   connectedCallback(): void {
     super.connectedCallback();
+    const saved = getAppSettings().discrimination;
+    this._discriminationSettings = {
+      selected: saved.selected.map((s) => ({ ...s })),
+      ladderCount: saved.ladderCount,
+      ladderRates: [...saved.ladderRates],
+    };
+    this._rateLadder.setRates(this._discriminationSettings.ladderRates);
     this._controller.addEventListener(ExtendedMediaEventType.TRACK_CHANGE, this._onTrackChange);
+    this._controller.addEventListener(MediaEventType.PLAY, this._onMainPlay);
+    this._controller.addEventListener(MediaEventType.PAUSE, this._onMainPause);
+    this._controller.addEventListener(MediaEventType.ENDED, this._onMainEnded);
     this._timeTracker.attach(this._controller);
     this._timeTracker.setMode(this._resolveAnalyticsMode());
     this.addEventListener(RECORDING_PREVIEW_OPEN_EVENT, this._onRecordingPreviewOpen);
     this.addEventListener(RECORDING_PREVIEW_CLOSE_EVENT, this._onRecordingPreviewClose);
     this.addEventListener(AUDIO_FOCUS_REQUEST_EVENT, this._onAudioFocusRequest);
+    void this._refreshNoiseItems();
     if (supportsKeyboardShortcuts()) {
       getHotkeyManager().registerScope({
         id: 'practice',
@@ -492,9 +631,11 @@ export class PracticeView extends LitElement {
             this._nudgeVolume(-VOLUME_HOTKEY_STEP);
           },
           rateUp: () => {
+            if (this._isDiscriminationMode()) return;
             this._nudgePlaybackRate(1);
           },
           rateDown: () => {
+            if (this._isDiscriminationMode()) return;
             this._nudgePlaybackRate(-1);
           },
         },
@@ -522,6 +663,9 @@ export class PracticeView extends LitElement {
       this._cancelEchoListen(true);
     } else {
       void this._controller.pause();
+    }
+    if (this._discriminationActive) {
+      this._noiseMixer.setPlaying(false);
     }
     if (showTip && wasPlaying) {
       Message.info(msg('练习音频已暂停'));
@@ -554,9 +698,112 @@ export class PracticeView extends LitElement {
 
   private _resolveAnalyticsMode(): PracticeAnalyticsMode {
     if (this._practiceType === 'listening') {
-      return 'listening';
+      return this._listeningMode === 'discrimination' ? 'discrimination' : 'listening';
     }
     return this._speakingMode;
+  }
+
+  private _isDiscriminationMode(): boolean {
+    return this._practiceType === 'listening' && this._listeningMode === 'discrimination';
+  }
+
+  private _onMainPlay = (): void => {
+    if (this._discriminationActive) {
+      this._noiseMixer.setPlaying(true);
+    }
+  };
+
+  private _onMainPause = (): void => {
+    if (this._discriminationActive && !this._ladderAdvancing) {
+      this._noiseMixer.setPlaying(false);
+    }
+  };
+
+  private _onMainEnded = (): void => {
+    if (!this._discriminationActive || this._ladderAdvancing) {
+      return;
+    }
+    const result = this._rateLadder.onMainEnded();
+    this._ladderDisplayIndex = this._rateLadder.getIndex();
+    if (result.kind === 'finished') {
+      this._noiseMixer.setPlaying(false);
+      this._controller.setPlaybackRate(this._rateLadder.getCurrentRate());
+      return;
+    }
+    this._ladderAdvancing = true;
+    this._controller.setPlaybackRate(result.rate);
+    this._controller.seek(0, { force: true });
+    void this._controller.play().finally(() => {
+      this._ladderAdvancing = false;
+      this._noiseMixer.setPlaying(true);
+    });
+  };
+
+  private async _refreshNoiseItems(): Promise<void> {
+    try {
+      this._noiseItems = await getNoiseList();
+    } catch {
+      this._noiseItems = [];
+    }
+  }
+
+  private _persistDiscriminationSettings(partial: Partial<DiscriminationSettings>): void {
+    const prevIds = this._discriminationSettings.selected.map((s) => s.noiseId).join('\0');
+    const next: DiscriminationSettings = {
+      selected: partial.selected ?? this._discriminationSettings.selected,
+      ladderCount: partial.ladderCount ?? this._discriminationSettings.ladderCount,
+      ladderRates: partial.ladderRates ?? this._discriminationSettings.ladderRates,
+    };
+    this._discriminationSettings = {
+      selected: next.selected.map((s) => ({ ...s })),
+      ladderCount: next.ladderCount,
+      ladderRates: [...next.ladderRates],
+    };
+    setAppSettings({ discrimination: this._discriminationSettings });
+    this._rateLadder.setRates(this._discriminationSettings.ladderRates);
+    if (this._discriminationActive) {
+      const nextIds = this._discriminationSettings.selected.map((s) => s.noiseId).join('\0');
+      if (prevIds !== nextIds) {
+        void this._syncNoiseMixerTracks();
+      }
+      this._controller.setPlaybackRate(this._rateLadder.getCurrentRate());
+    }
+  }
+
+  private async _syncNoiseMixerTracks(): Promise<void> {
+    const tracks = [];
+    for (const sel of this._discriminationSettings.selected) {
+      const blob = await getNoiseBlob(sel.noiseId);
+      if (!blob) continue;
+      tracks.push({
+        id: sel.noiseId,
+        url: URL.createObjectURL(blob),
+        volume: sel.volume,
+      });
+    }
+    this._noiseMixer.setTracks(tracks);
+    if (this._controller.getSnapshot().isPlaying) {
+      this._noiseMixer.setPlaying(true);
+    }
+  }
+
+  private async _setupDiscrimination(): Promise<void> {
+    this._discriminationActive = true;
+    this._controller.setLoopMode('none');
+    this._controller.setSleepMode('off');
+    this._controller.setPauseMode('off');
+    this._rateLadder.setRates(this._discriminationSettings.ladderRates);
+    this._rateLadder.reset();
+    this._ladderDisplayIndex = 0;
+    this._controller.setPlaybackRate(this._rateLadder.getCurrentRate());
+    await this._syncNoiseMixerTracks();
+  }
+
+  private _teardownDiscrimination(): void {
+    this._discriminationActive = false;
+    this._ladderAdvancing = false;
+    this._noiseMixer.setPlaying(false);
+    this._noiseMixer.setTracks([]);
   }
 
   private _syncTimeTrackerMedia(): void {
@@ -579,6 +826,11 @@ export class PracticeView extends LitElement {
     }
     this._syncMediaIdFromController();
     this._syncTimeTrackerMedia();
+    if (this._discriminationActive) {
+      this._rateLadder.reset();
+      this._ladderDisplayIndex = 0;
+      this._controller.setPlaybackRate(this._rateLadder.getCurrentRate());
+    }
     void this._refreshRecordings();
     void this._refreshSentenceBankIds();
   };
@@ -594,6 +846,9 @@ export class PracticeView extends LitElement {
   render() {
     const shadowingRemaining = Math.max(this._shadowingLimit - this._shadowingCount, 0);
     const isSpeaking = this._practiceType === 'speaking';
+    const isListening = this._practiceType === 'listening';
+    const isDiscrimination = isListening && this._listeningMode === 'discrimination';
+    const isFreeListen = isListening && this._listeningMode === 'free';
     const isShadowing = isSpeaking && this._speakingMode === 'shadowing';
     const isEcho = isSpeaking && this._speakingMode === 'echo';
     const sessionActive = this._sessionPhase !== 'idle';
@@ -601,6 +856,34 @@ export class PracticeView extends LitElement {
     const headerTitle = this._practiceType === 'listening' ? msg('听力练习') : msg('口语练习');
 
     const { hasSubtitles } = this._controller.getSnapshot();
+
+    const controlsConfig = isDiscrimination
+      ? {
+          loopMode: false,
+          sleepMode: false,
+          pauseMode: false,
+          playPause: true,
+          volume: true,
+          playbackRate: false,
+          progress: true,
+          previousNextTrack: true,
+          previousNextSegment: true,
+          switchMode: false,
+          advancedSetting: false,
+        }
+      : {
+          loopMode: true,
+          sleepMode: true,
+          pauseMode: true,
+          playPause: true,
+          volume: true,
+          playbackRate: true,
+          progress: true,
+          previousNextTrack: true,
+          previousNextSegment: true,
+          switchMode: false,
+          advancedSetting: true,
+        };
 
     return html`
       <section>
@@ -632,6 +915,25 @@ export class PracticeView extends LitElement {
             <ui-icon name="speak" size="var(--icon-xl)"></ui-icon> ${msg('口语')}
           </ui-button>
         </div>
+        ${isListening
+          ? html`
+              <div class="speaking-mode-tabs">
+                <ui-button
+                  variant="${isFreeListen ? 'primary' : 'secondary'}"
+                  @click="${() => this._setListeningMode('free')}"
+                >
+                  ${msg('自由听')}
+                </ui-button>
+                <ui-button
+                  variant="${isDiscrimination ? 'primary' : 'secondary'}"
+                  @click="${() => this._setListeningMode('discrimination')}"
+                >
+                  ${msg('辨音')}
+                </ui-button>
+              </div>
+            `
+          : nothing}
+        ${isDiscrimination ? this._renderDiscriminationPanel() : nothing}
         ${isSpeaking
           ? html`
               <div class="speaking-mode-tabs">
@@ -726,19 +1028,7 @@ export class PracticeView extends LitElement {
             .controller="${this._controller}"
             ?disabled="${isSpeaking && sessionActive}"
             mode="normal"
-            .controlsConfig="${{
-              loopMode: true,
-              sleepMode: true,
-              pauseMode: true,
-              playPause: true,
-              volume: true,
-              playbackRate: true,
-              progress: true,
-              previousNextTrack: true,
-              previousNextSegment: true,
-              switchMode: false,
-              advancedSetting: true,
-            }}"
+            .controlsConfig="${controlsConfig}"
           >
           </media-player>
           <subtitle-panel
@@ -862,15 +1152,181 @@ export class PracticeView extends LitElement {
     `;
   }
 
+  private _renderDiscriminationPanel() {
+    const settings = this._discriminationSettings;
+    const rateOptions = DISCRIMINATION_RATE_STEPS.map((rate) => ({
+      value: String(rate),
+      label: `${rate}x`,
+    }));
+    const countOptions = Array.from({ length: 6 }, (_, i) => ({
+      value: String(i + 1),
+      label: String(i + 1),
+    }));
+    const seq = this._rateLadder.getSequence();
+    const sequencePreview = seq.map((rate) => `${rate}x`).join(' → ');
+    const stepLabel =
+      seq.length > 0
+        ? msg(
+            str`当前阶梯：第 ${this._ladderDisplayIndex + 1}/${seq.length} 步（${this._rateLadder.getCurrentRate()}x）`,
+          )
+        : '';
+
+    return html`
+      <div class="settings-panel">
+        <div class="info-text">
+          <div class="tips-summary">
+            <p>${this._getDiscriminationSummary()}</p>
+            <ui-button variant="secondary" @click=${() => this._openTipsModal('discrimination')}>
+              ${msg('说明')}
+            </ui-button>
+          </div>
+          <div class="settings-group">
+            <h3>${msg('噪音')}</h3>
+            ${this._noiseItems.length === 0
+              ? html`<p class="hint">
+                  ${msg('暂无噪音素材。请在资料库中导入。')}<ui-button
+                    variant="secondary"
+                    @click=${this._openLibrary}
+                    >${msg('立即前往')}</ui-button
+                  >
+                </p>`
+              : html`<div class="discrimination-noise-row">
+                  ${this._noiseItems.map((item) => {
+                    const selected = settings.selected.find((s) => s.noiseId === item.id);
+                    const checked = Boolean(selected);
+                    return html`
+                      <div class="noise-item-row">
+                        <label class="noise-check">
+                          <input
+                            type="checkbox"
+                            .checked=${checked}
+                            @change=${(e: Event) => {
+                              const on = (e.target as HTMLInputElement).checked;
+                              this._toggleNoiseSelection(item.id, on);
+                            }}
+                          />
+                          <span>${item.title}</span>
+                        </label>
+                        ${checked
+                          ? html`<ui-volume-control
+                              .value=${selected?.volume ?? 0.5}
+                              .min=${0}
+                              .max=${1}
+                              .step=${0.05}
+                              placement="right"
+                              @change=${(e: CustomEvent<VolumeControlChangeDetail>) => {
+                                this._setNoiseVolume(item.id, e.detail.value);
+                              }}
+                            ></ui-volume-control>`
+                          : nothing}
+                      </div>
+                    `;
+                  })}
+                </div>`}
+          </div>
+          <div class="settings-group">
+            <h3>${msg('速听阶梯')}</h3>
+            <div class="discrimination-ladder-row">
+              <span>${msg('次数')}</span>
+              <ui-select
+                .value=${String(settings.ladderCount)}
+                .options=${countOptions}
+                @change=${(e: CustomEvent<SelectChangeDetail>) => {
+                  this._setLadderCount(Number(e.detail.value));
+                }}
+              ></ui-select>
+            </div>
+            <div class="discrimination-ladder-rates">
+              ${settings.ladderRates.map(
+                (rate, index) => html`
+                  <ui-select
+                    .value=${String(rate)}
+                    .options=${rateOptions}
+                    aria-label=${msg(str`第 ${index + 1} 档倍速`)}
+                    @change=${(e: CustomEvent<SelectChangeDetail>) => {
+                      this._setLadderRate(index, Number(e.detail.value));
+                    }}
+                  ></ui-select>
+                `,
+              )}
+            </div>
+            <span class="ladder-sequence-preview">${msg('将播放：')}${sequencePreview}</span>
+            <p class="ladder-progress">${stepLabel}</p>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  private _openLibrary = (): void => {
+    this.navigate('/library#noise-list-title');
+  };
+
+  private _toggleNoiseSelection(noiseId: string, on: boolean): void {
+    let selected = [...this._discriminationSettings.selected];
+    if (on) {
+      if (selected.some((s) => s.noiseId === noiseId)) return;
+      if (selected.length >= DISCRIMINATION_MAX_NOISE_TRACKS) {
+        Message.warning(msg(str`最多选择 ${DISCRIMINATION_MAX_NOISE_TRACKS} 条噪音`));
+        this.requestUpdate();
+        return;
+      }
+      selected.push({ noiseId, volume: 0.5 });
+    } else {
+      selected = selected.filter((s) => s.noiseId !== noiseId);
+    }
+    this._persistDiscriminationSettings({ selected });
+  }
+
+  private _setNoiseVolume(noiseId: string, volume: number): void {
+    const selected = this._discriminationSettings.selected.map((s) =>
+      s.noiseId === noiseId ? { ...s, volume } : s,
+    );
+    this._persistDiscriminationSettings({ selected });
+    this._noiseMixer.setTrackVolume(noiseId, volume);
+  }
+
+  private _setLadderCount(count: number): void {
+    const ladderCount = Math.max(1, Math.min(6, count));
+    const ladderRates = [...this._discriminationSettings.ladderRates];
+    while (ladderRates.length < ladderCount) {
+      ladderRates.push(1);
+    }
+    ladderRates.length = ladderCount;
+    this._rateLadder.reset();
+    this._ladderDisplayIndex = 0;
+    this._persistDiscriminationSettings({ ladderCount, ladderRates });
+  }
+
+  private _setLadderRate(index: number, rate: number): void {
+    const ladderRates = [...this._discriminationSettings.ladderRates];
+    if (index < 0 || index >= ladderRates.length) return;
+    ladderRates[index] = rate;
+    this._rateLadder.reset();
+    this._ladderDisplayIndex = 0;
+    this._persistDiscriminationSettings({ ladderRates });
+  }
+
   private _renderTipsModal() {
     if (!this._tipsModalKind) {
       return nothing;
     }
 
-    const isShadowing = this._tipsModalKind === 'shadowing';
-    const tips = isShadowing ? this._getShadowingTips() : this._getEchoTips();
-    const title = isShadowing ? msg('跟读说明') : msg('回声说明');
-    const shouldSkipTips = isShadowing ? shouldSkipShadowingTips() : shouldSkipEchoTips();
+    const kind = this._tipsModalKind;
+    const tips =
+      kind === 'shadowing'
+        ? this._getShadowingTips()
+        : kind === 'echo'
+          ? this._getEchoTips()
+          : this._getDiscriminationTips();
+    const title =
+      kind === 'shadowing' ? msg('跟读说明') : kind === 'echo' ? msg('回声说明') : msg('辨音说明');
+    const shouldSkipTips =
+      kind === 'shadowing'
+        ? shouldSkipShadowingTips()
+        : kind === 'echo'
+          ? shouldSkipEchoTips()
+          : shouldSkipDiscriminationTips();
 
     return html`
       <ui-modal
@@ -1110,6 +1566,9 @@ export class PracticeView extends LitElement {
     if (this._echoListening) {
       this._cancelEchoListen();
     }
+    if (this._discriminationActive) {
+      this._teardownDiscrimination();
+    }
     this._practiceType = type;
     this._recordingError = '';
     this._shadowingRecorderEl?.destroy();
@@ -1120,6 +1579,29 @@ export class PracticeView extends LitElement {
     this._timeTracker.setMode(this._resolveAnalyticsMode());
     if (type === 'speaking') {
       this._maybeShowTipsForSpeakingMode(this._speakingMode);
+    } else if (this._listeningMode === 'discrimination') {
+      void this._setupDiscrimination();
+      this._maybeShowDiscriminationTips();
+    }
+  }
+
+  private _setListeningMode(mode: ListeningMode): void {
+    if (this._listeningMode === mode) {
+      return;
+    }
+    this._listeningMode = mode;
+    if (mode === 'discrimination') {
+      void this._setupDiscrimination();
+      this._maybeShowDiscriminationTips();
+    } else {
+      this._teardownDiscrimination();
+    }
+    this._timeTracker.setMode(this._resolveAnalyticsMode());
+  }
+
+  private _maybeShowDiscriminationTips(): void {
+    if (!shouldSkipDiscriminationTips()) {
+      this._openTipsModal('discrimination');
     }
   }
 
@@ -1154,7 +1636,7 @@ export class PracticeView extends LitElement {
     }
   }
 
-  private _openTipsModal(kind: 'shadowing' | 'echo'): void {
+  private _openTipsModal(kind: 'shadowing' | 'echo' | 'discrimination'): void {
     this._tipsSkipChecked = false;
     this._tipsModalKind = kind;
   }
@@ -1168,8 +1650,10 @@ export class PracticeView extends LitElement {
     if (this._tipsSkipChecked && this._tipsModalKind) {
       if (this._tipsModalKind === 'shadowing') {
         setUserSettings({ skipShadowingTips: true });
-      } else {
+      } else if (this._tipsModalKind === 'echo') {
         setUserSettings({ skipEchoTips: true });
+      } else if (this._tipsModalKind === 'discrimination') {
+        setUserSettings({ skipDiscriminationTips: true });
       }
     }
     this._closeTipsModal();

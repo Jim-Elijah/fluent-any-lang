@@ -189,6 +189,7 @@ export class PracticeTimeTracker {
     }
     switch (this.mode) {
       case 'listening':
+      case 'discrimination':
         return this.playing;
       case 'shadowing':
         return this.playing || this.recording;

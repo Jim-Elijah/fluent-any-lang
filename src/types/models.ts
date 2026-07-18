@@ -49,7 +49,44 @@ export type SubtitleTrack = {
 export type PracticeMode = 'shadowing' | 'echo';
 
 /** 练习时长埋点用的模式（含听力） */
-export type PracticeAnalyticsMode = 'listening' | 'shadowing' | 'echo';
+export type PracticeAnalyticsMode = 'listening' | 'discrimination' | 'shadowing' | 'echo';
+
+/** 听力子模式：自由听 / 辨音 */
+export type ListeningMode = 'free' | 'discrimination';
+
+/** 辨音训练中选中的一条噪声（含独立音量） */
+export type DiscriminationNoiseSelection = {
+  noiseId: string;
+  /** 0–1 */
+  volume: number;
+};
+
+/** 辨音训练会话偏好（跨媒体持久化） */
+export type DiscriminationSettings = {
+  /** 最多 3 条 */
+  selected: DiscriminationNoiseSelection[];
+  /** 速听档位数 1–6 */
+  ladderCount: number;
+  /** 长度与 ladderCount 一致的主轨倍速序列（正向；播放时再镜像回落） */
+  ladderRates: number[];
+};
+
+/** 噪音素材 metadata（独立于 MediaItem，不上歌单/练习主轨） */
+export type NoiseItem = {
+  id: string;
+  title: string;
+  filename: string;
+  size: number;
+  mimeType: string;
+  duration: number;
+  createdAt: number;
+  contentHash: string;
+};
+
+export type NoiseBlob = {
+  noiseId: string;
+  blob: Blob;
+};
 
 /** 一次有效练习会话（写入 IndexedDB） */
 export type PracticeSession = {
@@ -183,8 +220,12 @@ export type AppSettings = {
   skipShadowingTips: boolean;
   /** When true, echo mode tips modal is skipped. */
   skipEchoTips: boolean;
+  /** When true, discrimination mode tips modal is skipped. */
+  skipDiscriminationTips: boolean;
   /** ID of the last playlist loaded into practice. */
   lastPlayedPlaylistId: string;
+  /** 辨音训练偏好（噪声选择 + 速听阶梯） */
+  discrimination: DiscriminationSettings;
 };
 
 export const FAVORITES_PLAYLIST_ID =
@@ -218,6 +259,19 @@ export type SentenceBankBlob = {
   duration: number;
 };
 
+/** Discrete rates offered in discrimination ladder UI (includes 3x). */
+export const DISCRIMINATION_RATE_STEPS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3] as const;
+
+export const DISCRIMINATION_MAX_NOISE_TRACKS = 3;
+export const DISCRIMINATION_LADDER_COUNT_MIN = 1;
+export const DISCRIMINATION_LADDER_COUNT_MAX = 6;
+
+export const DEFAULT_DISCRIMINATION_SETTINGS: DiscriminationSettings = {
+  selected: [],
+  ladderCount: 1,
+  ladderRates: [1],
+};
+
 export const DEFAULT_SETTINGS: AppSettings = {
   maxRecordingsPerMedia: 5,
   maxEchoPerSegment: 10,
@@ -227,7 +281,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
   skipRecordingCountdown: false,
   skipShadowingTips: false,
   skipEchoTips: false,
+  skipDiscriminationTips: false,
   lastPlayedPlaylistId: '',
+  discrimination: { ...DEFAULT_DISCRIMINATION_SETTINGS, ladderRates: [1] },
 };
 
 /** Allowed ranges for persisted AppSettings numeric fields. */
@@ -237,6 +293,11 @@ export const APP_SETTINGS_LIMITS = {
   maxStorageMB: { min: 50, max: 2000 },
   lowStorageThresholdPercent: { min: 5, max: 50 },
   repeatPausePercent: { min: 100, max: 500, step: 10 },
+} as const;
+
+export const DISCRIMINATION_LADDER_COUNT_LIMITS = {
+  min: DISCRIMINATION_LADDER_COUNT_MIN,
+  max: DISCRIMINATION_LADDER_COUNT_MAX,
 } as const;
 
 export type ImportError = {

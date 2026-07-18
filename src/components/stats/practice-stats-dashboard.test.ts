@@ -26,7 +26,7 @@ describe('practice-stats-dashboard', () => {
   it('renders today totals and continue action from injected data', async () => {
     const data: HomeDashboardData = {
       todayMs: 100_000,
-      byMode: { listening: 60_000, shadowing: 0, echo: 40_000 },
+      byMode: { listening: 60_000, discrimination: 0, shadowing: 0, echo: 40_000 },
       lastSession: {
         id: 's1',
         mediaId: 'm2',

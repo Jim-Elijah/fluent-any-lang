@@ -170,6 +170,9 @@ export class PracticeStatsPage extends NavigatorElement {
     .seg-listening {
       background: var(--color-primary, #1677ff);
     }
+    .seg-discrimination {
+      background: #722ed1;
+    }
     .seg-shadowing {
       background: #13c2c2;
     }
@@ -223,6 +226,9 @@ export class PracticeStatsPage extends NavigatorElement {
 
     .dot.listening {
       background: var(--color-primary, #1677ff);
+    }
+    .dot.discrimination {
+      background: #722ed1;
     }
     .dot.shadowing {
       background: #13c2c2;
@@ -407,6 +413,8 @@ export class PracticeStatsPage extends NavigatorElement {
     switch (mode) {
       case 'listening':
         return msg('听力');
+      case 'discrimination':
+        return msg('辨音');
       case 'shadowing':
         return msg('跟读');
       case 'echo':
@@ -429,6 +437,7 @@ export class PracticeStatsPage extends NavigatorElement {
     const modes: Array<{ key: ModeFilter; label: string }> = [
       { key: 'all', label: msg('全部') },
       { key: 'listening', label: msg('听力') },
+      { key: 'discrimination', label: msg('辨音') },
       { key: 'shadowing', label: msg('跟读') },
       { key: 'echo', label: msg('回声') },
     ];
@@ -539,6 +548,13 @@ export class PracticeStatsPage extends NavigatorElement {
                                 title=${this._modeLabel('listening')}
                               ></span>`
                             : nothing}
+                          ${b.byMode.discrimination > 0
+                            ? html`<span
+                                class="seg-discrimination"
+                                style="flex:${b.byMode.discrimination}"
+                                title=${this._modeLabel('discrimination')}
+                              ></span>`
+                            : nothing}
                           ${b.byMode.shadowing > 0
                             ? html`<span
                                 class="seg-shadowing"
@@ -566,7 +582,7 @@ export class PracticeStatsPage extends NavigatorElement {
   }
 
   private _renderBreakdown(summary: PracticeStatsSummary) {
-    const { listening, shadowing, echo } = summary.byMode;
+    const { listening, discrimination, shadowing, echo } = summary.byMode;
     const total = summary.totalMs;
 
     return html`
@@ -580,6 +596,9 @@ export class PracticeStatsPage extends NavigatorElement {
                   ${listening > 0
                     ? html`<span class="seg-listening" style="flex:${listening}"></span>`
                     : nothing}
+                  ${discrimination > 0
+                    ? html`<span class="seg-discrimination" style="flex:${discrimination}"></span>`
+                    : nothing}
                   ${shadowing > 0
                     ? html`<span class="seg-shadowing" style="flex:${shadowing}"></span>`
                     : nothing}
@@ -590,6 +609,13 @@ export class PracticeStatsPage extends NavigatorElement {
                     <span class="dot listening"></span>${msg('听力')}
                     <span class="legend-value"
                       >${formatActiveDuration(listening)} · ${this._pct(listening, total)}</span
+                    >
+                  </span>
+                  <span class="legend-item">
+                    <span class="dot discrimination"></span>${msg('辨音')}
+                    <span class="legend-value"
+                      >${formatActiveDuration(discrimination)} ·
+                      ${this._pct(discrimination, total)}</span
                     >
                   </span>
                   <span class="legend-item">

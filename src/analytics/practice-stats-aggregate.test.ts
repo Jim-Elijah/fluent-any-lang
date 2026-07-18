@@ -127,6 +127,7 @@ describe('aggregatePracticeStats', () => {
     expect(summary.activeDayCount).toBe(2);
     expect(summary.byMode).toEqual({
       listening: 60_000,
+      discrimination: 0,
       shadowing: 120_000,
       echo: 30_000,
     });
@@ -201,7 +202,12 @@ describe('buildHomeDashboard', () => {
 
     const dash = buildHomeDashboard(sessions, now);
     expect(dash.todayMs).toBe(100_000);
-    expect(dash.byMode).toEqual({ listening: 60_000, shadowing: 0, echo: 40_000 });
+    expect(dash.byMode).toEqual({
+      listening: 60_000,
+      discrimination: 0,
+      shadowing: 0,
+      echo: 40_000,
+    });
     expect(dash.lastSession?.mediaId).toBe('m2');
     expect(dash.streakDays).toBe(2);
   });
