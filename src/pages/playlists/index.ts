@@ -320,12 +320,7 @@ export class PlaylistsPage extends NavigatorElement {
     .badge {
       display: inline-flex;
       align-items: center;
-      padding: var(--space-xs);
-      border-radius: 999px;
-      background: rgba(22, 119, 255, 0.08);
       color: var(--color-primary, #1677ff);
-      font-size: 0.75rem;
-      font-weight: 500;
     }
 
     .badge.muted {
@@ -369,6 +364,10 @@ export class PlaylistsPage extends NavigatorElement {
         min-height: auto;
       }
 
+      .playlist-list {
+        gap: var(--space-xs);
+      }
+
       .detail-title-row,
       .entry-item,
       .playlist-item {
@@ -377,7 +376,7 @@ export class PlaylistsPage extends NavigatorElement {
 
       .playlist-item {
         align-items: start;
-        gap: var(--space-sm);
+        gap: var(--space-xs);
         padding: var(--space-sm) var(--space-md);
       }
 

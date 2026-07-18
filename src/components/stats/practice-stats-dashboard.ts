@@ -11,10 +11,13 @@ import {
 import { getAllPracticeSessions } from '../../db/practice-session.js';
 import { reportError } from '../../lib/error-reporter.js';
 import '../ui/button.js';
+import '../ui/icon.js';
+import '../ui/tooltip.js';
 
 export type ContinuePracticeDetail = {
   mediaId: string;
   mediaTitle: string;
+  playlistId?: string;
 };
 
 const NavigatorElement = navigator(LitElement);
@@ -113,7 +116,7 @@ export class PracticeStatsDashboard extends NavigatorElement {
 
     .modes {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: var(--space-block);
       margin-bottom: var(--space-inline);
     }
@@ -211,13 +214,27 @@ export class PracticeStatsDashboard extends NavigatorElement {
     }
 
     .continue-title {
+      display: flex;
+      align-items: center;
+      gap: var(--space-xs);
       margin: 2px 0 0;
       font-size: 0.875rem;
       font-weight: 500;
       color: var(--color-text, rgba(0, 0, 0, 0.88));
+      min-width: 0;
+    }
+
+    .continue-title-text {
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+
+    .continue-type {
+      display: inline-flex;
+      flex-shrink: 0;
+      color: var(--color-primary, #1677ff);
+      margin-right: 2px;
     }
 
     .empty {
@@ -297,6 +314,7 @@ export class PracticeStatsDashboard extends NavigatorElement {
     const detail: ContinuePracticeDetail = {
       mediaId: session.mediaId,
       mediaTitle: session.mediaTitle,
+      ...(session.playlistId ? { playlistId: session.playlistId } : {}),
     };
     this.dispatchEvent(
       new CustomEvent<ContinuePracticeDetail>('continue-practice', {
@@ -306,6 +324,9 @@ export class PracticeStatsDashboard extends NavigatorElement {
       }),
     );
     const params = new URLSearchParams({ mediaId: session.mediaId });
+    if (session.playlistId) {
+      params.set('playlistId', session.playlistId);
+    }
     this.navigate(`/practice?${params.toString()}`);
   };
 
@@ -412,7 +433,21 @@ export class PracticeStatsDashboard extends NavigatorElement {
                     <div class="actions">
                       <div class="continue-meta">
                         <p class="continue-label">${msg('继续上次')}</p>
-                        <p class="continue-title">${dash.lastSession.mediaTitle}</p>
+                        <p class="continue-title">
+                          <span class="continue-type">
+                            <ui-tooltip
+                              title="${dash.lastSession.mediaType === 'video'
+                                ? msg('视频')
+                                : msg('音频')}"
+                            >
+                              <ui-icon
+                                name="${dash.lastSession.mediaType === 'video' ? 'video' : 'music'}"
+                                size="var(--icon-md)"
+                              ></ui-icon>
+                            </ui-tooltip>
+                          </span>
+                          <span class="continue-title-text">${dash.lastSession.mediaTitle}</span>
+                        </p>
                       </div>
                       <ui-button variant="primary" @click=${this._handleContinue}>
                         ${msg('继续练习')}

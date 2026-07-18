@@ -138,7 +138,7 @@ export class PracticeStatsPage extends NavigatorElement {
 
     .bar-row {
       display: grid;
-      grid-template-columns: 44px 1fr 52px;
+      grid-template-columns: 44px 1fr max-content;
       gap: var(--space-sm);
       align-items: center;
       font-size: 0.75rem;
@@ -288,7 +288,7 @@ export class PracticeStatsPage extends NavigatorElement {
 
     .rank-type {
       flex-shrink: 0;
-      color: var(--color-text-secondary, rgba(0, 0, 0, 0.45));
+      color: var(--color-primary, #1677ff);
       display: inline-flex;
     }
 
@@ -338,7 +338,7 @@ export class PracticeStatsPage extends NavigatorElement {
       }
 
       .bar-row {
-        grid-template-columns: 36px 1fr 48px;
+        grid-template-columns: 36px 1fr max-content;
       }
     }
   `;

@@ -204,11 +204,7 @@ export class SentencesPage extends NavigatorElement {
     .badge {
       display: inline-flex;
       align-items: center;
-      padding: var(--space-xs);
-      border-radius: 999px;
-      background: rgba(22, 119, 255, 0.08);
       color: var(--color-primary, #1677ff);
-      font-size: 0.75rem;
       font-weight: 500;
     }
 
@@ -233,8 +229,14 @@ export class SentencesPage extends NavigatorElement {
     }
 
     @media (max-width: 767px) {
+      .list {
+        gap: var(--space-xs);
+      }
+
       .item {
         grid-template-columns: 1fr;
+        gap: var(--space-xs);
+        padding: var(--space-sm) var(--space-md);
       }
 
       .actions {

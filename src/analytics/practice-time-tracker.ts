@@ -28,6 +28,7 @@ export class PracticeTimeTracker {
   private mediaTitle = '';
   private mediaType: MediaType = 'audio';
   private mediaFilename = '';
+  private playlistId = '';
   private mode: PracticeAnalyticsMode = 'listening';
   private playing = false;
   private recording = false;
@@ -75,6 +76,7 @@ export class PracticeTimeTracker {
     mediaTitle: string,
     mediaType: MediaType = 'audio',
     mediaFilename = '',
+    playlistId = '',
   ): void {
     if (this.disposed) {
       return;
@@ -83,7 +85,8 @@ export class PracticeTimeTracker {
       this.mediaId === mediaId &&
       this.mediaTitle === mediaTitle &&
       this.mediaType === mediaType &&
-      this.mediaFilename === mediaFilename
+      this.mediaFilename === mediaFilename &&
+      this.playlistId === playlistId
     ) {
       return;
     }
@@ -92,6 +95,7 @@ export class PracticeTimeTracker {
     this.mediaTitle = mediaTitle;
     this.mediaType = mediaType;
     this.mediaFilename = mediaFilename;
+    this.playlistId = playlistId;
     this._reconcile();
   }
 
@@ -258,6 +262,7 @@ export class PracticeTimeTracker {
       endedAt,
       activeMs,
       dateKey: toLocalDateKey(this.startedAt),
+      ...(this.playlistId ? { playlistId: this.playlistId } : {}),
     };
     this._resetSession();
     void this.saveSession(session).catch((err) => {

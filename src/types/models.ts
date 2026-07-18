@@ -96,6 +96,8 @@ export type PracticeSession = {
   /** 写入时冗余，媒体删除后仍可区分音/视频 */
   mediaType: MediaType;
   mediaFilename: string;
+  /** 来自播放列表练习时写入；单曲练习不写 */
+  playlistId?: string;
   mode: PracticeAnalyticsMode;
   startedAt: number;
   endedAt: number;

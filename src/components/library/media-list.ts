@@ -35,7 +35,7 @@ import { Message } from '../ui/message.js';
 /** Row height including the --space-md (12px) gap below each card. */
 const MEDIA_ROW_HEIGHT = 96;
 /** Narrow: meta + actions stacked; includes the same gap below each card. */
-const MEDIA_ROW_HEIGHT_NARROW = 140;
+const MEDIA_ROW_HEIGHT_NARROW = 100;
 const MEDIA_LIST_HEIGHT = 480;
 
 @customElement('media-list')
@@ -145,17 +145,8 @@ export class MediaList extends LitElement {
     .badge {
       display: inline-flex;
       align-items: center;
-      padding: var(--space-xs);
-      border-radius: 999px;
-      background: rgba(22, 119, 255, 0.08);
       color: var(--color-primary, #1677ff);
-      font-size: 0.75rem;
       font-weight: 500;
-    }
-
-    .badge.muted {
-      background: rgba(0, 0, 0, 0.04);
-      color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
     }
 
     .actions {
@@ -198,8 +189,9 @@ export class MediaList extends LitElement {
       .item {
         grid-template-columns: 1fr;
         align-items: start;
-        gap: var(--space-sm);
-        height: calc(100% - var(--space-sm));
+        align-content: start;
+        gap: var(--space-xs);
+        height: calc(100% - var(--space-xs));
         padding: var(--space-sm) var(--space-md);
       }
 

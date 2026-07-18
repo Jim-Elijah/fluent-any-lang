@@ -19,7 +19,7 @@ import { Message } from '../ui/message.js';
 /** Row height including the --space-md (12px) gap below each card. */
 const NOISE_ROW_HEIGHT = 88;
 /** Narrow: meta + actions stacked; includes the same gap below each card. */
-const NOISE_ROW_HEIGHT_NARROW = 132;
+const NOISE_ROW_HEIGHT_NARROW = 100;
 const NOISE_LIST_HEIGHT = 480;
 
 @customElement('noise-list')
@@ -168,8 +168,9 @@ export class NoiseList extends LitElement {
       .item {
         grid-template-columns: 1fr;
         align-items: start;
-        gap: var(--space-sm);
-        height: calc(100% - var(--space-sm));
+        align-content: start;
+        gap: var(--space-xs);
+        height: calc(100% - var(--space-xs));
         padding: var(--space-sm) var(--space-md);
       }
 

@@ -170,6 +170,22 @@ describe('PracticeTimeTracker', () => {
     expect(saved.map((s) => s.mediaFilename)).toEqual(['A.mp3', 'B.mp4']);
   });
 
+  it('persists playlistId only when set', async () => {
+    tracker.attach(controller as never);
+    tracker.setMedia('media-1', 'A', 'audio', 'A.mp3', 'pl-1');
+    tracker.setMode('listening');
+    controller.setPlaying(true);
+    advance(2_000);
+    tracker.setMedia('media-2', 'B', 'audio', 'B.mp3');
+    advance(2_000);
+    tracker.dispose();
+
+    await vi.waitFor(() => expect(saved).toHaveLength(2));
+    expect(saved[0]).toMatchObject({ mediaId: 'media-1', playlistId: 'pl-1' });
+    expect(saved[1]?.mediaId).toBe('media-2');
+    expect(saved[1]?.playlistId).toBeUndefined();
+  });
+
   it('does not accumulate without mediaId', () => {
     tracker.attach(controller as never);
     tracker.setMode('listening');

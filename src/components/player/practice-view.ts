@@ -470,13 +470,13 @@ export class PracticeView extends NavigatorElement {
   private _getShadowingTips(): string[] {
     return [
       msg(
-        '跟读（Shadowing）：点击下方【麦克风】开始【同步】跟读；录音前有倒计时提醒（默认开启），录音停止后自动保存。',
+        '同步跟读：点击【麦克风】→【倒计时】提醒 → 播放【原音】并【开始录音】，跟读完成后【自动停止录音】。',
       ),
       msg('温馨提示：'),
       msg('1. 建议使用耳机练习。'),
       msg('2. 如果跟不上原音，可以设置倍速、单句暂停模式。'),
-      msg('3. 录音前可以操作播放器设置，录音开始后播放器不可操作。'),
-      msg('4. 除了倍速、音量、单句暂停模式，跟读模式会忽略其他的播放器设置。'),
+      msg('3. 点击【麦克风】之前可以操作播放器的设置，之后播放器不可操作。'),
+      msg('4. 除了倍速、音量、单句暂停模式，播放器的其他设置会被忽略。'),
       msg('5. 录音时底部会显示状态与波形，全屏字幕下也可看到。'),
     ];
   }
@@ -484,32 +484,32 @@ export class PracticeView extends NavigatorElement {
   private _getEchoTips(): string[] {
     return [
       msg(
-        '回声（Echo）：按字幕逐句练习。点击字幕行右侧【麦克风】：先播原音 → 倒计时提醒（默认开启）→ 录音；跟读完后手动停止录音。',
+        '回声跟读：点击【麦克风】→ 播放【原音】 →【倒计时】提醒 → 【开始录音】，跟读完成后需要【手动停止录音】。',
       ),
       msg('温馨提示：'),
       msg('1. 建议使用耳机练习。'),
-      msg('2. 每句最多保存若干条录音，可在字幕行右侧下拉查看。'),
-      msg('3. 听音和录音期间播放器不可操作。'),
-      msg('4. 录音时底部会显示状态与波形，全屏字幕下也可看到。'),
+      msg('2. 点击【麦克风】之前可以操作播放器的设置，之后播放器不可操作。'),
+      msg('3. 除了倍速、音量，播放器的其他设置会被忽略。'),
+      msg('3. 录音时底部会显示状态与波形，全屏字幕下也可看到。'),
     ];
   }
 
   private _getDiscriminationTips(): string[] {
     return [
       msg(
-        '辨音：在环境噪音背景下听主音频。可多选噪音并分别调音量；速听阶梯控制主轨倍速（噪音不变速）。',
+        '抗噪听：在环境噪音背景下听主音频。可多选噪音并分别调音量；速听阶梯控制主轨倍速（噪音不变速）。',
       ),
       msg('温馨提示：'),
       msg('1. 噪音跟随主轨播放/暂停；单条噪音播完会自动循环。播放中改选噪音或音量会立即生效。'),
       msg(
         '2. 速听阶梯按「正序再回落」播放完整主轨；播放中改阶梯会重置到第一档并立即应用。切歌后阶梯进度重置，设置保留。',
       ),
-      msg('3. 辨音模式下不显示倍速与高级设置，倍速由阶梯独占。'),
+      msg('3. 该模式不显示倍速与高级设置。'),
     ];
   }
 
   private _getShadowingSummary(): string {
-    return msg('点击下方麦克风开始同步跟读；录音时底部显示状态与波形。');
+    return msg('点击下方【麦克风】开始同步跟读。');
   }
 
   private _getDiscriminationSummary(): string {
@@ -517,7 +517,7 @@ export class PracticeView extends NavigatorElement {
   }
 
   private _getEchoSummary(): string {
-    return msg('点击字幕行麦克风：先听原音，再录音；底部会显示状态与波形。');
+    return msg('点击字幕行右侧【麦克风】开始回声跟读：先听原音，再录音。');
   }
 
   @query('record-list')
@@ -533,6 +533,8 @@ export class PracticeView extends NavigatorElement {
   private readonly _timeTracker = new PracticeTimeTracker();
   private readonly _noiseMixer = new NoiseMixer();
   private readonly _rateLadder = new RateLadder();
+  /** 当前从播放列表进入时的 id；单曲练习为空 */
+  private _activePlaylistId = '';
   private _discriminationActive = false;
   private _ladderAdvancing = false;
   private _lastRecordingId: string | null = null;
@@ -809,10 +811,16 @@ export class PracticeView extends NavigatorElement {
   private _syncTimeTrackerMedia(): void {
     const item = this._controller.getSnapshot().currentItem;
     if (item) {
-      this._timeTracker.setMedia(item.id, item.title, item.type, item.filename);
+      this._timeTracker.setMedia(
+        item.id,
+        item.title,
+        item.type,
+        item.filename,
+        this._activePlaylistId,
+      );
       return;
     }
-    this._timeTracker.setMedia('', '', 'audio', '');
+    this._timeTracker.setMedia('', '', 'audio', '', this._activePlaylistId);
   }
 
   private _onTrackChange = (): void => {
@@ -928,7 +936,7 @@ export class PracticeView extends NavigatorElement {
                   variant="${isDiscrimination ? 'primary' : 'secondary'}"
                   @click="${() => this._setListeningMode('discrimination')}"
                 >
-                  ${msg('辨音')}
+                  ${msg('抗噪听')}
                 </ui-button>
               </div>
             `
@@ -941,14 +949,14 @@ export class PracticeView extends NavigatorElement {
                   variant="${this._speakingMode === 'shadowing' ? 'primary' : 'secondary'}"
                   @click="${() => this._setSpeakingMode('shadowing')}"
                 >
-                  ${msg('跟读 (Shadowing)')}
+                  ${msg('同步跟读')}
                 </ui-button>
                 ${hasSubtitles
                   ? html`<ui-button
                       variant="${this._speakingMode === 'echo' ? 'primary' : 'secondary'}"
                       @click="${() => this._setSpeakingMode('echo')}"
                     >
-                      ${msg('回声 (Echo)')}
+                      ${msg('回声跟读')}
                     </ui-button>`
                   : nothing}
               </div>
@@ -973,7 +981,7 @@ export class PracticeView extends NavigatorElement {
                         : html`<div class="tips-summary">
                             <p>
                               ${msg(
-                                str`当前音频的跟读录音已达上限（${this._shadowingLimit}条），删除旧录音后可继续。`,
+                                str`当前音频的同步跟读录音已达上限（${this._shadowingLimit}条），删除旧录音后可继续。`,
                               )}
                             </p>
                           </div>`
@@ -1320,7 +1328,11 @@ export class PracticeView extends NavigatorElement {
           ? this._getEchoTips()
           : this._getDiscriminationTips();
     const title =
-      kind === 'shadowing' ? msg('跟读说明') : kind === 'echo' ? msg('回声说明') : msg('辨音说明');
+      kind === 'shadowing'
+        ? msg('同步跟读说明')
+        : kind === 'echo'
+          ? msg('回声跟读说明')
+          : msg('抗噪听说明');
     const shouldSkipTips =
       kind === 'shadowing'
         ? shouldSkipShadowingTips()
@@ -1385,7 +1397,7 @@ export class PracticeView extends NavigatorElement {
     return html`
       <ui-modal
         .open=${true}
-        .title=${msg('当前音频的跟读录音')}
+        .title=${msg('当前音频的同步跟读录音')}
         .centered=${true}
         .footer=${false}
         @update:open=${(e: CustomEvent<{ open: boolean }>) => {
@@ -1509,6 +1521,8 @@ export class PracticeView extends NavigatorElement {
         Message.error(msg('请从媒体或播放列表进入练习。'));
         return;
       }
+
+      this._activePlaylistId = launchContext.kind === 'playlist' ? launchContext.playlistId : '';
 
       let playlist: Awaited<ReturnType<typeof loadPlaylistForPlayback>>;
       if (launchContext.kind === 'single') {

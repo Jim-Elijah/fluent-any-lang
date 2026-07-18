@@ -33,6 +33,7 @@ describe('practice-stats-dashboard', () => {
         mediaTitle: 'Latest Track',
         mediaType: 'audio',
         mediaFilename: 'Latest Track.mp3',
+        playlistId: 'pl-9',
         mode: 'echo',
         startedAt: 1,
         endedAt: 2,
@@ -50,5 +51,40 @@ describe('practice-stats-dashboard', () => {
     const text = el.shadowRoot?.textContent ?? '';
     expect(text).toContain('Latest Track');
     expect(el.shadowRoot?.querySelector('ui-button')).not.toBeNull();
+    expect(el.shadowRoot?.querySelector('ui-icon')?.getAttribute('name')).toBe('music');
+
+    const navigateSpy = vi.spyOn(el, 'navigate').mockImplementation(() => undefined);
+    el.shadowRoot?.querySelector('ui-button')?.dispatchEvent(new Event('click'));
+    expect(navigateSpy).toHaveBeenCalledWith('/practice?mediaId=m2&playlistId=pl-9');
+  });
+
+  it('continues single media without playlistId', async () => {
+    const data: HomeDashboardData = {
+      todayMs: 10_000,
+      byMode: { listening: 10_000, discrimination: 0, shadowing: 0, echo: 0 },
+      lastSession: {
+        id: 's2',
+        mediaId: 'm1',
+        mediaTitle: 'Solo',
+        mediaType: 'video',
+        mediaFilename: 'Solo.mp4',
+        mode: 'listening',
+        startedAt: 1,
+        endedAt: 2,
+        activeMs: 10_000,
+        dateKey: '2026-07-12',
+      },
+      streakDays: 0,
+    };
+
+    const result = mount(html`<practice-stats-dashboard .data=${data}></practice-stats-dashboard>`);
+    cleanup = result.cleanup;
+    const el = result.container.querySelector('practice-stats-dashboard') as PracticeStatsDashboard;
+    await el.updateComplete;
+
+    expect(el.shadowRoot?.querySelector('ui-icon')?.getAttribute('name')).toBe('video');
+    const navigateSpy = vi.spyOn(el, 'navigate').mockImplementation(() => undefined);
+    el.shadowRoot?.querySelector('ui-button')?.dispatchEvent(new Event('click'));
+    expect(navigateSpy).toHaveBeenCalledWith('/practice?mediaId=m1');
   });
 });
