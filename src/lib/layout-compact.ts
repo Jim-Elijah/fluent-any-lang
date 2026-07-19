@@ -4,11 +4,14 @@ export const MIN_FILL_LIST_PX = 200;
 /** Hysteresis: estimated leftover needed to leave compact / fill-height mode. */
 export const EXIT_FILL_LIST_PX = 280;
 
-/** Min vertical budget for library's stacked lists before compact. */
-export const MIN_LIBRARY_STACK_PX = 280;
+/**
+ * Min vertical budget for library's stacked lists before compact.
+ * Roughly 3 × (header + 1 row) plus inter-section gaps.
+ */
+export const MIN_LIBRARY_STACK_PX = 460;
 
 /** Hysteresis to leave library compact mode. */
-export const EXIT_LIBRARY_STACK_PX = 360;
+export const EXIT_LIBRARY_STACK_PX = 540;
 
 /** Short viewport fallback (matches prior compact MQ). */
 export const COMPACT_VIEWPORT_MQ = '(max-height: 739px)';

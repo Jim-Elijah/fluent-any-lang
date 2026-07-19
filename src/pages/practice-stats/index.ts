@@ -436,10 +436,10 @@ export class PracticeStatsPage extends NavigatorElement {
     ];
     const modes: Array<{ key: ModeFilter; label: string }> = [
       { key: 'all', label: msg('全部') },
-      { key: 'listening', label: msg('听力') },
-      { key: 'discrimination', label: msg('辨音') },
-      { key: 'shadowing', label: msg('跟读') },
-      { key: 'echo', label: msg('回声') },
+      { key: 'listening', label: msg('自由听') },
+      { key: 'discrimination', label: msg('抗噪听') },
+      { key: 'shadowing', label: msg('同步跟读') },
+      { key: 'echo', label: msg('回声跟读') },
     ];
 
     return html`

@@ -226,10 +226,6 @@
   <source>1. 建议使用耳机练习。</source>
 <target>1. イヤホンの使用を推奨します。</target>
   </trans-unit>
-<trans-unit id="sc248cd7a0d83a038">
-  <source>3. 录音前可以操作播放器设置，录音开始后播放器不可操作。</source>
-<target>3. プレイヤー設定は録音開始前に行ってください。録音開始後は操作できなくなります。</target>
-  </trans-unit>
 <trans-unit id="sa51509d5238300c9">
   <source>未能开启麦克风，请检查权限。</source>
 <target>マイクにアクセスできませんでした。権限を確認してください。</target>
@@ -398,14 +394,6 @@
   <source>单句暂停模式</source>
 <target>単一文の一時停止モード</target>
 </trans-unit>
-<trans-unit id="s05cfc6cafa28b482">
-  <source>2. 如果跟不上原音，可以设置倍速、单句暂停模式。</source>
-<target>2. 原音に追いつかない場合、速度と単一文の一時停止モードを設定できます。</target>
-</trans-unit>
-<trans-unit id="sd6b69523824af28a">
-  <source>4. 除了倍速、音量、单句暂停模式，跟读模式会忽略其他的播放器设置。</source>
-<target>4. 速度、音量、単一文の一時停止モード以外のプレイヤー設定は、シャドーイングモードでは無視されます。</target>
-</trans-unit>
 <trans-unit id="scad6e385d22d3258">
   <source>无法定位到字幕句子</source>
   <target>字幕の文を特定できません</target>
@@ -421,22 +409,6 @@
 <trans-unit id="s381abd08b78133f9">
   <source>录音</source>
   <target>録音</target>
-</trans-unit>
-<trans-unit id="s2be4bfc93467a5f5">
-  <source>2. 每句最多保存若干条录音，可在字幕行右侧下拉查看。</source>
-  <target>2. 各文は複数の録音を保存でき、字幕行右側のドロップダウンから確認できます。</target>
-</trans-unit>
-<trans-unit id="s333d3161efe35efa">
-  <source>3. 听音和录音期间播放器不可操作。</source>
-  <target>3. 聴取および録音中はプレイヤーを操作できません。</target>
-</trans-unit>
-<trans-unit id="s8e5d54ab4014f238">
-  <source>跟读 (Shadowing)</source>
-  <target>シャドーイング</target>
-</trans-unit>
-<trans-unit id="sada555f61848b379">
-  <source>当前音频的跟读录音已达上限（<x id="0" equiv-text="${this._shadowingLimit}"/>条），删除旧录音后可继续。</source>
-  <target>この音声のシャドーイング録音が上限（<x id="0" equiv-text="${this._shadowingLimit}"/>件）に達しました。古い録音を削除すると続行できます。</target>
 </trans-unit>
 <trans-unit id="s3fd93394e75f5977">
   <source>该句录音已达上限（<x id="0" equiv-text="${this._echoLimitPerSegment}"/>条），删除旧录音后可继续。</source>
@@ -557,10 +529,6 @@
 <trans-unit id="s9142ab4ea4069241">
   <source>无匹配录音</source>
   <target>一致する録音がありません</target>
-</trans-unit>
-<trans-unit id="sdbead5cea32ea044">
-  <source>跟读（Shadowing）：点击下方【麦克风】开始【同步】跟读；录音前有倒计时提醒（默认开启），录音停止后自动保存。</source>
-  <target>シャドーイング：下の【マイク】をタップして【同期】でシャドーイングを開始。録音前にカウントダウン通知があります（デフォルトでオン）。録音停止後に自動保存されます。</target>
 </trans-unit>
 <trans-unit id="sd762e84ea1c74883">
   <source>今日练习</source>
@@ -831,18 +799,9 @@
 <trans-unit id="s23254af2ecd02e26">
   <source>4. 录音时底部会显示状态与波形，全屏字幕下也可看到。</source>
 <target>4. 録音中は下部にステータスと波形が表示され、全画面字幕でも確認できます。</target></trans-unit>
-<trans-unit id="sbcdd283f3d2adc5d">
-  <source>点击下方麦克风开始同步跟读；录音时底部显示状态与波形。</source>
-<target>下のマイクをタップして同期シャドーイングを開始します。録音中は下部にステータスと波形が表示されます。</target></trans-unit>
-<trans-unit id="sbc9c4d9fdc04d576">
-  <source>点击字幕行麦克风：先听原音，再录音；底部会显示状态与波形。</source>
-<target>字幕行のマイクをタップ：まず原音を聴き、次に録音します。下部にステータスと波形が表示されます。</target></trans-unit>
 <trans-unit id="sce5b1a0936ad7377">
   <source>说明</source>
 <target>説明</target></trans-unit>
-<trans-unit id="s8b87b5d37cf918fd">
-  <source>跟读说明</source>
-<target>シャドーイング説明</target></trans-unit>
 <trans-unit id="s717f240d6bfb47bd">
   <source>知道了</source>
 <target>了解しました</target></trans-unit>
@@ -855,9 +814,6 @@
 <trans-unit id="sff4e4efc83c85d46">
   <source>管理录音</source>
 <target>録音を管理</target></trans-unit>
-<trans-unit id="sbf85220dc2a27a7d">
-  <source>当前音频的跟读录音</source>
-<target>現在の音声のシャドーイング録音</target></trans-unit>
 <trans-unit id="s1b3be8769609cc19">
   <source>导出失败</source>
 <target>エクスポートに失敗しました</target></trans-unit>
@@ -1193,21 +1149,9 @@
 <trans-unit id="s843808081e992b92">
   <source>播放</source>
 <target>再生</target></trans-unit>
-<trans-unit id="s510a1d83b88b20ea">
-  <source>回声（Echo）：按字幕逐句练习。点击字幕行右侧【麦克风】：先播原音 → 倒计时提醒（默认开启）→ 录音；跟读完后手动停止录音。</source>
-  <target>エコー：字幕を一文ずつ練習します。字幕行右側の【マイク】をタップ → 原音再生 → カウントダウン（既定でオン）→ 録音；話し終わったら手動で録音を停止。</target>
-</trans-unit>
 <trans-unit id="sbedede3b0d9e3d06">
   <source>练习音频已暂停</source>
 <target>練習用音声が一時停止されました</target></trans-unit>
-<trans-unit id="s22fc5b1b5785e829">
-  <source>回声 (Echo)</source>
-  <target>エコー</target>
-</trans-unit>
-<trans-unit id="se8497d6376eb14c1">
-  <source>回声说明</source>
-  <target>エコーの説明</target>
-</trans-unit>
 <trans-unit id="s5577689d602ba428">
   <source>已导出 <x id="0" equiv-text="${payload.entries.length}"/> 条异常日志</source>
   <target><x id="0" equiv-text="${payload.entries.length}"/> 件のエラーログをエクスポートしました</target>
@@ -1676,84 +1620,99 @@
 </trans-unit>
 <trans-unit id="se2a4863556e5172a">
   <source>无法加载噪音素材</source>
+  <target>ノイズ素材を読み込めません</target>
 </trans-unit>
 <trans-unit id="s784f93f8ab5f9d55">
   <source>已导入 <x id="0" equiv-text="${result.imported.length}"/> 个噪音素材</source>
+  <target>ノイズ素材を <x id="0" equiv-text="${result.imported.length}"/> 個インポートしました</target>
 </trans-unit>
 <trans-unit id="s8a6ac52222a407df">
   <source>导入噪音素材失败</source>
+  <target>ノイズ素材のインポートに失敗しました</target>
 </trans-unit>
 <trans-unit id="sfa46c2e9ff809b76">
   <source>已删除噪音素材</source>
+  <target>ノイズ素材を削除しました</target>
 </trans-unit>
 <trans-unit id="s3124e250f4f53dc1">
   <source>删除此噪音素材？</source>
+  <target>このノイズ素材を削除しますか？</target>
 </trans-unit>
 <trans-unit id="s53a0c1ff65d39ba2">
   <source>无匹配噪音素材</source>
+  <target>一致するノイズ素材がありません</target>
 </trans-unit>
 <trans-unit id="s766b7895d96b16ca">
   <source>噪音素材</source>
-</trans-unit>
-<trans-unit id="s6d651d2f2cdd812a">
-  <source>辨音：在环境噪音背景下听主音频。可多选噪音并分别调音量；速听阶梯控制主轨倍速（噪音不变速）。</source>
-</trans-unit>
-<trans-unit id="s36f73936d8998126">
-  <source>3. 辨音模式下不显示倍速与高级设置，倍速由阶梯独占。</source>
+  <target>ノイズ素材</target>
 </trans-unit>
 <trans-unit id="s3f05208b40809ed8">
   <source>自由听</source>
+  <target>フリーリスニング</target>
 </trans-unit>
 <trans-unit id="s4f927bdc69d2af2d">
   <source>当前阶梯：第 <x id="0" equiv-text="${this._ladderDisplayIndex + 1}"/>/<x id="1" equiv-text="${seq.length}"/> 步（<x id="2" equiv-text="${this._rateLadder.getCurrentRate()}"/>x）</source>
+  <target>現在のラダー：ステップ <x id="0" equiv-text="${this._ladderDisplayIndex + 1}"/>/<x id="1" equiv-text="${seq.length}"/>（<x id="2" equiv-text="${this._rateLadder.getCurrentRate()}"/>x）</target>
 </trans-unit>
 <trans-unit id="s1fdad508a2e2040a">
   <source>噪音</source>
+  <target>ノイズ</target>
 </trans-unit>
 <trans-unit id="sb58f4c4b1dd0894d">
   <source>速听阶梯</source>
+  <target>スピードラダー</target>
 </trans-unit>
 <trans-unit id="s855d52081f258074">
   <source>次数</source>
+  <target>ステップ数</target>
 </trans-unit>
 <trans-unit id="s4d093e6b477349e4">
   <source>第 <x id="0" equiv-text="${index + 1}"/> 档倍速</source>
+  <target>第 <x id="0" equiv-text="${index + 1}"/> 段階の再生速度</target>
 </trans-unit>
 <trans-unit id="s58e3cc277bb06d33">
   <source>最多选择 <x id="0" equiv-text="${DISCRIMINATION_MAX_NOISE_TRACKS}"/> 条噪音</source>
-</trans-unit>
-<trans-unit id="s54fad7305b4b1c72">
-  <source>辨音说明</source>
+  <target>ノイズは最大 <x id="0" equiv-text="${DISCRIMINATION_MAX_NOISE_TRACKS}"/> トラックまで選択できます</target>
 </trans-unit>
 <trans-unit id="s09b6271fff16003d">
   <source>已导出备份（录音 <x id="0" equiv-text="${manifest.counts.recordings}"/>，学习记录 <x id="1" equiv-text="${manifest.counts.sessions}"/>，句库 <x id="2" equiv-text="${manifest.counts.sentenceBank}"/>，噪音 <x id="3" equiv-text="${manifest.counts.noise}"/>，媒体 <x id="4" equiv-text="${manifest.counts.media}"/>）</source>
+  <target>バックアップをエクスポートしました（録音 <x id="0" equiv-text="${manifest.counts.recordings}"/>、学習記録 <x id="1" equiv-text="${manifest.counts.sessions}"/>、文庫 <x id="2" equiv-text="${manifest.counts.sentenceBank}"/>、ノイズ <x id="3" equiv-text="${manifest.counts.noise}"/>、メディア <x id="4" equiv-text="${manifest.counts.media}"/>）</target>
 </trans-unit>
 <trans-unit id="s9aae08e72d7a488b">
   <source>噪音：导入 <x id="0" equiv-text="${result.noiseImported}"/>，跳过 <x id="1" equiv-text="${result.noiseSkipped}"/></source>
+  <target>ノイズ：インポート <x id="0" equiv-text="${result.noiseImported}"/>、スキップ <x id="1" equiv-text="${result.noiseSkipped}"/></target>
 </trans-unit>
 <trans-unit id="s21092c787f4155a9">
   <source>导入中…</source>
+  <target>インポート中…</target>
 </trans-unit>
 <trans-unit id="sdb9ac509426855ec">
   <source>辨音</source>
+  <target>聴き取り</target>
 </trans-unit>
 <trans-unit id="sb39931ab94d4d98e">
   <source>缺少噪音文件：<x id="0" equiv-text="${item.filename || item.id}"/></source>
+  <target>ノイズファイルがありません：<x id="0" equiv-text="${item.filename || item.id}"/></target>
 </trans-unit>
 <trans-unit id="s07987c79c68c5393">
   <source>导入噪音素材失败：<x id="0" equiv-text="${item.id}"/></source>
+  <target>ノイズ素材のインポートに失敗しました：<x id="0" equiv-text="${item.id}"/></target>
 </trans-unit>
 <trans-unit id="sc84cbec67e080db8">
   <source>仅支持音频文件作为噪音素材</source>
+  <target>ノイズ素材には音声ファイルのみ対応しています</target>
 </trans-unit>
 <trans-unit id="saa1f1b21630ce73e">
   <source>已存在相同内容的噪音素材</source>
+  <target>同じ内容のノイズ素材が既にあります</target>
 </trans-unit>
 <trans-unit id="sfa98099584a84be6">
   <source>搜索媒体 / 录音 / 噪音标题</source>
+  <target>メディア／録音／ノイズのタイトルを検索</target>
 </trans-unit>
 <trans-unit id="s4590594157893af7">
   <source>筛选与排序同时作用于下方媒体库、录音库与噪音素材</source>
+  <target>フィルターと並べ替えは、下のメディア・録音・ノイズ素材に同時に適用されます</target>
 </trans-unit>
 <trans-unit id="s1979d2557f8e15b4">
   <source>将播放：</source>
@@ -1766,18 +1725,6 @@
 <trans-unit id="sfc0bf0363d964d04">
   <source>暂无噪音素材，请先导入</source>
   <target>ノイズ素材がありません。先にインポートしてください</target>
-</trans-unit>
-<trans-unit id="s60779d74857e9562">
-  <source>1. 噪音跟随主轨播放/暂停；单条噪音播完会自动循环。播放中改选噪音或音量会立即生效。</source>
-  <target>1. ノイズはメイントラックの再生／一時停止に追従し、各クリップ終了で自動ループします。再生中のノイズや音量の変更はすぐ反映されます。</target>
-</trans-unit>
-<trans-unit id="s7a3923ebaeb9c3fc">
-  <source>2. 速听阶梯按「正序再回落」播放完整主轨；播放中改阶梯会重置到第一档并立即应用。切歌后阶梯进度重置，设置保留。</source>
-  <target>2. 速聴ラダーはメイントラックを昇順→降順で通し再生します。再生中にラダーを変えると最初の段にリセットしてすぐ適用。曲切替で進捗はリセット、設定は保持されます。</target>
-</trans-unit>
-<trans-unit id="sd10944495e3b97eb">
-  <source>可随时调整噪音与速听阶梯；噪音跟随主轨，倍速由阶梯控制。</source>
-  <target>ノイズと速聴ラダーはいつでも調整できます。ノイズはメインに追従し、再生速度はラダーが制御します。</target>
 </trans-unit>
 <trans-unit id="sffed4b6d4b94a981">
   <source>暂无噪音素材。请在资料库中导入。</source>
@@ -1794,6 +1741,98 @@
 <trans-unit id="sfb82bd9c75fb0f3e">
   <source>去资料库</source>
   <target>ライブラリへ</target>
+</trans-unit>
+<trans-unit id="s9a52158c3fa5f82f">
+  <source>同步跟读：点击下方【麦克风】→【倒计时】→ 播放【原音】并【开始录音】；原音播完【自动】停止录音（也可手动停止）。</source>
+  <target>同期シャドーイング：下の【マイク】をタップ →【カウントダウン】→【原音】を再生しながら【録音開始】；原音が終わると【自動】で録音停止（手動停止も可）。</target>
+</trans-unit>
+<trans-unit id="s672b90e400e4e6e5">
+  <source>2. 点击【麦克风】之前可操作播放器；点击之后播放器锁定，不可操作。</source>
+  <target>2. 【マイク】をタップする前はプレーヤーを操作できます；タップ後はロックされ操作できません。</target>
+</trans-unit>
+<trans-unit id="s3f6816ff7765d412">
+  <source>3. 跟不上原音时，请在点麦前设置倍速、单句暂停。</source>
+  <target>3. 原音についていけない場合は、マイクを押す前に再生速度・単一文の一時停止を設定してください。</target>
+</trans-unit>
+<trans-unit id="s013321e37e11fe9f">
+  <source>4. 开始录音时仅保留倍速、音量、单句暂停；循环、睡眠等其他设置会被忽略。</source>
+  <target>4. 録音開始時は再生速度・音量・単一文の一時停止のみ維持され、リピートやスリープなど他の設定は無視されます。</target>
+</trans-unit>
+<trans-unit id="sa6ed44194d1635fc">
+  <source>回声跟读：点击字幕行右侧【麦克风】→ 播放该句【原音】→【倒计时】→【开始录音】；跟读完成后需【手动】停止录音。</source>
+  <target>エコーシャドーイング：字幕行右側の【マイク】をタップ → その文の【原音】を再生 →【カウントダウン】→【録音開始】；シャドーイング後は【手動】で録音を停止してください。</target>
+</trans-unit>
+<trans-unit id="sf89a2c7c785ce285">
+  <source>3. 开始录音时仅保留倍速、音量；单句暂停会关闭，循环、睡眠等其他设置会被忽略。</source>
+  <target>3. 録音開始時は再生速度と音量のみ維持され、単一文の一時停止はオフになり、リピートやスリープなど他の設定は無視されます。</target>
+</trans-unit>
+<trans-unit id="s205856ec0a62bc0b">
+  <source>抗噪听：选择噪音并调音量 → 播放主音频；速听阶梯控制主轨倍速（噪音不变速）。只听不录。</source>
+  <target>抗ノイズリスニング：ノイズを選んで音量を調整 → メイン音声を再生；スピードラダーがメインの再生速度を制御（ノイズは変速しません）。聞くのみで録音しません。</target>
+</trans-unit>
+<trans-unit id="saffb37fcdeb14dd5">
+  <source>1. 播放器始终可用（进度/音量/切句/切歌等等）；可随时调整噪音与阶梯。</source>
+  <target>1. プレーヤーは常に利用可能（進捗／音量／文送り／曲送りなど）；ノイズとラダーはいつでも調整できます。</target>
+</trans-unit>
+<trans-unit id="s85968ef795719e37">
+  <source>2. 噪音跟随主轨播放/暂停；单条噪音播完会自动循环。播放中改选噪音或音量会立即生效。</source>
+  <target>2. ノイズはメインの再生／一時停止に追従します；1本のノイズは終わると自動ループします。再生中のノイズや音量の変更はすぐ反映されます。</target>
+</trans-unit>
+<trans-unit id="s08e9ce292cd8106d">
+  <source>3. 速听阶梯按「正序再回落」播放完整主轨；播放中改阶梯会重置到第一档并立即应用。切歌后阶梯进度重置，设置保留。</source>
+  <target>3. スピードラダーは「昇順→降順」でメイン全体を再生します；再生中にラダーを変えると最初の段階にリセットされすぐ適用されます。曲を切り替えると進捗はリセットされ、設定は保持されます。</target>
+</trans-unit>
+<trans-unit id="s34835cf742d16653">
+  <source>4. 该模式不显示倍速、循环、睡眠、单句暂停与高级设置。</source>
+  <target>4. このモードでは再生速度・リピート・スリープ・単一文の一時停止・詳細設定は表示されません。</target>
+</trans-unit>
+<trans-unit id="sb73f53a30c841a1b">
+  <source>点击下方【麦克风】开始同步跟读（边听边录）。</source>
+  <target>下の【マイク】をタップして同期シャドーイングを開始（聞きながら録音）。</target>
+</trans-unit>
+<trans-unit id="s47076f09183a93a1">
+  <source>只听不录；可随时调整噪音与速听阶梯，倍速由阶梯控制。</source>
+  <target>聞くのみで録音しません；ノイズとスピードラダーはいつでも調整でき、再生速度はラダーが制御します。</target>
+</trans-unit>
+<trans-unit id="sfeaf173b76e6dc72">
+  <source>点击字幕行右侧【麦克风】：先听原音，再录音。</source>
+  <target>字幕行右側の【マイク】をタップ：先に原音を聞き、その後に録音します。</target>
+</trans-unit>
+<trans-unit id="s9dee19af46a248a8">
+  <source>抗噪听</source>
+  <target>抗ノイズリスニング</target>
+</trans-unit>
+<trans-unit id="s94c7b8e9b135d3fc">
+  <source>同步跟读</source>
+  <target>同期シャドーイング</target>
+</trans-unit>
+<trans-unit id="sfca41063887bfbdd">
+  <source>回声跟读</source>
+  <target>エコーシャドーイング</target>
+</trans-unit>
+<trans-unit id="s2d9d8f1041e14a74">
+  <source>当前音频的同步跟读录音已达上限（<x id="0" equiv-text="${this._shadowingLimit}"/>条），删除旧录音后可继续。</source>
+  <target>この音声の同期シャドーイング録音が上限（<x id="0" equiv-text="${this._shadowingLimit}"/>件）に達しました。古い録音を削除すると続行できます。</target>
+</trans-unit>
+<trans-unit id="se329613f6209f026">
+  <source>立即前往</source>
+  <target>今すぐ開く</target>
+</trans-unit>
+<trans-unit id="sa85065fa5f49e7e2">
+  <source>同步跟读说明</source>
+  <target>同期シャドーイングの説明</target>
+</trans-unit>
+<trans-unit id="s911f42ed312b015f">
+  <source>回声跟读说明</source>
+  <target>エコーシャドーイングの説明</target>
+</trans-unit>
+<trans-unit id="sc2cfc3fa295d61ee">
+  <source>抗噪听说明</source>
+  <target>抗ノイズリスニングの説明</target>
+</trans-unit>
+<trans-unit id="sdb69f7c39160a5b6">
+  <source>当前音频的同步跟读录音</source>
+  <target>この音声の同期シャドーイング録音</target>
 </trans-unit>
 </body>
 </file>

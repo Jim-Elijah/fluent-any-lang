@@ -286,10 +286,6 @@
   <source>1. 建议使用耳机练习。</source>
 <target>1. Headphone use is recommended.</target>
   </trans-unit>
-<trans-unit id="sc248cd7a0d83a038">
-  <source>3. 录音前可以操作播放器设置，录音开始后播放器不可操作。</source>
-<target>3. Adjust player settings before recording; the player is locked once recording starts.</target>
-  </trans-unit>
 <trans-unit id="s340c23398d548a5e">
   <source>录音失败，请重试。</source>
 <target>Recording failed. Please try again.</target>
@@ -398,14 +394,6 @@
   <source>单句暂停模式</source>
 <target>Single Sentence Pause Mode</target>
 </trans-unit>
-<trans-unit id="s05cfc6cafa28b482">
-  <source>2. 如果跟不上原音，可以设置倍速、单句暂停模式。</source>
-<target>2. If you can't follow the original audio, you can set the speed and single sentence pause mode.</target>
-</trans-unit>
-<trans-unit id="sd6b69523824af28a">
-  <source>4. 除了倍速、音量、单句暂停模式，跟读模式会忽略其他的播放器设置。</source>
-<target>4. Apart from playback speed, volume, and the single-sentence pause mode, the shadowing mode ignores other player settings..</target>
-</trans-unit>
 <trans-unit id="scad6e385d22d3258">
   <source>无法定位到字幕句子</source>
   <target>Could not locate the subtitle sentence</target>
@@ -421,22 +409,6 @@
 <trans-unit id="s381abd08b78133f9">
   <source>录音</source>
   <target>Recording</target>
-</trans-unit>
-<trans-unit id="s2be4bfc93467a5f5">
-  <source>2. 每句最多保存若干条录音，可在字幕行右侧下拉查看。</source>
-  <target>2. Each sentence can keep several recordings; open the dropdown on the right of a subtitle line to view them.</target>
-</trans-unit>
-<trans-unit id="s333d3161efe35efa">
-  <source>3. 听音和录音期间播放器不可操作。</source>
-  <target>3. The player controls are unavailable while listening or recording.</target>
-</trans-unit>
-<trans-unit id="s8e5d54ab4014f238">
-  <source>跟读 (Shadowing)</source>
-  <target>Shadowing</target>
-</trans-unit>
-<trans-unit id="sada555f61848b379">
-  <source>当前音频的跟读录音已达上限（<x id="0" equiv-text="${this._shadowingLimit}"/>条），删除旧录音后可继续。</source>
-  <target>Shadowing recordings for this audio have reached the limit (<x id="0" equiv-text="${this._shadowingLimit}"/>). Delete older ones to continue.</target>
 </trans-unit>
 <trans-unit id="s3fd93394e75f5977">
   <source>该句录音已达上限（<x id="0" equiv-text="${this._echoLimitPerSegment}"/>条），删除旧录音后可继续。</source>
@@ -557,10 +529,6 @@
 <trans-unit id="s9142ab4ea4069241">
   <source>无匹配录音</source>
   <target>No matching recordings</target>
-</trans-unit>
-<trans-unit id="sdbead5cea32ea044">
-  <source>跟读（Shadowing）：点击下方【麦克风】开始【同步】跟读；录音前有倒计时提醒（默认开启），录音停止后自动保存。</source>
-  <target>Shadowing: tap the microphone below to start synchronized shadowing. A countdown reminder plays before recording (on by default); recordings are saved automatically when you stop.</target>
 </trans-unit>
 <trans-unit id="sd762e84ea1c74883">
   <source>今日练习</source>
@@ -831,18 +799,9 @@
 <trans-unit id="s23254af2ecd02e26">
   <source>4. 录音时底部会显示状态与波形，全屏字幕下也可看到。</source>
 <target>4. During recording, the status and waveform will be displayed at the bottom, which is also visible under full-screen subtitles.</target></trans-unit>
-<trans-unit id="sbcdd283f3d2adc5d">
-  <source>点击下方麦克风开始同步跟读；录音时底部显示状态与波形。</source>
-<target>Tap the microphone below to start synchronized shadowing; the status and waveform will be displayed at the bottom during recording.</target></trans-unit>
-<trans-unit id="sbc9c4d9fdc04d576">
-  <source>点击字幕行麦克风：先听原音，再录音；底部会显示状态与波形。</source>
-<target>Tap the subtitle line microphone: listen to original first, then record; the status and waveform will be displayed at the bottom.</target></trans-unit>
 <trans-unit id="sce5b1a0936ad7377">
   <source>说明</source>
 <target>Instructions</target></trans-unit>
-<trans-unit id="s8b87b5d37cf918fd">
-  <source>跟读说明</source>
-<target>Shadowing Instructions</target></trans-unit>
 <trans-unit id="s717f240d6bfb47bd">
   <source>知道了</source>
 <target>Got it</target></trans-unit>
@@ -855,9 +814,6 @@
 <trans-unit id="sff4e4efc83c85d46">
   <source>管理录音</source>
 <target>Manage Recordings</target></trans-unit>
-<trans-unit id="sbf85220dc2a27a7d">
-  <source>当前音频的跟读录音</source>
-<target>Shadowing recordings of current audio</target></trans-unit>
 <trans-unit id="s1b3be8769609cc19">
   <source>导出失败</source>
 <target>Export failed</target></trans-unit>
@@ -1193,21 +1149,9 @@
 <trans-unit id="s843808081e992b92">
   <source>播放</source>
 <target>Play</target></trans-unit>
-<trans-unit id="s510a1d83b88b20ea">
-  <source>回声（Echo）：按字幕逐句练习。点击字幕行右侧【麦克风】：先播原音 → 倒计时提醒（默认开启）→ 录音；跟读完后手动停止录音。</source>
-  <target>Echo: practice one subtitle line at a time. Tap the microphone on a subtitle line → original audio plays first → countdown reminder (on by default) → recording; stop recording manually when finished.</target>
-</trans-unit>
 <trans-unit id="sbedede3b0d9e3d06">
   <source>练习音频已暂停</source>
 <target>Practice audio paused</target></trans-unit>
-<trans-unit id="s22fc5b1b5785e829">
-  <source>回声 (Echo)</source>
-  <target>Echo</target>
-</trans-unit>
-<trans-unit id="se8497d6376eb14c1">
-  <source>回声说明</source>
-  <target>Echo tips</target>
-</trans-unit>
 <trans-unit id="s5577689d602ba428">
   <source>已导出 <x id="0" equiv-text="${payload.entries.length}"/> 条异常日志</source>
   <target>Exported <x id="0" equiv-text="${payload.entries.length}"/> error log(s)</target>
@@ -1736,14 +1680,6 @@
   <source>噪音素材</source>
   <target>Noise materials</target>
 </trans-unit>
-<trans-unit id="s6d651d2f2cdd812a">
-  <source>辨音：在环境噪音背景下听主音频。可多选噪音并分别调音量；速听阶梯控制主轨倍速（噪音不变速）。</source>
-  <target>Discrimination: listen to the main track over ambient noise. Select one or more noises with separate volumes; the speed ladder controls main-track rate (noise stays at 1x).</target>
-</trans-unit>
-<trans-unit id="s36f73936d8998126">
-  <source>3. 辨音模式下不显示倍速与高级设置，倍速由阶梯独占。</source>
-  <target>3. Discrimination mode hides rate and advanced settings; the ladder owns playback rate.</target>
-</trans-unit>
 <trans-unit id="s3f05208b40809ed8">
   <source>自由听</source>
   <target>Free listen</target>
@@ -1771,10 +1707,6 @@
 <trans-unit id="s58e3cc277bb06d33">
   <source>最多选择 <x id="0" equiv-text="${DISCRIMINATION_MAX_NOISE_TRACKS}"/> 条噪音</source>
   <target>Select up to <x id="0" equiv-text="${DISCRIMINATION_MAX_NOISE_TRACKS}"/> noise tracks</target>
-</trans-unit>
-<trans-unit id="s54fad7305b4b1c72">
-  <source>辨音说明</source>
-  <target>Discrimination tips</target>
 </trans-unit>
 <trans-unit id="s09b6271fff16003d">
   <source>已导出备份（录音 <x id="0" equiv-text="${manifest.counts.recordings}"/>，学习记录 <x id="1" equiv-text="${manifest.counts.sessions}"/>，句库 <x id="2" equiv-text="${manifest.counts.sentenceBank}"/>，噪音 <x id="3" equiv-text="${manifest.counts.noise}"/>，媒体 <x id="4" equiv-text="${manifest.counts.media}"/>）</source>
@@ -1828,18 +1760,6 @@
   <source>暂无噪音素材，请先导入</source>
   <target>No noise assets yet. Import some first.</target>
 </trans-unit>
-<trans-unit id="s60779d74857e9562">
-  <source>1. 噪音跟随主轨播放/暂停；单条噪音播完会自动循环。播放中改选噪音或音量会立即生效。</source>
-  <target>1. Noise follows the main track play/pause; each clip loops when it ends. Changing noise or volume while playing takes effect immediately.</target>
-</trans-unit>
-<trans-unit id="s7a3923ebaeb9c3fc">
-  <source>2. 速听阶梯按「正序再回落」播放完整主轨；播放中改阶梯会重置到第一档并立即应用。切歌后阶梯进度重置，设置保留。</source>
-  <target>2. The speed ladder plays the full main track ascending then descending; changing the ladder while playing resets to the first step and applies immediately. Switching tracks resets ladder progress but keeps settings.</target>
-</trans-unit>
-<trans-unit id="sd10944495e3b97eb">
-  <source>可随时调整噪音与速听阶梯；噪音跟随主轨，倍速由阶梯控制。</source>
-  <target>Adjust noise and the speed ladder anytime; noise follows the main track, and rate is controlled by the ladder.</target>
-</trans-unit>
 <trans-unit id="sffed4b6d4b94a981">
   <source>暂无噪音素材。请在资料库中导入。</source>
   <target>No noise assets yet. Import them in the Library.</target>
@@ -1855,6 +1775,98 @@
 <trans-unit id="sfb82bd9c75fb0f3e">
   <source>去资料库</source>
   <target>Go to Library</target>
+</trans-unit>
+<trans-unit id="s9a52158c3fa5f82f">
+  <source>同步跟读：点击下方【麦克风】→【倒计时】→ 播放【原音】并【开始录音】；原音播完【自动】停止录音（也可手动停止）。</source>
+  <target>Sync shadowing: tap Mic below → Countdown → play Original and Start recording; recording stops automatically when the original ends (you can also stop manually).</target>
+</trans-unit>
+<trans-unit id="s672b90e400e4e6e5">
+  <source>2. 点击【麦克风】之前可操作播放器；点击之后播放器锁定，不可操作。</source>
+  <target>2. Before tapping Mic, you can use the player; after tapping, the player locks and cannot be controlled.</target>
+</trans-unit>
+<trans-unit id="s3f6816ff7765d412">
+  <source>3. 跟不上原音时，请在点麦前设置倍速、单句暂停。</source>
+  <target>3. If you can't keep up with the original, set playback speed and sentence pause before tapping Mic.</target>
+</trans-unit>
+<trans-unit id="s013321e37e11fe9f">
+  <source>4. 开始录音时仅保留倍速、音量、单句暂停；循环、睡眠等其他设置会被忽略。</source>
+  <target>4. When recording starts, only playback speed, volume, and sentence pause are kept; loop, sleep, and other settings are ignored.</target>
+</trans-unit>
+<trans-unit id="sa6ed44194d1635fc">
+  <source>回声跟读：点击字幕行右侧【麦克风】→ 播放该句【原音】→【倒计时】→【开始录音】；跟读完成后需【手动】停止录音。</source>
+  <target>Echo: tap Mic on the right of a subtitle line → play that sentence's Original → Countdown → Start recording; after shadowing, stop recording manually.</target>
+</trans-unit>
+<trans-unit id="sf89a2c7c785ce285">
+  <source>3. 开始录音时仅保留倍速、音量；单句暂停会关闭，循环、睡眠等其他设置会被忽略。</source>
+  <target>3. When recording starts, only playback speed and volume are kept; sentence pause is turned off, and loop, sleep, and other settings are ignored.</target>
+</trans-unit>
+<trans-unit id="s205856ec0a62bc0b">
+  <source>抗噪听：选择噪音并调音量 → 播放主音频；速听阶梯控制主轨倍速（噪音不变速）。只听不录。</source>
+  <target>Anti-noise listen: select noise and adjust volume → play the main audio; Speed ladder controls the main-track rate (noise does not change speed). Listen only, no recording.</target>
+</trans-unit>
+<trans-unit id="saffb37fcdeb14dd5">
+  <source>1. 播放器始终可用（进度/音量/切句/切歌等等）；可随时调整噪音与阶梯。</source>
+  <target>1. The player is always available (progress / volume / seek sentences / tracks, etc.); you can adjust noise and the ladder anytime.</target>
+</trans-unit>
+<trans-unit id="s85968ef795719e37">
+  <source>2. 噪音跟随主轨播放/暂停；单条噪音播完会自动循环。播放中改选噪音或音量会立即生效。</source>
+  <target>2. Noise follows the main track play/pause; a single noise track loops automatically when it ends. Changing noise or volume during playback takes effect immediately.</target>
+</trans-unit>
+<trans-unit id="s08e9ce292cd8106d">
+  <source>3. 速听阶梯按「正序再回落」播放完整主轨；播放中改阶梯会重置到第一档并立即应用。切歌后阶梯进度重置，设置保留。</source>
+  <target>3. Speed ladder plays the full main track ascending then descending; changing the ladder during playback resets to the first step and applies immediately. After switching tracks, ladder progress resets but settings are kept.</target>
+</trans-unit>
+<trans-unit id="s34835cf742d16653">
+  <source>4. 该模式不显示倍速、循环、睡眠、单句暂停与高级设置。</source>
+  <target>4. This mode does not show playback speed, loop, sleep, sentence pause, or advanced settings.</target>
+</trans-unit>
+<trans-unit id="sb73f53a30c841a1b">
+  <source>点击下方【麦克风】开始同步跟读（边听边录）。</source>
+  <target>Tap Mic below to start sync shadowing (listen and record at the same time).</target>
+</trans-unit>
+<trans-unit id="s47076f09183a93a1">
+  <source>只听不录；可随时调整噪音与速听阶梯，倍速由阶梯控制。</source>
+  <target>Listen only, no recording; adjust noise and Speed ladder anytime; playback speed is controlled by the ladder.</target>
+</trans-unit>
+<trans-unit id="sfeaf173b76e6dc72">
+  <source>点击字幕行右侧【麦克风】：先听原音，再录音。</source>
+  <target>Tap Mic on the right of a subtitle line: listen to the original first, then record.</target>
+</trans-unit>
+<trans-unit id="s9dee19af46a248a8">
+  <source>抗噪听</source>
+  <target>Anti-noise listen</target>
+</trans-unit>
+<trans-unit id="s94c7b8e9b135d3fc">
+  <source>同步跟读</source>
+  <target>Sync shadowing</target>
+</trans-unit>
+<trans-unit id="sfca41063887bfbdd">
+  <source>回声跟读</source>
+  <target>Echo</target>
+</trans-unit>
+<trans-unit id="s2d9d8f1041e14a74">
+  <source>当前音频的同步跟读录音已达上限（<x id="0" equiv-text="${this._shadowingLimit}"/>条），删除旧录音后可继续。</source>
+  <target>Sync shadowing recordings for this audio have reached the limit (<x id="0" equiv-text="${this._shadowingLimit}"/>); delete older ones to continue.</target>
+</trans-unit>
+<trans-unit id="se329613f6209f026">
+  <source>立即前往</source>
+  <target>Go now</target>
+</trans-unit>
+<trans-unit id="sa85065fa5f49e7e2">
+  <source>同步跟读说明</source>
+  <target>Sync shadowing guide</target>
+</trans-unit>
+<trans-unit id="s911f42ed312b015f">
+  <source>回声跟读说明</source>
+  <target>Echo guide</target>
+</trans-unit>
+<trans-unit id="sc2cfc3fa295d61ee">
+  <source>抗噪听说明</source>
+  <target>Anti-noise listen guide</target>
+</trans-unit>
+<trans-unit id="sdb69f7c39160a5b6">
+  <source>当前音频的同步跟读录音</source>
+  <target>Sync shadowing recordings for this audio</target>
 </trans-unit>
 </body>
 </file>

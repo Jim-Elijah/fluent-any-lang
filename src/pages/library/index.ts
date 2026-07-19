@@ -12,7 +12,11 @@ import '../../components/ui/input.js';
 import '../../components/ui/icon.js';
 import type { SelectChangeDetail } from '../../components/ui/select.js';
 import { InputChangeDetail } from '../../components/ui/input.js';
-import { allocateStackedHeightsN, type ListMetricsDetail } from '../../lib/split-list-heights.js';
+import {
+  allocateLibraryStackHeights,
+  MIN_STACKED_LIST_PX,
+  type ListMetricsDetail,
+} from '../../lib/split-list-heights.js';
 import {
   COMPACT_VIEWPORT_MQ,
   EXIT_LIBRARY_STACK_PX,
@@ -287,9 +291,12 @@ export class LibraryPage extends NavigatorElement {
     if (this.compact) return;
     const gapTotal = this._getStackGapPx() * (STACK_SECTION_COUNT - 1);
     const available = Math.max(0, (this._stack?.clientHeight ?? 0) - gapTotal);
-    const [mediaHeight, recordHeight, noiseHeight] = allocateStackedHeightsN(
-      [this._mediaNatural, this._recordNatural, this._noiseNatural],
+    const [mediaHeight, recordHeight, noiseHeight] = allocateLibraryStackHeights(
+      this._mediaNatural,
+      this._recordNatural,
+      this._noiseNatural,
       available,
+      MIN_STACKED_LIST_PX,
     );
     if (
       mediaHeight === this._mediaHeight &&

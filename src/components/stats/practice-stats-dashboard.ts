@@ -374,25 +374,25 @@ export class PracticeStatsDashboard extends NavigatorElement {
               <div class="modes" role="list">
                 <div class="mode" role="listitem">
                   <div class="mode-name">
-                    <span class="dot listening" aria-hidden="true"></span>${msg('听力')}
+                    <span class="dot listening" aria-hidden="true"></span>${msg('自由听')}
                   </div>
                   <div class="mode-value">${formatActiveDuration(listening)}</div>
                 </div>
                 <div class="mode" role="listitem">
                   <div class="mode-name">
-                    <span class="dot discrimination" aria-hidden="true"></span>${msg('辨音')}
+                    <span class="dot discrimination" aria-hidden="true"></span>${msg('抗噪听')}
                   </div>
                   <div class="mode-value">${formatActiveDuration(discrimination)}</div>
                 </div>
                 <div class="mode" role="listitem">
                   <div class="mode-name">
-                    <span class="dot shadowing" aria-hidden="true"></span>${msg('跟读')}
+                    <span class="dot shadowing" aria-hidden="true"></span>${msg('同步跟读')}
                   </div>
                   <div class="mode-value">${formatActiveDuration(shadowing)}</div>
                 </div>
                 <div class="mode" role="listitem">
                   <div class="mode-name">
-                    <span class="dot echo" aria-hidden="true"></span>${msg('回声')}
+                    <span class="dot echo" aria-hidden="true"></span>${msg('回声跟读')}
                   </div>
                   <div class="mode-value">${formatActiveDuration(echo)}</div>
                 </div>

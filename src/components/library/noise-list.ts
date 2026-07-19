@@ -5,7 +5,6 @@ import { customElement, property, query, state } from 'lit/decorators.js';
 import { deleteNoise, getNoiseList } from '../../db/noise.js';
 import { importNoiseFiles } from '../../lib/import-noise.js';
 import { estimateListNaturalHeight, type ListMetricsDetail } from '../../lib/split-list-heights.js';
-import { NARROW_VIEWPORT_MQ } from '../../lib/layout-compact.js';
 import { formatDate, formatTime } from '../../lib/playback-utils.js';
 import { reportError } from '../../lib/error-reporter.js';
 import type { NoiseItem, SortDirection } from '../../types/models.js';
@@ -13,14 +12,11 @@ import '../ui/alert.js';
 import '../ui/button.js';
 import '../ui/icon.js';
 import '../ui/popconfirm.js';
-import '../ui/virtual-grid.js';
 import { Message } from '../ui/message.js';
 
 /** Row height including the --space-md (12px) gap below each card. */
-const NOISE_ROW_HEIGHT = 88;
-/** Narrow: meta + actions stacked; includes the same gap below each card. */
-const NOISE_ROW_HEIGHT_NARROW = 100;
-const NOISE_LIST_HEIGHT = 480;
+export const NOISE_ROW_HEIGHT = 88;
+const NOISE_LIST_MAX_HEIGHT = 480;
 
 @customElement('noise-list')
 @localized()
@@ -47,11 +43,6 @@ export class NoiseList extends LitElement {
     :host([fill-height]) .list-viewport {
       flex: 1;
       min-height: 0;
-    }
-
-    :host([fill-height]) .list-viewport ui-virtual-grid {
-      display: block;
-      height: 100%;
     }
 
     .header {
@@ -89,19 +80,28 @@ export class NoiseList extends LitElement {
       white-space: nowrap;
     }
 
+    .list-viewport {
+      overflow-x: hidden;
+      overflow-y: auto;
+      min-height: 0;
+    }
+
     .item {
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
       gap: var(--space-md);
       align-items: center;
-      /* Reserve --space-md to match NOISE_ROW_HEIGHT gap (fixed, not --space-block). */
-      height: calc(100% - var(--space-md));
+      margin-bottom: var(--space-md);
       padding: var(--space-md) var(--space-lg);
       background: var(--color-surface, #fff);
       border: 1px solid var(--color-border, #d9d9d9);
       border-radius: var(--radius-md, 8px);
       box-shadow: var(--shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.06));
       box-sizing: border-box;
+    }
+
+    .item:last-child {
+      margin-bottom: 0;
     }
 
     .meta {
@@ -166,21 +166,13 @@ export class NoiseList extends LitElement {
 
     @media (max-width: 767px) {
       .item {
-        grid-template-columns: 1fr;
-        align-items: start;
-        align-content: start;
         gap: var(--space-xs);
-        height: calc(100% - var(--space-xs));
         padding: var(--space-sm) var(--space-md);
+        margin-bottom: var(--space-xs);
       }
 
       .details {
         gap: var(--space-xs);
-      }
-
-      .actions {
-        gap: var(--space-xs);
-        justify-content: flex-end;
       }
     }
   `;
@@ -215,45 +207,23 @@ export class NoiseList extends LitElement {
   @state()
   private _deletingId = '';
 
-  @state()
-  private _narrow = false;
-
   private _visibleCount = 0;
 
   private _lastMetricsKey = '';
 
-  private _narrowMq?: MediaQueryList;
-
   connectedCallback(): void {
     super.connectedCallback();
-    this._narrowMq = window.matchMedia(NARROW_VIEWPORT_MQ);
-    this._narrow = this._narrowMq.matches;
-    this._narrowMq.addEventListener('change', this._onNarrowMqChange);
     void this.refresh();
   }
 
-  disconnectedCallback(): void {
-    this._narrowMq?.removeEventListener('change', this._onNarrowMqChange);
-    super.disconnectedCallback();
-  }
-
-  private _onNarrowMqChange = (e: MediaQueryListEvent): void => {
-    this._narrow = e.matches;
-  };
-
-  private _rowHeight(): number {
-    return this._narrow ? NOISE_ROW_HEIGHT_NARROW : NOISE_ROW_HEIGHT;
-  }
-
   protected updated(): void {
-    const rowHeight = this._rowHeight();
     const naturalHeight = estimateListNaturalHeight({
       itemCount: this._visibleCount,
-      rowHeight,
+      rowHeight: NOISE_ROW_HEIGHT,
       hasError: Boolean(this._error),
       loading: this._loading,
     });
-    const key = `${naturalHeight}:${this._visibleCount}:${this._loading}:${this._error}:${rowHeight}`;
+    const key = `${naturalHeight}:${this._visibleCount}:${this._loading}:${this._error}`;
     if (key === this._lastMetricsKey) return;
     this._lastMetricsKey = key;
     this.dispatchEvent(
@@ -323,7 +293,7 @@ export class NoiseList extends LitElement {
     }
   };
 
-  private _renderItem = (item: NoiseItem): unknown => {
+  private _renderItem(item: NoiseItem) {
     return html`
       <div class="item">
         <div class="meta">
@@ -349,7 +319,7 @@ export class NoiseList extends LitElement {
         </div>
       </div>
     `;
-  };
+  }
 
   render() {
     let renderedItems = this._items;
@@ -377,12 +347,13 @@ export class NoiseList extends LitElement {
 
     this._visibleCount = renderedItems.length;
 
-    const rowHeight = this._rowHeight();
-    const listHeight = this.fillHeight
-      ? '100%'
-      : Math.min(Math.max(renderedItems.length, 1) * rowHeight, NOISE_LIST_HEIGHT);
-
     const emptyMessage = this.keyword ? msg('无匹配噪音素材') : msg('暂无噪音素材，请先导入');
+    const viewportStyle = this.fillHeight
+      ? ''
+      : `max-height: ${Math.min(
+          Math.max(renderedItems.length, 1) * NOISE_ROW_HEIGHT,
+          NOISE_LIST_MAX_HEIGHT,
+        )}px`;
 
     return html`
       <section>
@@ -415,14 +386,8 @@ export class NoiseList extends LitElement {
           : renderedItems.length === 0
             ? html`<div class="empty">${emptyMessage}</div>`
             : html`
-                <div class="list-viewport">
-                  <ui-virtual-grid
-                    .items=${renderedItems}
-                    .itemHeight=${rowHeight}
-                    .containerHeight=${listHeight}
-                    .gridItems=${1}
-                    .renderItem=${this._renderItem}
-                  ></ui-virtual-grid>
+                <div class="list-viewport" style=${viewportStyle}>
+                  ${renderedItems.map((item) => this._renderItem(item))}
                 </div>
               `}
       </section>

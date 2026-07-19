@@ -222,10 +222,6 @@
   <source>1. 建议使用耳机练习。</source>
 <target>1. 建議使用耳機練習。</target>
   </trans-unit>
-<trans-unit id="sc248cd7a0d83a038">
-  <source>3. 录音前可以操作播放器设置，录音开始后播放器不可操作。</source>
-<target>3. 錄音前可以操作播放器設置，錄音開始後播放器不可操作。</target>
-  </trans-unit>
 <trans-unit id="sa51509d5238300c9">
   <source>未能开启麦克风，请检查权限。</source>
 <target>未能開啟麥克風，請檢查權限。</target>
@@ -398,14 +394,6 @@
   <source>单句暂停模式</source>
 <target>單句暫停模式</target>
 </trans-unit>
-<trans-unit id="s05cfc6cafa28b482">
-  <source>2. 如果跟不上原音，可以设置倍速、单句暂停模式。</source>
-<target>2. 如果跟不上原音，可以設置倍速、單句暫停模式。</target>
-</trans-unit>
-<trans-unit id="sd6b69523824af28a">
-  <source>4. 除了倍速、音量、单句暂停模式，跟读模式会忽略其他的播放器设置。</source>
-<target>4. 除了倍速、音量、單句暫停模式，跟讀模式會忽略其他的播放器設置。</target>
-</trans-unit>
 <trans-unit id="scad6e385d22d3258">
   <source>无法定位到字幕句子</source>
   <target>無法定位到字幕句子</target>
@@ -421,22 +409,6 @@
 <trans-unit id="s381abd08b78133f9">
   <source>录音</source>
   <target>錄音</target>
-</trans-unit>
-<trans-unit id="s2be4bfc93467a5f5">
-  <source>2. 每句最多保存若干条录音，可在字幕行右侧下拉查看。</source>
-  <target>2. 每句最多儲存若干條錄音，可在字幕列右側下拉查看。</target>
-</trans-unit>
-<trans-unit id="s333d3161efe35efa">
-  <source>3. 听音和录音期间播放器不可操作。</source>
-  <target>3. 聽音和錄音期間播放器不可操作。</target>
-</trans-unit>
-<trans-unit id="s8e5d54ab4014f238">
-  <source>跟读 (Shadowing)</source>
-  <target>跟讀 (Shadowing)</target>
-</trans-unit>
-<trans-unit id="sada555f61848b379">
-  <source>当前音频的跟读录音已达上限（<x id="0" equiv-text="${this._shadowingLimit}"/>条），删除旧录音后可继续。</source>
-  <target>目前音訊的跟讀錄音已達上限（<x id="0" equiv-text="${this._shadowingLimit}"/>條），刪除舊錄音後可繼續。</target>
 </trans-unit>
 <trans-unit id="s3fd93394e75f5977">
   <source>该句录音已达上限（<x id="0" equiv-text="${this._echoLimitPerSegment}"/>条），删除旧录音后可继续。</source>
@@ -557,10 +529,6 @@
 <trans-unit id="s9142ab4ea4069241">
   <source>无匹配录音</source>
   <target>無符合錄音</target>
-</trans-unit>
-<trans-unit id="sdbead5cea32ea044">
-  <source>跟读（Shadowing）：点击下方【麦克风】开始【同步】跟读；录音前有倒计时提醒（默认开启），录音停止后自动保存。</source>
-  <target>跟讀（Shadowing）：點下方【麥克風】開始【同步】跟讀；錄音前有倒數提醒（預設開啟），停止錄音後自動儲存。</target>
 </trans-unit>
 <trans-unit id="sd762e84ea1c74883">
   <source>今日练习</source>
@@ -831,18 +799,9 @@
 <trans-unit id="s23254af2ecd02e26">
   <source>4. 录音时底部会显示状态与波形，全屏字幕下也可看到。</source>
 <target>4. 錄音時底部會顯示狀態與波形，全螢幕字幕下也可看到。</target></trans-unit>
-<trans-unit id="sbcdd283f3d2adc5d">
-  <source>点击下方麦克风开始同步跟读；录音时底部显示状态与波形。</source>
-<target>點擊下方麥克風開始同步跟讀；錄音時底部顯示狀態與波形。</target></trans-unit>
-<trans-unit id="sbc9c4d9fdc04d576">
-  <source>点击字幕行麦克风：先听原音，再录音；底部会显示状态与波形。</source>
-<target>點擊字幕列麥克風：先聽原音，再錄音；底部會顯示狀態與波形。</target></trans-unit>
 <trans-unit id="sce5b1a0936ad7377">
   <source>说明</source>
 <target>說明</target></trans-unit>
-<trans-unit id="s8b87b5d37cf918fd">
-  <source>跟读说明</source>
-<target>跟讀說明</target></trans-unit>
 <trans-unit id="s717f240d6bfb47bd">
   <source>知道了</source>
 <target>知道了</target></trans-unit>
@@ -855,9 +814,6 @@
 <trans-unit id="sff4e4efc83c85d46">
   <source>管理录音</source>
 <target>管理錄音</target></trans-unit>
-<trans-unit id="sbf85220dc2a27a7d">
-  <source>当前音频的跟读录音</source>
-<target>目前音訊的跟讀錄音</target></trans-unit>
 <trans-unit id="s1b3be8769609cc19">
   <source>导出失败</source>
 <target>匯出失敗</target></trans-unit>
@@ -1193,21 +1149,9 @@
 <trans-unit id="s843808081e992b92">
   <source>播放</source>
 <target>播放</target></trans-unit>
-<trans-unit id="s510a1d83b88b20ea">
-  <source>回声（Echo）：按字幕逐句练习。点击字幕行右侧【麦克风】：先播原音 → 倒计时提醒（默认开启）→ 录音；跟读完后手动停止录音。</source>
-  <target>回聲（Echo）：按字幕逐句練習。點擊字幕行右側【麥克風】：先播原音 → 倒計時提醒（預設開啟）→ 錄音；跟讀完後手動停止錄音。</target>
-</trans-unit>
 <trans-unit id="sbedede3b0d9e3d06">
   <source>练习音频已暂停</source>
 <target>練習音訊已暫停</target></trans-unit>
-<trans-unit id="s22fc5b1b5785e829">
-  <source>回声 (Echo)</source>
-  <target>回聲 (Echo)</target>
-</trans-unit>
-<trans-unit id="se8497d6376eb14c1">
-  <source>回声说明</source>
-  <target>回聲說明</target>
-</trans-unit>
 <trans-unit id="s5577689d602ba428">
   <source>已导出 <x id="0" equiv-text="${payload.entries.length}"/> 条异常日志</source>
   <target>已匯出 <x id="0" equiv-text="${payload.entries.length}"/> 條異常日誌</target>
@@ -1702,14 +1646,6 @@
   <source>噪音素材</source>
   <target>噪音素材</target>
 </trans-unit>
-<trans-unit id="s6d651d2f2cdd812a">
-  <source>辨音：在环境噪音背景下听主音频。可多选噪音并分别调音量；速听阶梯控制主轨倍速（噪音不变速）。</source>
-  <target>辨音：在環境噪音背景下聽主音訊。可多選噪音並分別調音量；速聽階梯控制主軌倍速（噪音不變速）。</target>
-</trans-unit>
-<trans-unit id="s36f73936d8998126">
-  <source>3. 辨音模式下不显示倍速与高级设置，倍速由阶梯独占。</source>
-  <target>3. 辨音模式下不顯示倍速與進階設定，倍速由階梯獨佔。</target>
-</trans-unit>
 <trans-unit id="s3f05208b40809ed8">
   <source>自由听</source>
   <target>自由聽</target>
@@ -1737,10 +1673,6 @@
 <trans-unit id="s58e3cc277bb06d33">
   <source>最多选择 <x id="0" equiv-text="${DISCRIMINATION_MAX_NOISE_TRACKS}"/> 条噪音</source>
   <target>最多選擇 <x id="0" equiv-text="${DISCRIMINATION_MAX_NOISE_TRACKS}"/> 條噪音</target>
-</trans-unit>
-<trans-unit id="s54fad7305b4b1c72">
-  <source>辨音说明</source>
-  <target>辨音說明</target>
 </trans-unit>
 <trans-unit id="s09b6271fff16003d">
   <source>已导出备份（录音 <x id="0" equiv-text="${manifest.counts.recordings}"/>，学习记录 <x id="1" equiv-text="${manifest.counts.sessions}"/>，句库 <x id="2" equiv-text="${manifest.counts.sentenceBank}"/>，噪音 <x id="3" equiv-text="${manifest.counts.noise}"/>，媒体 <x id="4" equiv-text="${manifest.counts.media}"/>）</source>
@@ -1794,18 +1726,6 @@
   <source>暂无噪音素材，请先导入</source>
   <target>暫無噪音素材，請先匯入</target>
 </trans-unit>
-<trans-unit id="s60779d74857e9562">
-  <source>1. 噪音跟随主轨播放/暂停；单条噪音播完会自动循环。播放中改选噪音或音量会立即生效。</source>
-  <target>1. 噪音跟隨主軌播放／暫停；單條噪音播完會自動循環。播放中改選噪音或音量會立即生效。</target>
-</trans-unit>
-<trans-unit id="s7a3923ebaeb9c3fc">
-  <source>2. 速听阶梯按「正序再回落」播放完整主轨；播放中改阶梯会重置到第一档并立即应用。切歌后阶梯进度重置，设置保留。</source>
-  <target>2. 速聽階梯按「正序再回落」播放完整主軌；播放中改階梯會重設到第一檔並立即套用。切歌後階梯進度重設，設定保留。</target>
-</trans-unit>
-<trans-unit id="sd10944495e3b97eb">
-  <source>可随时调整噪音与速听阶梯；噪音跟随主轨，倍速由阶梯控制。</source>
-  <target>可隨時調整噪音與速聽階梯；噪音跟隨主軌，倍速由階梯控制。</target>
-</trans-unit>
 <trans-unit id="sffed4b6d4b94a981">
   <source>暂无噪音素材。请在资料库中导入。</source>
   <target>暫無噪音素材。請在資料庫中匯入。</target>
@@ -1821,6 +1741,98 @@
 <trans-unit id="sfb82bd9c75fb0f3e">
   <source>去资料库</source>
   <target>去資料庫</target>
+</trans-unit>
+<trans-unit id="s9a52158c3fa5f82f">
+  <source>同步跟读：点击下方【麦克风】→【倒计时】→ 播放【原音】并【开始录音】；原音播完【自动】停止录音（也可手动停止）。</source>
+  <target>同步跟讀：點擊下方【麥克風】→【倒數】→ 播放【原音】並【開始錄音】；原音播完【自動】停止錄音（也可手動停止）。</target>
+</trans-unit>
+<trans-unit id="s672b90e400e4e6e5">
+  <source>2. 点击【麦克风】之前可操作播放器；点击之后播放器锁定，不可操作。</source>
+  <target>2. 點擊【麥克風】之前可操作播放器；點擊之後播放器鎖定，不可操作。</target>
+</trans-unit>
+<trans-unit id="s3f6816ff7765d412">
+  <source>3. 跟不上原音时，请在点麦前设置倍速、单句暂停。</source>
+  <target>3. 跟不上原音時，請在點麥前設置倍速、單句暫停。</target>
+</trans-unit>
+<trans-unit id="s013321e37e11fe9f">
+  <source>4. 开始录音时仅保留倍速、音量、单句暂停；循环、睡眠等其他设置会被忽略。</source>
+  <target>4. 開始錄音時僅保留倍速、音量、單句暫停；循環、睡眠等其他設置會被忽略。</target>
+</trans-unit>
+<trans-unit id="sa6ed44194d1635fc">
+  <source>回声跟读：点击字幕行右侧【麦克风】→ 播放该句【原音】→【倒计时】→【开始录音】；跟读完成后需【手动】停止录音。</source>
+  <target>回聲跟讀：點擊字幕行右側【麥克風】→ 播放該句【原音】→【倒數】→【開始錄音】；跟讀完成後需【手動】停止錄音。</target>
+</trans-unit>
+<trans-unit id="sf89a2c7c785ce285">
+  <source>3. 开始录音时仅保留倍速、音量；单句暂停会关闭，循环、睡眠等其他设置会被忽略。</source>
+  <target>3. 開始錄音時僅保留倍速、音量；單句暫停會關閉，循環、睡眠等其他設置會被忽略。</target>
+</trans-unit>
+<trans-unit id="s205856ec0a62bc0b">
+  <source>抗噪听：选择噪音并调音量 → 播放主音频；速听阶梯控制主轨倍速（噪音不变速）。只听不录。</source>
+  <target>抗噪聽：選擇噪音並調音量 → 播放主音訊；速聽階梯控制主軌倍速（噪音不變速）。只聽不錄。</target>
+</trans-unit>
+<trans-unit id="saffb37fcdeb14dd5">
+  <source>1. 播放器始终可用（进度/音量/切句/切歌等等）；可随时调整噪音与阶梯。</source>
+  <target>1. 播放器始終可用（進度／音量／切句／切歌等等）；可隨時調整噪音與階梯。</target>
+</trans-unit>
+<trans-unit id="s85968ef795719e37">
+  <source>2. 噪音跟随主轨播放/暂停；单条噪音播完会自动循环。播放中改选噪音或音量会立即生效。</source>
+  <target>2. 噪音跟隨主軌播放／暫停；單條噪音播完會自動循環。播放中改選噪音或音量會立即生效。</target>
+</trans-unit>
+<trans-unit id="s08e9ce292cd8106d">
+  <source>3. 速听阶梯按「正序再回落」播放完整主轨；播放中改阶梯会重置到第一档并立即应用。切歌后阶梯进度重置，设置保留。</source>
+  <target>3. 速聽階梯按「正序再回落」播放完整主軌；播放中改階梯會重置到第一檔並立即應用。切歌後階梯進度重置，設置保留。</target>
+</trans-unit>
+<trans-unit id="s34835cf742d16653">
+  <source>4. 该模式不显示倍速、循环、睡眠、单句暂停与高级设置。</source>
+  <target>4. 該模式不顯示倍速、循環、睡眠、單句暫停與高級設置。</target>
+</trans-unit>
+<trans-unit id="sb73f53a30c841a1b">
+  <source>点击下方【麦克风】开始同步跟读（边听边录）。</source>
+  <target>點擊下方【麥克風】開始同步跟讀（邊聽邊錄）。</target>
+</trans-unit>
+<trans-unit id="s47076f09183a93a1">
+  <source>只听不录；可随时调整噪音与速听阶梯，倍速由阶梯控制。</source>
+  <target>只聽不錄；可隨時調整噪音與速聽階梯，倍速由階梯控制。</target>
+</trans-unit>
+<trans-unit id="sfeaf173b76e6dc72">
+  <source>点击字幕行右侧【麦克风】：先听原音，再录音。</source>
+  <target>點擊字幕行右側【麥克風】：先聽原音，再錄音。</target>
+</trans-unit>
+<trans-unit id="s9dee19af46a248a8">
+  <source>抗噪听</source>
+  <target>抗噪聽</target>
+</trans-unit>
+<trans-unit id="s94c7b8e9b135d3fc">
+  <source>同步跟读</source>
+  <target>同步跟讀</target>
+</trans-unit>
+<trans-unit id="sfca41063887bfbdd">
+  <source>回声跟读</source>
+  <target>回聲跟讀</target>
+</trans-unit>
+<trans-unit id="s2d9d8f1041e14a74">
+  <source>当前音频的同步跟读录音已达上限（<x id="0" equiv-text="${this._shadowingLimit}"/>条），删除旧录音后可继续。</source>
+  <target>當前音訊的同步跟讀錄音已達上限（<x id="0" equiv-text="${this._shadowingLimit}"/>條），刪除舊錄音後可繼續。</target>
+</trans-unit>
+<trans-unit id="se329613f6209f026">
+  <source>立即前往</source>
+  <target>立即前往</target>
+</trans-unit>
+<trans-unit id="sa85065fa5f49e7e2">
+  <source>同步跟读说明</source>
+  <target>同步跟讀說明</target>
+</trans-unit>
+<trans-unit id="s911f42ed312b015f">
+  <source>回声跟读说明</source>
+  <target>回聲跟讀說明</target>
+</trans-unit>
+<trans-unit id="sc2cfc3fa295d61ee">
+  <source>抗噪听说明</source>
+  <target>抗噪聽說明</target>
+</trans-unit>
+<trans-unit id="sdb69f7c39160a5b6">
+  <source>当前音频的同步跟读录音</source>
+  <target>當前音訊的同步跟讀錄音</target>
 </trans-unit>
 </body>
 </file>
