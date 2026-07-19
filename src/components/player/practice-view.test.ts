@@ -162,6 +162,8 @@ describe('practice-view', () => {
   }
 
   async function switchToEchoMode(el: PracticeViewInternals) {
+    await settleView(el);
+
     const speakingButton = Array.from(el.shadowRoot!.querySelectorAll('ui-button')).find((button) =>
       button.textContent?.includes('口语'),
     );
@@ -169,10 +171,12 @@ describe('practice-view', () => {
     await el.updateComplete;
 
     const echoButton = Array.from(el.shadowRoot!.querySelectorAll('ui-button')).find((button) =>
-      button.textContent?.includes('Echo'),
+      button.textContent?.includes('回声跟读'),
     );
+    expect(echoButton).toBeDefined();
     echoButton?.click();
     await el.updateComplete;
+    await settleView(el);
   }
 
   it('renders practice layout shell', async () => {
@@ -537,7 +541,7 @@ describe('practice-view', () => {
     await switchToEchoMode(el);
 
     const summary = el.shadowRoot!.querySelector('.tips-summary');
-    expect(summary?.textContent).toContain('字幕行麦克风');
+    expect(summary?.textContent).toContain('字幕行右侧【麦克风】');
     expect(
       Array.from(el.shadowRoot!.querySelectorAll('ui-button')).some((button) =>
         button.textContent?.includes('说明'),

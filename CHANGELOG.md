@@ -1,3 +1,23 @@
+## [0.2.0](https://github.com/Jim-Elijah/fluent-any-lang/compare/v0.1.0...v0.2.0) (2026-07-19)
+
+### Features
+
+* add a new ui-drawer component ([84f0570](https://github.com/Jim-Elijah/fluent-any-lang/commit/84f0570119d73f865df9e8476f8a3039da605cec))
+* add auto-close functionality to tooltip component ([608dfcf](https://github.com/Jim-Elijah/fluent-any-lang/commit/608dfcf945a31d4935662e107bd1de270709131a))
+* add recording session dock for echo and shadowing ([0659253](https://github.com/Jim-Elijah/fluent-any-lang/commit/0659253673ffd981012d124e1faa3dcfcae73fd4))
+* enhance media player setting layout ([53b20c7](https://github.com/Jim-Elijah/fluent-any-lang/commit/53b20c7ebba858bd57fd7f9e62208e47babde55a))
+* enhance UI and error messages with localized strings ([d32d6a1](https://github.com/Jim-Elijah/fluent-any-lang/commit/d32d6a12d73598ea598ec757d9fd5b3d4f1058e3))
+* **hotkeys:** add keyboard shortcuts for practice and recording preview ([0456439](https://github.com/Jim-Elijah/fluent-any-lang/commit/04564393be026ff2421fe6a623f5812629290003))
+* **playlists:** add playlist management with favorites and practice integration ([3df08f0](https://github.com/Jim-Elijah/fluent-any-lang/commit/3df08f0459812941066eb0f2c7b41094c3004011))
+* **practice:** add discrimination mode with noise library and rate ladder ([561d26d](https://github.com/Jim-Elijah/fluent-any-lang/commit/561d26d9682c82d430d28f245a6d77dc49c30339))
+* **practice:** enhance media tracking with playlist integration ([6479dd0](https://github.com/Jim-Elijah/fluent-any-lang/commit/6479dd0ed719ee39745f0c54d41c2e6a69e2eb33))
+* **practice:** lock navigation during speaking sessions ([46e2aa5](https://github.com/Jim-Elijah/fluent-any-lang/commit/46e2aa5142bffaf9f2acbe2e2a39c6132d31c6d5))
+* **preview:** enhance recording review with audio focus and volume controls ([7bf7a55](https://github.com/Jim-Elijah/fluent-any-lang/commit/7bf7a555d03815fcd7ff3ee976f0cad2c822303b))
+* **pwa:** add installable PWA with offline shell and update prompts ([da38040](https://github.com/Jim-Elijah/fluent-any-lang/commit/da38040cbf7abbf6ee33fd8e76dae944dafa3513))
+* **sentences:** add sentence bank with clip storage and dedicated practice ([b77a9a4](https://github.com/Jim-Elijah/fluent-any-lang/commit/b77a9a4074ef1120fdd00991f16626819da59105))
+* **settings:** add local error logging and diagnostics export ([1532654](https://github.com/Jim-Elijah/fluent-any-lang/commit/153265409c84adebb35da9df57772dcbf51fce58))
+* **settings:** add preferences, practice limits, and data backup ([96ca784](https://github.com/Jim-Elijah/fluent-any-lang/commit/96ca784f4241867d1bb0c07a4a92dac8e211b7af))
+
 ## 0.1.0 (2026-07-12)
 
 ### Features

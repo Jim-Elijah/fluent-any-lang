@@ -2,36 +2,63 @@
 
 **English** | [中文](./README.zh-CN.md)
 
-A listening and speaking practice web app for any language. Import your own audio or video, practice sentence by sentence, and keep everything on your device.
+Bring your own audio or video — any language, any material — and practice listening and speaking **sentence by sentence**. Everything stays on your device: no account, no cloud upload.
 
 **[Live Demo](https://fal.jimelijah.com/)** · [GitHub](https://github.com/Jim-Elijah/fluent-any-lang)
 
+## Why FluentAnyLang?
+
+Most language apps lock you into their curriculum. FluentAnyLang is built for **learners who already have the content they care about** — podcasts, dramas, lectures, songs — and want a focused loop of replay, shadowing, and self-review.
+
+- **Your materials, any language** — Import audio/video with `.srt` / `.lrc` subtitles (add later if needed). Bilingual lines are supported.
+- **Sentence-driven practice** — Jump, loop, or pause by subtitle line; speaking modes tie every take to the exact sentence.
+- **Local-first & private** — Media, recordings, and stats live in IndexedDB. Export a ZIP backup to migrate devices; nothing is uploaded to a server.
+- **Installable PWA** — Add to home screen or desktop; app shell works offline after the first visit. Updates are prompted so practice is not interrupted mid-session.
+
 ## Features
 
-- **Any language, your materials** — Import audio/video (optionally with matching `.srt` / `.lrc` subtitles). Subtitles can be added later.
-- **Listening practice** — Playback speed, single-sentence pause, sentence loop, sleep timer, and more.
-- **Speaking practice**
-  - **Shadowing** — Synchronized shadowing with recording and countdown cues.
-  - **Echo** — Hear the original line first, then record; keep multiple takes per sentence.
-- **Subtitle-driven workflow** — Jump by sentence, compare original audio with your recordings (including sync play).
-- **Media & recording libraries** — Search, sort, filter, and export.
-- **Practice statistics** — Effective practice time, streaks, mode mix, and trends (not wall-clock time).
-- **Local-first & private** — Media, subtitles, and recordings stay in your browser via IndexedDB; nothing is uploaded to a server.
-- **Installable PWA** — Add to your home screen or desktop; the app shell works offline after the first visit. Updates are prompted so practice is not interrupted mid-session.
-- **UI locales** — Simplified Chinese, English, Japanese, and Traditional Chinese (`@lit/localize`).
+### Listening
+
+- **Free listen** — Playback speed, volume, prev/next sentence, keyboard shortcuts.
+- **Anti-noise listen** — Mix up to 3 ambient noise tracks while listening; optional speed ladder advances after each play-through.
+- **Loop & pause** — Loop track or sentence; pause between sentences by fixed seconds or a percentage of line length.
+- **Sleep timer** — Stop after N minutes or when the current track ends.
+- **Flexible player** — Normal, fixed (floating bar), or mini layout for long sessions.
+
+### Speaking
+
+- **Sync Shadowing** — Record in sync with the original, with countdown cues and a live waveform.
+- **Echo** — Hear the line first, then record; keep multiple takes per sentence and pick the best.
+- **Compare takes** — Play source only, recording only, or **sync play** (sentence-aligned) with waveform review.
+
+### Library & progress
+
+- **Media, recordings & noise libraries** — Search, sort, filter, custom covers, and export.
+- **Playlists & favorites** — Group materials, reorder, and continue the last playlist from the home dashboard.
+- **Sentence bank** — Save individual lines (with clipped audio) and drill them later.
+- **Practice statistics** — Effective practice time (not wall-clock), streaks, mode mix, trends, and media ranking.
+
+### More
+
+- **UI locales** — Simplified Chinese, English, Japanese, and Traditional Chinese.
+- **Backup & migration** — ZIP export/import for recordings, sessions, sentence bank, playlists, settings, and optionally media.
 
 ## Screenshots
 
-![home](./docs/screenshots/home.png)
-![practice](./docs/screenshots/practice.png)
-![library](./docs/screenshots/library.png)
-![statistics](./docs/screenshots/statistics.png)
-
+![home-page](./docs/screenshots/home.png)
+![library-page](./docs/screenshots/library.png)
+![playlist-page](./docs/screenshots/playlist.png)
+![sentence-bank-page](./docs/screenshots/sentence-bank.png)
+![statistics-page](./docs/screenshots/statistics.png)
+![settings-page](./docs/screenshots/settings.gif)
 
 ![home-import-listen](./docs/screenshots/import-and-listen.gif)
 ![practice-listen-advanced-setting](./docs/screenshots/listen-advanced-setting.gif)
+![practive-anti-noise-listen](./docs/screenshots/anti-noise-listen.gif)
 ![practice-speak-shadowing](./docs/screenshots/shadowing.gif)
 ![practice-speak-echo](./docs/screenshots/echo.gif)
+![playlist](./docs/screenshots/playlist.gif)
+![sentence-bank](./docs/screenshots/sentence-bank.gif)
 
 
 ## How to use
@@ -45,7 +72,7 @@ No install required for everyday use. Prefer headphones for speaking practice, a
 
 ## Privacy
 
-FluentAnyLang is a client-side app. Practice content and recordings are stored locally in IndexedDB. Clearing site data in the browser removes them; export recordings if you need a backup.
+FluentAnyLang is a client-side app. Practice content and recordings are stored locally in IndexedDB. Clearing site data in the browser removes them — use the built-in ZIP backup if you need to migrate or keep a copy.
 
 ## Tech stack
 
