@@ -1,14 +1,17 @@
 import {
   APP_SETTINGS_LIMITS,
+  APP_SETTINGS_PLAYER_LIMITS,
   DEFAULT_DISCRIMINATION_SETTINGS,
   DEFAULT_SETTINGS,
   DISCRIMINATION_LADDER_COUNT_MAX,
   DISCRIMINATION_LADDER_COUNT_MIN,
   DISCRIMINATION_MAX_NOISE_TRACKS,
   DISCRIMINATION_RATE_STEPS,
+  LOOP_MODE_VALUES,
   type AppSettings,
   type DiscriminationNoiseSelection,
   type DiscriminationSettings,
+  type LoopMode,
 } from '../types/models.js';
 
 export const APP_SETTINGS_STORAGE_KEY = 'fluent-any-lang:app-settings';
@@ -30,6 +33,12 @@ export const DEFAULT_USER_SETTINGS: UserSettings = {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
+}
+
+function parseLoopMode(value: unknown, fallback: LoopMode): LoopMode {
+  return typeof value === 'string' && (LOOP_MODE_VALUES as readonly string[]).includes(value)
+    ? (value as LoopMode)
+    : fallback;
 }
 
 function parseBoolean(value: unknown, fallback: boolean): boolean {
@@ -82,7 +91,7 @@ function parseDiscriminationSelection(raw: unknown): DiscriminationNoiseSelectio
     }
     out.push({
       noiseId: entry.noiseId,
-      volume: clampNumber(entry.volume, 0.5, 0, 1),
+      volume: clampNumber(entry.volume, DEFAULT_SETTINGS.defaultNoiseVolume, 0, 1),
     });
     if (out.length >= DISCRIMINATION_MAX_NOISE_TRACKS) {
       break;
@@ -134,6 +143,7 @@ function parseAppSettings(raw: unknown): AppSettings {
   }
 
   const limits = APP_SETTINGS_LIMITS;
+  const playerLimits = APP_SETTINGS_PLAYER_LIMITS;
   return {
     maxRecordingsPerMedia: clampNumber(
       raw.maxRecordingsPerMedia,
@@ -159,12 +169,33 @@ function parseAppSettings(raw: unknown): AppSettings {
       limits.lowStorageThresholdPercent.min,
       limits.lowStorageThresholdPercent.max,
     ),
+    defaultLoopMode: parseLoopMode(raw.defaultLoopMode, DEFAULT_SETTINGS.defaultLoopMode),
+    defaultSleepMinutes: clampNumber(
+      raw.defaultSleepMinutes,
+      DEFAULT_SETTINGS.defaultSleepMinutes,
+      playerLimits.defaultSleepMinutes.min,
+      playerLimits.defaultSleepMinutes.max,
+    ),
     repeatPausePercent: clampNumber(
       raw.repeatPausePercent,
       DEFAULT_SETTINGS.repeatPausePercent,
-      limits.repeatPausePercent.min,
-      limits.repeatPausePercent.max,
-      limits.repeatPausePercent.step,
+      playerLimits.repeatPausePercent.min,
+      playerLimits.repeatPausePercent.max,
+      playerLimits.repeatPausePercent.step,
+    ),
+    defaultSourceVolume: clampNumber(
+      raw.defaultSourceVolume,
+      DEFAULT_SETTINGS.defaultSourceVolume,
+      playerLimits.defaultSourceVolume.min,
+      playerLimits.defaultSourceVolume.max,
+      playerLimits.defaultSourceVolume.step,
+    ),
+    defaultNoiseVolume: clampNumber(
+      raw.defaultNoiseVolume,
+      DEFAULT_SETTINGS.defaultNoiseVolume,
+      playerLimits.defaultNoiseVolume.min,
+      playerLimits.defaultNoiseVolume.max,
+      playerLimits.defaultNoiseVolume.step,
     ),
     skipRecordingCountdown: parseBoolean(
       raw.skipRecordingCountdown,

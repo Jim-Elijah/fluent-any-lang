@@ -436,7 +436,7 @@ export class SentencesPage extends NavigatorElement {
               ? html`<div class="empty">
                   ${this._keyword || this._entries.length > 0
                     ? msg('无匹配内容')
-                    : msg('句库为空。在练习页点击字幕旁的 ☆ 即可加入。')}
+                    : msg('句库为空。在练习页点击字幕旁的 ♡ 即可加入。')}
                 </div>`
               : html`
                   <div class="list-viewport">

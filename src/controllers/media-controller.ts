@@ -62,13 +62,17 @@ const TIMEUPDATE_THROTTLE_MS = 250;
 const DEFAULT_PLAYER_SETTINGS = {
   playbackRate: 1,
   volume: 1,
-  loopMode: 'none' as LoopMode,
   subtitlesVisible: true,
   sleepMode: 'off' as SleepMode,
-  sleepMinutes: 30,
   pauseMode: 'off' as PauseMode,
   pauseSeconds: 1,
-  get pausePercent() {
+  get loopMode(): LoopMode {
+    return getAppSettings().defaultLoopMode;
+  },
+  get sleepMinutes(): number {
+    return getAppSettings().defaultSleepMinutes;
+  },
+  get pausePercent(): number {
     return getAppSettings().repeatPausePercent;
   },
 };

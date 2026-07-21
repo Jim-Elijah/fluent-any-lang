@@ -10,7 +10,7 @@ import type { SwitchChangeDetail } from '../ui/switch.js';
 
 type TipKey = keyof Pick<
   AppSettings,
-  'skipRecordingCountdown' | 'skipShadowingTips' | 'skipEchoTips'
+  'skipRecordingCountdown' | 'skipShadowingTips' | 'skipEchoTips' | 'skipDiscriminationTips'
 >;
 
 @customElement('settings-preferences')
@@ -57,7 +57,7 @@ export class SettingsPreferences extends LitElement {
     return html`
       <section class="card" aria-labelledby="prefs-heading">
         <h2 id="prefs-heading">${msg('偏好与提示')}</h2>
-        <p class="desc">${msg('控制练习流程中的倒计时与模式说明是否自动跳过。')}</p>
+        <p class="desc">${msg('控制练习流程中的倒计时与各练习模式说明是否自动跳过。')}</p>
         <div class="rows">
           <div
             class="row"
@@ -94,12 +94,12 @@ export class SettingsPreferences extends LitElement {
             }}
           >
             <div class="label-wrap">
-              <span class="label">${msg('跳过跟读模式提示')}</span>
-              <span class="hint">${msg('开启后进入跟读模式时不再弹出说明。')}</span>
+              <span class="label">${msg('跳过同步跟读模式提示')}</span>
+              <span class="hint">${msg('开启后进入同步跟读模式时不再弹出说明。')}</span>
             </div>
             <ui-switch
               .checked=${s.skipShadowingTips}
-              .label=${msg('跳过跟读模式提示')}
+              .label=${msg('跳过同步跟读模式提示')}
               @change=${this._onSwitch('skipShadowingTips')}
             ></ui-switch>
           </div>
@@ -116,13 +116,35 @@ export class SettingsPreferences extends LitElement {
             }}
           >
             <div class="label-wrap">
-              <span class="label">${msg('跳过回声模式提示')}</span>
-              <span class="hint">${msg('开启后进入回声模式时不再弹出说明。')}</span>
+              <span class="label">${msg('跳过回声跟读模式提示')}</span>
+              <span class="hint">${msg('开启后进入回声跟读模式时不再弹出说明。')}</span>
             </div>
             <ui-switch
               .checked=${s.skipEchoTips}
-              .label=${msg('跳过回声模式提示')}
+              .label=${msg('跳过回声跟读模式提示')}
               @change=${this._onSwitch('skipEchoTips')}
+            ></ui-switch>
+          </div>
+          <div
+            class="row"
+            role="button"
+            tabindex="0"
+            @click=${this._onRowClick('skipDiscriminationTips')}
+            @keydown=${(e: KeyboardEvent) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                this._setTip('skipDiscriminationTips', !s.skipDiscriminationTips);
+              }
+            }}
+          >
+            <div class="label-wrap">
+              <span class="label">${msg('跳过抗噪听模式提示')}</span>
+              <span class="hint">${msg('开启后进入抗噪听模式时不再弹出说明。')}</span>
+            </div>
+            <ui-switch
+              .checked=${s.skipDiscriminationTips}
+              .label=${msg('跳过抗噪听模式提示')}
+              @change=${this._onSwitch('skipDiscriminationTips')}
             ></ui-switch>
           </div>
         </div>

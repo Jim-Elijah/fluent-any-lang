@@ -106,10 +106,6 @@ export class SettingsLimits extends LitElement {
     const fallback = this._settings[key];
     let value = Number.isFinite(parsed) ? parsed : fallback;
     value = Math.min(limits.max, Math.max(limits.min, value));
-    if ('step' in limits && limits.step) {
-      value = Math.round(value / limits.step) * limits.step;
-      value = Math.min(limits.max, Math.max(limits.min, value));
-    }
     const prev = this._settings[key];
     this._settings = setAppSettings({ [key]: value });
     if (value !== prev) {
@@ -133,7 +129,6 @@ export class SettingsLimits extends LitElement {
 
   private _field(key: NumericKey, label: string) {
     const limits = APP_SETTINGS_LIMITS[key];
-    const step = 'step' in limits ? limits.step : undefined;
     return html`
       <div class="field">
         <span class="field-label">${label}</span>
@@ -142,7 +137,6 @@ export class SettingsLimits extends LitElement {
           .value=${String(this._settings[key])}
           .min=${limits.min}
           .max=${limits.max}
-          .step=${step}
           @change=${this._onNumberChange(key)}
         ></ui-input>
         <p class="hint">${this._rangeHint(key)}</p>
@@ -171,7 +165,6 @@ export class SettingsLimits extends LitElement {
           ${this._field('maxEchoPerSegment', msg('每句最大回声录音数'))}
           ${this._field('maxStorageMB', msg('最大媒体容量（MB）'))}
           ${this._field('lowStorageThresholdPercent', msg('低存储告警阈值（%）'))}
-          ${this._field('repeatPausePercent', msg('默认句间暂停百分比'))}
         </div>
       </section>
     `;

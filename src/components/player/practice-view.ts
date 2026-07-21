@@ -1278,7 +1278,7 @@ export class PracticeView extends NavigatorElement {
         this.requestUpdate();
         return;
       }
-      selected.push({ noiseId, volume: 0.5 });
+      selected.push({ noiseId, volume: getAppSettings().defaultNoiseVolume });
     } else {
       selected = selected.filter((s) => s.noiseId !== noiseId);
     }

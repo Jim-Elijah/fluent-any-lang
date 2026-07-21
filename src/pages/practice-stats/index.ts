@@ -606,26 +606,26 @@ export class PracticeStatsPage extends NavigatorElement {
                 </div>
                 <div class="legend">
                   <span class="legend-item">
-                    <span class="dot listening"></span>${msg('听力')}
+                    <span class="dot listening"></span>${msg('自由听')}
                     <span class="legend-value"
                       >${formatActiveDuration(listening)} · ${this._pct(listening, total)}</span
                     >
                   </span>
                   <span class="legend-item">
-                    <span class="dot discrimination"></span>${msg('辨音')}
+                    <span class="dot discrimination"></span>${msg('抗噪听')}
                     <span class="legend-value"
                       >${formatActiveDuration(discrimination)} ·
                       ${this._pct(discrimination, total)}</span
                     >
                   </span>
                   <span class="legend-item">
-                    <span class="dot shadowing"></span>${msg('跟读')}
+                    <span class="dot shadowing"></span>${msg('同步跟读')}
                     <span class="legend-value"
                       >${formatActiveDuration(shadowing)} · ${this._pct(shadowing, total)}</span
                     >
                   </span>
                   <span class="legend-item">
-                    <span class="dot echo"></span>${msg('回声')}
+                    <span class="dot echo"></span>${msg('回声跟读')}
                     <span class="legend-value"
                       >${formatActiveDuration(echo)} · ${this._pct(echo, total)}</span
                     >

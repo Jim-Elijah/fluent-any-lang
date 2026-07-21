@@ -215,7 +215,16 @@ export type AppSettings = {
   maxEchoPerSegment: number;
   maxStorageMB: number;
   lowStorageThresholdPercent: number;
+  /** Default loop mode when opening practice / playback. */
+  defaultLoopMode: LoopMode;
+  /** Default sleep timer duration (minutes) when sleep mode is enabled. */
+  defaultSleepMinutes: number;
+  /** Default pause between subtitle segments as % of segment duration. */
   repeatPausePercent: number;
+  /** Default source volume (0–1) in recording preview / sync playback. */
+  defaultSourceVolume: number;
+  /** Default volume (0–1) when newly selecting a noise track in discrimination. */
+  defaultNoiseVolume: number;
   /** When true, recording countdown overlay is skipped. */
   skipRecordingCountdown: boolean;
   /** When true, shadowing mode tips modal is skipped. */
@@ -274,12 +283,24 @@ export const DEFAULT_DISCRIMINATION_SETTINGS: DiscriminationSettings = {
   ladderRates: [1],
 };
 
+export const LOOP_MODE_VALUES: readonly LoopMode[] = [
+  'none',
+  'single',
+  'segment',
+  'list',
+  'shuffle',
+] as const;
+
 export const DEFAULT_SETTINGS: AppSettings = {
   maxRecordingsPerMedia: 5,
   maxEchoPerSegment: 10,
   maxStorageMB: 200,
   lowStorageThresholdPercent: 10,
+  defaultLoopMode: 'none',
+  defaultSleepMinutes: 30,
   repeatPausePercent: 100,
+  defaultSourceVolume: 1,
+  defaultNoiseVolume: 0.5,
   skipRecordingCountdown: false,
   skipShadowingTips: false,
   skipEchoTips: false,
@@ -288,13 +309,20 @@ export const DEFAULT_SETTINGS: AppSettings = {
   discrimination: { ...DEFAULT_DISCRIMINATION_SETTINGS, ladderRates: [1] },
 };
 
-/** Allowed ranges for persisted AppSettings numeric fields. */
+/** Allowed ranges for persisted storage / quota numeric fields. */
 export const APP_SETTINGS_LIMITS = {
   maxRecordingsPerMedia: { min: 1, max: 20 },
   maxEchoPerSegment: { min: 1, max: 50 },
   maxStorageMB: { min: 50, max: 2000 },
   lowStorageThresholdPercent: { min: 5, max: 50 },
+} as const;
+
+/** Allowed ranges for player / practice default numeric fields. */
+export const APP_SETTINGS_PLAYER_LIMITS = {
+  defaultSleepMinutes: { min: 1, max: 90 },
   repeatPausePercent: { min: 100, max: 500, step: 10 },
+  defaultSourceVolume: { min: 0, max: 1, step: 0.05 },
+  defaultNoiseVolume: { min: 0, max: 1, step: 0.05 },
 } as const;
 
 export const DISCRIMINATION_LADDER_COUNT_LIMITS = {

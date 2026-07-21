@@ -934,27 +934,12 @@
 <trans-unit id="seebba62ee272769f">
   <source>偏好与提示</source>
 <target>設定とヒント</target></trans-unit>
-<trans-unit id="scb0d35d2b5ab6272">
-  <source>控制练习流程中的倒计时与模式说明是否自动跳过。</source>
-<target>練習プロセス中のカウントダウンとモード説明を自動的にスキップするかどうかを制御します。</target></trans-unit>
 <trans-unit id="s12827738fbbf7ce4">
   <source>跳过录音倒计时</source>
 <target>録音のカウントダウンをスキップ</target></trans-unit>
 <trans-unit id="s97bd609e50a1f7d1">
   <source>开启后录音前不再显示 3 秒倒计时。</source>
 <target>有効にすると、録音前の3秒間のカウントダウンが表示されなくなります。</target></trans-unit>
-<trans-unit id="s91e4204bfc1da277">
-  <source>跳过跟读模式提示</source>
-<target>シャドーイングモードのプロンプトをスキップ</target></trans-unit>
-<trans-unit id="s4bd30e8f2a2be7d9">
-  <source>开启后进入跟读模式时不再弹出说明。</source>
-<target>有効にすると、シャドーイングモードに入る時に説明ポップアップが表示されなくなります。</target></trans-unit>
-<trans-unit id="s0688bfda737de32f">
-  <source>跳过回声模式提示</source>
-<target>エコーモードのプロンプトをスキップ</target></trans-unit>
-<trans-unit id="sa0976efe07696571">
-  <source>开启后进入回声模式时不再弹出说明。</source>
-<target>有効にすると、エコーモードに入る時に説明ポップアップが表示されなくなります。</target></trans-unit>
 <trans-unit id="s0105a16d770fbb07">
   <source>请至少选择一种数据导出</source>
 <target>エクスポートするデータタイプを少なくとも1つ選択してください</target></trans-unit>
@@ -1439,10 +1424,6 @@
   <source>立即更新</source>
   <target>今すぐ更新</target>
 </trans-unit>
-<trans-unit id="s74e844cdefea9b52">
-  <source>管理偏好、练习限额、数据备份、应用更新与诊断。</source>
-  <target>設定、練習上限、バックアップ、アプリ更新、診断を管理します。</target>
-</trans-unit>
 <trans-unit id="sec8400be2aca8aa1">
   <source>无法定位到来源句子</source>
 <target>ソース文を特定できません</target></trans-unit>
@@ -1529,10 +1510,6 @@
 <trans-unit id="s9896c718d8dd43c2">
   <source><x id="0" equiv-text="${visibleEntries.length}"/> 句</source>
   <target><x id="0" equiv-text="${this._entries.length}"/> 文</target>
-</trans-unit>
-<trans-unit id="sef218683966963b5">
-  <source>句库为空。在练习页点击字幕旁的 ☆ 即可加入。</source>
-  <target>文庫は空です。練習ページで字幕横の ☆ を押して追加できます。</target>
 </trans-unit>
 <trans-unit id="sb799440972680616">
   <source>来自：<x id="0" equiv-text="${entry.sourceTitleSnapshot}"/></source>
@@ -1833,6 +1810,86 @@
 <trans-unit id="sdb69f7c39160a5b6">
   <source>当前音频的同步跟读录音</source>
   <target>この音声の同期シャドーイング録音</target>
+</trans-unit>
+<trans-unit id="s352527c98a04c835">
+  <source><x id="0" equiv-text="${label}"/>（<x id="1" equiv-text="${pct}"/>%）</source>
+  <target><x id="0" equiv-text="${label}"/>（<x id="1" equiv-text="${pct}"/>%）</target>
+</trans-unit>
+<trans-unit id="s08ff4ce7bd52cde7">
+  <source>播放器与练习默认</source>
+  <target>プレーヤーと練習のデフォルト</target>
+</trans-unit>
+<trans-unit id="sb8ba74ac6c2edad8">
+  <source>打开练习或播放时的初始状态；当前会话中仍可在播放器面板随时调整。</source>
+  <target>練習や再生を開いたときの初期状態です。現在のセッション中はプレーヤーパネルでいつでも変更できます。</target>
+</trans-unit>
+<trans-unit id="s59bcf5cbd450b332">
+  <source>默认循环模式</source>
+  <target>デフォルトのループモード</target>
+</trans-unit>
+<trans-unit id="s7bf7b6c47924b7ab">
+  <source>进入练习时的默认循环模式。</source>
+  <target>練習開始時のデフォルトのループモード。</target>
+</trans-unit>
+<trans-unit id="s9d9f61b2f7d3e4c7">
+  <source>默认定时关闭（分钟）</source>
+  <target>デフォルトのスリープタイマー（分）</target>
+</trans-unit>
+<trans-unit id="se62310baca8953f9">
+  <source>开启定时关闭时的默认时长。</source>
+  <target>スリープタイマーを有効にしたときのデフォルト時間。</target>
+</trans-unit>
+<trans-unit id="s531d81b8f9d987f9">
+  <source>控制练习流程中的倒计时与各练习模式说明是否自动跳过。</source>
+  <target>練習フローのカウントダウンと各練習モードの説明を自動でスキップするかどうかを制御します。</target>
+</trans-unit>
+<trans-unit id="s5a9ba1b43b858bfc">
+  <source>句库为空。在练习页点击字幕旁的 ♡ 即可加入。</source>
+  <target>文庫は空です。練習ページで字幕横の ♡ をタップして追加できます。</target>
+</trans-unit>
+<trans-unit id="sc326a145a757a32e">
+  <source>管理偏好、播放器默认、练习限额、数据备份、应用更新与诊断。</source>
+  <target>設定、プレーヤーのデフォルト、練習上限、バックアップ、アプリ更新、診断を管理します。</target>
+</trans-unit>
+<trans-unit id="sce86813619db987d">
+  <source>默认原音音量</source>
+  <target>デフォルトの原音音量</target>
+</trans-unit>
+<trans-unit id="s5f940f0f82a9b8cb">
+  <source>录音预览时原音的默认音量。</source>
+  <target>録音プレビュー時の原音のデフォルト音量。</target>
+</trans-unit>
+<trans-unit id="sc5f4eb4f5d9c7698">
+  <source>默认噪音音量</source>
+  <target>デフォルトのノイズ音量</target>
+</trans-unit>
+<trans-unit id="s8919f4f4e8906d56">
+  <source>抗噪听模式下噪音的默认音量。</source>
+  <target>抗ノイズリスニングモードでのノイズのデフォルト音量。</target>
+</trans-unit>
+<trans-unit id="sef2d6a7be796f338">
+  <source>跳过同步跟读模式提示</source>
+  <target>同期シャドーイングモードの説明をスキップ</target>
+</trans-unit>
+<trans-unit id="s9ecc478a7ebe313a">
+  <source>开启后进入同步跟读模式时不再弹出说明。</source>
+  <target>オンにすると、同期シャドーイングモードに入るときに説明を表示しません。</target>
+</trans-unit>
+<trans-unit id="se55f56bc61c47ac9">
+  <source>跳过回声跟读模式提示</source>
+  <target>エコーシャドーイングモードの説明をスキップ</target>
+</trans-unit>
+<trans-unit id="s081811d84ad2376f">
+  <source>开启后进入回声跟读模式时不再弹出说明。</source>
+  <target>オンにすると、エコーシャドーイングモードに入るときに説明を表示しません。</target>
+</trans-unit>
+<trans-unit id="s4893561179c36db8">
+  <source>跳过抗噪听模式提示</source>
+  <target>抗ノイズリスニングモードの説明をスキップ</target>
+</trans-unit>
+<trans-unit id="sb6f94b7a16468580">
+  <source>开启后进入抗噪听模式时不再弹出说明。</source>
+  <target>オンにすると、抗ノイズリスニングモードに入るときに説明を表示しません。</target>
 </trans-unit>
 </body>
 </file>

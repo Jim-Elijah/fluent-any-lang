@@ -24,6 +24,7 @@ import {
   type WaveformTrack,
 } from '../../controllers/waveform-controller.js';
 import type { PracticeMode, PracticeSegment, SubtitleSegment } from '../../types/models.js';
+import { getAppSettings } from '../../lib/app-settings.js';
 import type { WaveformSeekRequestDetail } from '../player/waveform-player.js';
 import '../ui/button.js';
 import '../ui/dropdown.js';
@@ -197,7 +198,7 @@ export class RecordingPreview extends LitElement {
   private _activeSubtitle: SubtitleSegment | null = null;
 
   @state()
-  private _sourceVolume = 1;
+  private _sourceVolume = getAppSettings().defaultSourceVolume;
 
   @state()
   private _recordingVolume = 1;

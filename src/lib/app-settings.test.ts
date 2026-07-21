@@ -47,12 +47,24 @@ describe('app-settings', () => {
       maxStorageMB: 10,
       lowStorageThresholdPercent: 99,
       repeatPausePercent: 123,
+      defaultSleepMinutes: 0,
+      defaultSourceVolume: 2,
+      defaultNoiseVolume: -1,
     });
     expect(next.maxRecordingsPerMedia).toBe(20);
     expect(next.maxEchoPerSegment).toBe(1);
     expect(next.maxStorageMB).toBe(50);
     expect(next.lowStorageThresholdPercent).toBe(50);
     expect(next.repeatPausePercent).toBe(120);
+    expect(next.defaultSleepMinutes).toBe(1);
+    expect(next.defaultSourceVolume).toBe(1);
+    expect(next.defaultNoiseVolume).toBe(0);
+  });
+
+  it('parses default loop mode', () => {
+    expect(normalizeAppSettings({ defaultLoopMode: 'invalid' }).defaultLoopMode).toBe('none');
+    setAppSettings({ defaultLoopMode: 'segment' });
+    expect(getAppSettings().defaultLoopMode).toBe('segment');
   });
 
   it('migrates legacy user-settings once', () => {
