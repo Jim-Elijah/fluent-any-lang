@@ -21,6 +21,7 @@ import type { RecordingStateChangeDetail } from '../../components/player/audio-r
 
 import '../../components/ui/alert.js';
 import '../../components/ui/button.js';
+import '../../components/ui/icon-button.js';
 import '../../components/ui/modal.js';
 import '../../components/player/media-player.js';
 import '../../components/player/audio-recorder.js';
@@ -37,6 +38,7 @@ const SENTENCE_PLAYER_CONTROLS: MediaControlsConfig = {
   pauseMode: false,
   previousNextTrack: false,
   previousNextSegment: false,
+  replay: true,
   switchMode: false,
   advancedSetting: false,
 };
@@ -120,17 +122,6 @@ export class SentencePracticePage extends NavigatorElement {
       gap: var(--space-inline);
     }
 
-    .hotkeys-help-section {
-      display: grid;
-      gap: var(--space-sm);
-    }
-
-    .hotkeys-help-section h3 {
-      margin: 0;
-      font-size: 0.875rem;
-      font-weight: 600;
-    }
-
     .hotkeys-help-list {
       display: grid;
       gap: var(--space-xs);
@@ -145,6 +136,14 @@ export class SentencePracticePage extends NavigatorElement {
       justify-content: space-between;
       gap: var(--space-block);
       font-size: 0.875rem;
+    }
+
+    .hotkeys-help-label {
+    }
+
+    .hotkeys-help-scope {
+      font-size: 0.75rem;
+      color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
     }
 
     .hotkeys-help-code {
@@ -200,19 +199,31 @@ export class SentencePracticePage extends NavigatorElement {
         enabled: () => this._sentencePracticeHotkeysEnabled(),
         handlers: {
           togglePlay: () => {
+            if (!this._sentencePracticeMediaHotkeysEnabled()) return;
             void this._controller.togglePlay();
           },
+          replaySegment: () => {
+            if (!this._sentencePracticeMediaHotkeysEnabled()) return;
+            this._controller.replaySegment();
+          },
           volumeUp: () => {
+            if (!this._sentencePracticeMediaHotkeysEnabled()) return;
             this._nudgeVolume(VOLUME_HOTKEY_STEP);
           },
           volumeDown: () => {
+            if (!this._sentencePracticeMediaHotkeysEnabled()) return;
             this._nudgeVolume(-VOLUME_HOTKEY_STEP);
           },
           rateUp: () => {
+            if (!this._sentencePracticeMediaHotkeysEnabled()) return;
             this._nudgePlaybackRate(1);
           },
           rateDown: () => {
+            if (!this._sentencePracticeMediaHotkeysEnabled()) return;
             this._nudgePlaybackRate(-1);
+          },
+          toggleHotkeysHelp: () => {
+            this._toggleHotkeysHelp();
           },
         },
       });
@@ -288,13 +299,14 @@ export class SentencePracticePage extends NavigatorElement {
   }
 
   private _sentencePracticeHotkeysEnabled(): boolean {
-    if (this._hotkeysHelpOpen) {
-      return false;
-    }
     if (this._recording) {
       return false;
     }
     return true;
+  }
+
+  private _sentencePracticeMediaHotkeysEnabled(): boolean {
+    return !this._hotkeysHelpOpen && !this._recording;
   }
 
   private _nudgeVolume(delta: number): void {
@@ -317,6 +329,10 @@ export class SentencePracticePage extends NavigatorElement {
     this._recording = event.detail.recording;
   };
 
+  private _toggleHotkeysHelp = (): void => {
+    this._hotkeysHelpOpen = !this._hotkeysHelpOpen;
+  };
+
   private _openHotkeysHelp = (): void => {
     this._hotkeysHelpOpen = true;
   };
@@ -330,7 +346,7 @@ export class SentencePracticePage extends NavigatorElement {
       return nothing;
     }
 
-    const catalog = getHotkeyCatalog().filter((section) => section.scopeId === 'sentence-practice');
+    const catalog = getHotkeyCatalog(['sentence-practice']);
 
     return html`
       <ui-modal
@@ -349,23 +365,21 @@ export class SentencePracticePage extends NavigatorElement {
         }}
       >
         <div class="hotkeys-help-body">
-          ${catalog.map(
-            (section) => html`
-              <section class="hotkeys-help-section">
-                <h3>${section.title}</h3>
-                <ul class="hotkeys-help-list">
-                  ${section.rows.map(
-                    (row) => html`
-                      <li class="hotkeys-help-row">
-                        <span>${row.actionLabel}</span>
-                        <kbd class="hotkeys-help-code">${row.codeLabel}</kbd>
-                      </li>
-                    `,
-                  )}
-                </ul>
-              </section>
-            `,
-          )}
+          <ul class="hotkeys-help-list">
+            ${catalog.map(
+              (row) => html`
+                <li class="hotkeys-help-row">
+                  <span class="hotkeys-help-label">
+                    <span>${row.actionLabel}</span>
+                    ${row.scopeNote
+                      ? html`<span class="hotkeys-help-scope">（${row.scopeNote}）</span>`
+                      : nothing}
+                  </span>
+                  <kbd class="hotkeys-help-code">${row.codeLabel}</kbd>
+                </li>
+              `,
+            )}
+          </ul>
           <p class="hotkeys-help-note">${msg('暂不支持自定义快捷键。')}</p>
         </div>
         <div slot="footer">
@@ -383,14 +397,12 @@ export class SentencePracticePage extends NavigatorElement {
           <h2>${msg('句子练习')}</h2>
           <div class="actions">
             ${supportsKeyboardShortcuts()
-              ? html`<ui-button
-                  variant="secondary"
-                  title=${msg('快捷键')}
-                  aria-label=${msg('快捷键')}
+              ? html`<ui-icon-button
+                  name="help"
+                  title=${msg('快捷键 (H)')}
+                  size="var(--icon-lg)"
                   @click=${this._openHotkeysHelp}
-                >
-                  ?
-                </ui-button>`
+                ></ui-icon-button>`
               : nothing}
             <ui-button variant="secondary" @click=${this._backToBank}>${msg('返回句库')}</ui-button>
             <ui-button

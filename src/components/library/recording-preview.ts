@@ -29,7 +29,9 @@ import type { WaveformSeekRequestDetail } from '../player/waveform-player.js';
 import '../ui/button.js';
 import '../ui/dropdown.js';
 import '../ui/icon.js';
+import '../ui/icon-button.js';
 import '../ui/slider.js';
+import '../ui/tooltip.js';
 import { Z_INDEX } from '../ui/internal/z-index.js';
 import '../player/waveform-player.js';
 import { Message } from '../ui/message.js';
@@ -116,6 +118,13 @@ export class RecordingPreview extends LitElement {
       line-height: 1.45;
       color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
       white-space: pre-wrap;
+    }
+
+    .segment-nav {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-sm);
     }
 
     .controls {
@@ -286,6 +295,8 @@ export class RecordingPreview extends LitElement {
       <div class="preview">
         <div class="subtitle-area">${this._renderSubtitle()}</div>
 
+        ${this.segments.length > 0 ? this._renderSegmentNav() : nothing}
+
         <waveform-player
           .controller=${this._controller}
           .canvasHeight=${120}
@@ -295,35 +306,38 @@ export class RecordingPreview extends LitElement {
 
         <div class="controls">
           <div class="control-group">
-            <ui-button
-              variant="${this._playMode === 'source' ? 'primary' : 'secondary'}"
-              ?disabled=${!canPlaySource}
-              title=${sourceTitle}
-              @click=${() => this._handlePlaySource()}
-            >
-              ${keyboardShortcuts ? msg('播放原音 (Q)') : msg('播放原音')}
-            </ui-button>
+            <ui-tooltip title=${sourceTitle} .zIndex=${Z_INDEX.MODAL + 1}>
+              <ui-button
+                variant="${this._playMode === 'source' ? 'primary' : 'secondary'}"
+                ?disabled=${!canPlaySource}
+                @click=${() => this._handlePlaySource()}
+              >
+                ${msg('播放原音')}
+              </ui-button>
+            </ui-tooltip>
             ${showSourceVolume ? this._renderVolumeControl('source') : nothing}
           </div>
           <div class="control-group">
-            <ui-button
-              variant="${this._playMode === 'recording' ? 'primary' : 'secondary'}"
-              ?disabled=${!canPlayRecording}
-              title=${recordingTitle}
-              @click=${() => this._handlePlayRecording()}
-            >
-              ${keyboardShortcuts ? msg('播放录音 (W)') : msg('播放录音')}
-            </ui-button>
+            <ui-tooltip title=${recordingTitle} .zIndex=${Z_INDEX.MODAL + 1}>
+              <ui-button
+                variant="${this._playMode === 'recording' ? 'primary' : 'secondary'}"
+                ?disabled=${!canPlayRecording}
+                @click=${() => this._handlePlayRecording()}
+              >
+                ${msg('播放录音')}
+              </ui-button>
+            </ui-tooltip>
             ${showRecordingVolume ? this._renderVolumeControl('recording') : nothing}
           </div>
-          <ui-button
-            variant="${this._playMode === 'sync' ? 'primary' : 'secondary'}"
-            ?disabled=${!canPlaySync}
-            title=${syncTitle}
-            @click=${() => this._handlePlaySync()}
-          >
-            ${keyboardShortcuts ? msg('同步播放 (E)') : msg('同步播放')}
-          </ui-button>
+          <ui-tooltip title=${syncTitle} .zIndex=${Z_INDEX.MODAL + 1}>
+            <ui-button
+              variant="${this._playMode === 'sync' ? 'primary' : 'secondary'}"
+              ?disabled=${!canPlaySync}
+              @click=${() => this._handlePlaySync()}
+            >
+              ${msg('同步播放')}
+            </ui-button>
+          </ui-tooltip>
         </div>
 
         ${this._playMode !== 'idle' ? html`<p class="status">${this._renderStatus()}</p>` : nothing}
@@ -347,6 +361,94 @@ export class RecordingPreview extends LitElement {
       ${subtitle.translation
         ? html`<p class="subtitle-translation">${subtitle.translation}</p>`
         : nothing}
+    `;
+  }
+
+  /** Sentence-level nav between subtitle and waveform (mobile-friendly vs hotkeys-only). */
+  private _renderSegmentNav(): TemplateResult {
+    const canNavigate = this._playMode !== 'idle' && this.segments.length > 0;
+    const canPrevious = canNavigate && this._syncSegmentIndex > 0;
+    const canNext = canNavigate && this._syncSegmentIndex < this.segments.length - 1;
+    const canTogglePlay = this._playMode !== 'idle';
+    const isPlaying = canTogglePlay && !this._playbackPaused;
+    const canReplay = canNavigate;
+    const keyboardShortcuts = supportsKeyboardShortcuts();
+
+    const previousTitle = canPrevious
+      ? keyboardShortcuts
+        ? msg('上一句 (←)')
+        : msg('上一句')
+      : this.segments.length === 0
+        ? msg('无练习片段')
+        : this._playMode === 'idle'
+          ? msg('请先播放后再切换句子')
+          : msg('已是第一句');
+    const playPauseTitle = canTogglePlay
+      ? keyboardShortcuts
+        ? isPlaying
+          ? msg('暂停 (Space)')
+          : msg('播放 (Space)')
+        : isPlaying
+          ? msg('暂停')
+          : msg('播放')
+      : msg('请先播放后再暂停');
+    const nextTitle = canNext
+      ? keyboardShortcuts
+        ? msg('下一句 (→)')
+        : msg('下一句')
+      : this.segments.length === 0
+        ? msg('无练习片段')
+        : this._playMode === 'idle'
+          ? msg('请先播放后再切换句子')
+          : msg('已是最后一句');
+    const replayTitle = canReplay
+      ? keyboardShortcuts
+        ? msg('重播本句 (R)')
+        : msg('重播本句')
+      : this.segments.length === 0
+        ? msg('无练习片段，无法重播')
+        : msg('请先播放后再重播');
+
+    return html`
+      <div class="segment-nav">
+        <ui-icon-button
+          name="backward"
+          title=${previousTitle}
+          size="var(--icon-lg)"
+          .zIndex=${Z_INDEX.MODAL + 1}
+          ?disabled=${!canPrevious}
+          @click=${() => this._navigateSegment(-1)}
+        ></ui-icon-button>
+        <ui-icon-button
+          name=${isPlaying ? 'pause' : 'play'}
+          title=${playPauseTitle}
+          size="var(--icon-lg)"
+          .zIndex=${Z_INDEX.MODAL + 1}
+          ?disabled=${!canTogglePlay}
+          @click=${() => {
+            if (this._playMode === 'idle') {
+              return;
+            }
+            this._togglePreviewPlayback();
+          }}
+        ></ui-icon-button>
+        <ui-icon-button
+          name="replay"
+          title=${replayTitle}
+          size="var(--icon-lg)"
+          .zIndex=${Z_INDEX.MODAL + 1}
+          ?disabled=${!canReplay}
+          @click=${() => this._replayCurrentSegment()}
+        ></ui-icon-button>
+        <ui-icon-button
+          name="forward"
+          title=${nextTitle}
+          size="var(--icon-lg)"
+          .zIndex=${Z_INDEX.MODAL + 1}
+          ?disabled=${!canNext}
+          @click=${() => this._navigateSegment(1)}
+        ></ui-icon-button>
+      </div>
     `;
   }
 
@@ -523,6 +625,9 @@ export class RecordingPreview extends LitElement {
         nextSegment: () => {
           this._navigateSegment(1);
         },
+        replaySegment: () => {
+          this._replayCurrentSegment();
+        },
         volumeUp: () => {
           this._nudgeVolume(VOLUME_HOTKEY_STEP);
         },
@@ -556,6 +661,18 @@ export class RecordingPreview extends LitElement {
     }
 
     void this._playback.goToSegment(nextIndex).catch(() => {
+      this._playback?.stop();
+    });
+  }
+
+  /** Restart the current practice segment on the active preview session and play. */
+  private _replayCurrentSegment(): void {
+    if (this._playMode === 'idle' || !this._playback || this.segments.length === 0) {
+      return;
+    }
+
+    this._requestAudioFocus();
+    void this._playback.replaySegment(this._syncSegmentIndex).catch(() => {
       this._playback?.stop();
     });
   }
@@ -653,6 +770,11 @@ export class RecordingPreview extends LitElement {
   }
 
   private _handleWaveformSeekRequest(event: CustomEvent<WaveformSeekRequestDetail>): void {
+    if (this._playMode === 'source' || this._playMode === 'recording') {
+      this._handleSingleTrackWaveformSeek(event);
+      return;
+    }
+
     if (this._playMode !== 'sync') {
       return;
     }
@@ -690,6 +812,41 @@ export class RecordingPreview extends LitElement {
     this._requestAudioFocus();
     this._zoomToPracticeSegment(segmentIndex);
     void this._playback.playSyncFromSegment(segmentIndex).catch(() => {
+      this._playback?.stop();
+    });
+  }
+
+  /**
+   * Keep source/recording waveform clicks on DualTrackPlayback so pause state
+   * (icon + status) stays in sync. Mirrors waveform-player: pause while playing,
+   * seek+resume while paused.
+   */
+  private _handleSingleTrackWaveformSeek(event: CustomEvent<WaveformSeekRequestDetail>): void {
+    if (!this._playback) {
+      return;
+    }
+
+    const expectedTrackId =
+      this._playMode === 'source' ? this._sourceTrackId : this._recordingTrackId;
+    const { trackId, time } = event.detail;
+    if (!expectedTrackId || trackId !== expectedTrackId) {
+      return;
+    }
+
+    event.preventDefault();
+
+    if (!this._playbackPaused) {
+      this._playback.pause();
+      return;
+    }
+
+    const audio = this._playMode === 'source' ? this._sourceAudio : this._recordingAudio;
+    if (audio) {
+      const max = Number.isFinite(audio.duration) ? audio.duration : time;
+      audio.currentTime = Math.max(0, Math.min(max, time));
+    }
+    this._requestAudioFocus();
+    void this._playback.resume().catch(() => {
       this._playback?.stop();
     });
   }

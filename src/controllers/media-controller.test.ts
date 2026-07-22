@@ -163,11 +163,14 @@ describe('MediaController', () => {
     controller.setNavigationLocked(true);
     expect(controller.getSnapshot().navigationLocked).toBe(true);
 
+    audio.play.mockClear();
     controller.seek(8);
     controller.seekToSegment(1);
     controller.nextSegment();
+    controller.replaySegment();
     expect(controller.currentTime).toBe(0);
     expect(controller.currentSegmentIndex).toBe(0);
+    expect(audio.play).not.toHaveBeenCalled();
 
     controller.seekToSegment(1, false, { force: true });
     expect(controller.currentTime).toBe(5);
@@ -177,6 +180,52 @@ describe('MediaController', () => {
     controller.seekToSegment(0);
     expect(controller.currentTime).toBe(0);
     expect(controller.currentSegmentIndex).toBe(0);
+  });
+
+  it('replays the current segment from the start and auto-plays', async () => {
+    const segments: SubtitleSegment[] = [
+      { id: 's1', startTime: 0, endTime: 5, text: 'one' },
+      { id: 's2', startTime: 5, endTime: 10, text: 'two' },
+    ];
+    await controller.loadTracks([makeTrack('a', 'Track A', { segments })]);
+    controller.seekToSegment(1);
+    controller.seek(7);
+    expect(controller.currentSegmentIndex).toBe(1);
+    expect(controller.currentTime).toBe(7);
+    expect(controller.getSnapshot().canReplaySegment).toBe(true);
+
+    audio.play.mockClear();
+    controller.replaySegment();
+
+    expect(controller.currentSegmentIndex).toBe(1);
+    expect(controller.currentTime).toBe(5);
+    expect(audio.play).toHaveBeenCalledTimes(1);
+  });
+
+  it('clears pending segment pause when replaying', async () => {
+    const segments: SubtitleSegment[] = [
+      { id: 's1', startTime: 0, endTime: 5, text: 'one' },
+      { id: 's2', startTime: 5, endTime: 10, text: 'two' },
+    ];
+    await controller.loadTracks([makeTrack('a', 'Track A', { segments })]);
+    controller.setPauseMode('seconds');
+    controller.setPauseSeconds(2);
+    controller.seekToSegment(0);
+
+    (
+      controller as unknown as {
+        _applySegmentPause: (segment: SubtitleSegment) => void;
+      }
+    )._applySegmentPause(segments[0]!);
+    expect(controller.getSnapshot().segmentPausePending).toBe(true);
+
+    audio.play.mockClear();
+    controller.replaySegment();
+
+    expect(controller.getSnapshot().segmentPausePending).toBe(false);
+    expect(controller.currentSegmentIndex).toBe(0);
+    expect(controller.currentTime).toBe(0);
+    expect(audio.play).toHaveBeenCalledTimes(1);
   });
 
   it('blocks track navigation while navigationLocked unless forced', async () => {

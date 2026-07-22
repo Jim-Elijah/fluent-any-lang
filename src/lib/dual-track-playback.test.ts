@@ -183,6 +183,28 @@ describe('DualTrackPlayback', () => {
     expect(controller.getState().syncSegmentIndex).toBe(0);
   });
 
+  it('replaySegment seeks to current segment and plays even when paused', async () => {
+    await controller.playSource();
+    await controller.togglePause();
+    source.currentTime = 2;
+    vi.mocked(source.play).mockClear();
+
+    await controller.replaySegment();
+    expect(controller.getState()).toEqual({ mode: 'source', syncSegmentIndex: 0, paused: false });
+    expect(source.currentTime).toBe(segments[0].sourceStartTime);
+    expect(source.play).toHaveBeenCalled();
+  });
+
+  it('replaySegment can target an explicit segment index', async () => {
+    await controller.playSource();
+    vi.mocked(source.play).mockClear();
+
+    await controller.replaySegment(1);
+    expect(controller.getState().syncSegmentIndex).toBe(1);
+    expect(source.currentTime).toBe(segments[1].sourceStartTime);
+    expect(source.play).toHaveBeenCalled();
+  });
+
   it('stops when source ends in source mode', async () => {
     await controller.playSource();
     source.dispatchEvent(new Event('ended'));

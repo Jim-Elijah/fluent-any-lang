@@ -1992,6 +1992,82 @@
 <trans-unit id="s476368fb89c05148">
   <source>管理偏好、播放器默认、练习限额、数据备份、应用更新、诊断与清除本地数据。</source>
 </trans-unit>
+<trans-unit id="s52c334ecad404034">
+  <source>重播本句</source>
+  <target>Replay sentence</target>
+</trans-unit>
+<trans-unit id="sed683abc88e74c59">
+  <source>重播本句 (R)</source>
+  <target>Replay sentence (R)</target>
+</trans-unit>
+<trans-unit id="sd6c7dd002a123181">
+  <source>无练习片段，无法重播</source>
+  <target>No practice segments to replay</target>
+</trans-unit>
+<trans-unit id="sc45699a414a2992e">
+  <source>请先播放后再重播</source>
+  <target>Start playback before replaying</target>
+</trans-unit>
+<trans-unit id="sa61b30b6f6e87bdc">
+  <source>无练习片段</source>
+  <target>No practice segments</target>
+</trans-unit>
+<trans-unit id="s15b7c82f0c838910">
+  <source>请先播放后再切换句子</source>
+  <target>Start playback before switching sentences</target>
+</trans-unit>
+<trans-unit id="s8d5d6b80846fdcd5">
+  <source>已是第一句</source>
+  <target>Already at the first sentence</target>
+</trans-unit>
+<trans-unit id="s2a54661b48d9aaf3">
+  <source>已是最后一句</source>
+  <target>Already at the last sentence</target>
+</trans-unit>
+<trans-unit id="s1176b0d6bad7c9bb">
+  <source>显示/隐藏字幕</source>
+  <target>Show/hide subtitles</target>
+</trans-unit>
+<trans-unit id="s98a16cd6539da4eb">
+  <source>显示/隐藏翻译</source>
+  <target>Show/hide translation</target>
+</trans-unit>
+<trans-unit id="s65a10f26228f95fb">
+  <source>字幕全屏/退出</source>
+  <target>Subtitle fullscreen on/off</target>
+</trans-unit>
+<trans-unit id="sb40e2d563071ffd9">
+  <source>快捷键说明</source>
+  <target>Keyboard shortcuts</target>
+</trans-unit>
+<trans-unit id="s047249a525f23e0b">
+  <source>退出全屏 (F)</source>
+  <target>Exit fullscreen (F)</target>
+</trans-unit>
+<trans-unit id="s49a62a2963e86598">
+  <source>隐藏字幕 (C)</source>
+  <target>Hide subtitles (C)</target>
+</trans-unit>
+<trans-unit id="sa7e03ba8f7675ba1">
+  <source>显示字幕 (C)</source>
+  <target>Show subtitles (C)</target>
+</trans-unit>
+<trans-unit id="s039264d14fb3cf27">
+  <source>隐藏翻译 (T)</source>
+  <target>Hide Translation (T)</target>
+</trans-unit>
+<trans-unit id="s87366148d10edbb6">
+  <source>显示翻译 (T)</source>
+  <target>Show Translation (T)</target>
+</trans-unit>
+<trans-unit id="s4e1a187bc6900111">
+  <source>全屏 (F)</source>
+  <target>Fullscreen (F)</target>
+</trans-unit>
+<trans-unit id="s60d56e269dc47ca0">
+  <source>快捷键 (H)</source>
+  <target>Keyboard Shortcuts (H)</target>
+</trans-unit>
 </body>
 </file>
 </xliff>

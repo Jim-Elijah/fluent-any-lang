@@ -63,6 +63,7 @@ import { Z_INDEX } from '../ui/internal/z-index.js';
 import '../ui/alert.js';
 import '../ui/button.js';
 import '../ui/icon.js';
+import '../ui/icon-button.js';
 import '../ui/modal.js';
 import '../ui/select.js';
 import '../ui/volume-control.js';
@@ -88,7 +89,11 @@ import {
 import type { RecordList } from '../library/record-list.js';
 import { Message } from '../ui/message.js';
 import { Loading } from '../ui/loading.js';
-import { EchoRecordRequestDetail, SubtitlePanelFullscreenChangeDetail } from './subtitle-panel.js';
+import {
+  EchoRecordRequestDetail,
+  SubtitlePanel,
+  SubtitlePanelFullscreenChangeDetail,
+} from './subtitle-panel.js';
 import {
   addToSentenceBank,
   getSentenceBankList,
@@ -327,17 +332,6 @@ export class PracticeView extends NavigatorElement {
       gap: var(--space-inline);
     }
 
-    .hotkeys-help-section {
-      display: grid;
-      gap: var(--space-sm);
-    }
-
-    .hotkeys-help-section h3 {
-      margin: 0;
-      font-size: 0.875rem;
-      font-weight: 600;
-    }
-
     .hotkeys-help-list {
       display: grid;
       gap: var(--space-xs);
@@ -352,6 +346,14 @@ export class PracticeView extends NavigatorElement {
       justify-content: space-between;
       gap: var(--space-block);
       font-size: 0.875rem;
+    }
+
+    .hotkeys-help-label {
+    }
+
+    .hotkeys-help-scope {
+      font-size: 0.75rem;
+      color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
     }
 
     .hotkeys-help-code {
@@ -522,6 +524,9 @@ export class PracticeView extends NavigatorElement {
   @query('record-list')
   private _manageRecordList?: RecordList;
 
+  @query('subtitle-panel')
+  private _subtitlePanelEl?: SubtitlePanel;
+
   @query('audio-recorder#shadowing-recorder')
   private _shadowingRecorderEl?: AudioRecorder;
 
@@ -617,27 +622,53 @@ export class PracticeView extends NavigatorElement {
         enabled: () => this._practiceHotkeysEnabled(),
         handlers: {
           togglePlay: () => {
+            if (!this._practiceMediaHotkeysEnabled()) return;
             void this._controller.togglePlay();
           },
           previousSegment: () => {
+            if (!this._practiceMediaHotkeysEnabled()) return;
             this._controller.previousSegment();
           },
           nextSegment: () => {
+            if (!this._practiceMediaHotkeysEnabled()) return;
             this._controller.nextSegment();
           },
+          replaySegment: () => {
+            if (!this._practiceMediaHotkeysEnabled()) return;
+            this._controller.replaySegment();
+          },
           volumeUp: () => {
+            if (!this._practiceMediaHotkeysEnabled()) return;
             this._nudgeVolume(VOLUME_HOTKEY_STEP);
           },
           volumeDown: () => {
+            if (!this._practiceMediaHotkeysEnabled()) return;
             this._nudgeVolume(-VOLUME_HOTKEY_STEP);
           },
           rateUp: () => {
+            if (!this._practiceMediaHotkeysEnabled()) return;
             if (this._isDiscriminationMode()) return;
             this._nudgePlaybackRate(1);
           },
           rateDown: () => {
+            if (!this._practiceMediaHotkeysEnabled()) return;
             if (this._isDiscriminationMode()) return;
             this._nudgePlaybackRate(-1);
+          },
+          toggleSubtitles: () => {
+            if (!this._practiceUiHotkeysEnabled()) return;
+            this._toggleSubtitlesFromHotkey();
+          },
+          toggleTranslation: () => {
+            if (!this._practiceUiHotkeysEnabled()) return;
+            this._subtitlePanelEl?.toggleTranslationVisible();
+          },
+          toggleSubtitleFullscreen: () => {
+            if (!this._practiceUiHotkeysEnabled()) return;
+            this._toggleSubtitleFullscreenFromHotkey();
+          },
+          toggleHotkeysHelp: () => {
+            this._toggleHotkeysHelp();
           },
         },
       });
@@ -645,17 +676,44 @@ export class PracticeView extends NavigatorElement {
   }
 
   private _practiceHotkeysEnabled(): boolean {
-    if (this._hotkeysHelpOpen) {
-      return false;
-    }
     if (this._recordingPreviewOpen || this._recordingsModalOpen) {
-      return false;
-    }
-    if (this._sessionPhase !== 'idle') {
       return false;
     }
     return true;
   }
+
+  /** Playback / seek / rate / volume — idle only, and not while help is open. */
+  private _practiceMediaHotkeysEnabled(): boolean {
+    if (this._hotkeysHelpOpen) {
+      return false;
+    }
+    return this._sessionPhase === 'idle';
+  }
+
+  /** Subtitle panel UI toggles — allowed during recording sessions. */
+  private _practiceUiHotkeysEnabled(): boolean {
+    return !this._hotkeysHelpOpen;
+  }
+
+  private _toggleSubtitlesFromHotkey(): void {
+    const snapshot = this._controller.getSnapshot();
+    if (!snapshot.hasSubtitles) {
+      return;
+    }
+    this._controller.setSubtitlesVisible(!snapshot.subtitlesVisible);
+  }
+
+  private _toggleSubtitleFullscreenFromHotkey(): void {
+    const snapshot = this._controller.getSnapshot();
+    if (!snapshot.hasSubtitles) {
+      return;
+    }
+    this._subtitlePanelFullscreen = !this._subtitlePanelFullscreen;
+  }
+
+  private _toggleHotkeysHelp = (): void => {
+    this._hotkeysHelpOpen = !this._hotkeysHelpOpen;
+  };
 
   /** Pause practice media (and cancel echo listen) so recording review can own the speakers. */
   private _yieldPlaybackToPreview(showTip = true): void {
@@ -875,6 +933,7 @@ export class PracticeView extends NavigatorElement {
           progress: true,
           previousNextTrack: true,
           previousNextSegment: true,
+          replay: true,
           switchMode: false,
           advancedSetting: false,
         }
@@ -888,6 +947,7 @@ export class PracticeView extends NavigatorElement {
           progress: true,
           previousNextTrack: true,
           previousNextSegment: true,
+          replay: true,
           switchMode: false,
           advancedSetting: true,
         };
@@ -897,14 +957,12 @@ export class PracticeView extends NavigatorElement {
         <div class="header">
           <h2>${headerTitle}</h2>
           ${supportsKeyboardShortcuts()
-            ? html`<ui-button
-                variant="secondary"
-                title=${msg('快捷键')}
-                aria-label=${msg('快捷键')}
+            ? html`<ui-icon-button
+                name="help"
+                title=${msg('快捷键 (H)')}
+                size="var(--icon-lg)"
                 @click=${this._openHotkeysHelp}
-              >
-                ?
-              </ui-button>`
+              ></ui-icon-button>`
             : nothing}
         </div>
 
@@ -1111,9 +1169,7 @@ export class PracticeView extends NavigatorElement {
       return nothing;
     }
 
-    const catalog = getHotkeyCatalog().filter(
-      (section) => section.scopeId === 'practice' || section.scopeId === 'recording-preview',
-    );
+    const catalog = getHotkeyCatalog(['practice', 'recording-preview']);
 
     return html`
       <ui-modal
@@ -1132,23 +1188,21 @@ export class PracticeView extends NavigatorElement {
         }}
       >
         <div class="hotkeys-help-body">
-          ${catalog.map(
-            (section) => html`
-              <section class="hotkeys-help-section">
-                <h3>${section.title}</h3>
-                <ul class="hotkeys-help-list">
-                  ${section.rows.map(
-                    (row) => html`
-                      <li class="hotkeys-help-row">
-                        <span>${row.actionLabel}</span>
-                        <kbd class="hotkeys-help-code">${row.codeLabel}</kbd>
-                      </li>
-                    `,
-                  )}
-                </ul>
-              </section>
-            `,
-          )}
+          <ul class="hotkeys-help-list">
+            ${catalog.map(
+              (row) => html`
+                <li class="hotkeys-help-row">
+                  <span class="hotkeys-help-label">
+                    <span>${row.actionLabel}</span>
+                    ${row.scopeNote
+                      ? html`<span class="hotkeys-help-scope">（${row.scopeNote}）</span>`
+                      : nothing}
+                  </span>
+                  <kbd class="hotkeys-help-code">${row.codeLabel}</kbd>
+                </li>
+              `,
+            )}
+          </ul>
           <p class="hotkeys-help-note">${msg('暂不支持自定义快捷键。')}</p>
         </div>
         <div slot="footer" class="tips-modal-footer">
@@ -1381,7 +1435,11 @@ export class PracticeView extends NavigatorElement {
     return html`
       <div class="recordings-summary">
         <p>${msg(str`已保存 ${this._shadowingCount}/${this._shadowingLimit}`)}</p>
-        <ui-button variant="secondary" @click=${this._openRecordingsModal}>
+        <ui-button
+          variant="secondary"
+          ?disabled=${!this._shadowingCount}
+          @click=${this._openRecordingsModal}
+        >
           ${msg('管理录音')}
         </ui-button>
       </div>

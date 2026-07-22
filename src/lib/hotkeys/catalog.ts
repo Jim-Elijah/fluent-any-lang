@@ -1,23 +1,18 @@
 import { msg } from '@lit/localize';
 
-import {
-  PRACTICE_HOTKEY_BINDINGS,
-  RECORDING_PREVIEW_HOTKEY_BINDINGS,
-  SENTENCE_PRACTICE_HOTKEY_BINDINGS,
-} from './default-map.js';
-import type { HotkeyAction, HotkeyBinding, HotkeyScopeId } from './types.js';
+import { getBindingsForScope } from './default-map.js';
+import type { HotkeyAction, HotkeyScopeId } from './types.js';
 
 export type HotkeyCatalogRow = {
   code: string;
   codeLabel: string;
   action: HotkeyAction;
   actionLabel: string;
-};
-
-export type HotkeyCatalogSection = {
-  scopeId: HotkeyScopeId;
-  title: string;
-  rows: HotkeyCatalogRow[];
+  /**
+   * Present when this binding only applies in a subset of the requested scopes
+   * (e.g. recording-preview-only Q/W/E while viewing the media practice help).
+   */
+  scopeNote?: string;
 };
 
 /** Discrete rates used by practice `[` / `]` hotkeys. */
@@ -36,7 +31,23 @@ const CODE_LABELS: Record<string, string> = {
   KeyQ: 'Q',
   KeyW: 'W',
   KeyE: 'E',
+  KeyR: 'R',
 };
+
+function getHotkeyScopeTitle(scopeId: HotkeyScopeId): string {
+  switch (scopeId) {
+    case 'practice':
+      return msg('练习播放器');
+    case 'recording-preview':
+      return msg('录音预览');
+    case 'sentence-practice':
+      return msg('句库练习');
+    default: {
+      const _exhaustive: never = scopeId;
+      return _exhaustive;
+    }
+  }
+}
 
 export function formatHotkeyCodeLabel(code: string): string {
   const mapped = CODE_LABELS[code];
@@ -57,6 +68,8 @@ export function getHotkeyActionLabel(action: HotkeyAction): string {
       return msg('上一句');
     case 'nextSegment':
       return msg('下一句');
+    case 'replaySegment':
+      return msg('重播本句');
     case 'volumeUp':
       return msg('增大音量');
     case 'volumeDown':
@@ -71,6 +84,14 @@ export function getHotkeyActionLabel(action: HotkeyAction): string {
       return msg('播放录音');
     case 'playSync':
       return msg('同步播放');
+    case 'toggleSubtitles':
+      return msg('显示/隐藏字幕');
+    case 'toggleTranslation':
+      return msg('显示/隐藏翻译');
+    case 'toggleSubtitleFullscreen':
+      return msg('字幕全屏/退出');
+    case 'toggleHotkeysHelp':
+      return msg('快捷键说明');
     default: {
       const _exhaustive: never = action;
       return _exhaustive;
@@ -78,36 +99,73 @@ export function getHotkeyActionLabel(action: HotkeyAction): string {
   }
 }
 
-function rowsFromBindings(bindings: readonly HotkeyBinding[]): HotkeyCatalogRow[] {
-  return bindings.map((binding) => ({
-    code: binding.code,
-    codeLabel: formatHotkeyCodeLabel(binding.code),
-    action: binding.action,
-    actionLabel: getHotkeyActionLabel(binding.action),
-  }));
+type CatalogEntry = {
+  code: string;
+  action: HotkeyAction;
+  scopeIds: HotkeyScopeId[];
+};
+
+function bindingKey(code: string, action: HotkeyAction): string {
+  return `${code}\0${action}`;
 }
 
 /**
- * Read-only help catalog derived from the default keymap (single source of truth).
+ * Read-only help rows derived from the default keymap for the given scopes.
+ * Shared code+action bindings are merged and listed first; scope-specific ones follow.
  */
-export function getHotkeyCatalog(): HotkeyCatalogSection[] {
-  return [
-    {
-      scopeId: 'practice',
-      title: msg('练习播放器'),
-      rows: rowsFromBindings(PRACTICE_HOTKEY_BINDINGS),
-    },
-    {
-      scopeId: 'recording-preview',
-      title: msg('录音预览'),
-      rows: rowsFromBindings(RECORDING_PREVIEW_HOTKEY_BINDINGS),
-    },
-    {
-      scopeId: 'sentence-practice',
-      title: msg('句库练习'),
-      rows: rowsFromBindings(SENTENCE_PRACTICE_HOTKEY_BINDINGS),
-    },
-  ];
+export function getHotkeyCatalog(scopes: readonly HotkeyScopeId[]): HotkeyCatalogRow[] {
+  if (scopes.length === 0) {
+    return [];
+  }
+
+  const uniqueScopes = [...new Set(scopes)];
+  const entries = new Map<string, CatalogEntry>();
+  const order: string[] = [];
+
+  for (const scopeId of uniqueScopes) {
+    for (const binding of getBindingsForScope(scopeId)) {
+      const key = bindingKey(binding.code, binding.action);
+      const existing = entries.get(key);
+      if (existing) {
+        if (!existing.scopeIds.includes(scopeId)) {
+          existing.scopeIds.push(scopeId);
+        }
+        continue;
+      }
+      entries.set(key, {
+        code: binding.code,
+        action: binding.action,
+        scopeIds: [scopeId],
+      });
+      order.push(key);
+    }
+  }
+
+  const shared: CatalogEntry[] = [];
+  const scoped: CatalogEntry[] = [];
+  for (const key of order) {
+    const entry = entries.get(key)!;
+    if (entry.scopeIds.length === uniqueScopes.length) {
+      shared.push(entry);
+    } else {
+      scoped.push(entry);
+    }
+  }
+
+  const annotateScope = uniqueScopes.length > 1;
+
+  return [...shared, ...scoped].map((entry) => {
+    const row: HotkeyCatalogRow = {
+      code: entry.code,
+      codeLabel: formatHotkeyCodeLabel(entry.code),
+      action: entry.action,
+      actionLabel: getHotkeyActionLabel(entry.action),
+    };
+    if (annotateScope && entry.scopeIds.length < uniqueScopes.length) {
+      row.scopeNote = entry.scopeIds.map((id) => getHotkeyScopeTitle(id)).join(' / ');
+    }
+    return row;
+  });
 }
 
 /** Move to the next/previous discrete playback-rate step. */

@@ -1,6 +1,7 @@
 import { css, html, LitElement, nothing } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 
+import { Z_INDEX } from './internal/z-index.js';
 import './icon.js';
 import './tooltip.js';
 
@@ -57,9 +58,18 @@ export class UIIconButton extends LitElement {
   @property({ type: Boolean })
   arrow = true;
 
+  /** Stacking order for the portaled tooltip (e.g. above modals). */
+  @property({ type: Number, attribute: 'z-index' })
+  zIndex = Z_INDEX.TOOLTIP;
+
   render() {
     return html`
-      <ui-tooltip title=${this.title} ?disabled=${this.disabled} .arrow=${this.arrow}>
+      <ui-tooltip
+        title=${this.title}
+        ?disabled=${!this.title}
+        .arrow=${this.arrow}
+        .zIndex=${this.zIndex}
+      >
         <button
           type="button"
           ?disabled=${this.disabled}

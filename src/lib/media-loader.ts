@@ -84,6 +84,14 @@ export async function loadSentenceForPractice(entryId: string): Promise<LoadedSe
 
 export function sentenceToLoadedTrack(loaded: LoadedSentence): LoadedTrack {
   const { entry, blob, mimeType, duration } = loaded;
+  /** Whole clip as one segment so replay / hasSubtitles work for single-sentence practice. */
+  const segment: SubtitleSegment = {
+    id: entry.id,
+    startTime: 0,
+    endTime: Math.max(duration, 0),
+    text: entry.text,
+    ...(entry.translation ? { translation: entry.translation } : {}),
+  };
   return {
     item: {
       id: entry.id,
@@ -95,9 +103,9 @@ export function sentenceToLoadedTrack(loaded: LoadedSentence): LoadedTrack {
       duration,
       createdAt: entry.createdAt,
       contentHash: entry.contentHash,
-      hasSubtitles: false,
+      hasSubtitles: true,
     },
     blob,
-    segments: [],
+    segments: [segment],
   };
 }

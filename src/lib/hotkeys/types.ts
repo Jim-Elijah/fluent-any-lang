@@ -4,13 +4,18 @@ export type HotkeyAction =
   | 'togglePlay'
   | 'previousSegment'
   | 'nextSegment'
+  | 'replaySegment'
   | 'volumeUp'
   | 'volumeDown'
   | 'rateUp'
   | 'rateDown'
   | 'playSource'
   | 'playRecording'
-  | 'playSync';
+  | 'playSync'
+  | 'toggleSubtitles'
+  | 'toggleTranslation'
+  | 'toggleSubtitleFullscreen'
+  | 'toggleHotkeysHelp';
 
 export type HotkeyHandler = () => void | Promise<void>;
 

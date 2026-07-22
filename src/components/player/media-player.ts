@@ -32,6 +32,7 @@ const defaultControlConfig: MediaControlsConfig = {
   progress: true,
   previousNextTrack: true,
   previousNextSegment: false,
+  replay: false,
   switchMode: false,
   advancedSetting: true,
 };
@@ -568,6 +569,10 @@ export class MediaPlayer extends LitElement {
     return supportsKeyboardShortcuts() ? msg('下一句 (→)') : msg('下一句');
   }
 
+  private _replaySegmentTitle(): string {
+    return supportsKeyboardShortcuts() ? msg('重播本句 (R)') : msg('重播本句');
+  }
+
   private _renderSliderDropdown(options: {
     icon?: string;
     title: string;
@@ -760,6 +765,7 @@ export class MediaPlayer extends LitElement {
     }
 
     const showSegments = this.controlsConfig.previousNextSegment && snapshot.hasSubtitles;
+    const showReplay = this.controlsConfig.replay && snapshot.hasSubtitles;
     const showLoopMode = this.controlsConfig.loopMode;
     const showPauseMode = this.controlsConfig.pauseMode && snapshot.hasSubtitles;
 
@@ -854,6 +860,15 @@ export class MediaPlayer extends LitElement {
                       size="var(--icon-xl)"
                       ?disabled="${this.disabled}"
                       @click="${this._togglePlay}"
+                    ></ui-icon-button>`
+                  : ''}
+                ${showReplay
+                  ? html`<ui-icon-button
+                      name="replay"
+                      title="${this._replaySegmentTitle()}"
+                      size="var(--icon-lg)"
+                      ?disabled="${!snapshot.canReplaySegment || this.disabled}"
+                      @click="${this._replaySegment}"
                     ></ui-icon-button>`
                   : ''}
                 ${showSegments
@@ -1116,6 +1131,10 @@ export class MediaPlayer extends LitElement {
 
   private _nextSegment(): void {
     this.controller?.nextSegment();
+  }
+
+  private _replaySegment(): void {
+    this.controller?.replaySegment();
   }
 
   private _handleSeekInput(event: CustomEvent<{ value: number }>): void {

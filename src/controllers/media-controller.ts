@@ -43,6 +43,7 @@ export type MediaControllerSnapshot = {
   canNextTrack: boolean;
   canPreviousSegment: boolean;
   canNextSegment: boolean;
+  canReplaySegment: boolean;
   navigationLocked: boolean;
 };
 
@@ -305,6 +306,7 @@ export class MediaController extends EventTarget {
         this.segments.length > 0 &&
         this.currentSegmentIndex >= 0 &&
         this.currentSegmentIndex < this.segments.length - 1,
+      canReplaySegment: this.segments.length > 0 && this.currentSegmentIndex >= 0,
       navigationLocked: this._navigationLocked,
     };
   }
@@ -433,6 +435,17 @@ export class MediaController extends EventTarget {
       return;
     }
     this.seekToSegment(this.currentSegmentIndex + 1);
+  }
+
+  /** Seek to the start of the current subtitle segment and play. */
+  replaySegment(): void {
+    if (this._navigationLocked) {
+      return;
+    }
+    if (this.currentSegmentIndex < 0) {
+      return;
+    }
+    this.seekToSegment(this.currentSegmentIndex, true);
   }
 
   setPlaybackRate(rate: number): void {

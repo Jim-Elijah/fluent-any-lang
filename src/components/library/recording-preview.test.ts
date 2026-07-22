@@ -58,6 +58,9 @@ type RecordingPreviewInternals = HTMLElement & {
     playSync: () => Promise<void>;
     playSyncFromSegment: (index: number) => Promise<void>;
     goToSegment: (index: number) => Promise<void>;
+    replaySegment: (index?: number) => Promise<void>;
+    pause: () => void;
+    resume: () => Promise<void>;
     togglePause: () => Promise<void>;
     stop: () => void;
     destroy: () => void;
@@ -182,14 +185,14 @@ describe('recording-preview', () => {
 
   function dispatchSeek(el: RecordingPreviewInternals, time: number, trackId = 'source-1') {
     const waveform = el.shadowRoot!.querySelector('waveform-player')!;
-    waveform.dispatchEvent(
-      new CustomEvent('seek-request', {
-        detail: { trackId, time },
-        bubbles: true,
-        composed: true,
-        cancelable: true,
-      }),
-    );
+    const event = new CustomEvent('seek-request', {
+      detail: { trackId, time },
+      bubbles: true,
+      composed: true,
+      cancelable: true,
+    });
+    waveform.dispatchEvent(event);
+    return event;
   }
 
   it('renders preview shell without blobs', async () => {
@@ -269,6 +272,7 @@ describe('recording-preview', () => {
       playSync: vi.fn().mockResolvedValue(undefined),
       playSyncFromSegment,
       goToSegment: vi.fn().mockResolvedValue(undefined),
+      replaySegment: vi.fn().mockResolvedValue(undefined),
       stop: vi.fn(),
       pause: vi.fn(),
       resume: vi.fn().mockResolvedValue(undefined),
@@ -431,6 +435,84 @@ describe('recording-preview', () => {
     expect(playback.goToSegment).not.toHaveBeenCalled();
   });
 
+  it('exposes segment nav buttons between subtitle and waveform', async () => {
+    const el = await renderPreview();
+    const playback = createPlaybackMock();
+    el._playback = playback;
+    el._playMode = 'sync';
+    el.segments = samplePracticeSegments;
+    el._syncSegmentIndex = 0;
+    await el.updateComplete;
+
+    const nav = el.shadowRoot!.querySelector('.segment-nav');
+    expect(nav).not.toBeNull();
+
+    const buttons = [...nav!.querySelectorAll('ui-icon-button')] as Array<
+      HTMLElement & { disabled: boolean; name: string }
+    >;
+    expect(buttons).toHaveLength(4);
+    expect(buttons[0].name).toBe('backward');
+    expect(buttons[1].name).toBe('pause');
+    expect(buttons[2].name).toBe('replay');
+    expect(buttons[3].name).toBe('forward');
+
+    expect(buttons[0].disabled).toBe(true);
+    expect(buttons[1].disabled).toBe(false);
+    expect(buttons[2].disabled).toBe(false);
+    expect(buttons[3].disabled).toBe(false);
+
+    buttons[3].click();
+    expect(playback.goToSegment).toHaveBeenCalledWith(1);
+
+    buttons[2].click();
+    expect(playback.replaySegment).toHaveBeenCalledWith(0);
+
+    buttons[1].click();
+    expect(playback.togglePause).toHaveBeenCalledTimes(1);
+
+    el._playbackPaused = true;
+    await el.updateComplete;
+    expect(
+      (
+        el.shadowRoot!.querySelectorAll('.segment-nav ui-icon-button')[1] as HTMLElement & {
+          name: string;
+        }
+      ).name,
+    ).toBe('play');
+
+    el._syncSegmentIndex = 1;
+    await el.updateComplete;
+    const updated = [...el.shadowRoot!.querySelectorAll('.segment-nav ui-icon-button')] as Array<
+      HTMLElement & { disabled: boolean }
+    >;
+    expect(updated[0].disabled).toBe(false);
+    expect(updated[3].disabled).toBe(true);
+
+    updated[0].click();
+    expect(playback.goToSegment).toHaveBeenCalledWith(0);
+  });
+
+  it('hides segment nav when there are no practice segments', async () => {
+    const el = await renderPreview();
+    el.segments = [];
+    await el.updateComplete;
+
+    expect(el.shadowRoot!.querySelector('.segment-nav')).toBeNull();
+  });
+
+  it('keeps segment nav disabled until playback starts', async () => {
+    const el = await renderPreview();
+    el.segments = samplePracticeSegments;
+    el._playMode = 'idle';
+    await el.updateComplete;
+
+    const buttons = [...el.shadowRoot!.querySelectorAll('.segment-nav ui-icon-button')] as Array<
+      HTMLElement & { disabled: boolean }
+    >;
+    expect(buttons).toHaveLength(4);
+    expect(buttons.every((button) => button.disabled)).toBe(true);
+  });
+
   it('nudges source volume with arrow keys in source mode', async () => {
     const el = await renderPreview();
     const sourceAudio = new Audio();
@@ -479,8 +561,76 @@ describe('recording-preview', () => {
     expect(
       buttons[0].hasAttribute('disabled') || (buttons[0] as unknown as HTMLButtonElement).disabled,
     ).toBe(true);
-    expect((buttons[0] as HTMLElement).title).toContain('无原音');
-    expect((buttons[2] as HTMLElement).title).toContain('无原音');
+    const tooltips = [...el.shadowRoot!.querySelectorAll('ui-tooltip')];
+    expect((tooltips[0] as HTMLElement & { title: string }).title).toContain('无原音');
+    expect((tooltips[2] as HTMLElement & { title: string }).title).toContain('无原音');
+  });
+
+  it('pauses source playback via DualTrackPlayback on waveform click', async () => {
+    const el = await renderPreview();
+    const playback = createPlaybackMock();
+    const controllerPauseSpy = vi.spyOn(el._controller, 'pause');
+
+    el._playback = playback;
+    el._sourceTrackId = 'source-1';
+    el._recordingTrackId = 'rec-1';
+    el._playMode = 'source';
+    el._playbackPaused = false;
+    el.segments = samplePracticeSegments;
+    await el.updateComplete;
+
+    const event = dispatchSeek(el, 2.5);
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(playback.pause).toHaveBeenCalledTimes(1);
+    expect(playback.resume).not.toHaveBeenCalled();
+    expect(controllerPauseSpy).not.toHaveBeenCalled();
+  });
+
+  it('seeks and resumes paused source playback on waveform click', async () => {
+    const el = await renderPreview();
+    const playback = createPlaybackMock();
+    const sourceAudio = new Audio();
+    Object.defineProperty(sourceAudio, 'duration', { configurable: true, get: () => 10 });
+
+    el._playback = playback;
+    el._sourceTrackId = 'source-1';
+    el._recordingTrackId = 'rec-1';
+    el._sourceAudio = sourceAudio;
+    el._playMode = 'source';
+    el._playbackPaused = true;
+    el.segments = samplePracticeSegments;
+    await el.updateComplete;
+
+    const focusSpy = vi.fn();
+    el.addEventListener('audio-focus-request', focusSpy);
+
+    const event = dispatchSeek(el, 3.25);
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(sourceAudio.currentTime).toBe(3.25);
+    expect(playback.resume).toHaveBeenCalledTimes(1);
+    expect(playback.pause).not.toHaveBeenCalled();
+    expect(focusSpy).toHaveBeenCalled();
+  });
+
+  it('pauses recording playback via DualTrackPlayback on waveform click', async () => {
+    const el = await renderPreview();
+    const playback = createPlaybackMock();
+
+    el._playback = playback;
+    el._sourceTrackId = 'source-1';
+    el._recordingTrackId = 'rec-1';
+    el._playMode = 'recording';
+    el._playbackPaused = false;
+    el.segments = samplePracticeSegments;
+    await el.updateComplete;
+
+    const event = dispatchSeek(el, 1.5, 'rec-1');
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(playback.pause).toHaveBeenCalledTimes(1);
+    expect(playback.resume).not.toHaveBeenCalled();
   });
 
   it('resolves sync click on source track via subtitle timeline', async () => {

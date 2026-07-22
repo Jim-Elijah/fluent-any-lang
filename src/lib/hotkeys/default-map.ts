@@ -4,10 +4,15 @@ export const PRACTICE_HOTKEY_BINDINGS: readonly HotkeyBinding[] = [
   { code: 'Space', action: 'togglePlay' },
   { code: 'ArrowLeft', action: 'previousSegment' },
   { code: 'ArrowRight', action: 'nextSegment' },
+  { code: 'KeyR', action: 'replaySegment' },
   { code: 'ArrowUp', action: 'volumeUp' },
   { code: 'ArrowDown', action: 'volumeDown' },
   { code: 'BracketLeft', action: 'rateDown' },
   { code: 'BracketRight', action: 'rateUp' },
+  { code: 'KeyC', action: 'toggleSubtitles' },
+  { code: 'KeyT', action: 'toggleTranslation' },
+  { code: 'KeyF', action: 'toggleSubtitleFullscreen' },
+  { code: 'KeyH', action: 'toggleHotkeysHelp' },
 ] as const;
 
 export const RECORDING_PREVIEW_HOTKEY_BINDINGS: readonly HotkeyBinding[] = [
@@ -17,16 +22,19 @@ export const RECORDING_PREVIEW_HOTKEY_BINDINGS: readonly HotkeyBinding[] = [
   { code: 'Space', action: 'togglePlay' },
   { code: 'ArrowLeft', action: 'previousSegment' },
   { code: 'ArrowRight', action: 'nextSegment' },
+  { code: 'KeyR', action: 'replaySegment' },
   { code: 'ArrowUp', action: 'volumeUp' },
   { code: 'ArrowDown', action: 'volumeDown' },
 ] as const;
 
 export const SENTENCE_PRACTICE_HOTKEY_BINDINGS: readonly HotkeyBinding[] = [
   { code: 'Space', action: 'togglePlay' },
+  { code: 'KeyR', action: 'replaySegment' },
   { code: 'ArrowUp', action: 'volumeUp' },
   { code: 'ArrowDown', action: 'volumeDown' },
   { code: 'BracketLeft', action: 'rateDown' },
   { code: 'BracketRight', action: 'rateUp' },
+  { code: 'KeyH', action: 'toggleHotkeysHelp' },
 ] as const;
 
 const SCOPE_BINDINGS: Record<HotkeyScopeId, readonly HotkeyBinding[]> = {

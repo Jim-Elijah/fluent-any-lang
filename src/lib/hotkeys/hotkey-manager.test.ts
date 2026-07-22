@@ -181,6 +181,27 @@ describe('HotkeyManager', () => {
     expect(playSync).toHaveBeenCalledTimes(1);
   });
 
+  it('maps KeyR to replaySegment across scopes', () => {
+    const practiceReplay = vi.fn();
+    const previewReplay = vi.fn();
+    manager.registerScope({
+      id: 'practice',
+      handlers: { replaySegment: practiceReplay },
+    });
+    manager.registerScope({
+      id: 'recording-preview',
+      handlers: { replaySegment: previewReplay },
+    });
+
+    dispatchKey('KeyR');
+    expect(previewReplay).toHaveBeenCalledTimes(1);
+    expect(practiceReplay).not.toHaveBeenCalled();
+
+    manager.unregisterScope('recording-preview');
+    dispatchKey('KeyR');
+    expect(practiceReplay).toHaveBeenCalledTimes(1);
+  });
+
   it('maps ArrowUp / BracketRight to volume and rate actions', () => {
     const volumeUp = vi.fn();
     const rateUp = vi.fn();

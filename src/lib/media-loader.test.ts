@@ -92,4 +92,40 @@ describe('media-loader', () => {
     expect(playlist).toHaveLength(1);
     expect(playlist[0]?.item.id).toBe(item2.id);
   });
+
+  it('maps a sentence bank entry to a single-segment loaded track', async () => {
+    const { sentenceToLoadedTrack } = await import('./media-loader.js');
+    const blob = new Blob(['audio'], { type: 'audio/webm' });
+    const track = sentenceToLoadedTrack({
+      entry: {
+        id: 'sent-1',
+        contentHash: 'hash',
+        text: 'Hello world',
+        translation: '你好世界',
+        sourceMediaId: 'media-1',
+        sourceSegmentId: 'seg-1',
+        sourceStartTime: 1,
+        sourceEndTime: 3,
+        sourceTitleSnapshot: 'Lesson',
+        sourceMediaType: 'audio',
+        sourceAvailable: true,
+        removed: false,
+        createdAt: 1000,
+      },
+      blob,
+      mimeType: 'audio/webm',
+      duration: 2.5,
+    });
+
+    expect(track.item.hasSubtitles).toBe(true);
+    expect(track.segments).toEqual([
+      {
+        id: 'sent-1',
+        startTime: 0,
+        endTime: 2.5,
+        text: 'Hello world',
+        translation: '你好世界',
+      },
+    ]);
+  });
 });

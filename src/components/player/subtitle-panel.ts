@@ -15,6 +15,7 @@ import type {
 } from '../../controllers/media-controller.js';
 import { importSubtitleForMedia } from '../../lib/import-content.js';
 import { formatTime } from '../../lib/playback-utils.js';
+import { supportsKeyboardShortcuts } from '../../lib/hotkeys/index.js';
 import type { PracticeRecord, SubtitleSegment, SubtitleTrack } from '../../types/models.js';
 import '../library/recording-preview.js';
 import '../ui/button.js';
@@ -829,7 +830,11 @@ export class SubtitlePanel extends LitElement {
         <div class="fullscreen-panel">
           <div class="fullscreen-header">
             <h3 class="fullscreen-title">${msg('字幕')}</h3>
-            <ui-tooltip title="${msg('退出全屏')}" .zIndex=${Z_INDEX.FULLSCREEN} placement="left">
+            <ui-tooltip
+              title="${supportsKeyboardShortcuts() ? msg('退出全屏 (F)') : msg('退出全屏')}"
+              .zIndex=${Z_INDEX.POPUP_ABOVE_FULLSCREEN}
+              placement="left"
+            >
               <ui-button variant="ghost" @click="${() => this._setFullscreen(false)}">
                 <ui-icon size="var(--icon-xl)" name="close"></ui-icon>
               </ui-button>
@@ -930,18 +935,38 @@ export class SubtitlePanel extends LitElement {
     }
 
     const hasTranslation = snapshot.segments.some((segment) => segment.translation);
+    const keyboardShortcuts = supportsKeyboardShortcuts();
+    const subtitlesTitle = snapshot.subtitlesVisible
+      ? keyboardShortcuts
+        ? msg('隐藏字幕 (C)')
+        : msg('隐藏字幕')
+      : keyboardShortcuts
+        ? msg('显示字幕 (C)')
+        : msg('显示字幕');
+    const translationTitle = this._translationVisible
+      ? keyboardShortcuts
+        ? msg('隐藏翻译 (T)')
+        : msg('隐藏翻译')
+      : keyboardShortcuts
+        ? msg('显示翻译 (T)')
+        : msg('显示翻译');
+    const fullscreenTitle = this._isFullscreen()
+      ? keyboardShortcuts
+        ? msg('退出全屏 (F)')
+        : msg('退出全屏')
+      : keyboardShortcuts
+        ? msg('全屏 (F)')
+        : msg('全屏');
 
     return html`
       <div class="surface">
         <div class="header title-row">
           <h3 class="title">${msg('字幕')}</h3>
           ${snapshot.hasSubtitles
-            ? html`<ui-tooltip
-                title="${snapshot.subtitlesVisible ? msg('隐藏字幕') : msg('显示字幕')}"
-              >
+            ? html`<ui-tooltip title="${subtitlesTitle}">
                 <ui-button
                   variant="ghost"
-                  aria-label="${snapshot.subtitlesVisible ? msg('隐藏字幕') : msg('显示字幕')}"
+                  aria-label="${subtitlesTitle}"
                   @click="${this._toggleSubtitles}"
                 >
                   <ui-icon
@@ -952,23 +977,21 @@ export class SubtitlePanel extends LitElement {
               </ui-tooltip>`
             : ''}
           ${snapshot.hasSubtitles && snapshot.subtitlesVisible && hasTranslation
-            ? html`<ui-tooltip
-                title="${this._translationVisible ? msg('隐藏翻译') : msg('显示翻译')}"
-              >
+            ? html`<ui-tooltip title="${translationTitle}">
                 <ui-button
                   variant="ghost"
-                  aria-label="${this._translationVisible ? msg('隐藏翻译') : msg('显示翻译')}"
-                  @click="${this._toggleTranslationVisible}"
+                  aria-label="${translationTitle}"
+                  @click="${() => this.toggleTranslationVisible()}"
                 >
                   <ui-icon size="var(--icon-xl)" name="translate"></ui-icon>
                 </ui-button>
               </ui-tooltip>`
             : ''}
           ${snapshot.hasSubtitles && snapshot.subtitlesVisible && this.showFullscreenIcon
-            ? html`<ui-tooltip title="${this._isFullscreen() ? msg('退出全屏') : msg('全屏')}">
+            ? html`<ui-tooltip title="${fullscreenTitle}">
                 <ui-button
                   variant="ghost"
-                  aria-label="${this._isFullscreen() ? msg('退出全屏') : msg('全屏')}"
+                  aria-label="${fullscreenTitle}"
                   @click="${this._toggleFullscreen}"
                 >
                   <ui-icon
@@ -1013,7 +1036,8 @@ export class SubtitlePanel extends LitElement {
     `;
   }
 
-  private _toggleTranslationVisible(): void {
+  /** Practice hotkeys / external UI can toggle translation visibility. */
+  toggleTranslationVisible(): void {
     this._translationVisible = !this._translationVisible;
   }
 

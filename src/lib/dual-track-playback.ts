@@ -157,6 +157,15 @@ export class DualTrackPlayback {
     }
   }
 
+  /** Seek to the start of a practice segment and play (clears pause). */
+  async replaySegment(index = this.syncSegmentIndex): Promise<void> {
+    if (index < 0 || index >= this.segments.length || this.mode === 'idle') {
+      return;
+    }
+    this.paused = false;
+    await this.goToSegment(index);
+  }
+
   /** Pause audio without leaving the current play mode. */
   pause(): void {
     if (this.mode === 'idle' || this.paused) {

@@ -149,7 +149,7 @@ export type MediaPlayerMode = 'normal' | 'fixed' | 'mini';
 /**
  * 控制面板各控件的显示配置。
  * 所有字段默认为 true；设为 false 则隐藏对应控件。
- * 注意：previousNextSegment 还需要 snapshot.hasSubtitles 为 true 才会显示。
+ * 注意：previousNextSegment / replay / pauseMode 还需要 snapshot.hasSubtitles 为 true 才会显示。
  */
 export interface MediaControlsConfig {
   /** 进度条与时间 */
@@ -160,6 +160,8 @@ export interface MediaControlsConfig {
   previousNextTrack?: boolean;
   /** 上一句 / 下一句（需同时有字幕才生效） */
   previousNextSegment?: boolean;
+  /** 重播本句（需同时有字幕才生效） */
+  replay?: boolean;
   /** 循环模式选择 */
   loopMode?: boolean;
   /** 倍速选择 */
