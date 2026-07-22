@@ -225,7 +225,7 @@ describe('playlists-page', () => {
       .mockImplementation(() => ({ close: () => undefined }));
 
     const el = (await renderPage()) as PlaylistsPageHarness;
-    el._newPlaylistName = '  daily practice ';
+    el._newPlaylistName = '  Daily Practice ';
 
     await el._handleCreatePlaylist();
 

@@ -10,6 +10,8 @@ import {
   getPlaylist,
   getPlaylistList,
   addMediaToPlaylist,
+  createPlaylist,
+  isPlaylistNameConflictError,
 } from '../../db/service.js';
 import { importSubtitleForMedia } from '../../lib/import-content.js';
 import { reportError } from '../../lib/error-reporter.js';
@@ -30,7 +32,12 @@ import '../ui/tooltip.js';
 import '../ui/virtual-grid.js';
 import '../ui/dropdown.js';
 import type { DropdownMenuClickDetail, DropdownMenuItem } from '../ui/dropdown.js';
+import '../ui/modal.js';
+import '../ui/input.js';
+import type { InputChangeDetail } from '../ui/input.js';
 import { Message } from '../ui/message.js';
+
+const CREATE_PLAYLIST_MENU_KEY = '__create__';
 
 /** Row height including the --space-md (12px) gap below each card. */
 const MEDIA_ROW_HEIGHT = 96;
@@ -248,7 +255,18 @@ export class MediaList extends LitElement {
   @state()
   private _narrow = false;
 
+  @state()
+  private _createPlaylistModalOpen = false;
+
+  @state()
+  private _createPlaylistName = '';
+
+  @state()
+  private _createPlaylistBusy = false;
+
   private _pendingSubtitleMediaId = '';
+
+  private _createPlaylistMediaId = '';
 
   private _visibleCount = 0;
 
@@ -332,13 +350,19 @@ export class MediaList extends LitElement {
   }
 
   private _getAddToPlaylistMenuItems(): DropdownMenuItem[] {
-    if (this._playlists.length === 0) {
-      return [{ key: '__empty__', label: msg('暂无播放列表'), disabled: true }];
+    const items: DropdownMenuItem[] = [
+      { key: CREATE_PLAYLIST_MENU_KEY, label: msg('新建播放列表…') },
+    ];
+    if (this._playlists.length > 0) {
+      items.push({ key: '__divider__', type: 'divider', label: '' });
+      items.push(
+        ...this._playlists.map((playlist) => ({
+          key: playlist.id,
+          label: msg(str`加入「${playlist.name}」`),
+        })),
+      );
     }
-    return this._playlists.map((playlist) => ({
-      key: playlist.id,
-      label: msg(str`加入「${playlist.name}」`),
-    }));
+    return items;
   }
 
   render() {
@@ -404,6 +428,33 @@ export class MediaList extends LitElement {
                 </div>
               `}
         <input type="file" accept=".srt,.lrc" @change="${this._handleSubtitleFile}" />
+
+        <ui-modal
+          title=${msg('新建播放列表')}
+          ?open=${this._createPlaylistModalOpen}
+          centered
+          width="400px"
+          ok-text=${msg('创建并加入')}
+          ?confirm-loading=${this._createPlaylistBusy}
+          @beforeOk=${(event: CustomEvent) => void this._onCreatePlaylistBeforeOk(event)}
+          @cancel=${() => this._closeCreatePlaylistModal()}
+          @update:open=${this._handleCreatePlaylistModalOpenChange}
+        >
+          <ui-input
+            .value=${this._createPlaylistName}
+            placeholder="${msg('播放列表名称')}"
+            aria-label="${msg('播放列表名称')}"
+            @change=${(event: CustomEvent<InputChangeDetail>) => {
+              this._createPlaylistName = event.detail.value || '';
+            }}
+            @keydown=${(event: KeyboardEvent) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                void this._submitCreatePlaylistAndAdd();
+              }
+            }}
+          ></ui-input>
+        </ui-modal>
       </section>
     `;
   }
@@ -523,12 +574,90 @@ export class MediaList extends LitElement {
     }
   }
 
+  private _openCreatePlaylistModal(mediaId: string): void {
+    this._createPlaylistMediaId = mediaId;
+    this._createPlaylistName = '';
+    this._createPlaylistModalOpen = true;
+  }
+
+  private _closeCreatePlaylistModal(): void {
+    this._createPlaylistModalOpen = false;
+    this._createPlaylistName = '';
+    this._createPlaylistMediaId = '';
+    this._createPlaylistBusy = false;
+  }
+
+  private _handleCreatePlaylistModalOpenChange(event: CustomEvent<{ open: boolean }>): void {
+    if (event.target !== event.currentTarget) {
+      return;
+    }
+    if (!event.detail.open) {
+      this._closeCreatePlaylistModal();
+    }
+  }
+
+  private async _onCreatePlaylistBeforeOk(event: CustomEvent): Promise<void> {
+    event.preventDefault();
+    await this._submitCreatePlaylistAndAdd();
+  }
+
+  private async _submitCreatePlaylistAndAdd(): Promise<void> {
+    if (this._createPlaylistBusy) {
+      return;
+    }
+
+    const name = this._createPlaylistName.trim();
+    if (!name) {
+      Message.warning(msg('请输入播放列表名称'));
+      return;
+    }
+
+    const mediaId = this._createPlaylistMediaId;
+    if (!mediaId) {
+      return;
+    }
+
+    this._createPlaylistBusy = true;
+    try {
+      const playlist = await createPlaylist(name);
+      await addMediaToPlaylist(playlist.id, mediaId);
+      const playlists = await getPlaylistList();
+      this._playlists = playlists
+        .filter((item) => item.kind === 'user')
+        .map((item) => ({ id: item.id, name: item.name }));
+      this._closeCreatePlaylistModal();
+      Message.success(msg(str`已创建「${name}」并添加`));
+      this.dispatchEvent(
+        new CustomEvent('playlist-changed', {
+          bubbles: true,
+          composed: true,
+        }),
+      );
+    } catch (error) {
+      if (isPlaylistNameConflictError(error)) {
+        Message.warning(msg('该播放列表名称已存在'));
+        return;
+      }
+      void reportError(error, {
+        where: 'media-list.createPlaylistAndAdd',
+        mediaId,
+      });
+      Message.error(msg('创建失败，请重试'));
+    } finally {
+      this._createPlaylistBusy = false;
+    }
+  }
+
   private async _handleAddToPlaylist(
     e: CustomEvent<DropdownMenuClickDetail>,
     media: MediaItem,
   ): Promise<void> {
     const playlistId = e.detail.key;
-    if (!playlistId || playlistId === '__empty__') return;
+    if (playlistId === CREATE_PLAYLIST_MENU_KEY) {
+      this._openCreatePlaylistModal(media.id);
+      return;
+    }
+    if (!playlistId) return;
 
     try {
       await addMediaToPlaylist(playlistId, media.id);

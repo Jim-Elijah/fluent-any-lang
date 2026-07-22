@@ -36,13 +36,11 @@ export async function estimateStorage() {
   const estimate = await navigator.storage.estimate();
   const usage = estimate.usage ?? 0;
   let quota = estimate.quota ?? 0;
-  console.log('quota', quota);
   const maxStorageMB = getAppSettings().maxStorageMB;
   quota = Math.min(maxStorageMB * 1024 * 1024, quota);
   const remaining = Math.max(quota - usage, 0);
   const remainingPercent = quota > 0 ? (remaining / quota) * 100 : 100;
 
   const res = { usage, quota, remaining, remainingPercent };
-  console.log('estimateStorage', res);
   return res;
 }

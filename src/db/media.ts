@@ -48,7 +48,6 @@ export async function countMedia(): Promise<number> {
 // just update media metadata
 export async function updateMedia(media: MediaItem) {
   const db = await getDB();
-  console.log('updateMedia', media);
   return db.put(STORE_MEDIA, media);
 }
 

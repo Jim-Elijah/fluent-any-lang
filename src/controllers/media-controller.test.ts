@@ -3,25 +3,35 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SubtitleSegment } from '../types/models.js';
 import { MediaController, type LoadedTrack } from './media-controller.js';
 
-function makeTrack(id: string, title: string, segments: SubtitleSegment[] = []): LoadedTrack {
+type MakeTrackOptions = {
+  segments?: SubtitleSegment[];
+  type?: 'audio' | 'video';
+};
+
+function makeTrack(id: string, title: string, options: MakeTrackOptions = {}): LoadedTrack {
+  const type = options.type ?? 'audio';
+  const segments = options.segments ?? [];
+  const filenameExt = type === 'video' ? 'mp4' : 'mp3';
+  const mimeType = type === 'video' ? 'video/mp4' : 'audio/mpeg';
+  const blobData = type === 'video' ? 'video' : 'audio';
   return {
     item: {
       id,
       title,
-      filename: `${title}.mp3`,
+      filename: `${title}.${filenameExt}`,
       size: 100,
-      type: 'audio',
-      mimeType: 'audio/mpeg',
+      type,
+      mimeType,
       duration: 30,
       createdAt: 1,
       hasSubtitles: segments.length > 0,
     },
-    blob: new Blob(['audio'], { type: 'audio/mpeg' }),
+    blob: new Blob([blobData], { type: mimeType }),
     segments,
   };
 }
 
-function createAudioMock(): HTMLAudioElement {
+function createAudioMock(paused = true): HTMLAudioElement {
   const audio = document.createElement('audio');
   audio.play = vi.fn().mockResolvedValue(undefined);
   audio.pause = vi.fn();
@@ -29,9 +39,22 @@ function createAudioMock(): HTMLAudioElement {
     queueMicrotask(() => audio.dispatchEvent(new Event('loadedmetadata')));
   });
   Object.defineProperty(audio, 'duration', { configurable: true, value: 30 });
-  Object.defineProperty(audio, 'paused', { configurable: true, value: true });
+  Object.defineProperty(audio, 'paused', { configurable: true, value: paused });
   Object.defineProperty(audio, 'readyState', { configurable: true, value: 0 });
   return audio;
+}
+
+function createVideoMock(paused = true): HTMLVideoElement {
+  const video = document.createElement('video');
+  video.play = vi.fn().mockResolvedValue(undefined);
+  video.pause = vi.fn();
+  video.load = vi.fn(() => {
+    queueMicrotask(() => video.dispatchEvent(new Event('loadedmetadata')));
+  });
+  Object.defineProperty(video, 'duration', { configurable: true, value: 30 });
+  Object.defineProperty(video, 'paused', { configurable: true, value: paused });
+  Object.defineProperty(video, 'readyState', { configurable: true, value: 0 });
+  return video;
 }
 
 describe('MediaController', () => {
@@ -63,7 +86,7 @@ describe('MediaController', () => {
   it('loads tracks and exposes snapshot', async () => {
     const segments: SubtitleSegment[] = [{ id: 's1', startTime: 0, endTime: 5, text: 'one' }];
     await controller.loadTracks(
-      [makeTrack('a', 'Track A', segments), makeTrack('b', 'Track B')],
+      [makeTrack('a', 'Track A', { segments }), makeTrack('b', 'Track B')],
       0,
     );
 
@@ -132,7 +155,7 @@ describe('MediaController', () => {
       { id: 's1', startTime: 0, endTime: 5, text: 'one' },
       { id: 's2', startTime: 5, endTime: 10, text: 'two' },
     ];
-    await controller.loadTracks([makeTrack('a', 'Track A', segments)]);
+    await controller.loadTracks([makeTrack('a', 'Track A', { segments })]);
     controller.seekToSegment(0);
     expect(controller.currentTime).toBe(0);
     expect(controller.currentSegmentIndex).toBe(0);
@@ -179,5 +202,28 @@ describe('MediaController', () => {
     expect(snapshot.isPlaying).toBe(false);
     expect(snapshot.currentTime).toBe(30);
     expect(snapshot.duration).toBe(30);
+  });
+
+  it('does not skip video when audio ended advances to a video track', async () => {
+    const activeAudio = createAudioMock(false);
+    controller.destroy();
+    controller = new MediaController();
+    controller.attachMediaElement(activeAudio);
+    controller.setLoopMode('list');
+    await controller.loadTracks([
+      makeTrack('a', 'Audio A', { type: 'audio' }),
+      makeTrack('v', 'Video V', { type: 'video' }),
+      makeTrack('b', 'Audio B', { type: 'audio' }),
+    ]);
+
+    activeAudio.dispatchEvent(new Event('ended'));
+    expect(controller.getSnapshot().currentItem?.id).toBe('v');
+    expect(activeAudio.load).toHaveBeenCalledTimes(1);
+
+    const video = createVideoMock(false);
+    controller.attachMediaElement(video);
+    expect(video.load).toHaveBeenCalledTimes(1);
+    expect(video.play).toHaveBeenCalledTimes(1);
+    expect(controller.getSnapshot().currentItem?.id).toBe('v');
   });
 });

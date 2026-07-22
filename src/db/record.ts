@@ -19,8 +19,6 @@ export async function saveRecording(record: PracticeRecord, blob: Blob): Promise
     blob,
   };
 
-  console.log('saveRecording', record, blob);
-
   const tx = db.transaction([STORE_RECORDING, STORE_RECORDING_BLOB], 'readwrite');
 
   await tx.objectStore(STORE_RECORDING).put(record);

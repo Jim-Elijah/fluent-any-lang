@@ -8,6 +8,7 @@ import '../../components/settings/settings-limits.js';
 import '../../components/settings/settings-backup.js';
 import '../../components/settings/settings-pwa.js';
 import '../../components/settings/settings-diagnostics.js';
+import '../../components/settings/settings-clear-data.js';
 
 @customElement('settings-page')
 @localized()
@@ -35,13 +36,16 @@ export class SettingsPage extends LitElement {
   render() {
     return html`
       <div class="page">
-        <p class="intro">${msg('管理偏好、播放器默认、练习限额、数据备份、应用更新与诊断。')}</p>
+        <p class="intro">
+          ${msg('管理偏好、播放器默认、练习限额、数据备份、应用更新、诊断与清除本地数据。')}
+        </p>
         <settings-preferences></settings-preferences>
         <settings-player-defaults></settings-player-defaults>
         <settings-limits></settings-limits>
         <settings-backup></settings-backup>
         <settings-pwa></settings-pwa>
         <settings-diagnostics></settings-diagnostics>
+        <settings-clear-data></settings-clear-data>
       </div>
     `;
   }

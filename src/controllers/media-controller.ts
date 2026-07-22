@@ -109,6 +109,7 @@ export class MediaController extends EventTarget {
   private _segmentPauseResumeAt: number | null = null;
   private _segmentPausePollId: ReturnType<typeof setInterval> | null = null;
   private _navigationLocked = false;
+  private _pendingAutoPlay = false;
 
   attachMediaElement(element: HTMLMediaElement): void {
     if (this.mediaElement === element) {
@@ -138,6 +139,10 @@ export class MediaController extends EventTarget {
       element.src = this.objectUrl;
       element.load();
       element.currentTime = this.currentTime;
+      if (this._pendingAutoPlay) {
+        this._pendingAutoPlay = false;
+        void element.play();
+      }
     }
   }
 
@@ -182,7 +187,6 @@ export class MediaController extends EventTarget {
   }
 
   async loadTrack(index: number, autoPlay = false): Promise<void> {
-    // console.log('loadTrack enter', index, autoPlay);
     if (this.tracks.length === 0) {
       this._clearTrackState();
       this._emitChange();
@@ -209,9 +213,9 @@ export class MediaController extends EventTarget {
 
     const nextUrl = URL.createObjectURL(track.blob);
     this.objectUrl = nextUrl;
+    const shouldPlay = autoPlay || (this.mediaElement ? !this.mediaElement.paused : false);
 
-    if (this.mediaElement) {
-      const shouldPlay = autoPlay || !this.mediaElement.paused;
+    if (this.mediaElement && this._isMediaElementCompatible(this.mediaElement, track.item.type)) {
       this.mediaElement.src = nextUrl;
       this.mediaElement.load();
       this.mediaElement.playbackRate = this.playbackRate;
@@ -241,12 +245,6 @@ export class MediaController extends EventTarget {
       this.currentTime = 0;
       this._previousPlaybackTime = 0;
 
-      // console.log('this.currentSegmentIndex', this.currentSegmentIndex);
-      // delete below to make sure new track always start from first segment
-      // if (this.currentSegmentIndex >= 0) {
-      //   this.seekToSegment(this.currentSegmentIndex, false);
-      // }
-
       if (shouldPlay) {
         await this.play();
       }
@@ -254,6 +252,7 @@ export class MediaController extends EventTarget {
       this.duration = track.item.duration;
       this.currentTime = 0;
       this._previousPlaybackTime = 0;
+      this._pendingAutoPlay = shouldPlay;
     }
 
     if (trackIndex !== previousIndex) {
@@ -876,6 +875,13 @@ export class MediaController extends EventTarget {
     return index;
   }
 
+  private _isMediaElementCompatible(element: HTMLMediaElement, type: MediaItem['type']): boolean {
+    if (type === 'video') {
+      return element instanceof HTMLVideoElement;
+    }
+    return element instanceof HTMLAudioElement;
+  }
+
   private _clearTrackState(): void {
     this.playlist = [];
     this.segments = [];
@@ -884,6 +890,7 @@ export class MediaController extends EventTarget {
     this.currentTime = 0;
     this.duration = 0;
     this.isPlaying = false;
+    this._pendingAutoPlay = false;
     this._previousPlaybackTime = 0;
     this.pauseMode = 'off';
     this._clearSegmentPauseTimer();

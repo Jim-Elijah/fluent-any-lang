@@ -10,6 +10,7 @@ import { settingsCardStyles } from './settings-styles.js';
 import '../ui/button.js';
 import '../ui/message.js';
 import { Message } from '../ui/message.js';
+import '../ui/modal.js';
 
 @customElement('settings-diagnostics')
 @localized()
@@ -49,6 +50,9 @@ export class SettingsDiagnostics extends LitElement {
   @state()
   private _busy = false;
 
+  @state()
+  private _clearModalOpen = false;
+
   private readonly _build = getAppBuildInfo();
 
   connectedCallback(): void {
@@ -80,15 +84,27 @@ export class SettingsDiagnostics extends LitElement {
     }
   }
 
-  private async _onClear(): Promise<void> {
+  private _openClearModal(): void {
     if (this._busy || this._logCount === 0) return;
-    const confirmed = window.confirm(msg('确定清空全部异常日志？此操作不可恢复。'));
-    if (!confirmed) return;
+    this._clearModalOpen = true;
+  }
+
+  private _onClearModalOpenChange(event: CustomEvent<{ open: boolean }>): void {
+    if (event.target !== event.currentTarget) return;
+    if (!event.detail.open && !this._busy) {
+      this._clearModalOpen = false;
+    }
+  }
+
+  private async _onClearBeforeOk(event: CustomEvent): Promise<void> {
+    event.preventDefault();
+    if (this._busy) return;
 
     this._busy = true;
     try {
       await clearErrorLogs();
       this._logCount = 0;
+      this._clearModalOpen = false;
       Message.success(msg('异常日志已清空'));
     } catch (error) {
       void reportError(error, { where: 'settings-diagnostics.clear' });
@@ -116,19 +132,41 @@ export class SettingsDiagnostics extends LitElement {
         </ul>
 
         <div class="actions">
-          <ui-button variant="primary" ?disabled=${this._busy} @click=${this._onExport}>
+          <ui-button
+            variant="primary"
+            ?disabled=${this._busy || this._logCount === 0}
+            @click=${this._onExport}
+          >
             ${msg('导出异常日志')}
           </ui-button>
           <ui-button
             variant="danger"
             ?disabled=${this._busy || this._logCount === 0}
-            @click=${this._onClear}
+            @click=${this._openClearModal}
           >
             ${msg('清空日志')}
           </ui-button>
           ${this._busy ? html`<span class="hint">${msg('处理中…')}</span>` : nothing}
         </div>
       </section>
+
+      <ui-modal
+        .open=${this._clearModalOpen}
+        .title=${msg('即将清空异常日志')}
+        .centered=${true}
+        .confirmLoading=${this._busy}
+        .maskClosable=${!this._busy}
+        .keyboard=${!this._busy}
+        ?cancel-disabled=${this._busy}
+        ok-text=${msg('确认清空')}
+        cancel-text=${msg('取消')}
+        @beforeOk=${this._onClearBeforeOk}
+        @update:open=${this._onClearModalOpenChange}
+      >
+        <p class="desc" style="margin: 0">
+          ${msg(str`将删除本机全部 ${this._logCount} 条异常日志，此操作不可恢复。`)}
+        </p>
+      </ui-modal>
     `;
   }
 }

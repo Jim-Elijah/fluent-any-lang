@@ -94,7 +94,6 @@ export class SettingsPlayerDefaults extends LitElement {
 
   private _onSliderChange(key: 'defaultSourceVolume' | 'defaultNoiseVolume') {
     return (event: CustomEvent<SliderChangeDetail>) => {
-      console.log('_onSliderChange event.detail.value', event.detail.value);
       this._commitNumber(key, event.detail.value);
     };
   }

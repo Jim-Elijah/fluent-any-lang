@@ -1141,10 +1141,6 @@
   <source>已导出 <x id="0" equiv-text="${payload.entries.length}"/> 条异常日志</source>
   <target>已匯出 <x id="0" equiv-text="${payload.entries.length}"/> 條異常日誌</target>
 </trans-unit>
-<trans-unit id="s3c709136dae5ddcb">
-  <source>确定清空全部异常日志？此操作不可恢复。</source>
-  <target>確定清空全部異常日誌？此操作無法復原。</target>
-</trans-unit>
 <trans-unit id="s9583565c585bbb98">
   <source>异常日志已清空</source>
   <target>異常日誌已清空</target>
@@ -1847,10 +1843,6 @@
   <source>句库为空。在练习页点击字幕旁的 ♡ 即可加入。</source>
   <target>句庫為空。在練習頁點擊字幕旁的 ♡ 即可加入。</target>
 </trans-unit>
-<trans-unit id="sc326a145a757a32e">
-  <source>管理偏好、播放器默认、练习限额、数据备份、应用更新与诊断。</source>
-  <target>管理偏好、播放器預設、練習限額、資料備份、應用更新與診斷。</target>
-</trans-unit>
 <trans-unit id="sce86813619db987d">
   <source>默认原音音量</source>
   <target>預設原音音量</target>
@@ -1890,6 +1882,81 @@
 <trans-unit id="sb6f94b7a16468580">
   <source>开启后进入抗噪听模式时不再弹出说明。</source>
   <target>開啟後進入抗噪聽模式時不再彈出說明。</target>
+</trans-unit>
+<trans-unit id="s16d703837d42e4bb">
+  <source>新建播放列表…</source>
+</trans-unit>
+<trans-unit id="s66f06892017e53d9">
+  <source>创建并加入</source>
+</trans-unit>
+<trans-unit id="s7d8f22bbd3897426">
+  <source>已创建「<x id="0" equiv-text="${name}"/>」并添加</source>
+</trans-unit>
+<trans-unit id="sbdbb69c195ed08a1">
+  <source>创建失败，请重试</source>
+</trans-unit>
+<trans-unit id="s7860264c2c4ec434">
+  <source>学习数据已清除</source>
+</trans-unit>
+<trans-unit id="sa89ea831369ec7a6">
+  <source>清除失败</source>
+</trans-unit>
+<trans-unit id="sc4a05c3aa3fa1db2">
+  <source>媒体：<x id="0" equiv-text="${counts.media}"/></source>
+</trans-unit>
+<trans-unit id="sc335c4229824b585">
+  <source>字幕：<x id="0" equiv-text="${counts.subtitles}"/></source>
+</trans-unit>
+<trans-unit id="s4a43d021163cfac5">
+  <source>录音：<x id="0" equiv-text="${counts.recordings}"/></source>
+</trans-unit>
+<trans-unit id="sf419f63663440574">
+  <source>学习记录：<x id="0" equiv-text="${counts.sessions}"/></source>
+</trans-unit>
+<trans-unit id="sf1ef1c1cfd2f92b9">
+  <source>播放列表：<x id="0" equiv-text="${counts.playlists}"/></source>
+</trans-unit>
+<trans-unit id="s6055cd73955e7155">
+  <source>句库：<x id="0" equiv-text="${counts.sentenceBank}"/></source>
+</trans-unit>
+<trans-unit id="sf0e7c0a2563bdeea">
+  <source>噪音素材：<x id="0" equiv-text="${counts.noise}"/></source>
+</trans-unit>
+<trans-unit id="s00e873c398faf556">
+  <source>应用设置、语言偏好与异常日志将保留。清除前建议先在上方导出备份。</source>
+</trans-unit>
+<trans-unit id="s61f6265cd8d3cf39">
+  <source>我理解此操作不可恢复</source>
+</trans-unit>
+<trans-unit id="s578003aca06bcd2a">
+  <source>清除本地数据</source>
+</trans-unit>
+<trans-unit id="s5a7ebb7bfa4908ae">
+  <source>永久删除本机学习库内容。此操作不可恢复，请先导出备份。</source>
+</trans-unit>
+<trans-unit id="s91c0df7b71802cd0">
+  <source>清除全部学习数据</source>
+</trans-unit>
+<trans-unit id="s9953b9fef7f248af">
+  <source>当前没有可清除的学习数据</source>
+</trans-unit>
+<trans-unit id="s48d4fca34e1f0535">
+  <source>即将清除学习数据</source>
+</trans-unit>
+<trans-unit id="sefdb3f42e75cd5ce">
+  <source>确认清除</source>
+</trans-unit>
+<trans-unit id="saa1e061278d67a71">
+  <source>即将清空异常日志</source>
+</trans-unit>
+<trans-unit id="sefaf2942e711ec6c">
+  <source>确认清空</source>
+</trans-unit>
+<trans-unit id="s8a6c94db7796c752">
+  <source>将删除本机全部 <x id="0" equiv-text="${this._logCount}"/> 条异常日志，此操作不可恢复。</source>
+</trans-unit>
+<trans-unit id="s476368fb89c05148">
+  <source>管理偏好、播放器默认、练习限额、数据备份、应用更新、诊断与清除本地数据。</source>
 </trans-unit>
 </body>
 </file>

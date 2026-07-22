@@ -56,21 +56,30 @@ describe('playlist', () => {
     expect(all.map((p) => p.name)).toEqual(['喜欢', 'Rock', 'Jazz']);
   });
 
-  it('rejects duplicate playlist names during create after trimming and normalizing case', async () => {
+  it('rejects duplicate playlist names during create after trimming', async () => {
     await createPlaylist('Rock');
 
-    await expect(createPlaylist('  rock  ')).rejects.toSatisfy(isPlaylistNameConflictError);
+    await expect(createPlaylist('  Rock  ')).rejects.toSatisfy(isPlaylistNameConflictError);
+  });
+
+  it('allows playlist names that differ only by case', async () => {
+    await createPlaylist('Rock');
+
+    await expect(createPlaylist('rock')).resolves.toMatchObject({ name: 'rock' });
   });
 
   it('rejects duplicate playlist names during rename', async () => {
     const rock = await createPlaylist('Rock');
     const jazz = await createPlaylist('Jazz');
 
-    await expect(updatePlaylist(jazz.id, { name: ' rock ' })).rejects.toSatisfy(
+    await expect(updatePlaylist(jazz.id, { name: 'Rock' })).rejects.toSatisfy(
       isPlaylistNameConflictError,
     );
-    await expect(updatePlaylist(rock.id, { name: ' rock ' })).resolves.toMatchObject({
+    await expect(updatePlaylist(jazz.id, { name: 'rock' })).resolves.toMatchObject({
       name: 'rock',
+    });
+    await expect(updatePlaylist(rock.id, { name: ' Rock ' })).resolves.toMatchObject({
+      name: 'Rock',
     });
   });
 

@@ -43,8 +43,7 @@ export function isPlaylistNameConflictError(error: unknown): error is PlaylistNa
 }
 
 function normalizePlaylistName(name: string): string {
-  /** @TODO remove toLocaleLowerCase */
-  return name.trim().toLocaleLowerCase();
+  return name.trim();
 }
 
 async function assertPlaylistNameAvailable(name: string, excludeId?: string): Promise<void> {

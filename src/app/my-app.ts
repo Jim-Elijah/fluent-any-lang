@@ -53,7 +53,8 @@ export class MyApp extends RouterNavigatorApp {
   static styles = css`
     :host {
       display: block;
-      min-height: 100vh;
+      height: 100%;
+      overflow: hidden;
       --nav-width: 200px;
       --nav-height: 56px;
     }

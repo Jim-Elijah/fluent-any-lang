@@ -322,13 +322,10 @@ export class RecordList extends LitElement {
     this._loading = true;
     this._error = '';
     try {
-      console.log('refresh', this.mediaId);
       if (this.mediaId && this.mediaId.length > 0) {
         this._items = await findRecordings(this.mediaId);
-        console.log('findRecordings', this.mediaId, this._items);
       } else {
         this._items = (await getRecordingList()) || [];
-        console.log('getRecordingList', this._items);
       }
       // sort newest first
       this._items.sort((a, b) => b.createdAt - a.createdAt);
@@ -341,8 +338,6 @@ export class RecordList extends LitElement {
   }
 
   render() {
-    console.log('record-list render', this._items);
-
     let renderedItems = this._items;
     if (this.modeFilter) {
       renderedItems = renderedItems.filter((item) => item.mode === this.modeFilter);
