@@ -152,6 +152,58 @@ describe('subtitle-panel', () => {
     expect(el.fullscreen).toBeUndefined();
   });
 
+  it('exits fullscreen when subtitles are hidden', async () => {
+    const el = await renderPanel({ defaultFullscreen: true });
+    const handler = vi.fn();
+    el.addEventListener('update:fullscreen', handler);
+
+    expect(
+      getPortalShadow('[data-subtitle-fullscreen-portal]')?.querySelector('.fullscreen-panel'),
+    ).not.toBeNull();
+
+    // Header: [hide subtitles], [fullscreen] — click hide.
+    clickShadowButton(el, 0);
+    await el.updateComplete;
+    await flushUpdates();
+
+    expect(controller.getSnapshot().subtitlesVisible).toBe(false);
+    expect(
+      getPortalShadow('[data-subtitle-fullscreen-portal]')?.querySelector('.fullscreen-panel'),
+    ).toBeNull();
+    expect(handler.mock.calls.at(-1)?.[0].detail).toEqual({ fullscreen: false });
+  });
+
+  it('ignores translation toggle when subtitles are hidden', async () => {
+    controller = new MediaController();
+    const segments: SubtitleSegment[] = [
+      { id: 's1', startTime: 0, endTime: 2, text: 'hello', translation: '你好' },
+    ];
+    await controller.loadTracks([makeTrack('a', 'Track A', segments)]);
+
+    const result = mount(html`<subtitle-panel .controller=${controller}></subtitle-panel>`);
+    cleanup = result.cleanup;
+    const el = result.container.querySelector('subtitle-panel') as SubtitlePanel;
+    await el.updateComplete;
+    await flushUpdates();
+
+    el.toggleTranslationVisible();
+    await el.updateComplete;
+    expect(el.shadowRoot?.querySelector('.translation.hidden')).toBeNull();
+
+    controller.setSubtitlesVisible(false);
+    await el.updateComplete;
+    await flushUpdates();
+
+    el.toggleTranslationVisible(); // must no-op while hidden
+    await el.updateComplete;
+
+    controller.setSubtitlesVisible(true);
+    await el.updateComplete;
+    await flushUpdates();
+
+    expect(el.shadowRoot?.querySelector('.translation.hidden')).toBeNull();
+  });
+
   it('shows import subtitle CTA when media has no subtitles', async () => {
     controller = new MediaController();
     await controller.loadTracks([makeTrack('a', 'Track A', [])]);

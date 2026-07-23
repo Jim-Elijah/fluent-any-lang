@@ -361,7 +361,7 @@ export class PracticeView extends NavigatorElement {
           },
           toggleTranslation: () => {
             if (!this._practiceUiHotkeysEnabled()) return;
-            this._subtitlePanelEl?.toggleTranslationVisible();
+            this._toggleTranslationFromHotkey();
           },
           toggleSubtitleFullscreen: () => {
             if (!this._practiceUiHotkeysEnabled()) return;
@@ -400,12 +400,25 @@ export class PracticeView extends NavigatorElement {
     if (!snapshot.hasSubtitles) {
       return;
     }
-    this._controller.setSubtitlesVisible(!snapshot.subtitlesVisible);
+    const nextVisible = !snapshot.subtitlesVisible;
+    // Fullscreen is a presentation of visible subtitles; hide ⇒ exit fullscreen.
+    if (!nextVisible) {
+      this._subtitlePanelFullscreen = false;
+    }
+    this._controller.setSubtitlesVisible(nextVisible);
+  }
+
+  private _toggleTranslationFromHotkey(): void {
+    const snapshot = this._controller.getSnapshot();
+    if (!snapshot.hasSubtitles || !snapshot.subtitlesVisible) {
+      return;
+    }
+    this._subtitlePanelEl?.toggleTranslationVisible();
   }
 
   private _toggleSubtitleFullscreenFromHotkey(): void {
     const snapshot = this._controller.getSnapshot();
-    if (!snapshot.hasSubtitles) {
+    if (!snapshot.hasSubtitles || !snapshot.subtitlesVisible) {
       return;
     }
     this._subtitlePanelFullscreen = !this._subtitlePanelFullscreen;
@@ -920,7 +933,6 @@ export class PracticeView extends NavigatorElement {
       if (selected.some((s) => s.noiseId === noiseId)) return;
       if (selected.length >= DISCRIMINATION_MAX_NOISE_TRACKS) {
         Message.warning(msg(str`最多选择 ${DISCRIMINATION_MAX_NOISE_TRACKS} 条噪音`));
-        this.requestUpdate();
         return;
       }
       selected.push({ noiseId, volume: getAppSettings().defaultNoiseVolume });

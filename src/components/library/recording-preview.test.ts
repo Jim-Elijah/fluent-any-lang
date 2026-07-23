@@ -54,9 +54,12 @@ type RecordingPreviewInternals = HTMLElement & {
   };
   _playback: {
     playSource: () => Promise<void>;
+    playSourceAt: (time: number) => Promise<void>;
     playRecording: () => Promise<void>;
+    playRecordingAt: (time: number) => Promise<void>;
     playSync: () => Promise<void>;
     playSyncFromSegment: (index: number) => Promise<void>;
+    playSyncAt: (time: number, axis: 'source' | 'recording') => Promise<boolean>;
     goToSegment: (index: number) => Promise<void>;
     replaySegment: (index?: number) => Promise<void>;
     pause: () => void;
@@ -268,9 +271,12 @@ describe('recording-preview', () => {
   function createPlaybackMock(playSyncFromSegment = vi.fn().mockResolvedValue(undefined)) {
     return {
       playSource: vi.fn().mockResolvedValue(undefined),
+      playSourceAt: vi.fn().mockResolvedValue(undefined),
       playRecording: vi.fn().mockResolvedValue(undefined),
+      playRecordingAt: vi.fn().mockResolvedValue(undefined),
       playSync: vi.fn().mockResolvedValue(undefined),
       playSyncFromSegment,
+      playSyncAt: vi.fn().mockResolvedValue(true),
       goToSegment: vi.fn().mockResolvedValue(undefined),
       replaySegment: vi.fn().mockResolvedValue(undefined),
       stop: vi.fn(),
@@ -492,25 +498,36 @@ describe('recording-preview', () => {
     expect(playback.goToSegment).toHaveBeenCalledWith(0);
   });
 
-  it('hides segment nav when there are no practice segments', async () => {
+  it('shows play/pause only when there are no practice segments', async () => {
     const el = await renderPreview();
     el.segments = [];
     await el.updateComplete;
 
-    expect(el.shadowRoot!.querySelector('.segment-nav')).toBeNull();
+    const nav = el.shadowRoot!.querySelector('.segment-nav');
+    expect(nav).not.toBeNull();
+    const buttons = [...nav!.querySelectorAll('ui-icon-button')] as Array<
+      HTMLElement & { name: string; disabled: boolean }
+    >;
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0].name).toBe('play');
+    expect(buttons[0].disabled).toBe(true);
   });
 
-  it('keeps segment nav disabled until playback starts', async () => {
+  it('keeps transport disabled until a play mode is selected', async () => {
     const el = await renderPreview();
     el.segments = samplePracticeSegments;
     el._playMode = 'idle';
     await el.updateComplete;
 
     const buttons = [...el.shadowRoot!.querySelectorAll('.segment-nav ui-icon-button')] as Array<
-      HTMLElement & { disabled: boolean }
+      HTMLElement & { disabled: boolean; title: string }
     >;
     expect(buttons).toHaveLength(4);
     expect(buttons.every((button) => button.disabled)).toBe(true);
+    expect(buttons[0].title).toContain('请先选择播放模式');
+    expect(buttons[1].title).toContain('请先选择播放模式');
+    expect(buttons[2].title).toContain('请先选择播放模式');
+    expect(buttons[3].title).toContain('请先选择播放模式');
   });
 
   it('nudges source volume with arrow keys in source mode', async () => {
@@ -566,7 +583,27 @@ describe('recording-preview', () => {
     expect((tooltips[2] as HTMLElement & { title: string }).title).toContain('无原音');
   });
 
-  it('pauses source playback via DualTrackPlayback on waveform click', async () => {
+  it('ignores waveform click while idle without changing playMode', async () => {
+    const el = await renderPreview();
+    const playback = createPlaybackMock();
+
+    el._playback = playback;
+    el._sourceTrackId = 'source-1';
+    el._recordingTrackId = 'rec-1';
+    el._playMode = 'idle';
+    el.segments = samplePracticeSegments;
+    await el.updateComplete;
+
+    const event = dispatchSeek(el, 2.5);
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(el._playMode).toBe('idle');
+    expect(playback.playSourceAt).not.toHaveBeenCalled();
+    expect(playback.playRecordingAt).not.toHaveBeenCalled();
+    expect(playback.playSyncAt).not.toHaveBeenCalled();
+  });
+
+  it('seeks and plays source on waveform click while already playing', async () => {
     const el = await renderPreview();
     const playback = createPlaybackMock();
     const controllerPauseSpy = vi.spyOn(el._controller, 'pause');
@@ -582,21 +619,18 @@ describe('recording-preview', () => {
     const event = dispatchSeek(el, 2.5);
 
     expect(event.defaultPrevented).toBe(true);
-    expect(playback.pause).toHaveBeenCalledTimes(1);
-    expect(playback.resume).not.toHaveBeenCalled();
+    expect(playback.playSourceAt).toHaveBeenCalledWith(2.5);
+    expect(playback.pause).not.toHaveBeenCalled();
     expect(controllerPauseSpy).not.toHaveBeenCalled();
   });
 
-  it('seeks and resumes paused source playback on waveform click', async () => {
+  it('seeks and plays paused source playback on waveform click', async () => {
     const el = await renderPreview();
     const playback = createPlaybackMock();
-    const sourceAudio = new Audio();
-    Object.defineProperty(sourceAudio, 'duration', { configurable: true, get: () => 10 });
 
     el._playback = playback;
     el._sourceTrackId = 'source-1';
     el._recordingTrackId = 'rec-1';
-    el._sourceAudio = sourceAudio;
     el._playMode = 'source';
     el._playbackPaused = true;
     el.segments = samplePracticeSegments;
@@ -608,13 +642,13 @@ describe('recording-preview', () => {
     const event = dispatchSeek(el, 3.25);
 
     expect(event.defaultPrevented).toBe(true);
-    expect(sourceAudio.currentTime).toBe(3.25);
-    expect(playback.resume).toHaveBeenCalledTimes(1);
+    expect(playback.playSourceAt).toHaveBeenCalledWith(3.25);
+    expect(playback.resume).not.toHaveBeenCalled();
     expect(playback.pause).not.toHaveBeenCalled();
     expect(focusSpy).toHaveBeenCalled();
   });
 
-  it('pauses recording playback via DualTrackPlayback on waveform click', async () => {
+  it('seeks and plays recording on waveform click', async () => {
     const el = await renderPreview();
     const playback = createPlaybackMock();
 
@@ -629,35 +663,40 @@ describe('recording-preview', () => {
     const event = dispatchSeek(el, 1.5, 'rec-1');
 
     expect(event.defaultPrevented).toBe(true);
-    expect(playback.pause).toHaveBeenCalledTimes(1);
-    expect(playback.resume).not.toHaveBeenCalled();
+    expect(playback.playRecordingAt).toHaveBeenCalledWith(1.5);
+    expect(playback.pause).not.toHaveBeenCalled();
   });
 
-  it('resolves sync click on source track via subtitle timeline', async () => {
+  it('seeks sync playback to the clicked time without zooming to sentence start', async () => {
     const el = await renderPreview();
-    const playSyncFromSegment = vi.fn().mockResolvedValue(undefined);
+    const playSyncAt = vi.fn().mockResolvedValue(true);
     const setViewRangeSpy = vi.spyOn(el._controller, 'setViewRange');
 
-    el._playback = createPlaybackMock(playSyncFromSegment);
+    const playback = createPlaybackMock();
+    playback.playSyncAt = playSyncAt;
+    el._playback = playback;
     el._sourceTrackId = 'source-1';
     el._recordingTrackId = 'rec-1';
     el._playMode = 'sync';
     el.subtitleSegments = sampleSegments;
     el.segments = [samplePracticeSegments[0]];
     await el.updateComplete;
+    setViewRangeSpy.mockClear();
 
     dispatchSeek(el, 2);
 
-    expect(playSyncFromSegment).toHaveBeenCalledWith(0);
-    expect(setViewRangeSpy).toHaveBeenCalledWith({ start: 0, end: 5 });
+    expect(playSyncAt).toHaveBeenCalledWith(2, 'source');
+    expect(setViewRangeSpy).not.toHaveBeenCalled();
   });
 
   it('shows info when clicked subtitle has no practice segment', async () => {
     const el = await renderPreview();
     const infoSpy = vi.spyOn(Message, 'info');
-    const playSyncFromSegment = vi.fn().mockResolvedValue(undefined);
+    const playSyncAt = vi.fn().mockResolvedValue(true);
 
-    el._playback = createPlaybackMock(playSyncFromSegment);
+    const playback = createPlaybackMock();
+    playback.playSyncAt = playSyncAt;
+    el._playback = playback;
     el._sourceTrackId = 'source-1';
     el._recordingTrackId = 'rec-1';
     el._playMode = 'sync';
@@ -668,14 +707,16 @@ describe('recording-preview', () => {
     dispatchSeek(el, 6);
 
     expect(infoSpy).toHaveBeenCalled();
-    expect(playSyncFromSegment).not.toHaveBeenCalled();
+    expect(playSyncAt).not.toHaveBeenCalled();
   });
 
   it('keeps sync seek on the zoomed segment instead of jumping via full-span time', async () => {
     const el = await renderPreview();
-    const playSyncFromSegment = vi.fn().mockResolvedValue(undefined);
+    const playSyncAt = vi.fn().mockResolvedValue(true);
 
-    el._playback = createPlaybackMock(playSyncFromSegment);
+    const playback = createPlaybackMock();
+    playback.playSyncAt = playSyncAt;
+    el._playback = playback;
     el._sourceTrackId = 'source-1';
     el._recordingTrackId = 'rec-1';
     el._playMode = 'sync';
@@ -685,7 +726,7 @@ describe('recording-preview', () => {
 
     dispatchSeek(el, 4.5);
 
-    expect(playSyncFromSegment).toHaveBeenCalledWith(0);
+    expect(playSyncAt).toHaveBeenCalledWith(4.5, 'source');
   });
 
   it('shows one volume icon in source mode and writes volume to the source audio', async () => {

@@ -295,7 +295,7 @@ export class RecordingPreview extends LitElement {
       <div class="preview">
         <div class="subtitle-area">${this._renderSubtitle()}</div>
 
-        ${this.segments.length > 0 ? this._renderSegmentNav() : nothing}
+        ${this._renderPlaybackNav()}
 
         <waveform-player
           .controller=${this._controller}
@@ -364,24 +364,29 @@ export class RecordingPreview extends LitElement {
     `;
   }
 
-  /** Sentence-level nav between subtitle and waveform (mobile-friendly vs hotkeys-only). */
-  private _renderSegmentNav(): TemplateResult {
-    const canNavigate = this._playMode !== 'idle' && this.segments.length > 0;
+  /**
+   * Transport between subtitle and waveform (mobile-friendly vs hotkeys-only).
+   * Play/pause is always shown; sentence controls appear only when segments exist.
+   */
+  private _renderPlaybackNav(): TemplateResult {
+    const hasSegments = this.segments.length > 0;
+    const canNavigate = this._playMode !== 'idle' && hasSegments;
     const canPrevious = canNavigate && this._syncSegmentIndex > 0;
     const canNext = canNavigate && this._syncSegmentIndex < this.segments.length - 1;
     const canTogglePlay = this._playMode !== 'idle';
     const isPlaying = canTogglePlay && !this._playbackPaused;
     const canReplay = canNavigate;
     const keyboardShortcuts = supportsKeyboardShortcuts();
+    const selectModeHint = msg('请先选择播放模式');
 
     const previousTitle = canPrevious
       ? keyboardShortcuts
         ? msg('上一句 (←)')
         : msg('上一句')
-      : this.segments.length === 0
+      : !hasSegments
         ? msg('无练习片段')
         : this._playMode === 'idle'
-          ? msg('请先播放后再切换句子')
+          ? selectModeHint
           : msg('已是第一句');
     const playPauseTitle = canTogglePlay
       ? keyboardShortcuts
@@ -391,34 +396,38 @@ export class RecordingPreview extends LitElement {
         : isPlaying
           ? msg('暂停')
           : msg('播放')
-      : msg('请先播放后再暂停');
+      : selectModeHint;
     const nextTitle = canNext
       ? keyboardShortcuts
         ? msg('下一句 (→)')
         : msg('下一句')
-      : this.segments.length === 0
+      : !hasSegments
         ? msg('无练习片段')
         : this._playMode === 'idle'
-          ? msg('请先播放后再切换句子')
+          ? selectModeHint
           : msg('已是最后一句');
     const replayTitle = canReplay
       ? keyboardShortcuts
         ? msg('重播本句 (R)')
         : msg('重播本句')
-      : this.segments.length === 0
+      : !hasSegments
         ? msg('无练习片段，无法重播')
-        : msg('请先播放后再重播');
+        : selectModeHint;
 
     return html`
       <div class="segment-nav">
-        <ui-icon-button
-          name="backward"
-          title=${previousTitle}
-          size="var(--icon-lg)"
-          .zIndex=${Z_INDEX.MODAL + 1}
-          ?disabled=${!canPrevious}
-          @click=${() => this._navigateSegment(-1)}
-        ></ui-icon-button>
+        ${hasSegments
+          ? html`
+              <ui-icon-button
+                name="backward"
+                title=${previousTitle}
+                size="var(--icon-lg)"
+                .zIndex=${Z_INDEX.MODAL + 1}
+                ?disabled=${!canPrevious}
+                @click=${() => this._navigateSegment(-1)}
+              ></ui-icon-button>
+            `
+          : nothing}
         <ui-icon-button
           name=${isPlaying ? 'pause' : 'play'}
           title=${playPauseTitle}
@@ -432,22 +441,26 @@ export class RecordingPreview extends LitElement {
             this._togglePreviewPlayback();
           }}
         ></ui-icon-button>
-        <ui-icon-button
-          name="replay"
-          title=${replayTitle}
-          size="var(--icon-lg)"
-          .zIndex=${Z_INDEX.MODAL + 1}
-          ?disabled=${!canReplay}
-          @click=${() => this._replayCurrentSegment()}
-        ></ui-icon-button>
-        <ui-icon-button
-          name="forward"
-          title=${nextTitle}
-          size="var(--icon-lg)"
-          .zIndex=${Z_INDEX.MODAL + 1}
-          ?disabled=${!canNext}
-          @click=${() => this._navigateSegment(1)}
-        ></ui-icon-button>
+        ${hasSegments
+          ? html`
+              <ui-icon-button
+                name="replay"
+                title=${replayTitle}
+                size="var(--icon-lg)"
+                .zIndex=${Z_INDEX.MODAL + 1}
+                ?disabled=${!canReplay}
+                @click=${() => this._replayCurrentSegment()}
+              ></ui-icon-button>
+              <ui-icon-button
+                name="forward"
+                title=${nextTitle}
+                size="var(--icon-lg)"
+                .zIndex=${Z_INDEX.MODAL + 1}
+                ?disabled=${!canNext}
+                @click=${() => this._navigateSegment(1)}
+              ></ui-icon-button>
+            `
+          : nothing}
       </div>
     `;
   }
@@ -770,6 +783,14 @@ export class RecordingPreview extends LitElement {
   }
 
   private _handleWaveformSeekRequest(event: CustomEvent<WaveformSeekRequestDetail>): void {
+    if (this._playMode === 'idle') {
+      // Stay idle until the user picks a play mode; block waveform-player's
+      // default seek+play so clicking does not start source/recording playback.
+      Message.warning(msg('请先选择播放模式'));
+      event.preventDefault();
+      return;
+    }
+
     if (this._playMode === 'source' || this._playMode === 'recording') {
       this._handleSingleTrackWaveformSeek(event);
       return;
@@ -791,6 +812,7 @@ export class RecordingPreview extends LitElement {
     }
 
     const axis = trackId === this._recordingTrackId ? 'recording' : 'source';
+    let seekTime = time;
     let segmentIndex = findPracticeSegmentIndex(this.segments, time, axis);
     if (segmentIndex < 0 && axis === 'source' && this.subtitleSegments.length > 0) {
       const subtitleIndex = findSegmentIndex(this.subtitleSegments, time);
@@ -804,22 +826,22 @@ export class RecordingPreview extends LitElement {
         Message.info(msg('该句无录音，无法同步播放'));
         return;
       }
+      const segment = this.segments[segmentIndex];
+      seekTime = Math.max(segment.sourceStartTime, Math.min(time, segment.sourceEndTime));
     } else if (segmentIndex < 0) {
       return;
     }
 
     event.preventDefault();
     this._requestAudioFocus();
-    this._zoomToPracticeSegment(segmentIndex);
-    void this._playback.playSyncFromSegment(segmentIndex).catch(() => {
+    void this._playback.playSyncAt(seekTime, axis).catch(() => {
       this._playback?.stop();
     });
   }
 
   /**
    * Keep source/recording waveform clicks on DualTrackPlayback so pause state
-   * (icon + status) stays in sync. Mirrors waveform-player: pause while playing,
-   * seek+resume while paused.
+   * (icon + status) stays in sync. Always seek to the click time and play.
    */
   private _handleSingleTrackWaveformSeek(event: CustomEvent<WaveformSeekRequestDetail>): void {
     if (!this._playback) {
@@ -834,19 +856,16 @@ export class RecordingPreview extends LitElement {
     }
 
     event.preventDefault();
+    this._requestAudioFocus();
 
-    if (!this._playbackPaused) {
-      this._playback.pause();
+    if (this._playMode === 'source') {
+      void this._playback.playSourceAt(time).catch(() => {
+        this._playback?.stop();
+      });
       return;
     }
 
-    const audio = this._playMode === 'source' ? this._sourceAudio : this._recordingAudio;
-    if (audio) {
-      const max = Number.isFinite(audio.duration) ? audio.duration : time;
-      audio.currentTime = Math.max(0, Math.min(max, time));
-    }
-    this._requestAudioFocus();
-    void this._playback.resume().catch(() => {
+    void this._playback.playRecordingAt(time).catch(() => {
       this._playback?.stop();
     });
   }

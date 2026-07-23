@@ -1,5 +1,5 @@
 import type { PracticeSegment } from '../types/models.js';
-import { findPracticeSegmentIndex } from './playback-utils.js';
+import { findPracticeSegmentIndex, type PracticeTimeAxis } from './playback-utils.js';
 import { throttle } from './util.js';
 
 export type DualTrackMode = 'idle' | 'source' | 'recording' | 'sync';
@@ -48,21 +48,26 @@ export class DualTrackPlayback {
   }
 
   async playSource(): Promise<void> {
+    const start = this.segments.length > 0 ? this.segments[0].sourceStartTime : 0;
+    await this.playSourceAt(start);
+  }
+
+  /** Enter or continue source mode from an absolute source timeline time. */
+  async playSourceAt(time: number): Promise<void> {
     this._stopSyncMonitor();
     this.recordingAudio.pause();
 
     if (this.segments.length > 0) {
-      const first = this.segments[0];
       const last = this.segments[this.segments.length - 1];
       this._sourceEndTime = last.sourceEndTime;
-      this.syncSegmentIndex = 0;
-      this.sourceAudio.currentTime = first.sourceStartTime;
+      const index = findPracticeSegmentIndex(this.segments, time, 'source');
+      this.syncSegmentIndex = index >= 0 ? index : 0;
     } else {
       this._sourceEndTime = null;
       this.syncSegmentIndex = 0;
-      this.sourceAudio.currentTime = 0;
     }
 
+    this.sourceAudio.currentTime = this._clampAudioTime(this.sourceAudio, time);
     this.mode = 'source';
     this.paused = false;
     this._emitState();
@@ -70,21 +75,26 @@ export class DualTrackPlayback {
   }
 
   async playRecording(): Promise<void> {
+    const start = this.segments.length > 0 ? this.segments[0].recordingStartTime : 0;
+    await this.playRecordingAt(start);
+  }
+
+  /** Enter or continue recording mode from an absolute recording timeline time. */
+  async playRecordingAt(time: number): Promise<void> {
     this._stopSyncMonitor();
     this.sourceAudio.pause();
 
     if (this.segments.length > 0) {
-      const first = this.segments[0];
       const last = this.segments[this.segments.length - 1];
       this._recordingEndTime = last.recordingEndTime;
-      this.syncSegmentIndex = 0;
-      this.recordingAudio.currentTime = first.recordingStartTime;
+      const index = findPracticeSegmentIndex(this.segments, time, 'recording');
+      this.syncSegmentIndex = index >= 0 ? index : 0;
     } else {
       this._recordingEndTime = null;
       this.syncSegmentIndex = 0;
-      this.recordingAudio.currentTime = 0;
     }
 
+    this.recordingAudio.currentTime = this._clampAudioTime(this.recordingAudio, time);
     this.mode = 'recording';
     this.paused = false;
     this._emitState();
@@ -100,13 +110,40 @@ export class DualTrackPlayback {
       return;
     }
 
-    this._stopSingleTrackMonitor();
-    this.sourceAudio.pause();
-    this.recordingAudio.pause();
-    this.mode = 'sync';
-    this.paused = false;
-    this._emitState();
-    this._startSyncSegment(index);
+    const segment = this.segments[index];
+    await this._playSyncAtTimes(index, segment.sourceStartTime, segment.recordingStartTime);
+  }
+
+  /**
+   * Seek sync playback to a time on the given axis (maps the other track by
+   * wall-clock elapsed within the segment, matching drift correction).
+   * Returns false when the time cannot be mapped to a practice segment.
+   */
+  async playSyncAt(time: number, axis: PracticeTimeAxis): Promise<boolean> {
+    const segmentIndex = findPracticeSegmentIndex(this.segments, time, axis);
+    if (segmentIndex < 0) {
+      return false;
+    }
+
+    const segment = this.segments[segmentIndex];
+    let sourceTime: number;
+    let recordingTime: number;
+
+    if (axis === 'source') {
+      sourceTime = Math.max(segment.sourceStartTime, Math.min(time, segment.sourceEndTime));
+      const elapsed = sourceTime - segment.sourceStartTime;
+      recordingTime = Math.min(segment.recordingStartTime + elapsed, segment.recordingEndTime);
+    } else {
+      recordingTime = Math.max(
+        segment.recordingStartTime,
+        Math.min(time, segment.recordingEndTime),
+      );
+      const elapsed = recordingTime - segment.recordingStartTime;
+      sourceTime = Math.min(segment.sourceStartTime + elapsed, segment.sourceEndTime);
+    }
+
+    await this._playSyncAtTimes(segmentIndex, sourceTime, recordingTime);
+    return true;
   }
 
   /** Jump to a practice segment while keeping the current play mode and pause state. */
@@ -287,6 +324,52 @@ export class DualTrackPlayback {
     this._correctSyncDrift();
   }, SYNC_DRIFT_THROTTLE_MS);
 
+  private async _playSyncAtTimes(
+    index: number,
+    sourceTime: number,
+    recordingTime: number,
+  ): Promise<void> {
+    const segment = this.segments[index];
+    if (!segment) {
+      this.stop();
+      return;
+    }
+
+    this._stopSingleTrackMonitor();
+    this.sourceAudio.pause();
+    this.recordingAudio.pause();
+    this.mode = 'sync';
+    this.paused = false;
+    this.syncSegmentIndex = index;
+    this._syncSegment = segment;
+    this._syncSegmentIndex = index;
+    this.sourceAudio.currentTime = sourceTime;
+    this.recordingAudio.currentTime = recordingTime;
+    this._emitState();
+
+    const sourceRemaining = segment.sourceEndTime - sourceTime > SYNC_END_EPSILON;
+    const recordingRemaining = segment.recordingEndTime - recordingTime > SYNC_END_EPSILON;
+    if (sourceRemaining) {
+      await this.sourceAudio.play();
+    }
+    if (recordingRemaining) {
+      await this.recordingAudio.play();
+    }
+    if (!sourceRemaining && !recordingRemaining) {
+      const nextIndex = index + 1;
+      if (nextIndex < this.segments.length) {
+        await this.playSyncFromSegment(nextIndex);
+      } else {
+        this.stop();
+      }
+    }
+  }
+
+  private _clampAudioTime(audio: HTMLAudioElement, time: number): number {
+    const max = Number.isFinite(audio.duration) ? audio.duration : time;
+    return Math.max(0, Math.min(max, time));
+  }
+
   private _startSyncSegment(index: number): void {
     const segment = this.segments[index];
     if (!segment) {
@@ -294,15 +377,7 @@ export class DualTrackPlayback {
       return;
     }
 
-    this.syncSegmentIndex = index;
-    this._syncSegment = segment;
-    this._syncSegmentIndex = index;
-    this._emitState();
-    this.sourceAudio.currentTime = segment.sourceStartTime;
-    this.recordingAudio.currentTime = segment.recordingStartTime;
-
-    void this.sourceAudio.play();
-    void this.recordingAudio.play();
+    void this._playSyncAtTimes(index, segment.sourceStartTime, segment.recordingStartTime);
   }
 
   private _tickSyncSegment(): void {

@@ -7,6 +7,7 @@ import {
   DEFAULT_DISCRIMINATION_SETTINGS,
   DISCRIMINATION_LADDER_COUNT_MAX,
   DISCRIMINATION_LADDER_COUNT_MIN,
+  DISCRIMINATION_MAX_NOISE_TRACKS,
   DISCRIMINATION_RATE_STEPS,
 } from '../../types/models.js';
 import { practiceViewStyles } from './practice-view-styles.js';
@@ -131,7 +132,15 @@ export class DiscriminationPanel extends LitElement {
                             type="checkbox"
                             .checked=${checked}
                             @change=${(e: Event) => {
-                              const on = (e.target as HTMLInputElement).checked;
+                              const input = e.target as HTMLInputElement;
+                              const on = input.checked;
+                              // Undo native check when at max; Lit won't re-apply unchanged `.checked`.
+                              if (
+                                on &&
+                                this.settings.selected.length >= DISCRIMINATION_MAX_NOISE_TRACKS
+                              ) {
+                                input.checked = false;
+                              }
                               this._emit<DiscriminationNoiseToggleDetail>('noise-toggle', {
                                 noiseId: item.id,
                                 on,

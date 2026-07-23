@@ -570,6 +570,10 @@ export class SubtitlePanel extends LitElement {
   }
 
   private _toggleFullscreen(): void {
+    const snapshot = this._controllerHost?.snapshot;
+    if (!snapshot?.hasSubtitles || !snapshot.subtitlesVisible) {
+      return;
+    }
     this._setFullscreen(!this._isFullscreen());
   }
 
@@ -848,10 +852,15 @@ export class SubtitlePanel extends LitElement {
 
   private _toggleSubtitles(): void {
     const snapshot = this._controllerHost?.snapshot;
-    if (!snapshot) {
+    if (!snapshot?.hasSubtitles) {
       return;
     }
-    this.controller?.setSubtitlesVisible(!snapshot.subtitlesVisible);
+    const nextVisible = !snapshot.subtitlesVisible;
+    // Fullscreen is a presentation of visible subtitles; hide ⇒ exit fullscreen.
+    if (!nextVisible) {
+      this._setFullscreen(false);
+    }
+    this.controller?.setSubtitlesVisible(nextVisible);
   }
 
   private _openSubtitlePicker(): void {
@@ -1038,6 +1047,10 @@ export class SubtitlePanel extends LitElement {
 
   /** Practice hotkeys / external UI can toggle translation visibility. */
   toggleTranslationVisible(): void {
+    const snapshot = this._controllerHost?.snapshot;
+    if (!snapshot?.hasSubtitles || !snapshot.subtitlesVisible) {
+      return;
+    }
     this._translationVisible = !this._translationVisible;
   }
 

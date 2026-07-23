@@ -101,6 +101,42 @@ describe('DualTrackPlayback', () => {
     expect(recording.currentTime).toBe(4.5);
   });
 
+  it('playSourceAt seeks to the requested time and plays', async () => {
+    await controller.playSourceAt(3.5);
+    expect(controller.getState()).toEqual({ mode: 'source', syncSegmentIndex: 0, paused: false });
+    expect(source.currentTime).toBe(3.5);
+    expect(source.play).toHaveBeenCalled();
+    expect(recording.pause).toHaveBeenCalled();
+  });
+
+  it('playRecordingAt seeks to the requested time and plays', async () => {
+    await controller.playRecordingAt(6);
+    expect(controller.getState()).toEqual({
+      mode: 'recording',
+      syncSegmentIndex: 1,
+      paused: false,
+    });
+    expect(recording.currentTime).toBe(6);
+    expect(recording.play).toHaveBeenCalled();
+    expect(source.pause).toHaveBeenCalled();
+  });
+
+  it('playSyncAt maps mid-segment times with wall-clock elapsed', async () => {
+    const ok = await controller.playSyncAt(2.5, 'source');
+    expect(ok).toBe(true);
+    expect(controller.getState()).toEqual({ mode: 'sync', syncSegmentIndex: 0, paused: false });
+    expect(source.currentTime).toBe(2.5);
+    expect(recording.currentTime).toBe(2.5);
+    expect(source.play).toHaveBeenCalled();
+    expect(recording.play).toHaveBeenCalled();
+  });
+
+  it('playSyncAt returns false when time is outside practice segments', async () => {
+    const ok = await controller.playSyncAt(99, 'source');
+    expect(ok).toBe(false);
+    expect(controller.getState().mode).toBe('idle');
+  });
+
   it('ignores out-of-range sync segment index', async () => {
     await controller.playSyncFromSegment(99);
     expect(controller.getState().mode).toBe('idle');
