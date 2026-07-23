@@ -1,5 +1,5 @@
 import { msg, str, localized } from '@lit/localize';
-import { css, html, LitElement, nothing } from 'lit';
+import { html, LitElement, nothing } from 'lit';
 import { keyed } from 'lit/directives/keyed.js';
 import { customElement, property, query, state } from 'lit/decorators.js';
 import { navigator as Navigator } from 'lit-element-router';
@@ -29,8 +29,9 @@ import type {
   SubtitleSegment,
 } from '../../types/models.js';
 import {
+  DISCRIMINATION_LADDER_COUNT_MAX,
+  DISCRIMINATION_LADDER_COUNT_MIN,
   DISCRIMINATION_MAX_NOISE_TRACKS,
-  DISCRIMINATION_RATE_STEPS,
   DEFAULT_DISCRIMINATION_SETTINGS,
 } from '../../types/models.js';
 import {
@@ -48,7 +49,6 @@ import {
 } from '../../lib/audio-focus.js';
 import {
   VOLUME_HOTKEY_STEP,
-  getHotkeyCatalog,
   getHotkeyManager,
   stepPlaybackRate,
   supportsKeyboardShortcuts,
@@ -65,14 +65,13 @@ import '../ui/button.js';
 import '../ui/icon.js';
 import '../ui/icon-button.js';
 import '../ui/modal.js';
-import '../ui/select.js';
-import '../ui/volume-control.js';
-import type { SelectChangeDetail } from '../ui/select.js';
-import type { VolumeControlChangeDetail } from '../ui/volume-control.js';
 import './media-player.js';
 import './subtitle-panel.js';
 import './audio-recorder.js';
 import './echo-session-dock.js';
+import './discrimination-panel.js';
+import './practice-tips-modal.js';
+import './practice-hotkeys-help.js';
 import {
   AudioRecorder,
   type RecordingCompleteDetail,
@@ -80,6 +79,16 @@ import {
   type RecordingStateChangeDetail,
 } from './audio-recorder.js';
 import type { RecordingSessionPhase } from './echo-session-dock.js';
+import type {
+  DiscriminationLadderCountDetail,
+  DiscriminationLadderRateDetail,
+  DiscriminationNoiseToggleDetail,
+  DiscriminationNoiseVolumeDetail,
+} from './discrimination-panel.js';
+import type { PracticeTipsConfirmDetail } from './practice-tips-modal.js';
+import type { PracticeTipsKind } from './practice-tips.js';
+import { getEchoSummary, getShadowingSummary } from './practice-tips.js';
+import { practiceViewStyles } from './practice-view-styles.js';
 import type { WaveformController } from '../../controllers/waveform-controller.js';
 import {
   setUserSettings,
@@ -102,7 +111,6 @@ import {
 
 type PracticeType = 'listening' | 'speaking';
 type SpeakingMode = 'shadowing' | 'echo';
-type TipsModalKind = 'shadowing' | 'echo' | 'discrimination' | null;
 
 type StorageEstimate = {
   usage: number;
@@ -120,260 +128,7 @@ const NavigatorElement = Navigator(LitElement);
 @customElement('practice-view')
 @localized()
 export class PracticeView extends NavigatorElement {
-  static styles = css`
-    :host {
-      display: block;
-    }
-
-    .header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: var(--space-block);
-      margin-bottom: var(--space-inline);
-    }
-
-    .header h2 {
-      margin: 0;
-      font-size: 1.125rem;
-      font-weight: 600;
-    }
-
-    .layout {
-      display: grid;
-      gap: var(--space-inline);
-    }
-
-    .mode-tabs {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-sm);
-      margin-bottom: var(--space-inline);
-    }
-
-    .speaking-mode-tabs {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-sm);
-      margin-bottom: var(--space-block);
-    }
-
-    .discrimination-noise-row {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-xs);
-      margin-top: var(--space-sm);
-    }
-
-    .noise-item-row {
-      display: flex;
-      align-items: center;
-      gap: var(--space-sm);
-    }
-
-    .discrimination-noise-row label.noise-check {
-      display: flex;
-      align-items: center;
-      gap: var(--space-sm);
-      min-width: 0;
-      font-size: 0.875rem;
-      cursor: pointer;
-    }
-
-    .discrimination-ladder-row {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: var(--space-sm);
-      margin-top: var(--space-sm);
-    }
-
-    .discrimination-ladder-row > ui-select {
-      width: 4.5rem;
-      flex-shrink: 0;
-    }
-
-    .ladder-sequence-preview {
-      flex: 1;
-      min-width: 0;
-      font-size: 0.8125rem;
-      color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
-      line-height: 1.5;
-      word-break: break-word;
-    }
-
-    .discrimination-ladder-rates {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: var(--space-sm);
-      margin-top: var(--space-sm);
-    }
-
-    .discrimination-ladder-rates ui-select {
-      width: 100%;
-      min-width: 0;
-    }
-
-    .ladder-progress {
-      margin: var(--space-xs) 0 0;
-      font-size: 0.8125rem;
-      color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
-    }
-
-    .settings-panel {
-      display: grid;
-      gap: var(--space-block);
-      padding: var(--space-inline);
-      margin-bottom: var(--space-inline);
-      border: 1px solid var(--color-border, #d9d9d9);
-      border-radius: var(--radius-md, 8px);
-      background: var(--color-surface, #fff);
-    }
-
-    .settings-panel h3 {
-      margin: 0;
-      font-size: 1rem;
-      font-weight: 600;
-    }
-
-    .settings-group {
-      display: grid;
-      gap: var(--space-sm);
-    }
-
-    .storage-info {
-      display: grid;
-      gap: var(--space-xs);
-      font-size: 0.875rem;
-      color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
-    }
-
-    .info-text {
-      display: grid;
-      gap: var(--space-sm);
-      font-size: 0.875rem;
-      color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
-    }
-
-    .echo-recorder {
-      margin-top: var(--space-sm);
-    }
-
-    :host([data-session-dock]) {
-      padding-bottom: var(--session-dock-inset, var(--echo-dock-inset, 140px));
-    }
-
-    .tips-summary {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: var(--space-sm);
-    }
-
-    .tips-summary p {
-      margin: 0;
-      flex: 1;
-      min-width: 12rem;
-    }
-
-    .recordings-summary {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: var(--space-sm);
-    }
-
-    .recordings-summary p {
-      margin: 0;
-      flex: 1;
-      min-width: 10rem;
-    }
-
-    .recordings-modal-body {
-      min-height: 12rem;
-    }
-
-    .tips-modal-body {
-      display: grid;
-      gap: var(--space-sm);
-      font-size: 0.875rem;
-      color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
-    }
-
-    .tips-skip {
-      display: inline-flex;
-      align-items: center;
-      gap: var(--space-sm);
-      margin: 0;
-      color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
-      font-size: 0.8125rem;
-      cursor: pointer;
-      user-select: none;
-    }
-
-    .tips-skip input {
-      width: 16px;
-      height: 16px;
-      margin: 0;
-      cursor: pointer;
-      accent-color: var(--color-primary, #1677ff);
-    }
-
-    .tips-modal-footer {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: var(--space-block);
-      width: 100%;
-    }
-
-    .hotkeys-help-body {
-      display: grid;
-      gap: var(--space-inline);
-    }
-
-    .hotkeys-help-list {
-      display: grid;
-      gap: var(--space-xs);
-      margin: 0;
-      padding: 0;
-      list-style: none;
-    }
-
-    .hotkeys-help-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: var(--space-block);
-      font-size: 0.875rem;
-    }
-
-    .hotkeys-help-label {
-    }
-
-    .hotkeys-help-scope {
-      font-size: 0.75rem;
-      color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
-    }
-
-    .hotkeys-help-code {
-      flex-shrink: 0;
-      min-width: 3.5rem;
-      padding: 0.125rem 0.5rem;
-      border: 1px solid var(--color-border, #d9d9d9);
-      border-radius: var(--radius-sm, 4px);
-      background: var(--color-surface-secondary, #f5f5f5);
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      font-size: 0.8125rem;
-      text-align: center;
-    }
-
-    .hotkeys-help-note {
-      margin: 0;
-      font-size: 0.8125rem;
-      color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
-    }
-  `;
+  static styles = practiceViewStyles;
 
   @property({ type: String })
   route: string = '';
@@ -451,10 +206,7 @@ export class PracticeView extends NavigatorElement {
   private _sessionWaveformController: WaveformController | null = null;
 
   @state()
-  private _tipsModalKind: TipsModalKind = null;
-
-  @state()
-  private _tipsSkipChecked = false;
+  private _tipsModalKind: PracticeTipsKind | null = null;
 
   @state()
   private _recordingsModalOpen = false;
@@ -468,58 +220,6 @@ export class PracticeView extends NavigatorElement {
   private _echoSegment: SubtitleSegment | null = null;
 
   private _didInitialLoad = false;
-
-  private _getShadowingTips(): string[] {
-    return [
-      msg(
-        '同步跟读：点击下方【麦克风】→【倒计时】→ 播放【原音】并【开始录音】；原音播完【自动】停止录音（也可手动停止）。',
-      ),
-      msg('温馨提示：'),
-      msg('1. 建议使用耳机练习。'),
-      msg('2. 点击【麦克风】之前可操作播放器；点击之后播放器锁定，不可操作。'),
-      msg('3. 跟不上原音时，请在点麦前设置倍速、单句暂停。'),
-      msg('4. 开始录音时仅保留倍速、音量、单句暂停；循环、睡眠等其他设置会被忽略。'),
-      msg('5. 录音时底部会显示状态与波形，全屏字幕下也可看到。'),
-    ];
-  }
-
-  private _getEchoTips(): string[] {
-    return [
-      msg(
-        '回声跟读：点击字幕行右侧【麦克风】→ 播放该句【原音】→【倒计时】→【开始录音】；跟读完成后需【手动】停止录音。',
-      ),
-      msg('温馨提示：'),
-      msg('1. 建议使用耳机练习。'),
-      msg('2. 点击【麦克风】之前可操作播放器；点击之后播放器锁定，不可操作。'),
-      msg('3. 开始录音时仅保留倍速、音量；单句暂停会关闭，循环、睡眠等其他设置会被忽略。'),
-      msg('4. 录音时底部会显示状态与波形，全屏字幕下也可看到。'),
-    ];
-  }
-
-  private _getDiscriminationTips(): string[] {
-    return [
-      msg('抗噪听：选择噪音并调音量 → 播放主音频；速听阶梯控制主轨倍速（噪音不变速）。只听不录。'),
-      msg('温馨提示：'),
-      msg('1. 播放器始终可用（进度/音量/切句/切歌等等）；可随时调整噪音与阶梯。'),
-      msg('2. 噪音跟随主轨播放/暂停；单条噪音播完会自动循环。播放中改选噪音或音量会立即生效。'),
-      msg(
-        '3. 速听阶梯按「正序再回落」播放完整主轨；播放中改阶梯会重置到第一档并立即应用。切歌后阶梯进度重置，设置保留。',
-      ),
-      msg('4. 该模式不显示倍速、循环、睡眠、单句暂停与高级设置。'),
-    ];
-  }
-
-  private _getShadowingSummary(): string {
-    return msg('点击下方【麦克风】开始同步跟读（边听边录）。');
-  }
-
-  private _getDiscriminationSummary(): string {
-    return msg('只听不录；可随时调整噪音与速听阶梯，倍速由阶梯控制。');
-  }
-
-  private _getEchoSummary(): string {
-    return msg('点击字幕行右侧【麦克风】：先听原音，再录音。');
-  }
 
   @query('record-list')
   private _manageRecordList?: RecordList;
@@ -998,7 +698,21 @@ export class PracticeView extends NavigatorElement {
               </div>
             `
           : nothing}
-        ${isDiscrimination ? this._renderDiscriminationPanel() : nothing}
+        ${isDiscrimination
+          ? html`<discrimination-panel
+              .settings=${this._discriminationSettings}
+              .noiseItems=${this._noiseItems}
+              .ladderDisplayIndex=${this._ladderDisplayIndex}
+              .ladderSequence=${this._rateLadder.getSequence()}
+              .currentRate=${this._rateLadder.getCurrentRate()}
+              @open-tips=${() => this._openTipsModal('discrimination')}
+              @open-library=${this._openLibrary}
+              @noise-toggle=${this._onDiscriminationNoiseToggle}
+              @noise-volume=${this._onDiscriminationNoiseVolume}
+              @ladder-count=${this._onDiscriminationLadderCount}
+              @ladder-rate=${this._onDiscriminationLadderRate}
+            ></discrimination-panel>`
+          : nothing}
         ${isSpeaking
           ? html`
               <div class="speaking-mode-tabs">
@@ -1027,7 +741,7 @@ export class PracticeView extends NavigatorElement {
                     ${this._recordingSupported
                       ? shadowingRemaining > 0
                         ? html`<div class="tips-summary">
-                            <p>${this._getShadowingSummary()}</p>
+                            <p>${getShadowingSummary()}</p>
                             <ui-button
                               variant="secondary"
                               @click=${() => this._openTipsModal('shadowing')}
@@ -1073,7 +787,7 @@ export class PracticeView extends NavigatorElement {
                 <div class="info-text">
                   ${this._recordingSupported
                     ? html`<div class="tips-summary">
-                        <p>${this._getEchoSummary()}</p>
+                        <p>${getEchoSummary()}</p>
                         <ui-button variant="secondary" @click=${() => this._openTipsModal('echo')}>
                           ${msg('说明')}
                         </ui-button>
@@ -1150,8 +864,16 @@ export class PracticeView extends NavigatorElement {
               @echo-session-cancel=${this._onSessionDockCancel}
             ></echo-session-dock>`
           : nothing}
-        ${this._renderTipsModal()} ${this._renderRecordingsModal()}
-        ${this._renderHotkeysHelpModal()}
+        <practice-tips-modal
+          .kind=${this._tipsModalKind}
+          @close=${this._closeTipsModal}
+          @confirm=${this._onTipsConfirm}
+        ></practice-tips-modal>
+        ${this._renderRecordingsModal()}
+        <practice-hotkeys-help
+          .open=${this._hotkeysHelpOpen}
+          @close=${this._closeHotkeysHelp}
+        ></practice-hotkeys-help>
       </section>
     `;
   }
@@ -1164,163 +886,32 @@ export class PracticeView extends NavigatorElement {
     this._hotkeysHelpOpen = false;
   };
 
-  private _renderHotkeysHelpModal() {
-    if (!this._hotkeysHelpOpen) {
-      return nothing;
-    }
-
-    const catalog = getHotkeyCatalog(['practice', 'recording-preview']);
-
-    return html`
-      <ui-modal
-        .open=${true}
-        .title=${msg('快捷键')}
-        .centered=${true}
-        .footer=${false}
-        ok-text="${msg('知道了')}"
-        @update:open=${(e: CustomEvent<{ open: boolean }>) => {
-          if (e.target !== e.currentTarget) {
-            return;
-          }
-          if (!e.detail.open) {
-            this._closeHotkeysHelp();
-          }
-        }}
-      >
-        <div class="hotkeys-help-body">
-          <ul class="hotkeys-help-list">
-            ${catalog.map(
-              (row) => html`
-                <li class="hotkeys-help-row">
-                  <span class="hotkeys-help-label">
-                    <span>${row.actionLabel}</span>
-                    ${row.scopeNote
-                      ? html`<span class="hotkeys-help-scope">（${row.scopeNote}）</span>`
-                      : nothing}
-                  </span>
-                  <kbd class="hotkeys-help-code">${row.codeLabel}</kbd>
-                </li>
-              `,
-            )}
-          </ul>
-          <p class="hotkeys-help-note">${msg('暂不支持自定义快捷键。')}</p>
-        </div>
-        <div slot="footer" class="tips-modal-footer">
-          <span></span>
-          <ui-button variant="primary" @click=${this._closeHotkeysHelp}>${msg('知道了')}</ui-button>
-        </div>
-      </ui-modal>
-    `;
-  }
-
-  private _renderDiscriminationPanel() {
-    const settings = this._discriminationSettings;
-    const rateOptions = DISCRIMINATION_RATE_STEPS.map((rate) => ({
-      value: String(rate),
-      label: `${rate}x`,
-    }));
-    const countOptions = Array.from({ length: 6 }, (_, i) => ({
-      value: String(i + 1),
-      label: String(i + 1),
-    }));
-    const seq = this._rateLadder.getSequence();
-    const sequencePreview = seq.map((rate) => `${rate}x`).join(' → ');
-    const stepLabel =
-      seq.length > 0
-        ? msg(
-            str`当前阶梯：第 ${this._ladderDisplayIndex + 1}/${seq.length} 步（${this._rateLadder.getCurrentRate()}x）`,
-          )
-        : '';
-
-    return html`
-      <div class="settings-panel">
-        <div class="info-text">
-          <div class="tips-summary">
-            <p>${this._getDiscriminationSummary()}</p>
-            <ui-button variant="secondary" @click=${() => this._openTipsModal('discrimination')}>
-              ${msg('说明')}
-            </ui-button>
-          </div>
-          <div class="settings-group">
-            <h3>${msg('噪音')}</h3>
-            ${this._noiseItems.length === 0
-              ? html`<p class="hint">
-                  ${msg('暂无噪音素材。请在资料库中导入。')}<ui-button
-                    variant="secondary"
-                    @click=${this._openLibrary}
-                    >${msg('立即前往')}</ui-button
-                  >
-                </p>`
-              : html`<div class="discrimination-noise-row">
-                  ${this._noiseItems.map((item) => {
-                    const selected = settings.selected.find((s) => s.noiseId === item.id);
-                    const checked = Boolean(selected);
-                    return html`
-                      <div class="noise-item-row">
-                        <label class="noise-check">
-                          <input
-                            type="checkbox"
-                            .checked=${checked}
-                            @change=${(e: Event) => {
-                              const on = (e.target as HTMLInputElement).checked;
-                              this._toggleNoiseSelection(item.id, on);
-                            }}
-                          />
-                          <span>${item.title}</span>
-                        </label>
-                        ${checked
-                          ? html`<ui-volume-control
-                              .value=${selected?.volume ?? 0.5}
-                              .min=${0}
-                              .max=${1}
-                              .step=${0.05}
-                              placement="right"
-                              @change=${(e: CustomEvent<VolumeControlChangeDetail>) => {
-                                this._setNoiseVolume(item.id, e.detail.value);
-                              }}
-                            ></ui-volume-control>`
-                          : nothing}
-                      </div>
-                    `;
-                  })}
-                </div>`}
-          </div>
-          <div class="settings-group">
-            <h3>${msg('速听阶梯')}</h3>
-            <div class="discrimination-ladder-row">
-              <span>${msg('次数')}</span>
-              <ui-select
-                .value=${String(settings.ladderCount)}
-                .options=${countOptions}
-                @change=${(e: CustomEvent<SelectChangeDetail>) => {
-                  this._setLadderCount(Number(e.detail.value));
-                }}
-              ></ui-select>
-            </div>
-            <div class="discrimination-ladder-rates">
-              ${settings.ladderRates.map(
-                (rate, index) => html`
-                  <ui-select
-                    .value=${String(rate)}
-                    .options=${rateOptions}
-                    aria-label=${msg(str`第 ${index + 1} 档倍速`)}
-                    @change=${(e: CustomEvent<SelectChangeDetail>) => {
-                      this._setLadderRate(index, Number(e.detail.value));
-                    }}
-                  ></ui-select>
-                `,
-              )}
-            </div>
-            <span class="ladder-sequence-preview">${msg('将播放：')}${sequencePreview}</span>
-            <p class="ladder-progress">${stepLabel}</p>
-          </div>
-        </div>
-      </div>
-    `;
-  }
-
   private _openLibrary = (): void => {
     this.navigate('/library#noise-list-title');
+  };
+
+  private _onDiscriminationNoiseToggle = (
+    event: CustomEvent<DiscriminationNoiseToggleDetail>,
+  ): void => {
+    this._toggleNoiseSelection(event.detail.noiseId, event.detail.on);
+  };
+
+  private _onDiscriminationNoiseVolume = (
+    event: CustomEvent<DiscriminationNoiseVolumeDetail>,
+  ): void => {
+    this._setNoiseVolume(event.detail.noiseId, event.detail.volume);
+  };
+
+  private _onDiscriminationLadderCount = (
+    event: CustomEvent<DiscriminationLadderCountDetail>,
+  ): void => {
+    this._setLadderCount(event.detail.count);
+  };
+
+  private _onDiscriminationLadderRate = (
+    event: CustomEvent<DiscriminationLadderRateDetail>,
+  ): void => {
+    this._setLadderRate(event.detail.index, event.detail.rate);
   };
 
   private _toggleNoiseSelection(noiseId: string, on: boolean): void {
@@ -1348,7 +939,10 @@ export class PracticeView extends NavigatorElement {
   }
 
   private _setLadderCount(count: number): void {
-    const ladderCount = Math.max(1, Math.min(6, count));
+    const ladderCount = Math.max(
+      DISCRIMINATION_LADDER_COUNT_MIN,
+      Math.min(DISCRIMINATION_LADDER_COUNT_MAX, count),
+    );
     const ladderRates = [...this._discriminationSettings.ladderRates];
     while (ladderRates.length < ladderCount) {
       ladderRates.push(1);
@@ -1366,69 +960,6 @@ export class PracticeView extends NavigatorElement {
     this._rateLadder.reset();
     this._ladderDisplayIndex = 0;
     this._persistDiscriminationSettings({ ladderRates });
-  }
-
-  private _renderTipsModal() {
-    if (!this._tipsModalKind) {
-      return nothing;
-    }
-
-    const kind = this._tipsModalKind;
-    const tips =
-      kind === 'shadowing'
-        ? this._getShadowingTips()
-        : kind === 'echo'
-          ? this._getEchoTips()
-          : this._getDiscriminationTips();
-    const title =
-      kind === 'shadowing'
-        ? msg('同步跟读说明')
-        : kind === 'echo'
-          ? msg('回声跟读说明')
-          : msg('抗噪听说明');
-    const shouldSkipTips =
-      kind === 'shadowing'
-        ? shouldSkipShadowingTips()
-        : kind === 'echo'
-          ? shouldSkipEchoTips()
-          : shouldSkipDiscriminationTips();
-
-    return html`
-      <ui-modal
-        .open=${true}
-        .title=${title}
-        .centered=${true}
-        .footer=${false}
-        ok-text="${msg('知道了')}"
-        @update:open=${(e: CustomEvent<{ open: boolean }>) => {
-          if (e.target !== e.currentTarget) {
-            return;
-          }
-          if (!e.detail.open) {
-            this._closeTipsModal();
-          }
-        }}
-      >
-        <div class="tips-modal-body">${tips.map((tip) => html`<div>${tip}</div>`)}</div>
-        <div slot="footer" class="tips-modal-footer">
-          ${!shouldSkipTips
-            ? html` <label class="tips-skip">
-                <input
-                  type="checkbox"
-                  .checked=${this._tipsSkipChecked}
-                  @change=${(event: Event) => {
-                    this._tipsSkipChecked = (event.target as HTMLInputElement).checked;
-                  }}
-                />
-                ${msg('以后不再提醒')}
-              </label>`
-            : nothing}
-          <ui-button style="margin-left: auto;" variant="primary" @click=${this._confirmTipsModal}
-            >${msg('知道了')}</ui-button
-          >
-        </div>
-      </ui-modal>
-    `;
   }
 
   private _renderShadowingRecordingsEntry() {
@@ -1707,23 +1238,22 @@ export class PracticeView extends NavigatorElement {
     }
   }
 
-  private _openTipsModal(kind: 'shadowing' | 'echo' | 'discrimination'): void {
-    this._tipsSkipChecked = false;
+  private _openTipsModal(kind: PracticeTipsKind): void {
     this._tipsModalKind = kind;
   }
 
-  private _closeTipsModal(): void {
+  private _closeTipsModal = (): void => {
     this._tipsModalKind = null;
-    this._tipsSkipChecked = false;
-  }
+  };
 
-  private _confirmTipsModal = (): void => {
-    if (this._tipsSkipChecked && this._tipsModalKind) {
-      if (this._tipsModalKind === 'shadowing') {
+  private _onTipsConfirm = (event: CustomEvent<PracticeTipsConfirmDetail>): void => {
+    const { kind, skipFuture } = event.detail;
+    if (skipFuture) {
+      if (kind === 'shadowing') {
         setUserSettings({ skipShadowingTips: true });
-      } else if (this._tipsModalKind === 'echo') {
+      } else if (kind === 'echo') {
         setUserSettings({ skipEchoTips: true });
-      } else if (this._tipsModalKind === 'discrimination') {
+      } else if (kind === 'discrimination') {
         setUserSettings({ skipDiscriminationTips: true });
       }
     }
