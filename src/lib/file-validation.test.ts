@@ -1,10 +1,14 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  bufferToHex,
   durationsMatch,
   getBaseName,
   getFileExtension,
+  getMediaDuration,
   getMediaType,
+  hashAny,
+  hashFile,
   hashString,
   isAudioFile,
   isLrcFile,
@@ -48,6 +52,10 @@ describe('resolveMimeType', () => {
     expect(resolveMimeType(makeFile('song.mp3'))).toBe('audio/mpeg');
     expect(resolveMimeType(makeFile('clip.mp4'))).toBe('video/mp4');
   });
+
+  it('returns empty string for unknown extensions without type', () => {
+    expect(resolveMimeType(makeFile('notes.bin'))).toBe('');
+  });
 });
 
 describe('media type checks', () => {
@@ -86,14 +94,30 @@ describe('titleFromFileName', () => {
   it('uses basename without extension', () => {
     expect(titleFromFileName('My Lesson.mp3')).toBe('My Lesson');
   });
+
+  it('falls back to the original name when basename is blank', () => {
+    expect(titleFromFileName('   .mp3')).toBe('   .mp3');
+  });
 });
 
-describe('hashString', () => {
-  it('returns a stable SHA-256 hex digest', async () => {
+describe('hash helpers', () => {
+  it('returns a stable SHA-256 hex digest for strings', async () => {
     const hash = await hashString('hello');
     expect(hash).toMatch(/^[0-9a-f]{64}$/);
     expect(await hashString('hello')).toBe(hash);
     expect(await hashString('world')).not.toBe(hash);
+  });
+
+  it('hashes files and forwards hashAny by input type', async () => {
+    const file = new File(['hello'], 'a.mp3', { type: 'audio/mpeg' });
+    const fileHash = await hashFile(file);
+    expect(fileHash).toMatch(/^[0-9a-f]{64}$/);
+    expect(await hashAny(file)).toBe(fileHash);
+    expect(await hashAny('hello')).toBe(await hashString('hello'));
+  });
+
+  it('bufferToHex encodes bytes as lowercase hex', () => {
+    expect(bufferToHex(new Uint8Array([0, 15, 255]).buffer)).toBe('000fff');
   });
 });
 
@@ -137,10 +161,107 @@ describe('isSameFile', () => {
     expect(await isSameFile(a, b)).toBe(true);
     expect(await isSameFile(a, c)).toBe(false);
   });
+
+  it('returns false when metadata differs before hashing', async () => {
+    const a = new File(['x'], 'a.mp3', { type: 'audio/mpeg' });
+    const renamed = new File(['x'], 'b.mp3', { type: 'audio/mpeg' });
+    const typed = new File(['x'], 'a.mp3', { type: 'audio/wav' });
+    expect(await isSameFile(a, renamed)).toBe(false);
+    expect(await isSameFile(a, typed)).toBe(false);
+  });
 });
 
 describe('titleTypeKey', () => {
   it('joins title and media type', () => {
     expect(titleTypeKey('lesson', 'audio')).toBe('lesson::audio');
+  });
+});
+
+describe('getMediaDuration', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('resolves audio duration from loaded metadata', async () => {
+    const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:audio');
+    const revokeObjectURL = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+    const element = {
+      preload: '',
+      src: '',
+      duration: 12.5,
+      onloadedmetadata: null as null | (() => void),
+      onerror: null as null | (() => void),
+      removeAttribute: vi.fn(),
+      load: vi.fn(),
+    };
+    vi.spyOn(document, 'createElement').mockReturnValue(element as unknown as HTMLAudioElement);
+
+    const promise = getMediaDuration(new Blob(['x']), 'audio/mpeg');
+    element.onloadedmetadata?.();
+    await expect(promise).resolves.toBe(12.5);
+    expect(createObjectURL).toHaveBeenCalled();
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:audio');
+    expect(element.removeAttribute).toHaveBeenCalledWith('src');
+    expect(element.load).toHaveBeenCalled();
+  });
+
+  it('uses a video element for video mime types', async () => {
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:video');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+    const element = {
+      preload: '',
+      src: '',
+      duration: 3,
+      onloadedmetadata: null as null | (() => void),
+      onerror: null as null | (() => void),
+      removeAttribute: vi.fn(),
+      load: vi.fn(),
+    };
+    const createElement = vi
+      .spyOn(document, 'createElement')
+      .mockReturnValue(element as unknown as HTMLVideoElement);
+
+    const promise = getMediaDuration(new Blob(['x']), 'video/mp4');
+    element.onloadedmetadata?.();
+    await expect(promise).resolves.toBe(3);
+    expect(createElement).toHaveBeenCalledWith('video');
+  });
+
+  it('rejects when duration is non-finite or non-positive', async () => {
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:bad');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+    const element = {
+      preload: '',
+      src: '',
+      duration: Number.NaN,
+      onloadedmetadata: null as null | (() => void),
+      onerror: null as null | (() => void),
+      removeAttribute: vi.fn(),
+      load: vi.fn(),
+    };
+    vi.spyOn(document, 'createElement').mockReturnValue(element as unknown as HTMLAudioElement);
+
+    const promise = getMediaDuration(new Blob(['x']), 'audio/mpeg');
+    element.onloadedmetadata?.();
+    await expect(promise).rejects.toThrow('无法读取媒体时长');
+  });
+
+  it('rejects when the media element errors', async () => {
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:err');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+    const element = {
+      preload: '',
+      src: '',
+      duration: 1,
+      onloadedmetadata: null as null | (() => void),
+      onerror: null as null | (() => void),
+      removeAttribute: vi.fn(),
+      load: vi.fn(),
+    };
+    vi.spyOn(document, 'createElement').mockReturnValue(element as unknown as HTMLAudioElement);
+
+    const promise = getMediaDuration(new Blob(['x']), 'audio/mpeg');
+    element.onerror?.();
+    await expect(promise).rejects.toThrow('无法加载媒体文件');
   });
 });

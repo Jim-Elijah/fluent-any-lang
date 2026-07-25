@@ -22,9 +22,21 @@ describe('shouldIgnoreHotkey', () => {
     expect(shouldIgnoreHotkey(new KeyboardEvent('keydown', { code: 'Space', ctrlKey: true }))).toBe(
       true,
     );
+    expect(shouldIgnoreHotkey(new KeyboardEvent('keydown', { code: 'Space', metaKey: true }))).toBe(
+      true,
+    );
+    expect(shouldIgnoreHotkey(new KeyboardEvent('keydown', { code: 'Space', altKey: true }))).toBe(
+      true,
+    );
     expect(
       shouldIgnoreHotkey(new KeyboardEvent('keydown', { code: 'Space', shiftKey: true })),
     ).toBe(true);
+  });
+
+  it('allows events whose target is not an Element', () => {
+    const event = new KeyboardEvent('keydown', { code: 'Space' });
+    Object.defineProperty(event, 'target', { value: null });
+    expect(shouldIgnoreHotkey(event)).toBe(false);
   });
 
   it('ignores events targeted at form fields', () => {
@@ -34,6 +46,65 @@ describe('shouldIgnoreHotkey', () => {
     Object.defineProperty(event, 'target', { value: input });
     expect(shouldIgnoreHotkey(event)).toBe(true);
     input.remove();
+  });
+
+  it('ignores textarea and select elements', () => {
+    const textarea = document.createElement('textarea');
+    const select = document.createElement('select');
+    document.body.append(textarea, select);
+
+    const textareaEvent = new KeyboardEvent('keydown', { code: 'Space', bubbles: true });
+    Object.defineProperty(textareaEvent, 'target', { value: textarea });
+    expect(shouldIgnoreHotkey(textareaEvent)).toBe(true);
+
+    const selectEvent = new KeyboardEvent('keydown', { code: 'Space', bubbles: true });
+    Object.defineProperty(selectEvent, 'target', { value: select });
+    expect(shouldIgnoreHotkey(selectEvent)).toBe(true);
+
+    textarea.remove();
+    select.remove();
+  });
+
+  it('ignores contenteditable targets directly and via closest ancestor', () => {
+    const editable = document.createElement('div');
+    editable.setAttribute('contenteditable', 'true');
+    document.body.appendChild(editable);
+
+    const direct = new KeyboardEvent('keydown', { code: 'Space', bubbles: true });
+    Object.defineProperty(direct, 'target', { value: editable });
+    expect(shouldIgnoreHotkey(direct)).toBe(true);
+
+    const child = document.createElement('span');
+    editable.appendChild(child);
+    const nested = new KeyboardEvent('keydown', { code: 'Space', bubbles: true });
+    Object.defineProperty(nested, 'target', { value: child });
+    expect(shouldIgnoreHotkey(nested)).toBe(true);
+
+    editable.remove();
+  });
+
+  it('ignores custom ui-input, ui-textarea, and ui-select tags', () => {
+    for (const tag of ['ui-input', 'ui-textarea', 'ui-select'] as const) {
+      const element = document.createElement(tag);
+      document.body.appendChild(element);
+      const event = new KeyboardEvent('keydown', { code: 'Space', bubbles: true });
+      Object.defineProperty(event, 'target', { value: element });
+      expect(shouldIgnoreHotkey(event)).toBe(true);
+      element.remove();
+    }
+  });
+
+  it('ignores keyboard events from children inside custom input elements', () => {
+    const uiInput = document.createElement('ui-input');
+    const inner = document.createElement('span');
+    uiInput.appendChild(inner);
+    document.body.appendChild(uiInput);
+
+    const event = new KeyboardEvent('keydown', { code: 'Space', bubbles: true });
+    Object.defineProperty(event, 'target', { value: inner });
+    expect(shouldIgnoreHotkey(event)).toBe(true);
+
+    uiInput.remove();
   });
 
   it('allows plain Space on document body', () => {

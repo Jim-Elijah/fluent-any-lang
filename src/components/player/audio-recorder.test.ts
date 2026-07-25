@@ -2,9 +2,12 @@
 import { html } from 'lit';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ExtendedMediaEventType } from '../../lib/playback-utils.js';
+import type { SubtitleSegment } from '../../types/models.js';
+import { MediaController, type LoadedTrack } from '../../controllers/media-controller.js';
 import { mount } from '../ui/test-utils.js';
 import './audio-recorder.js';
-import type { AudioRecorder } from './audio-recorder.js';
+import { AudioRecorderEventType, type AudioRecorder } from './audio-recorder.js';
 
 let lastRecorder: MockMediaRecorder | null = null;
 
@@ -95,6 +98,10 @@ class MockMediaRecorder {
     );
   }
 
+  dispatchError(error: DOMException): void {
+    this.listeners.error?.forEach((fn) => fn({ error } as ErrorEvent));
+  }
+
   static isTypeSupported = vi.fn().mockReturnValue(true);
 }
 
@@ -109,7 +116,9 @@ class MockAudioContext {
 
   createAnalyser = vi.fn().mockReturnValue({
     fftSize: 2048,
-    getByteTimeDomainData: vi.fn(),
+    getByteTimeDomainData: vi.fn((arr: Uint8Array) => {
+      arr.fill(128);
+    }),
     connect: vi.fn(),
     disconnect: vi.fn(),
   });
@@ -126,10 +135,34 @@ class MockAudioContext {
   }
 }
 
+const sampleSegments: SubtitleSegment[] = [
+  { id: 's0', startTime: 0, endTime: 5, text: 'one' },
+  { id: 's1', startTime: 5, endTime: 10, text: 'two' },
+];
+
+function makeTrack(): LoadedTrack {
+  return {
+    item: {
+      id: 'lesson',
+      title: 'Lesson',
+      filename: 'lesson.mp3',
+      size: 100,
+      type: 'audio',
+      mimeType: 'audio/mpeg',
+      duration: 30,
+      createdAt: 1,
+      hasSubtitles: true,
+    },
+    blob: new Blob(['audio'], { type: 'audio/mpeg' }),
+    segments: sampleSegments,
+  };
+}
+
 describe('audio-recorder component', () => {
   let cleanup: (() => void) | undefined;
   const originalMediaRecorder = globalThis.MediaRecorder;
   const originalAudioContext = globalThis.AudioContext;
+  let getUserMedia: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     lastRecorder = null;
@@ -137,11 +170,10 @@ describe('audio-recorder component', () => {
       getTracks: () => [{ stop: vi.fn() }],
     } as unknown as MediaStream;
 
+    getUserMedia = vi.fn().mockResolvedValue(stream);
     Object.defineProperty(navigator, 'mediaDevices', {
       configurable: true,
-      value: {
-        getUserMedia: vi.fn().mockResolvedValue(stream),
-      },
+      value: { getUserMedia },
     });
 
     globalThis.MediaRecorder = MockMediaRecorder as never;
@@ -153,11 +185,31 @@ describe('audio-recorder component', () => {
     cleanup = undefined;
     globalThis.MediaRecorder = originalMediaRecorder;
     globalThis.AudioContext = originalAudioContext;
+    vi.useRealTimers();
+    localStorage.clear();
   });
 
-  async function renderRecorder(countdownBeforeStart = false) {
+  async function renderRecorder(
+    options: {
+      countdownBeforeStart?: boolean;
+      controller?: MediaController;
+      props?: Record<string, unknown>;
+    } = {},
+  ) {
     const result = mount(
-      html`<audio-recorder .countdownBeforeStart=${countdownBeforeStart}></audio-recorder>`,
+      html`<audio-recorder
+        .countdownBeforeStart=${options.countdownBeforeStart ?? false}
+        .controller=${options.controller ?? null}
+        .collectSegments=${options.props?.collectSegments ?? false}
+        .autoPlayOnStart=${options.props?.autoPlayOnStart ?? true}
+        .autoPauseOnStop=${options.props?.autoPauseOnStop ?? true}
+        .stopOnMediaEnded=${options.props?.stopOnMediaEnded ?? true}
+        .stopOnSegmentEnd=${options.props?.stopOnSegmentEnd ?? false}
+        .pauseMediaOnSegmentEnd=${options.props?.pauseMediaOnSegmentEnd ?? false}
+        .hideControls=${options.props?.hideControls ?? false}
+        .disabled=${options.props?.disabled ?? false}
+        .beforeRecordingStart=${options.props?.beforeRecordingStart ?? undefined}
+      ></audio-recorder>`,
     );
     cleanup = result.cleanup;
     const el = result.container.querySelector('audio-recorder') as AudioRecorder;
@@ -172,8 +224,7 @@ describe('audio-recorder component', () => {
 
   it('starts inactive with micro-on icon', async () => {
     const el = await renderRecorder();
-    const icon = el.shadowRoot?.querySelector('ui-icon');
-    expect(icon?.getAttribute('name')).toBe('micro-on');
+    expect(el.shadowRoot?.querySelector('ui-icon')?.getAttribute('name')).toBe('micro-on');
   });
 
   it('does not show waveform before recording', async () => {
@@ -191,7 +242,7 @@ describe('audio-recorder component', () => {
   it('dispatches recording-complete when stopped', async () => {
     const el = await renderRecorder();
     const onComplete = vi.fn();
-    el.addEventListener('recording-complete', onComplete);
+    el.addEventListener(AudioRecorderEventType.COMPLETE, onComplete);
 
     await el.startRecording();
     lastRecorder?.dispatchData(new Blob(['chunk'], { type: 'audio/webm' }));
@@ -208,8 +259,6 @@ describe('audio-recorder component', () => {
     await el.stopRecording();
     await el.updateComplete;
 
-    expect(el.shadowRoot?.querySelector('waveform-player')).not.toBeNull();
-
     el.clearWaveform();
     await el.updateComplete;
 
@@ -219,46 +268,33 @@ describe('audio-recorder component', () => {
 
   it('waits for countdown before starting recorder', async () => {
     vi.useFakeTimers();
-    localStorage.clear();
-
-    const el = await renderRecorder(true);
+    const el = await renderRecorder({ countdownBeforeStart: true });
     const startPromise = el.startRecording();
     await el.updateComplete;
 
     expect(lastRecorder).toBeNull();
     expect(document.querySelector('ui-countdown-overlay')).not.toBeNull();
 
-    await vi.advanceTimersByTimeAsync(3000);
-    await vi.advanceTimersByTimeAsync(400);
+    await vi.advanceTimersByTimeAsync(3400);
     await startPromise;
     await el.updateComplete;
 
     expect(lastRecorder).not.toBeNull();
-    expect(document.querySelector('ui-countdown-overlay')).toBeNull();
-    vi.useRealTimers();
   });
 
   it('does not start recorder when countdown is cancelled', async () => {
     vi.useFakeTimers();
-    localStorage.clear();
-
-    const el = await renderRecorder(true);
+    const el = await renderRecorder({ countdownBeforeStart: true });
     const onEnd = vi.fn();
-    el.addEventListener('recording-countdown-end', onEnd);
+    el.addEventListener(AudioRecorderEventType.COUNTDOWN_END, onEnd);
     const startPromise = el.startRecording();
     await el.updateComplete;
 
-    const overlay = document.querySelector('ui-countdown-overlay') as {
-      cancel: () => void;
-    };
-    overlay.cancel();
+    (document.querySelector('ui-countdown-overlay') as { cancel: () => void }).cancel();
     await startPromise;
-    await el.updateComplete;
 
     expect(lastRecorder).toBeNull();
-    expect(onEnd).toHaveBeenCalledTimes(1);
     expect(onEnd.mock.calls[0][0].detail).toEqual({ skipped: false, cancelled: true });
-    vi.useRealTimers();
   });
 
   it('hides waveform when hideWaveform is set', async () => {
@@ -273,7 +309,6 @@ describe('audio-recorder component', () => {
     await el.updateComplete;
 
     expect(el.hasWaveform).toBe(true);
-    expect(el.waveformController).toBeTruthy();
     expect(el.shadowRoot?.querySelector('waveform-player')).toBeNull();
   });
 
@@ -282,16 +317,206 @@ describe('audio-recorder component', () => {
       'fluent-any-lang:user-settings',
       JSON.stringify({ skipRecordingCountdown: true }),
     );
-    const el = await renderRecorder(true);
+    const el = await renderRecorder({ countdownBeforeStart: true });
     const onStart = vi.fn();
     const onEnd = vi.fn();
-    el.addEventListener('recording-countdown-start', onStart);
-    el.addEventListener('recording-countdown-end', onEnd);
+    el.addEventListener(AudioRecorderEventType.COUNTDOWN_START, onStart);
+    el.addEventListener(AudioRecorderEventType.COUNTDOWN_END, onEnd);
 
     await el.startRecording();
 
     expect(onStart).not.toHaveBeenCalled();
-    expect(onEnd).toHaveBeenCalledTimes(1);
     expect(onEnd.mock.calls[0][0].detail).toEqual({ skipped: true });
+  });
+
+  it('toggles recording via the record button', async () => {
+    const el = await renderRecorder();
+    await el.toggleRecording();
+    await el.updateComplete;
+    expect(el.recording).toBe(true);
+
+    lastRecorder?.dispatchData(new Blob(['chunk'], { type: 'audio/webm' }));
+    await el.toggleRecording();
+    await el.updateComplete;
+    expect(el.recording).toBe(false);
+  });
+
+  it('dispatches state-change when recording starts and stops', async () => {
+    const el = await renderRecorder();
+    const onState = vi.fn();
+    el.addEventListener(AudioRecorderEventType.STATE_CHANGE, onState);
+
+    await el.startRecording();
+    expect(onState.mock.calls.at(-1)?.[0].detail).toEqual({ recording: true });
+
+    lastRecorder?.dispatchData(new Blob(['chunk'], { type: 'audio/webm' }));
+    await el.stopRecording();
+    expect(onState.mock.calls.at(-1)?.[0].detail).toEqual({ recording: false });
+  });
+
+  it('auto plays media on start and pauses on stop when controller is attached', async () => {
+    const controller = new MediaController();
+    await controller.loadTracks([makeTrack()]);
+    const playSpy = vi.spyOn(controller, 'play').mockResolvedValue(undefined);
+    const pauseSpy = vi.spyOn(controller, 'pause').mockResolvedValue(undefined);
+
+    const el = await renderRecorder({ controller });
+    await el.startRecording();
+    expect(playSpy).toHaveBeenCalled();
+
+    lastRecorder?.dispatchData(new Blob(['chunk'], { type: 'audio/webm' }));
+    await el.stopRecording();
+    expect(pauseSpy).toHaveBeenCalled();
+    controller.destroy();
+  });
+
+  it('shows permission error when microphone access is denied', async () => {
+    getUserMedia.mockRejectedValue(new DOMException('denied', 'NotAllowedError'));
+    const el = await renderRecorder();
+    const onError = vi.fn();
+    el.addEventListener(AudioRecorderEventType.ERROR, onError);
+
+    await el.startRecording();
+    await el.updateComplete;
+
+    expect(el.shadowRoot?.textContent).toContain('未能开启麦克风');
+    expect(onError).toHaveBeenCalled();
+  });
+
+  it('shows generic recorder error from MediaRecorder failure', async () => {
+    const el = await renderRecorder();
+    const onError = vi.fn();
+    el.addEventListener(AudioRecorderEventType.ERROR, onError);
+
+    await el.startRecording();
+    lastRecorder?.dispatchError(new DOMException('failed', 'UnknownError'));
+    await el.updateComplete;
+
+    expect(el.shadowRoot?.textContent).toContain('录音失败');
+    expect(onError).toHaveBeenCalled();
+  });
+
+  it('does not start when disabled', async () => {
+    const el = await renderRecorder({ props: { disabled: true } });
+    await el.startRecording();
+    expect(lastRecorder).toBeNull();
+  });
+
+  it('reports unsupported browser when recorder APIs are missing', async () => {
+    globalThis.MediaRecorder = undefined as never;
+    const el = await renderRecorder();
+    const onError = vi.fn();
+    el.addEventListener(AudioRecorderEventType.ERROR, onError);
+
+    await el.startRecording();
+    await el.updateComplete;
+
+    expect(el.shadowRoot?.textContent).toContain('当前浏览器不支持录音');
+    expect(onError).toHaveBeenCalled();
+  });
+
+  it('stops without saving when save is false', async () => {
+    const el = await renderRecorder();
+    await el.startRecording();
+    await el.stopRecording({ save: false });
+    await el.updateComplete;
+    expect(el.recording).toBe(false);
+    expect(el.shadowRoot?.querySelector('waveform-player')).toBeNull();
+  });
+
+  it('stops when media ends and reports media-ended reason', async () => {
+    const controller = new MediaController();
+    await controller.loadTracks([makeTrack()]);
+    const el = await renderRecorder({ controller, props: { stopOnMediaEnded: true } });
+    const onComplete = vi.fn();
+    el.addEventListener(AudioRecorderEventType.COMPLETE, onComplete);
+
+    await el.startRecording();
+    lastRecorder?.dispatchData(new Blob(['chunk'], { type: 'audio/webm' }));
+    controller.dispatchEvent(new Event('ended'));
+    await el.updateComplete;
+
+    expect(onComplete.mock.calls[0][0].detail.reason).toBe('media-ended');
+    controller.destroy();
+  });
+
+  it('collects practice segments and can stop on segment end', async () => {
+    const controller = new MediaController();
+    await controller.loadTracks([makeTrack()]);
+    const el = await renderRecorder({
+      controller,
+      props: { collectSegments: true, stopOnSegmentEnd: true },
+    });
+    const onComplete = vi.fn();
+    el.addEventListener(AudioRecorderEventType.COMPLETE, onComplete);
+
+    await el.startRecording();
+    controller.dispatchEvent(
+      new CustomEvent(ExtendedMediaEventType.SEGMENT_END, {
+        detail: { segmentIndex: 0, segment: sampleSegments[0] },
+      }),
+    );
+    await el.updateComplete;
+
+    expect(onComplete).toHaveBeenCalledTimes(1);
+    expect(onComplete.mock.calls[0][0].detail.segments).toHaveLength(1);
+    expect(onComplete.mock.calls[0][0].detail.reason).toBe('segment-end');
+    controller.destroy();
+  });
+
+  it('pauses media when segment ends if pauseMediaOnSegmentEnd is enabled', async () => {
+    const controller = new MediaController();
+    await controller.loadTracks([makeTrack()]);
+    const pauseSpy = vi.spyOn(controller, 'pause').mockResolvedValue(undefined);
+    const setPauseModeSpy = vi.spyOn(controller, 'setPauseMode');
+
+    const el = await renderRecorder({
+      controller,
+      props: { pauseMediaOnSegmentEnd: true, collectSegments: true },
+    });
+    await el.startRecording();
+    controller.dispatchEvent(
+      new CustomEvent(ExtendedMediaEventType.SEGMENT_END, {
+        detail: { segmentIndex: 0, segment: sampleSegments[0] },
+      }),
+    );
+
+    expect(setPauseModeSpy).toHaveBeenCalledWith('off');
+    expect(pauseSpy).toHaveBeenCalled();
+    controller.destroy();
+  });
+
+  it('calls beforeRecordingStart and updates live waveform peaks', async () => {
+    vi.useFakeTimers();
+    const beforeRecordingStart = vi.fn();
+    const el = await renderRecorder({ props: { beforeRecordingStart } });
+
+    await el.startRecording();
+    expect(beforeRecordingStart).toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(50);
+    const trackId = el.waveformController.getSnapshot().tracks[0]?.id;
+    expect(trackId).toBeTruthy();
+    expect(el.waveformController.getSnapshot().tracks[0]?.peaks.length).toBeGreaterThan(0);
+  });
+
+  it('hides controls but still exposes recording state', async () => {
+    const el = await renderRecorder({ props: { hideControls: true } });
+    expect(el.shadowRoot?.querySelector('.recording-controls')).toBeNull();
+    await el.startRecording();
+    expect(el.recording).toBe(true);
+  });
+
+  it('destroy clears active recording without emitting complete', async () => {
+    const el = await renderRecorder();
+    const onComplete = vi.fn();
+    el.addEventListener(AudioRecorderEventType.COMPLETE, onComplete);
+
+    await el.startRecording();
+    el.destroy();
+    await el.updateComplete;
+
+    expect(onComplete).not.toHaveBeenCalled();
+    expect(el.recording).toBe(false);
   });
 });

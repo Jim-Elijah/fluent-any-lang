@@ -245,4 +245,128 @@ describe('ui-dropdown', () => {
     expect(getOverlay()?.querySelector('.overlay-panel-label')?.textContent).toBe('80%');
     expect((getOverlay()?.querySelector('.vol-slider') as UiSlider).value).toBe(0.8);
   });
+
+  it('closes on outside mousedown for click trigger', async () => {
+    const el = await renderDropdown();
+    el.shadowRoot
+      ?.querySelector('.trigger')
+      ?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await el.updateComplete;
+    await flushUpdates();
+    expect(getOverlay()).not.toBeNull();
+
+    window.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    await el.updateComplete;
+    expect(getOverlay() ?? null).toBeNull();
+  });
+
+  it('closes on hover leave after delay', async () => {
+    const el = await renderDropdown(html`
+      <ui-dropdown .menu=${MENU} trigger="hover"><button>Menu</button></ui-dropdown>
+    `);
+    const trigger = el.shadowRoot?.querySelector('.trigger');
+    trigger?.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+    vi.advanceTimersByTime(100);
+    await el.updateComplete;
+    await flushUpdates();
+    expect(getOverlay()).not.toBeNull();
+
+    trigger?.dispatchEvent(new MouseEvent('mouseleave', { bubbles: true }));
+    vi.advanceTimersByTime(100);
+    await el.updateComplete;
+    expect(getOverlay() ?? null).toBeNull();
+  });
+
+  it('dispatches select for selectable menu items', async () => {
+    const el = await renderDropdown(html`
+      <ui-dropdown
+        trigger="click"
+        .menu=${{ items: [{ key: 'a', label: 'Alpha' }], selectable: true }}
+      >
+        <button>Pick</button>
+      </ui-dropdown>
+    `);
+    const selectHandler = vi.fn();
+    el.addEventListener('select', selectHandler);
+    el.shadowRoot
+      ?.querySelector('.trigger')
+      ?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await el.updateComplete;
+    await flushUpdates();
+
+    getOverlay()
+      ?.querySelector('.menu-item')
+      ?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(selectHandler).toHaveBeenCalledOnce();
+    expect(selectHandler.mock.calls[0][0].detail.selectedKeys).toEqual(['a']);
+  });
+
+  it('renders submenu on parent hover and ignores disabled items', async () => {
+    const menu = {
+      items: [
+        {
+          key: 'parent',
+          label: 'Parent',
+          children: [{ key: 'child', label: 'Child' }],
+        },
+        { key: 'off', label: 'Off', disabled: true },
+        { key: 'div', label: '', type: 'divider' as const },
+        { key: 'danger', label: 'Delete', danger: true },
+      ],
+    };
+    const el = await renderDropdown(html`
+      <ui-dropdown trigger="click" .menu=${menu}><button>Menu</button></ui-dropdown>
+    `);
+    el.shadowRoot
+      ?.querySelector('.trigger')
+      ?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await el.updateComplete;
+    await flushUpdates();
+
+    expect(getOverlay()?.querySelector('.divider')).not.toBeNull();
+    expect(getOverlay()?.querySelector('.menu-item.danger')).not.toBeNull();
+
+    const submenu = getOverlay()?.querySelector('.submenu') as HTMLElement;
+    submenu?.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+    await el.updateComplete;
+    await flushUpdates();
+    expect(submenu?.classList.contains('open')).toBe(true);
+    expect(submenu?.querySelector('.submenu-panel')?.textContent).toContain('Child');
+
+    const disabled = getOverlay()?.querySelector('.menu-item.disabled') as HTMLElement;
+    const clickHandler = vi.fn();
+    el.addEventListener('menu-click', clickHandler);
+    disabled?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(clickHandler).not.toHaveBeenCalled();
+  });
+
+  it('toggles closed on second click and destroys portal when destroy-on-close', async () => {
+    const el = await renderDropdown(html`
+      <ui-dropdown destroy-on-close .menu=${MENU} trigger="click"
+        ><button>Menu</button></ui-dropdown
+      >
+    `);
+    const trigger = el.shadowRoot?.querySelector('.trigger');
+    trigger?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await el.updateComplete;
+    await flushUpdates();
+    expect(getOverlay()).not.toBeNull();
+
+    trigger?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await el.updateComplete;
+    expect(getOverlay() ?? null).toBeNull();
+    expect(document.querySelector('[data-ui-dropdown-portal]')).toBeNull();
+  });
+
+  it('renders placement arrow when arrow is enabled', async () => {
+    const el = await renderDropdown(html`
+      <ui-dropdown .arrow=${true} .menu=${MENU} trigger="click"><button>Menu</button></ui-dropdown>
+    `);
+    el.shadowRoot
+      ?.querySelector('.trigger')
+      ?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await el.updateComplete;
+    await flushUpdates();
+    expect(getOverlay()?.querySelector('.arrow')).not.toBeNull();
+  });
 });

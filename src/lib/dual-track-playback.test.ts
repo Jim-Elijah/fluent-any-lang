@@ -298,4 +298,153 @@ describe('DualTrackPlayback', () => {
     source.dispatchEvent(new Event('timeupdate'));
     expect(controller.getState().mode).toBe('idle');
   });
+
+  it('playSync starts from the first segment', async () => {
+    await controller.playSync();
+    expect(controller.getState()).toEqual({ mode: 'sync', syncSegmentIndex: 0, paused: false });
+  });
+
+  it('playSyncAt maps mid-segment times on the recording axis', async () => {
+    const ok = await controller.playSyncAt(6, 'recording');
+    expect(ok).toBe(true);
+    expect(controller.getState().syncSegmentIndex).toBe(1);
+    expect(recording.currentTime).toBe(6);
+    expect(source.currentTime).toBe(6.5);
+  });
+
+  it('plays source and recording with empty segments', async () => {
+    controller.setSegments([]);
+    await controller.playSource();
+    expect(controller.getState().mode).toBe('source');
+    expect(source.currentTime).toBe(0);
+
+    await controller.playRecording();
+    expect(controller.getState().mode).toBe('recording');
+    expect(recording.currentTime).toBe(0);
+  });
+
+  it('goToSegment seeks within recording mode', async () => {
+    await controller.playRecording();
+    vi.mocked(recording.play).mockClear();
+
+    await controller.goToSegment(1);
+    expect(controller.getState()).toEqual({
+      mode: 'recording',
+      syncSegmentIndex: 1,
+      paused: false,
+    });
+    expect(recording.currentTime).toBe(segments[1].recordingStartTime);
+    expect(recording.play).toHaveBeenCalled();
+  });
+
+  it('ignores pause and resume when idle or already in target state', async () => {
+    controller.pause();
+    expect(controller.getState().paused).toBe(false);
+
+    await controller.playSource();
+    controller.pause();
+    controller.pause();
+    expect(controller.getState().paused).toBe(true);
+
+    await controller.resume();
+    await controller.resume();
+    expect(controller.getState().paused).toBe(false);
+  });
+
+  it('togglePause is a no-op while idle', async () => {
+    await controller.togglePause();
+    expect(controller.getState().mode).toBe('idle');
+  });
+
+  it('stops when recording ends in recording mode', async () => {
+    await controller.playRecording();
+    recording.dispatchEvent(new Event('ended'));
+    expect(controller.getState().mode).toBe('idle');
+  });
+
+  it('updates sync segment index during source playback', async () => {
+    await controller.playSourceAt(6);
+    source.currentTime = 6;
+    source.dispatchEvent(new Event('timeupdate'));
+    expect(controller.getState().syncSegmentIndex).toBe(1);
+  });
+
+  it('corrects sync drift when recording falls behind source', async () => {
+    vi.useFakeTimers();
+    await controller.playSyncFromSegment(0);
+    source.currentTime = 2;
+    recording.currentTime = 1;
+    source.dispatchEvent(new Event('timeupdate'));
+    vi.advanceTimersByTime(150);
+    expect(recording.currentTime).toBe(2);
+    vi.useRealTimers();
+  });
+
+  it('re-syncs on visibility change while in sync mode', async () => {
+    await controller.playSyncFromSegment(0);
+    source.currentTime = 2;
+    recording.currentTime = 1;
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' });
+    document.dispatchEvent(new Event('visibilitychange'));
+    expect(recording.currentTime).toBe(2);
+  });
+
+  it('resumes sync playback for tracks still within the segment', async () => {
+    await controller.playSyncFromSegment(0);
+    controller.pause();
+    source.currentTime = 1;
+    recording.currentTime = 1;
+    vi.mocked(source.play).mockClear();
+    vi.mocked(recording.play).mockClear();
+
+    await controller.resume();
+    expect(source.play).toHaveBeenCalled();
+    expect(recording.play).toHaveBeenCalled();
+  });
+
+  it('advances to the next sync segment when both tracks start at segment end', async () => {
+    await controller.playSyncAt(segments[0].sourceEndTime, 'source');
+    expect(controller.getState()).toEqual({ mode: 'sync', syncSegmentIndex: 1, paused: false });
+    expect(source.currentTime).toBe(segments[1].sourceStartTime);
+    expect(recording.currentTime).toBe(segments[1].recordingStartTime);
+  });
+
+  it('advances sync segments when both tracks reach the end', async () => {
+    await controller.playSyncFromSegment(0);
+    Object.defineProperty(source, 'paused', { configurable: true, value: false });
+    Object.defineProperty(recording, 'paused', { configurable: true, value: false });
+
+    source.currentTime = segments[0].sourceEndTime;
+    recording.currentTime = segments[0].recordingEndTime;
+    source.dispatchEvent(new Event('timeupdate'));
+
+    expect(controller.getState().syncSegmentIndex).toBe(1);
+  });
+
+  it('clamps seek time to finite audio duration', async () => {
+    Object.defineProperty(source, 'duration', { configurable: true, value: 8 });
+    await controller.playSourceAt(99);
+    expect(source.currentTime).toBe(8);
+  });
+
+  it('ignores source timeupdate handlers outside active modes', async () => {
+    source.currentTime = 99;
+    source.dispatchEvent(new Event('timeupdate'));
+    expect(controller.getState().mode).toBe('idle');
+
+    await controller.playRecording();
+    source.dispatchEvent(new Event('timeupdate'));
+    expect(controller.getState().mode).toBe('recording');
+  });
+
+  it('does not correct sync drift when source is already at segment end', async () => {
+    vi.useFakeTimers();
+    await controller.playSyncFromSegment(0);
+    source.currentTime = segments[0].sourceEndTime;
+    recording.currentTime = 0.5;
+    source.dispatchEvent(new Event('timeupdate'));
+    vi.advanceTimersByTime(150);
+    expect(recording.currentTime).toBe(0.5);
+    vi.useRealTimers();
+  });
 });

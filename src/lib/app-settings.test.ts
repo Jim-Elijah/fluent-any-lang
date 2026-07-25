@@ -4,10 +4,14 @@ import {
   APP_SETTINGS_STORAGE_KEY,
   DEFAULT_USER_SETTINGS,
   getAppSettings,
+  getMaxPlaybackRate,
+  getMaxVolumeBoost,
   getUserSettings,
   normalizeAppSettings,
+  normalizeDiscriminationSettings,
   setAppSettings,
   setUserSettings,
+  shouldSkipDiscriminationTips,
   shouldSkipEchoTips,
   shouldSkipRecordingCountdown,
   shouldSkipShadowingTips,
@@ -109,5 +113,65 @@ describe('app-settings', () => {
 
   it('does not prefill last played playlist by default', () => {
     expect(getAppSettings().lastPlayedPlaylistId).toBe('');
+  });
+
+  it('persists lastPlayedPlaylistId when provided', () => {
+    setAppSettings({ lastPlayedPlaylistId: 'playlist-42' });
+    expect(getAppSettings().lastPlayedPlaylistId).toBe('playlist-42');
+  });
+
+  it('exposes max volume boost and playback rate from persisted settings', () => {
+    setAppSettings({ maxVolumeBoost: 2.5, maxPlaybackRate: 3 });
+    expect(getMaxVolumeBoost()).toBe(2.5);
+    expect(getMaxPlaybackRate()).toBe(3);
+  });
+
+  it('normalizes discrimination settings and merges partial updates', () => {
+    const normalized = normalizeDiscriminationSettings({
+      selected: [
+        { noiseId: 'n1', volume: 2 },
+        { noiseId: '', volume: 0.5 },
+        { noiseId: 'n2', volume: 0.3 },
+        { noiseId: 'n3', volume: 0.1 },
+        { noiseId: 'n4', volume: 0.1 },
+      ],
+      ladderCount: 99,
+      ladderRates: [0.3, 1.25, 9],
+    });
+    expect(normalized.selected).toEqual([
+      { noiseId: 'n1', volume: 1 },
+      { noiseId: 'n2', volume: 0.3 },
+      { noiseId: 'n3', volume: 0.1 },
+    ]);
+    expect(normalized.ladderCount).toBe(6);
+    expect(normalized.ladderRates).toHaveLength(6);
+
+    setAppSettings({
+      discrimination: {
+        selected: [{ noiseId: 'rain', volume: 0.6 }],
+        ladderCount: 2,
+      },
+    });
+    const settings = getAppSettings();
+    expect(settings.discrimination.selected).toEqual([{ noiseId: 'rain', volume: 0.6 }]);
+    expect(settings.discrimination.ladderCount).toBe(2);
+    expect(shouldSkipDiscriminationTips()).toBe(false);
+    setAppSettings({ skipDiscriminationTips: true });
+    expect(shouldSkipDiscriminationTips()).toBe(true);
+  });
+
+  it('returns default discrimination settings for non-object input', () => {
+    expect(normalizeDiscriminationSettings(null).selected).toEqual([]);
+    expect(normalizeDiscriminationSettings(undefined).ladderCount).toBe(1);
+    expect(normalizeDiscriminationSettings('bad').selected).toEqual([]);
+  });
+
+  it('ignores invalid legacy user-settings payloads', () => {
+    localStorage.setItem(USER_SETTINGS_STORAGE_KEY, '{bad-json');
+    expect(getAppSettings()).toEqual(DEFAULT_SETTINGS);
+
+    localStorage.clear();
+    localStorage.setItem(USER_SETTINGS_STORAGE_KEY, JSON.stringify('not-an-object'));
+    expect(getAppSettings()).toEqual(DEFAULT_SETTINGS);
   });
 });

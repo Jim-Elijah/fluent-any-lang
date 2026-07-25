@@ -93,9 +93,11 @@ class MockMediaRecorder {
   }
 
   dispatchData(blob: Blob): void {
-    this.listeners.dataavailable?.forEach((fn) =>
-      fn(new BlobEvent('dataavailable', { data: blob }) as Event),
-    );
+    this.listeners.dataavailable?.forEach((fn) => fn({ data: blob } as unknown as Event));
+  }
+
+  dispatchError(error: Error): void {
+    this.listeners.error?.forEach((fn) => fn({ error } as unknown as Event));
   }
 
   static isTypeSupported = vi.fn().mockReturnValue(true);
@@ -174,5 +176,122 @@ describe('AudioRecorderController', () => {
   it('throws when pausing before start', () => {
     const controller = new AudioRecorderController();
     expect(() => controller.pause()).toThrow('录音器未初始化');
+  });
+
+  it('throws when starting while already recording', async () => {
+    const controller = new AudioRecorderController();
+    await controller.start();
+    await expect(controller.start()).rejects.toThrow('当前已经在录音中');
+  });
+
+  it('resumes via start when paused', async () => {
+    const onResume = vi.fn();
+    const controller = new AudioRecorderController({ onResume });
+    await controller.start();
+    controller.pause();
+    await controller.start();
+    expect(controller.getState()).toBe('recording');
+    expect(onResume).toHaveBeenCalled();
+  });
+
+  it('throws pause/resume/stop in invalid states', async () => {
+    const controller = new AudioRecorderController();
+    expect(() => controller.resume()).toThrow('录音器未初始化');
+    await expect(controller.stop()).rejects.toThrow('录音器未初始化');
+
+    await controller.start();
+    expect(() => controller.resume()).toThrow('当前不是暂停状态');
+
+    controller.pause();
+    expect(() => controller.pause()).toThrow('当前不是录音状态');
+
+    controller.resume();
+    await controller.stop();
+    await expect(controller.stop()).rejects.toThrow('当前没有正在进行的录音');
+  });
+
+  it('invokes data and error callbacks', async () => {
+    const onDataAvailable = vi.fn();
+    const onError = vi.fn();
+    const onPause = vi.fn();
+    const controller = new AudioRecorderController({ onDataAvailable, onError, onPause });
+    await controller.start();
+
+    lastRecorder?.dispatchData(new Blob(['chunk'], { type: 'audio/webm' }));
+    expect(onDataAvailable).toHaveBeenCalled();
+
+    lastRecorder?.dispatchError(new Error('mic failed'));
+    expect(onError).toHaveBeenCalledWith(expect.objectContaining({ message: 'mic failed' }));
+
+    controller.pause();
+    expect(onPause).toHaveBeenCalled();
+  });
+
+  it('rejects when getUserMedia fails', async () => {
+    Object.defineProperty(navigator, 'mediaDevices', {
+      configurable: true,
+      value: {
+        getUserMedia: vi.fn().mockRejectedValue(new Error('denied')),
+      },
+    });
+    const onError = vi.fn();
+    const controller = new AudioRecorderController({ onError });
+    await expect(controller.start()).rejects.toThrow('denied');
+    expect(onError).toHaveBeenCalled();
+  });
+
+  it('falls back when preferred mime type is unsupported', async () => {
+    MockMediaRecorder.isTypeSupported = vi.fn((type: string) => type === 'audio/ogg');
+    const controller = new AudioRecorderController({ mimeType: 'audio/unsupported' });
+    await controller.start();
+    expect(controller.getState()).toBe('recording');
+  });
+
+  it('attaches waveform analysis and cleans up on destroy', async () => {
+    vi.useFakeTimers();
+    const peak = vi.fn();
+    const disconnect = vi.fn();
+    const getByteTimeDomainData = vi.fn((target: Uint8Array) => {
+      target.fill(200);
+    });
+    const analyser = {
+      fftSize: 0,
+      connect: vi.fn(),
+      disconnect,
+      getByteTimeDomainData,
+    };
+    const source = { connect: vi.fn(), disconnect };
+    const audioContext = {
+      resume: vi.fn(async () => undefined),
+      createAnalyser: vi.fn(() => analyser),
+      createMediaStreamSource: vi.fn(() => source),
+    };
+    const audioContextModule = await import('./audio-context.js');
+    vi.spyOn(audioContextModule, 'getAudioContext').mockReturnValue(
+      audioContext as unknown as AudioContext,
+    );
+
+    const controller = new AudioRecorderController();
+    await controller.start();
+    expect(controller.getStream()).toBeTruthy();
+
+    const detach = controller.attachWaveformAnalysis(peak, { intervalMs: 20 });
+    vi.advanceTimersByTime(20);
+    expect(peak).toHaveBeenCalled();
+    expect(peak.mock.calls[0]![0]).toBeGreaterThan(0);
+
+    detach();
+    expect(disconnect).toHaveBeenCalled();
+
+    controller.destroy();
+    expect(controller.getState()).toBe('inactive');
+    expect(controller.getStream()).toBeNull();
+
+    vi.useRealTimers();
+  });
+
+  it('throws when attaching waveform before stream is ready', () => {
+    const controller = new AudioRecorderController();
+    expect(() => controller.attachWaveformAnalysis(() => undefined)).toThrow('录音流未就绪');
   });
 });

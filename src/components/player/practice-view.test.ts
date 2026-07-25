@@ -1,8 +1,9 @@
 import { html } from 'lit';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ExtendedMediaEventType } from '../../lib/playback-utils.js';
+import { ExtendedMediaEventType, MediaEventType } from '../../lib/playback-utils.js';
 import type { SubtitleSegment } from '../../types/models.js';
+import { DISCRIMINATION_MAX_NOISE_TRACKS } from '../../types/models.js';
 
 const sampleSegments: SubtitleSegment[] = [
   { id: 's0', startTime: 0, endTime: 5, text: 'one' },
@@ -36,24 +37,80 @@ vi.mock('../../lib/media-loader.js', () => ({
   loadPlaylistForPlayback: (...args: unknown[]) => mockLoadPlaylist(...args),
 }));
 
+const mockEstimateStorage = vi.fn();
+
 vi.mock('../../lib/export-content.js', () => ({
-  estimateStorage: vi.fn().mockResolvedValue({
-    usage: 0,
-    quota: 100,
-    remaining: 100,
-    remainingPercent: 100,
-  }),
+  estimateStorage: (...args: unknown[]) => mockEstimateStorage(...args),
 }));
 
 const mockCountEchoRecordings = vi.fn();
 const mockCountShadowingRecordings = vi.fn();
 const mockFindAllEchoRecordings = vi.fn();
+const mockSaveRecording = vi.fn();
+const mockAddToSentenceBank = vi.fn();
+const mockRemoveFromSentenceBank = vi.fn();
+const mockGetSentenceBankList = vi.fn();
 
 vi.mock('../../db/service.js', () => ({
   countEchoRecordings: (...args: unknown[]) => mockCountEchoRecordings(...args),
   countShadowingRecordings: (...args: unknown[]) => mockCountShadowingRecordings(...args),
   findAllEchoRecordings: (...args: unknown[]) => mockFindAllEchoRecordings(...args),
-  saveRecording: vi.fn(),
+  saveRecording: (...args: unknown[]) => mockSaveRecording(...args),
+  addToSentenceBank: (...args: unknown[]) => mockAddToSentenceBank(...args),
+  removeFromSentenceBank: (...args: unknown[]) => mockRemoveFromSentenceBank(...args),
+  getSentenceBankList: (...args: unknown[]) => mockGetSentenceBankList(...args),
+}));
+
+const mockGetNoiseList = vi.fn();
+const mockGetNoiseBlob = vi.fn();
+
+vi.mock('../../db/noise.js', () => ({
+  getNoiseList: (...args: unknown[]) => mockGetNoiseList(...args),
+  getNoiseBlob: (...args: unknown[]) => mockGetNoiseBlob(...args),
+}));
+
+const mockReportError = vi.fn();
+vi.mock('../../lib/error-reporter.js', () => ({
+  reportError: (...args: unknown[]) => mockReportError(...args),
+}));
+
+const mockLoadingClose = vi.fn();
+vi.mock('../../components/ui/loading.js', () => ({
+  Loading: {
+    service: vi.fn(() => ({ close: mockLoadingClose })),
+  },
+}));
+
+vi.mock('../../lib/file-validation.js', () => ({
+  getMediaDuration: vi.fn().mockResolvedValue(3),
+}));
+
+const mockNoiseMixer = {
+  setPlaying: vi.fn(),
+  setTracks: vi.fn(),
+  setTrackVolume: vi.fn(),
+  destroy: vi.fn(),
+};
+
+vi.mock('../../lib/noise-mixer.js', () => ({
+  NoiseMixer: vi.fn(function MockNoiseMixer() {
+    return mockNoiseMixer;
+  }),
+}));
+
+const mockRateLadder = {
+  setRates: vi.fn(),
+  reset: vi.fn(),
+  getIndex: vi.fn(() => 0),
+  getCurrentRate: vi.fn(() => 1),
+  getSequence: vi.fn(() => [1, 1.5, 1]),
+  onMainEnded: vi.fn(() => ({ kind: 'finished' as const, rate: 1 })),
+};
+
+vi.mock('../../lib/rate-ladder.js', () => ({
+  RateLadder: vi.fn(function MockRateLadder() {
+    return mockRateLadder;
+  }),
 }));
 
 import './practice-view.js';
@@ -65,42 +122,111 @@ import {
   RECORDING_PREVIEW_CLOSE_EVENT,
   RECORDING_PREVIEW_OPEN_EVENT,
 } from '../../lib/audio-focus.js';
+import { getAppSettings } from '../../lib/app-settings.js';
+import {
+  getHotkeyManager,
+  HotkeyManager,
+  setHotkeyManagerForTests,
+} from '../../lib/hotkeys/hotkey-manager.js';
 
 type PracticeViewInternals = PracticeView & {
   _controller: {
     play: () => Promise<void>;
     pause: () => Promise<void>;
+    togglePlay: () => Promise<void>;
+    previousSegment: () => void;
+    nextSegment: () => void;
+    replaySegment: () => void;
+    setVolume: (volume: number) => void;
+    setPlaybackRate: (rate: number) => void;
+    setSubtitlesVisible: (visible: boolean) => void;
+    seek: (time: number, options?: { force?: boolean }) => void;
     addEventListener: (type: string, listener: (event?: Event) => void) => void;
     removeEventListener: (type: string, listener: (event?: Event) => void) => void;
     getSnapshot: () => {
       segments: SubtitleSegment[];
-      currentItem: { id: string } | null;
+      currentItem: { id: string; title?: string; filename?: string; type?: string } | null;
       isPlaying: boolean;
       navigationLocked: boolean;
       currentSegmentIndex: number;
       currentTime: number;
       hasSubtitles: boolean;
+      subtitlesVisible?: boolean;
+      volume?: number;
+      playbackRate?: number;
+      pauseMode?: string;
+      pauseSeconds?: number;
+      pausePercent?: number;
     };
     seekToSegment: (index: number, autoPlay?: boolean, options?: { force?: boolean }) => void;
     setNavigationLocked: (locked: boolean) => void;
     dispatchEvent: (event: Event) => boolean;
   };
+  _practiceType: 'listening' | 'speaking';
+  _listeningMode: 'free' | 'discrimination';
+  _tipsModalKind: string | null;
+  _hotkeysHelpOpen: boolean;
+  _discriminationSettings: { selected: { noiseId: string; volume: number }[] };
   _echoListening: boolean;
   _sessionPhase: string;
   _recording: boolean;
   _recordingsModalOpen: boolean;
   _recordingPreviewOpen: boolean;
   _speakingMode: 'shadowing' | 'echo';
+  _subtitlePanelFullscreen: boolean;
   _onTrackChange: () => void;
   _shadowingRecorderEl?: {
     startRecording: () => Promise<void>;
     stopRecording: () => Promise<void>;
+    clearWaveform: () => void;
+    destroy: () => void;
     waveformController: unknown;
   };
+  navigate: (path: string) => void;
+  _sentenceBankBusy: boolean;
 };
+
+function dispatchKey(code: string): void {
+  document.dispatchEvent(new KeyboardEvent('keydown', { code, bubbles: true, cancelable: true }));
+}
 
 describe('practice-view', () => {
   let cleanup: (() => void) | undefined;
+
+  function stubKeyboardShortcuts(matches: boolean) {
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn().mockImplementation((query: string) => ({
+        matches: query.includes('hover') ? matches : false,
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })),
+    );
+  }
+
+  function findButton(el: PracticeViewInternals, text: string) {
+    return Array.from(el.shadowRoot!.querySelectorAll('ui-button')).find((button) =>
+      button.textContent?.includes(text),
+    );
+  }
+
+  function setUserSettingsLocal(overrides: Record<string, unknown> = {}) {
+    localStorage.setItem(
+      'fluent-any-lang:user-settings',
+      JSON.stringify({
+        skipRecordingCountdown: true,
+        skipShadowingTips: true,
+        skipEchoTips: true,
+        skipDiscriminationTips: true,
+        ...overrides,
+      }),
+    );
+  }
 
   beforeEach(() => {
     class MockMediaRecorder {
@@ -118,15 +244,10 @@ describe('practice-view', () => {
       mediaDevices: {
         getUserMedia: vi.fn().mockResolvedValue({ getTracks: () => [] }),
       },
+      vibrate: vi.fn(),
     });
-    localStorage.setItem(
-      'fluent-any-lang:user-settings',
-      JSON.stringify({
-        skipRecordingCountdown: true,
-        skipShadowingTips: true,
-        skipEchoTips: true,
-      }),
-    );
+    stubKeyboardShortcuts(false);
+    setUserSettingsLocal();
 
     mockLoadMedia.mockReset();
     mockLoadPlaylist.mockReset();
@@ -135,6 +256,30 @@ describe('practice-view', () => {
     mockCountEchoRecordings.mockResolvedValue(0);
     mockCountShadowingRecordings.mockResolvedValue(0);
     mockFindAllEchoRecordings.mockResolvedValue([]);
+    mockSaveRecording.mockResolvedValue(undefined);
+    mockAddToSentenceBank.mockResolvedValue({ status: 'added' });
+    mockRemoveFromSentenceBank.mockResolvedValue({ status: 'removed' });
+    mockGetSentenceBankList.mockResolvedValue([]);
+    mockGetNoiseList.mockResolvedValue([]);
+    mockGetNoiseBlob.mockResolvedValue(new Blob(['noise'], { type: 'audio/mpeg' }));
+    mockEstimateStorage.mockResolvedValue({
+      usage: 0,
+      quota: 100,
+      remaining: 100,
+      remainingPercent: 100,
+    });
+    mockReportError.mockResolvedValue(undefined);
+    mockLoadingClose.mockClear();
+    mockNoiseMixer.setPlaying.mockClear();
+    mockNoiseMixer.setTracks.mockClear();
+    mockNoiseMixer.setTrackVolume.mockClear();
+    mockNoiseMixer.destroy.mockClear();
+    mockRateLadder.setRates.mockClear();
+    mockRateLadder.reset.mockClear();
+    mockRateLadder.getIndex.mockReturnValue(0);
+    mockRateLadder.getCurrentRate.mockReturnValue(1);
+    mockRateLadder.getSequence.mockReturnValue([1, 1.5, 1]);
+    mockRateLadder.onMainEnded.mockReturnValue({ kind: 'finished', rate: 1 });
   });
 
   afterEach(() => {
@@ -142,7 +287,9 @@ describe('practice-view', () => {
     cleanup = undefined;
     localStorage.clear();
     document.querySelector('[data-echo-session-dock-portal]')?.remove();
+    Message.closeAll();
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
   async function renderView() {
@@ -182,20 +329,28 @@ describe('practice-view', () => {
   async function switchToShadowingMode(el: PracticeViewInternals) {
     await settleView(el);
 
-    const speakingButton = Array.from(el.shadowRoot!.querySelectorAll('ui-button')).find((button) =>
-      button.textContent?.includes('口语'),
-    );
-    speakingButton?.click();
+    findButton(el, '口语')?.click();
     await el.updateComplete;
 
-    const shadowingButton = Array.from(el.shadowRoot!.querySelectorAll('ui-button')).find(
-      (button) => button.textContent?.includes('同步跟读'),
-    );
-    expect(shadowingButton).toBeDefined();
-    shadowingButton?.click();
+    findButton(el, '同步跟读')?.click();
     await el.updateComplete;
     await settleView(el);
     expect(el._speakingMode).toBe('shadowing');
+  }
+
+  async function switchToDiscriminationMode(el: PracticeViewInternals) {
+    await settleView(el);
+    findButton(el, '抗噪听')?.click();
+    await el.updateComplete;
+    await settleView(el);
+    expect(el._listeningMode).toBe('discrimination');
+  }
+
+  async function openSpeakingMode(el: PracticeViewInternals) {
+    await settleView(el);
+    findButton(el, '口语')?.click();
+    await el.updateComplete;
+    await settleView(el);
   }
 
   it('defaults to echo speaking mode and lists echo before shadowing when subtitles exist', async () => {
@@ -822,5 +977,977 @@ describe('practice-view', () => {
 
     expect(pauseSpy).toHaveBeenCalled();
     expect(infoSpy).not.toHaveBeenCalled();
+  });
+
+  describe('discrimination mode', () => {
+    it('renders discrimination panel and configures mixer on switch', async () => {
+      const el = await renderView();
+      await switchToDiscriminationMode(el);
+
+      expect(el.shadowRoot!.querySelector('discrimination-panel')).not.toBeNull();
+      expect(mockRateLadder.setRates).toHaveBeenCalled();
+      expect(mockRateLadder.reset).toHaveBeenCalled();
+      expect(mockNoiseMixer.setTracks).toHaveBeenCalled();
+    });
+
+    it('tears down discrimination when switching to free listen', async () => {
+      const el = await renderView();
+      await switchToDiscriminationMode(el);
+
+      findButton(el, '自由听')?.click();
+      await el.updateComplete;
+
+      expect(el._listeningMode).toBe('free');
+      expect(mockNoiseMixer.setPlaying).toHaveBeenCalledWith(false);
+      expect(mockNoiseMixer.setTracks).toHaveBeenCalledWith([]);
+    });
+
+    it('tears down discrimination when switching to speaking', async () => {
+      const el = await renderView();
+      await switchToDiscriminationMode(el);
+
+      await openSpeakingMode(el);
+      expect(el._practiceType).toBe('speaking');
+      expect(mockNoiseMixer.setTracks).toHaveBeenCalledWith([]);
+    });
+
+    it('syncs noise mixer play state with main media', async () => {
+      const el = await renderView();
+      await switchToDiscriminationMode(el);
+
+      el._controller.dispatchEvent(new CustomEvent(MediaEventType.PLAY));
+      expect(mockNoiseMixer.setPlaying).toHaveBeenCalledWith(true);
+
+      el._controller.dispatchEvent(new CustomEvent(MediaEventType.PAUSE));
+      expect(mockNoiseMixer.setPlaying).toHaveBeenCalledWith(false);
+    });
+
+    it('advances rate ladder when main media ends', async () => {
+      const el = await renderView();
+      await switchToDiscriminationMode(el);
+
+      mockRateLadder.onMainEnded.mockReturnValueOnce({
+        kind: 'advance',
+        rate: 1.5,
+        index: 1,
+      });
+      const playSpy = vi.spyOn(el._controller, 'play').mockResolvedValue(undefined);
+      const setRateSpy = vi.spyOn(el._controller, 'setPlaybackRate');
+      const seekSpy = vi.spyOn(el._controller, 'seek');
+
+      el._controller.dispatchEvent(new CustomEvent(MediaEventType.ENDED));
+      await settleView(el);
+
+      expect(setRateSpy).toHaveBeenCalledWith(1.5);
+      expect(seekSpy).toHaveBeenCalledWith(0, { force: true });
+      expect(playSpy).toHaveBeenCalled();
+    });
+
+    it('wires discrimination panel noise and ladder events', async () => {
+      mockGetNoiseList.mockResolvedValue([
+        {
+          id: 'noise-1',
+          title: 'Rain',
+          filename: 'rain.mp3',
+          size: 100,
+          mimeType: 'audio/mpeg',
+          duration: 30,
+          createdAt: 1,
+        },
+      ]);
+      const el = await renderView();
+      await switchToDiscriminationMode(el);
+
+      const panel = el.shadowRoot!.querySelector('discrimination-panel')!;
+      panel.dispatchEvent(
+        new CustomEvent('noise-toggle', {
+          detail: { noiseId: 'noise-1', on: true },
+          bubbles: true,
+          composed: true,
+        }),
+      );
+      await el.updateComplete;
+      expect(el._discriminationSettings.selected).toEqual([
+        expect.objectContaining({ noiseId: 'noise-1' }),
+      ]);
+
+      panel.dispatchEvent(
+        new CustomEvent('noise-volume', {
+          detail: { noiseId: 'noise-1', volume: 0.7 },
+          bubbles: true,
+          composed: true,
+        }),
+      );
+      expect(mockNoiseMixer.setTrackVolume).toHaveBeenCalledWith('noise-1', 0.7);
+
+      panel.dispatchEvent(
+        new CustomEvent('ladder-count', {
+          detail: { count: 3 },
+          bubbles: true,
+          composed: true,
+        }),
+      );
+      await el.updateComplete;
+      expect(el._discriminationSettings.ladderCount).toBe(3);
+
+      panel.dispatchEvent(
+        new CustomEvent('ladder-rate', {
+          detail: { index: 0, rate: 1.5 },
+          bubbles: true,
+          composed: true,
+        }),
+      );
+      await el.updateComplete;
+      expect(el._discriminationSettings.ladderRates[0]).toBe(1.5);
+    });
+
+    it('warns when selecting more than max noise tracks', async () => {
+      const el = await renderView();
+      await switchToDiscriminationMode(el);
+      el._discriminationSettings = {
+        selected: Array.from({ length: DISCRIMINATION_MAX_NOISE_TRACKS }, (_, i) => ({
+          noiseId: `n${i}`,
+          volume: 0.5,
+        })),
+        ladderCount: 1,
+        ladderRates: [1],
+      };
+      await el.updateComplete;
+
+      const warningSpy = vi.spyOn(Message, 'warning');
+      const panel = el.shadowRoot!.querySelector('discrimination-panel')!;
+      panel.dispatchEvent(
+        new CustomEvent('noise-toggle', {
+          detail: { noiseId: 'extra', on: true },
+          bubbles: true,
+          composed: true,
+        }),
+      );
+      expect(warningSpy).toHaveBeenCalled();
+    });
+
+    it('navigates to noise library from panel', async () => {
+      const el = await renderView();
+      await switchToDiscriminationMode(el);
+      const navigateSpy = vi.spyOn(el, 'navigate').mockImplementation(() => undefined);
+
+      el.shadowRoot!.querySelector('discrimination-panel')!.dispatchEvent(
+        new CustomEvent('open-library', { bubbles: true, composed: true }),
+      );
+      expect(navigateSpy).toHaveBeenCalledWith('/library#noise-list-title');
+    });
+  });
+
+  describe('tips modal', () => {
+    it('opens shadowing tips when not skipped', async () => {
+      setUserSettingsLocal({ skipShadowingTips: false });
+      const el = await renderView();
+      await openSpeakingMode(el);
+      findButton(el, '同步跟读')?.click();
+      await el.updateComplete;
+
+      expect(el._tipsModalKind).toBe('shadowing');
+      expect(el.shadowRoot!.querySelector('practice-tips-modal')).not.toBeNull();
+    });
+
+    it('opens echo tips when not skipped', async () => {
+      setUserSettingsLocal({ skipEchoTips: false });
+      const el = await renderView();
+      await openSpeakingMode(el);
+      expect(el._tipsModalKind).toBe('echo');
+    });
+
+    it('opens discrimination tips when not skipped', async () => {
+      setUserSettingsLocal({ skipDiscriminationTips: false });
+      const el = await renderView();
+      await switchToDiscriminationMode(el);
+      expect(el._tipsModalKind).toBe('discrimination');
+    });
+
+    it('persists skip preference on confirm', async () => {
+      setUserSettingsLocal({ skipShadowingTips: false });
+      const el = await renderView();
+      await switchToShadowingMode(el);
+      expect(el._tipsModalKind).toBe('shadowing');
+
+      el.shadowRoot!.querySelector('practice-tips-modal')!.dispatchEvent(
+        new CustomEvent('confirm', {
+          detail: { kind: 'shadowing', skipFuture: true },
+          bubbles: true,
+          composed: true,
+        }),
+      );
+      await el.updateComplete;
+
+      expect(el._tipsModalKind).toBeNull();
+      expect(getAppSettings().skipShadowingTips).toBe(true);
+    });
+
+    it('closes tips modal without persisting skip', async () => {
+      setUserSettingsLocal({ skipEchoTips: false });
+      const el = await renderView();
+      await switchToEchoMode(el);
+
+      el.shadowRoot!.querySelector('practice-tips-modal')!.dispatchEvent(
+        new CustomEvent('close', { bubbles: true, composed: true }),
+      );
+      await el.updateComplete;
+
+      expect(el._tipsModalKind).toBeNull();
+      expect(getAppSettings().skipEchoTips).toBe(false);
+    });
+
+    it('opens tips from explanation button in echo mode', async () => {
+      const el = await renderView();
+      await switchToEchoMode(el);
+      expect(el._tipsModalKind).toBeNull();
+
+      findButton(el, '说明')?.click();
+      await el.updateComplete;
+      expect(el._tipsModalKind).toBe('echo');
+    });
+  });
+
+  describe('hotkeys help', () => {
+    it('opens and closes practice hotkeys help', async () => {
+      stubKeyboardShortcuts(true);
+      const el = await renderView();
+      await settleView(el);
+
+      el.shadowRoot!.querySelector('ui-icon-button[name="help"]')?.dispatchEvent(
+        new Event('click', { bubbles: true }),
+      );
+      await el.updateComplete;
+      expect(el._hotkeysHelpOpen).toBe(true);
+      expect(el.shadowRoot!.querySelector('practice-hotkeys-help')).not.toBeNull();
+
+      el.shadowRoot!.querySelector('practice-hotkeys-help')!.dispatchEvent(
+        new CustomEvent('close', { bubbles: true, composed: true }),
+      );
+      await el.updateComplete;
+      expect(el._hotkeysHelpOpen).toBe(false);
+    });
+  });
+
+  describe('load and error states', () => {
+    it('shows error when practice route has no media or playlist', async () => {
+      const errorSpy = vi.spyOn(Message, 'error');
+      const result = mount(
+        html`<practice-view
+          .routeContext=${{ route: 'practice', params: {}, query: {}, data: {} }}
+        ></practice-view>`,
+      );
+      cleanup = result.cleanup;
+      const el = result.container.querySelector('practice-view') as PracticeViewInternals;
+      await el.updateComplete;
+      await settleView(el);
+
+      expect(errorSpy).toHaveBeenCalled();
+      expect(mockLoadMedia).not.toHaveBeenCalled();
+    });
+
+    it('shows error when single media is missing', async () => {
+      mockLoadMedia.mockResolvedValue(null);
+      const errorSpy = vi.spyOn(Message, 'error');
+      const el = await renderView();
+      await settleView(el);
+      expect(errorSpy).toHaveBeenCalled();
+    });
+
+    it('shows error when playlist is empty', async () => {
+      mockLoadPlaylist.mockResolvedValue([]);
+      const errorSpy = vi.spyOn(Message, 'error');
+      const result = mount(
+        html`<practice-view
+          .routeContext=${{
+            route: 'practice',
+            params: {},
+            query: { playlistId: 'playlist-empty' },
+            data: {},
+          }}
+        ></practice-view>`,
+      );
+      cleanup = result.cleanup;
+      const el = result.container.querySelector('practice-view') as PracticeViewInternals;
+      await el.updateComplete;
+      await settleView(el);
+      expect(errorSpy).toHaveBeenCalled();
+    });
+
+    it('reports load failures', async () => {
+      mockLoadMedia.mockRejectedValue(new Error('network'));
+      const errorSpy = vi.spyOn(Message, 'error');
+      const el = await renderView();
+      await settleView(el);
+
+      expect(mockReportError).toHaveBeenCalled();
+      expect(errorSpy).toHaveBeenCalled();
+      expect(mockLoadingClose).toHaveBeenCalled();
+    });
+
+    it('falls back when requested media is not in playlist', async () => {
+      const infoSpy = vi.spyOn(Message, 'info');
+      const result = mount(
+        html`<practice-view
+          .routeContext=${{
+            route: 'practice',
+            params: {},
+            query: { playlistId: 'playlist-1', mediaId: 'missing' },
+            data: {},
+          }}
+        ></practice-view>`,
+      );
+      cleanup = result.cleanup;
+      const el = result.container.querySelector('practice-view') as PracticeViewInternals;
+      await el.updateComplete;
+      await settleView(el);
+
+      expect(infoSpy).toHaveBeenCalled();
+      expect(el._controller.getSnapshot().currentItem?.id).toBe('media-1');
+    });
+
+    it('seeks to segmentId from route query', async () => {
+      const result = mount(
+        html`<practice-view
+          .routeContext=${{
+            route: 'practice',
+            params: {},
+            query: { mediaId: 'media-1', segmentId: 's1' },
+            data: {},
+          }}
+        ></practice-view>`,
+      );
+      cleanup = result.cleanup;
+      const el = result.container.querySelector('practice-view') as PracticeViewInternals;
+      const seekSpy = vi.spyOn(el._controller, 'seekToSegment');
+      await el.updateComplete;
+      await settleView(el);
+
+      expect(seekSpy).toHaveBeenCalledWith(1, false, { force: true });
+    });
+
+    it('warns when segmentId cannot be resolved', async () => {
+      const warningSpy = vi.spyOn(Message, 'warning');
+      const result = mount(
+        html`<practice-view
+          .routeContext=${{
+            route: 'practice',
+            params: {},
+            query: { mediaId: 'media-1', segmentId: 'missing-seg' },
+            data: {},
+          }}
+        ></practice-view>`,
+      );
+      cleanup = result.cleanup;
+      const el = result.container.querySelector('practice-view') as PracticeViewInternals;
+      await el.updateComplete;
+      await settleView(el);
+      expect(warningSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('recording flows', () => {
+    it('saves shadowing recording on complete', async () => {
+      mockCountShadowingRecordings.mockResolvedValue(1);
+      const successSpy = vi.spyOn(Message, 'success');
+      const el = await renderView();
+      await switchToShadowingMode(el);
+
+      el.shadowRoot!.querySelector('audio-recorder#shadowing-recorder')!.dispatchEvent(
+        new CustomEvent('recording-complete', {
+          detail: {
+            blob: new Blob(['rec'], { type: 'audio/webm' }),
+            segments: [],
+            reason: 'manual',
+          },
+          bubbles: true,
+          composed: true,
+        }),
+      );
+      await settleView(el);
+
+      expect(mockSaveRecording).toHaveBeenCalled();
+      expect(successSpy).toHaveBeenCalled();
+    });
+
+    it('shows recording error when shadowing save fails', async () => {
+      mockSaveRecording.mockRejectedValue(new Error('disk full'));
+      const el = await renderView();
+      await switchToShadowingMode(el);
+
+      el.shadowRoot!.querySelector('audio-recorder#shadowing-recorder')!.dispatchEvent(
+        new CustomEvent('recording-complete', {
+          detail: {
+            blob: new Blob(['rec'], { type: 'audio/webm' }),
+            segments: [],
+            reason: 'manual',
+          },
+          bubbles: true,
+          composed: true,
+        }),
+      );
+      await settleView(el);
+
+      expect(el.shadowRoot!.querySelector('ui-alert[type="error"]')).not.toBeNull();
+    });
+
+    it('saves echo recording on complete after listen phase', async () => {
+      const successSpy = vi.spyOn(Message, 'success');
+      const el = await renderView();
+      await switchToEchoMode(el);
+
+      vi.spyOn(el._controller, 'play').mockResolvedValue(undefined);
+      await dispatchEchoRecordRequest(el);
+
+      el.shadowRoot!.querySelector('audio-recorder#echo-recorder')!.dispatchEvent(
+        new CustomEvent('recording-complete', {
+          detail: {
+            blob: new Blob(['rec'], { type: 'audio/webm' }),
+            segments: [],
+            reason: 'manual',
+          },
+          bubbles: true,
+          composed: true,
+        }),
+      );
+      await settleView(el);
+
+      expect(mockSaveRecording).toHaveBeenCalled();
+      expect(successSpy).toHaveBeenCalled();
+    });
+
+    it('blocks echo record when segment limit reached', async () => {
+      mockCountEchoRecordings.mockResolvedValue(10);
+      const warningSpy = vi.spyOn(Message, 'warning');
+      const el = await renderView();
+      await switchToEchoMode(el);
+
+      await dispatchEchoRecordRequest(el);
+      expect(warningSpy).toHaveBeenCalled();
+      expect(el._echoListening).toBe(false);
+    });
+
+    it('stops shadowing recording from session dock', async () => {
+      const el = await renderView();
+      await switchToShadowingMode(el);
+
+      const stopSpy = vi.fn().mockResolvedValue(undefined);
+      const recorder = el.shadowRoot!.querySelector('audio-recorder#shadowing-recorder') as {
+        stopRecording: () => Promise<void>;
+      };
+      vi.spyOn(recorder, 'stopRecording').mockImplementation(stopSpy);
+
+      el.shadowRoot!.querySelector('echo-session-dock')!.dispatchEvent(
+        new CustomEvent('echo-session-stop', { bubbles: true, composed: true }),
+      );
+      await settleView(el);
+
+      expect(stopSpy).toHaveBeenCalled();
+    });
+
+    it('cancels echo listen from session dock', async () => {
+      const el = await renderView();
+      await switchToEchoMode(el);
+      vi.spyOn(el._controller, 'play').mockResolvedValue(undefined);
+      const pauseSpy = vi.spyOn(el._controller, 'pause').mockResolvedValue(undefined);
+
+      await dispatchEchoRecordRequest(el);
+      el.shadowRoot!.querySelector('echo-session-dock')!.dispatchEvent(
+        new CustomEvent('echo-session-cancel', { bubbles: true, composed: true }),
+      );
+      await settleView(el);
+
+      expect(pauseSpy).toHaveBeenCalled();
+      expect(el._echoListening).toBe(false);
+    });
+
+    it('shows speak cue after skipped countdown', async () => {
+      const primarySpy = vi.spyOn(Message, 'primary');
+      const el = await renderView();
+      await switchToShadowingMode(el);
+
+      const recorder = el.shadowRoot!.querySelector('audio-recorder#shadowing-recorder')!;
+      recorder.dispatchEvent(
+        new CustomEvent('recording-countdown-end', {
+          detail: { skipped: true, cancelled: false },
+          bubbles: true,
+          composed: true,
+        }),
+      );
+      await el.updateComplete;
+
+      expect(el._sessionPhase).toBe('recording');
+      expect(primarySpy).toHaveBeenCalled();
+    });
+
+    it('shows shadowing limit message when recordings are full', async () => {
+      mockCountShadowingRecordings.mockResolvedValue(5);
+      const el = await renderView();
+      await switchToShadowingMode(el);
+
+      expect(el.shadowRoot!.textContent).toContain('已达上限');
+      const recorder = el.shadowRoot!.querySelector('audio-recorder#shadowing-recorder') as {
+        disabled: boolean;
+      };
+      expect(recorder.disabled).toBe(true);
+    });
+  });
+
+  describe('subtitle panel and storage', () => {
+    it('shows storage info and low storage warning', async () => {
+      mockEstimateStorage.mockResolvedValue({
+        usage: 95,
+        quota: 100,
+        remaining: 5,
+        remainingPercent: 5,
+      });
+      const el = await renderView();
+      await switchToEchoMode(el);
+      await settleView(el);
+
+      expect(el.shadowRoot!.textContent).toContain('当前存储');
+      expect(el.shadowRoot!.querySelector('ui-alert[type="warning"]')).not.toBeNull();
+    });
+
+    it('adds sentence to bank from subtitle panel', async () => {
+      const successSpy = vi.spyOn(Message, 'success');
+      const el = await renderView();
+      await settleView(el);
+
+      el.shadowRoot!.querySelector('subtitle-panel')!.dispatchEvent(
+        new CustomEvent('sentence-bank-add', {
+          detail: { segment: sampleSegments[0] },
+          bubbles: true,
+          composed: true,
+        }),
+      );
+      await settleView(el);
+
+      expect(mockAddToSentenceBank).toHaveBeenCalled();
+      expect(successSpy).toHaveBeenCalled();
+      expect(mockLoadingClose).toHaveBeenCalled();
+    });
+
+    it('handles duplicate sentence bank add', async () => {
+      mockAddToSentenceBank.mockResolvedValue({ status: 'duplicate' });
+      const infoSpy = vi.spyOn(Message, 'info');
+      const el = await renderView();
+      await settleView(el);
+
+      el.shadowRoot!.querySelector('subtitle-panel')!.dispatchEvent(
+        new CustomEvent('sentence-bank-add', {
+          detail: { segment: sampleSegments[0] },
+          bubbles: true,
+          composed: true,
+        }),
+      );
+      await settleView(el);
+
+      expect(infoSpy).toHaveBeenCalled();
+    });
+
+    it('removes sentence from bank via subtitle panel', async () => {
+      const successSpy = vi.spyOn(Message, 'success');
+      const el = await renderView();
+      await settleView(el);
+
+      el.shadowRoot!.querySelector('subtitle-panel')!.dispatchEvent(
+        new CustomEvent('sentence-bank-remove', {
+          detail: { segment: sampleSegments[0] },
+          bubbles: true,
+          composed: true,
+        }),
+      );
+      await settleView(el);
+
+      expect(mockRemoveFromSentenceBank).toHaveBeenCalled();
+      expect(successSpy).toHaveBeenCalled();
+    });
+
+    it('syncs subtitle fullscreen from panel event', async () => {
+      const el = await renderView();
+      await settleView(el);
+
+      el.shadowRoot!.querySelector('subtitle-panel')!.dispatchEvent(
+        new CustomEvent('update:fullscreen', {
+          detail: { fullscreen: true },
+          bubbles: true,
+          composed: true,
+        }),
+      );
+      await el.updateComplete;
+
+      expect(el._subtitlePanelFullscreen).toBe(true);
+      const panel = el.shadowRoot!.querySelector('subtitle-panel') as { fullscreen: boolean };
+      expect(panel.fullscreen).toBe(true);
+    });
+
+    it('closes recordings modal from footer button', async () => {
+      const el = await renderView();
+      await switchToShadowingMode(el);
+
+      findButton(el, '管理录音')?.click();
+      await el.updateComplete;
+      expect(el._recordingsModalOpen).toBe(true);
+
+      const modal = el.shadowRoot!.querySelector('ui-modal')!;
+      modal.querySelector('ui-button')?.dispatchEvent(new Event('click', { bubbles: true }));
+      await el.updateComplete;
+      expect(el._recordingsModalOpen).toBe(false);
+    });
+
+    it('reports sentence bank add failure', async () => {
+      mockAddToSentenceBank.mockRejectedValue(new Error('db error'));
+      const errorSpy = vi.spyOn(Message, 'error');
+      const el = await renderView();
+      await settleView(el);
+
+      el.shadowRoot!.querySelector('subtitle-panel')!.dispatchEvent(
+        new CustomEvent('sentence-bank-add', {
+          detail: { segment: sampleSegments[0] },
+          bubbles: true,
+          composed: true,
+        }),
+      );
+      await settleView(el);
+
+      expect(mockReportError).toHaveBeenCalled();
+      expect(errorSpy).toHaveBeenCalled();
+      expect(mockLoadingClose).toHaveBeenCalled();
+    });
+
+    it('reports sentence bank remove failure', async () => {
+      mockRemoveFromSentenceBank.mockRejectedValue(new Error('db error'));
+      const errorSpy = vi.spyOn(Message, 'error');
+      const el = await renderView();
+      await settleView(el);
+
+      el.shadowRoot!.querySelector('subtitle-panel')!.dispatchEvent(
+        new CustomEvent('sentence-bank-remove', {
+          detail: { segment: sampleSegments[0] },
+          bubbles: true,
+          composed: true,
+        }),
+      );
+      await settleView(el);
+
+      expect(mockReportError).toHaveBeenCalled();
+      expect(errorSpy).toHaveBeenCalled();
+    });
+
+    it('handles missing sentence on remove', async () => {
+      mockRemoveFromSentenceBank.mockResolvedValue({ status: 'missing' });
+      const infoSpy = vi.spyOn(Message, 'info');
+      const el = await renderView();
+      await settleView(el);
+
+      el.shadowRoot!.querySelector('subtitle-panel')!.dispatchEvent(
+        new CustomEvent('sentence-bank-remove', {
+          detail: { segment: sampleSegments[0] },
+          bubbles: true,
+          composed: true,
+        }),
+      );
+      await settleView(el);
+
+      expect(infoSpy).toHaveBeenCalled();
+    });
+
+    it('ignores sentence bank add while busy', async () => {
+      mockAddToSentenceBank.mockClear();
+      const el = await renderView();
+      await settleView(el);
+      el._sentenceBankBusy = true;
+
+      el.shadowRoot!.querySelector('subtitle-panel')!.dispatchEvent(
+        new CustomEvent('sentence-bank-add', {
+          detail: { segment: sampleSegments[0] },
+          bubbles: true,
+          composed: true,
+        }),
+      );
+      await settleView(el);
+
+      expect(mockAddToSentenceBank).not.toHaveBeenCalled();
+    });
+
+    it('clears waveform when last saved recording is deleted', async () => {
+      vi.spyOn(crypto, 'randomUUID').mockReturnValue('rec-last');
+      const el = await renderView();
+      await switchToShadowingMode(el);
+
+      const clearSpy = vi.fn();
+      const recorder = el.shadowRoot!.querySelector('audio-recorder#shadowing-recorder') as {
+        clearWaveform: () => void;
+      };
+      vi.spyOn(recorder, 'clearWaveform').mockImplementation(clearSpy);
+
+      el.shadowRoot!.querySelector('audio-recorder#shadowing-recorder')!.dispatchEvent(
+        new CustomEvent('recording-complete', {
+          detail: {
+            blob: new Blob(['rec'], { type: 'audio/webm' }),
+            segments: [],
+            reason: 'manual',
+          },
+          bubbles: true,
+          composed: true,
+        }),
+      );
+      await settleView(el);
+
+      findButton(el, '管理录音')?.click();
+      await el.updateComplete;
+
+      el.shadowRoot!.querySelector('record-list')!.dispatchEvent(
+        new CustomEvent('recording-deleted', {
+          detail: { id: 'rec-last' },
+          bubbles: true,
+          composed: true,
+        }),
+      );
+      await settleView(el);
+      expect(clearSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('registered hotkeys', () => {
+    beforeEach(() => {
+      setHotkeyManagerForTests(new HotkeyManager());
+      stubKeyboardShortcuts(true);
+    });
+
+    afterEach(() => {
+      getHotkeyManager().reset();
+      setHotkeyManagerForTests(null);
+    });
+
+    it('dispatches media hotkeys when session is idle', async () => {
+      const el = await renderView();
+      await settleView(el);
+
+      const toggleSpy = vi.spyOn(el._controller, 'togglePlay').mockResolvedValue(undefined);
+      const nextSpy = vi.spyOn(el._controller, 'nextSegment');
+      const prevSpy = vi.spyOn(el._controller, 'previousSegment');
+      const replaySpy = vi.spyOn(el._controller, 'replaySegment');
+      const volumeSpy = vi.spyOn(el._controller, 'setVolume');
+      const rateSpy = vi.spyOn(el._controller, 'setPlaybackRate');
+
+      dispatchKey('Space');
+      dispatchKey('ArrowRight');
+      dispatchKey('ArrowLeft');
+      dispatchKey('KeyR');
+      dispatchKey('ArrowUp');
+      dispatchKey('ArrowDown');
+      dispatchKey('BracketRight');
+      dispatchKey('BracketLeft');
+
+      expect(toggleSpy).toHaveBeenCalled();
+      expect(nextSpy).toHaveBeenCalled();
+      expect(prevSpy).toHaveBeenCalled();
+      expect(replaySpy).toHaveBeenCalled();
+      expect(volumeSpy).toHaveBeenCalled();
+      expect(rateSpy).toHaveBeenCalled();
+    });
+
+    it('blocks media hotkeys during echo listen but allows subtitle toggles', async () => {
+      const el = await renderView();
+      await switchToEchoMode(el);
+      vi.spyOn(el._controller, 'play').mockResolvedValue(undefined);
+
+      const toggleSpy = vi.spyOn(el._controller, 'togglePlay').mockResolvedValue(undefined);
+      const subtitlesSpy = vi.spyOn(el._controller, 'setSubtitlesVisible');
+
+      await dispatchEchoRecordRequest(el);
+      dispatchKey('Space');
+      dispatchKey('KeyC');
+
+      expect(toggleSpy).not.toHaveBeenCalled();
+      expect(subtitlesSpy).toHaveBeenCalled();
+    });
+
+    it('blocks rate hotkeys in discrimination mode', async () => {
+      const el = await renderView();
+      await switchToDiscriminationMode(el);
+
+      const rateSpy = vi.spyOn(el._controller, 'setPlaybackRate');
+      dispatchKey('BracketRight');
+      expect(rateSpy).not.toHaveBeenCalled();
+    });
+
+    it('disables hotkeys while recordings modal is open', async () => {
+      const el = await renderView();
+      await switchToShadowingMode(el);
+
+      findButton(el, '管理录音')?.click();
+      await el.updateComplete;
+
+      const toggleSpy = vi.spyOn(el._controller, 'togglePlay').mockResolvedValue(undefined);
+      dispatchKey('Space');
+      expect(toggleSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('disconnectedCallback teardown', () => {
+    beforeEach(() => {
+      setHotkeyManagerForTests(new HotkeyManager());
+      stubKeyboardShortcuts(true);
+    });
+
+    afterEach(() => {
+      getHotkeyManager().reset();
+      setHotkeyManagerForTests(null);
+    });
+
+    it('unregisters hotkeys and destroys resources on disconnect', async () => {
+      const manager = getHotkeyManager();
+      const unregisterSpy = vi.spyOn(manager, 'unregisterScope');
+      const el = await renderView();
+      await switchToEchoMode(el);
+      vi.spyOn(el._controller, 'play').mockResolvedValue(undefined);
+      await dispatchEchoRecordRequest(el);
+
+      cleanup?.();
+      cleanup = undefined;
+
+      expect(unregisterSpy).toHaveBeenCalledWith('practice');
+      expect(mockNoiseMixer.destroy).toHaveBeenCalled();
+    });
+  });
+
+  describe('error and edge paths', () => {
+    it('recovers when refreshNoise fails on connect', async () => {
+      mockGetNoiseList.mockRejectedValue(new Error('noise db'));
+      const el = await renderView();
+      await settleView(el);
+      expect(el.shadowRoot?.querySelector('.layout')).not.toBeNull();
+    });
+
+    it('recovers when refreshRecordings fails on track change', async () => {
+      const el = await renderView();
+      await settleView(el);
+      mockCountShadowingRecordings.mockRejectedValue(new Error('count failed'));
+      el._onTrackChange();
+      await settleView(el);
+      expect(el.shadowRoot?.textContent).not.toContain('当前存储');
+    });
+
+    it('cancels echo listen when playback start fails', async () => {
+      const el = await renderView();
+      await switchToEchoMode(el);
+      vi.spyOn(el._controller, 'play').mockRejectedValue(new Error('play blocked'));
+
+      await dispatchEchoRecordRequest(el);
+      await settleView(el);
+
+      expect(el._echoListening).toBe(false);
+      expect(el._sessionPhase).toBe('idle');
+    });
+
+    it('clears echo session when recording start fails after listen', async () => {
+      const el = await renderView();
+      await switchToEchoMode(el);
+      vi.spyOn(el._controller, 'play').mockResolvedValue(undefined);
+      vi.spyOn(el._controller, 'pause').mockResolvedValue(undefined);
+      const echoRecorder = el.shadowRoot!.querySelector('audio-recorder#echo-recorder') as {
+        startRecording: () => Promise<void>;
+        recording: boolean;
+      };
+      vi.spyOn(echoRecorder, 'startRecording').mockRejectedValue(new Error('mic denied'));
+
+      await dispatchEchoRecordRequest(el);
+      el._controller.dispatchEvent(
+        new CustomEvent(ExtendedMediaEventType.SEGMENT_END, {
+          detail: { segmentIndex: 0, segment: sampleSegments[0] },
+        }),
+      );
+      await settleView(el);
+
+      expect(el._echoListening).toBe(false);
+      expect(el._sessionPhase).toBe('idle');
+    });
+
+    it('clears echo session when recording does not start after listen', async () => {
+      const el = await renderView();
+      await switchToEchoMode(el);
+      vi.spyOn(el._controller, 'play').mockResolvedValue(undefined);
+      vi.spyOn(el._controller, 'pause').mockResolvedValue(undefined);
+      const echoRecorder = el.shadowRoot!.querySelector('audio-recorder#echo-recorder') as {
+        startRecording: () => Promise<void>;
+        recording: boolean;
+      };
+      Object.defineProperty(echoRecorder, 'recording', {
+        configurable: true,
+        get: () => false,
+      });
+      vi.spyOn(echoRecorder, 'startRecording').mockResolvedValue(undefined);
+
+      await dispatchEchoRecordRequest(el);
+      el._controller.dispatchEvent(
+        new CustomEvent(ExtendedMediaEventType.SEGMENT_END, {
+          detail: { segmentIndex: 0, segment: sampleSegments[0] },
+        }),
+      );
+      await settleView(el);
+
+      expect(el._sessionPhase).toBe('idle');
+    });
+
+    it('ignores SEGMENT_END for a different segment during echo listen', async () => {
+      const el = await renderView();
+      await switchToEchoMode(el);
+      vi.spyOn(el._controller, 'play').mockResolvedValue(undefined);
+      const pauseSpy = vi.spyOn(el._controller, 'pause').mockResolvedValue(undefined);
+
+      await dispatchEchoRecordRequest(el);
+      el._controller.dispatchEvent(
+        new CustomEvent(ExtendedMediaEventType.SEGMENT_END, {
+          detail: { segmentIndex: 1, segment: sampleSegments[1] },
+        }),
+      );
+      await settleView(el);
+
+      expect(pauseSpy).not.toHaveBeenCalled();
+      expect(el._echoListening).toBe(true);
+    });
+
+    it('ignores echo record request while already recording', async () => {
+      const el = await renderView();
+      await switchToEchoMode(el);
+      el._recording = true;
+
+      await dispatchEchoRecordRequest(el);
+      expect(el._echoListening).toBe(false);
+    });
+
+    it('stops discrimination ladder when main media finishes all rates', async () => {
+      const el = await renderView();
+      await switchToDiscriminationMode(el);
+
+      mockRateLadder.onMainEnded.mockReturnValueOnce({ kind: 'finished', rate: 1 });
+      const setRateSpy = vi.spyOn(el._controller, 'setPlaybackRate');
+      const playSpy = vi.spyOn(el._controller, 'play').mockResolvedValue(undefined);
+
+      el._controller.dispatchEvent(new CustomEvent(MediaEventType.ENDED));
+      await settleView(el);
+
+      expect(setRateSpy).toHaveBeenCalledWith(1);
+      expect(mockNoiseMixer.setPlaying).toHaveBeenCalledWith(false);
+      expect(playSpy).not.toHaveBeenCalled();
+    });
+
+    it('disables recorders when browser recording is unsupported', async () => {
+      vi.unstubAllGlobals();
+      vi.stubGlobal('MediaRecorder', undefined);
+      vi.stubGlobal('navigator', { vibrate: vi.fn() });
+      stubKeyboardShortcuts(false);
+
+      const el = await renderView();
+      await switchToShadowingMode(el);
+
+      const shadowingRecorder = el.shadowRoot!.querySelector(
+        'audio-recorder#shadowing-recorder',
+      ) as { disabled: boolean };
+      expect(shadowingRecorder.disabled).toBe(true);
+    });
   });
 });

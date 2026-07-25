@@ -28,6 +28,8 @@ vi.stubGlobal('AudioContext', MockAudioContext);
 vi.stubGlobal('webkitAudioContext', MockAudioContext);
 
 import type { SubtitleSegment } from '../types/models.js';
+import * as playbackUtils from '../lib/playback-utils.js';
+import { ExtendedMediaEventType } from '../lib/playback-utils.js';
 import { getMediaElementGain } from '../lib/media-element-gain.js';
 import { MediaController, type LoadedTrack } from './media-controller.js';
 
@@ -330,5 +332,301 @@ describe('MediaController', () => {
     expect(video.load).toHaveBeenCalledTimes(1);
     expect(video.play).toHaveBeenCalledTimes(1);
     expect(controller.getSnapshot().currentItem?.id).toBe('v');
+  });
+
+  it('play is a no-op without a media element', async () => {
+    const bare = new MediaController();
+    await bare.loadTracks([makeTrack('a', 'A')]);
+    await expect(bare.play()).resolves.toBeUndefined();
+    bare.destroy();
+  });
+
+  it('toggles play and pause from controller state', async () => {
+    await controller.loadTracks([makeTrack('a', 'Track A')]);
+    controller.isPlaying = false;
+    await controller.togglePlay();
+    expect(audio.play).toHaveBeenCalledTimes(1);
+
+    controller.isPlaying = true;
+    await controller.togglePlay();
+    expect(audio.pause).toHaveBeenCalled();
+  });
+
+  it('pauses playback explicitly', async () => {
+    await controller.loadTracks([makeTrack('a', 'Track A')]);
+    controller.pause();
+    expect(audio.pause).toHaveBeenCalled();
+  });
+
+  it('skips re-attaching the same media element', () => {
+    const addListenerSpy = vi.spyOn(audio, 'addEventListener');
+    controller.attachMediaElement(audio);
+    addListenerSpy.mockClear();
+    controller.attachMediaElement(audio);
+    expect(addListenerSpy).not.toHaveBeenCalled();
+  });
+
+  it('clears state when loading an empty track list', async () => {
+    await controller.loadTracks([]);
+    const snapshot = controller.getSnapshot();
+    expect(snapshot.playlist).toEqual([]);
+    expect(snapshot.currentItem).toBeNull();
+    expect(snapshot.duration).toBe(0);
+  });
+
+  it('ignores segment loop and pause modes without subtitles', async () => {
+    await controller.loadTracks([makeTrack('a', 'Track A')]);
+    controller.setLoopMode('list');
+    controller.setLoopMode('segment');
+    expect(controller.getSnapshot().loopMode).toBe('list');
+
+    controller.setPauseMode('seconds');
+    expect(controller.getSnapshot().pauseMode).toBe('off');
+  });
+
+  it('navigates between subtitle segments', async () => {
+    const segments: SubtitleSegment[] = [
+      { id: 's1', startTime: 0, endTime: 5, text: 'one' },
+      { id: 's2', startTime: 5, endTime: 10, text: 'two' },
+    ];
+    await controller.loadTracks([makeTrack('a', 'Track A', { segments })]);
+    controller.nextSegment();
+    expect(controller.currentSegmentIndex).toBe(1);
+    expect(controller.currentTime).toBe(5);
+    controller.previousSegment();
+    expect(controller.currentSegmentIndex).toBe(0);
+    expect(controller.currentTime).toBe(0);
+  });
+
+  it('does not advance segments at boundaries', async () => {
+    const segments: SubtitleSegment[] = [
+      { id: 's1', startTime: 0, endTime: 5, text: 'one' },
+      { id: 's2', startTime: 5, endTime: 10, text: 'two' },
+    ];
+    await controller.loadTracks([makeTrack('a', 'Track A', { segments })]);
+    controller.previousSegment();
+    expect(controller.currentSegmentIndex).toBe(0);
+    controller.seekToSegment(1);
+    controller.nextSegment();
+    expect(controller.currentSegmentIndex).toBe(1);
+  });
+
+  it('loops a single track from the start when playback ends', async () => {
+    await controller.loadTracks([makeTrack('a', 'Track A')]);
+    controller.setLoopMode('single');
+    audio.play.mockClear();
+    audio.dispatchEvent(new Event('ended'));
+    expect(controller.currentTime).toBe(0);
+    expect(audio.play).toHaveBeenCalledTimes(1);
+  });
+
+  it('navigates via shuffle order on next track', async () => {
+    vi.spyOn(playbackUtils, 'shuffleIndices').mockReturnValue([1, 2, 0]);
+    await controller.loadTracks([makeTrack('a', 'A'), makeTrack('b', 'B'), makeTrack('c', 'C')]);
+    controller.setLoopMode('shuffle');
+    await new Promise<void>((resolve) => {
+      controller.addEventListener('state-change', () => resolve(), { once: true });
+      controller.nextTrack();
+    });
+    expect(controller.getSnapshot().currentItem?.id).toBe('b');
+  });
+
+  it('replays the current segment when segment loop ends naturally', async () => {
+    const segments: SubtitleSegment[] = [
+      { id: 's1', startTime: 0, endTime: 5, text: 'one' },
+      { id: 's2', startTime: 5, endTime: 10, text: 'two' },
+    ];
+    await controller.loadTracks([makeTrack('a', 'Track A', { segments })]);
+    controller.setLoopMode('segment');
+    controller.seekToSegment(1);
+    audio.play.mockClear();
+    audio.dispatchEvent(new Event('ended'));
+    expect(controller.currentTime).toBe(5);
+    expect(audio.play).toHaveBeenCalledTimes(1);
+  });
+
+  it('loops within the active segment during playback', async () => {
+    const segments: SubtitleSegment[] = [{ id: 's1', startTime: 0, endTime: 5, text: 'one' }];
+    await controller.loadTracks([makeTrack('a', 'Track A', { segments })]);
+    controller.setLoopMode('segment');
+    Object.defineProperty(audio, 'paused', { configurable: true, value: false });
+    Object.defineProperty(audio, 'currentTime', {
+      configurable: true,
+      value: 4.96,
+      writable: true,
+    });
+    audio.dispatchEvent(new Event('timeupdate'));
+    expect(audio.currentTime).toBe(0);
+    expect(controller.currentTime).toBe(0);
+  });
+
+  it('detects segment end during playback and emits segment-end', async () => {
+    const segments: SubtitleSegment[] = [
+      { id: 's1', startTime: 0, endTime: 5, text: 'one' },
+      { id: 's2', startTime: 5, endTime: 10, text: 'two' },
+    ];
+    const segmentEndHandler = vi.fn();
+    controller.addEventListener(ExtendedMediaEventType.SEGMENT_END, segmentEndHandler);
+    await controller.loadTracks([makeTrack('a', 'Track A', { segments })]);
+    Object.defineProperty(audio, 'paused', { configurable: true, value: false });
+    Object.defineProperty(audio, 'currentTime', { configurable: true, value: 5.1, writable: true });
+    audio.dispatchEvent(new Event('timeupdate'));
+    expect(segmentEndHandler).toHaveBeenCalledTimes(1);
+    expect(segmentEndHandler.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({
+        detail: expect.objectContaining({ segmentIndex: 0 }),
+      }),
+    );
+  });
+
+  it('applies segment pause and resumes after the configured delay', async () => {
+    vi.useFakeTimers();
+    const segments: SubtitleSegment[] = [
+      { id: 's1', startTime: 0, endTime: 5, text: 'one' },
+      { id: 's2', startTime: 5, endTime: 10, text: 'two' },
+    ];
+    await controller.loadTracks([makeTrack('a', 'Track A', { segments })]);
+    controller.setPauseMode('seconds');
+    controller.setPauseSeconds(2);
+    Object.defineProperty(audio, 'paused', { configurable: true, value: false });
+    Object.defineProperty(audio, 'currentTime', { configurable: true, value: 5.1, writable: true });
+    audio.dispatchEvent(new Event('timeupdate'));
+
+    expect(controller.getSnapshot().segmentPausePending).toBe(true);
+    expect(audio.pause).toHaveBeenCalled();
+
+    audio.play.mockClear();
+    vi.advanceTimersByTime(2100);
+    expect(controller.getSnapshot().segmentPausePending).toBe(false);
+    expect(audio.play).toHaveBeenCalledTimes(1);
+    vi.useRealTimers();
+  });
+
+  it('cancels pending segment pause', async () => {
+    const segments: SubtitleSegment[] = [{ id: 's1', startTime: 0, endTime: 5, text: 'one' }];
+    await controller.loadTracks([makeTrack('a', 'Track A', { segments })]);
+    controller.setPauseMode('seconds');
+    (
+      controller as unknown as { _applySegmentPause: (segment: SubtitleSegment) => void }
+    )._applySegmentPause(segments[0]!);
+    expect(controller.getSnapshot().segmentPausePending).toBe(true);
+
+    controller.cancelSegmentPause();
+    expect(controller.getSnapshot().segmentPausePending).toBe(false);
+  });
+
+  it('expires the sleep timer and pauses playback', async () => {
+    vi.useFakeTimers();
+    await controller.loadTracks([makeTrack('a', 'Track A')]);
+    controller.setSleepMinutes(1);
+    controller.setSleepMode('minutes');
+    expect(controller.getSnapshot().sleepRemainingSeconds).toBe(60);
+
+    vi.advanceTimersByTime(61_000);
+    expect(controller.getSnapshot().sleepMode).toBe('off');
+    expect(audio.pause).toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+
+  it('clears sleep-until-end when the track ends', async () => {
+    await controller.loadTracks([makeTrack('a', 'Track A')]);
+    controller.setSleepMode('until-end');
+    audio.dispatchEvent(new Event('ended'));
+    expect(controller.getSnapshot().sleepMode).toBe('off');
+    expect(audio.pause).toHaveBeenCalled();
+  });
+
+  it('cancelSleep turns off sleep mode', async () => {
+    controller.setSleepMode('until-end');
+    controller.cancelSleep();
+    expect(controller.getSnapshot().sleepMode).toBe('off');
+    expect(controller.getSnapshot().sleepActive).toBe(false);
+  });
+
+  it('clamps sleep minutes to the configured maximum', async () => {
+    const { MAX_SLEEP_MINUTES } = await import('../lib/playback-utils.js');
+    controller.setSleepMinutes(MAX_SLEEP_MINUTES + 100);
+    expect(controller.getSnapshot().sleepMinutes).toBe(MAX_SLEEP_MINUTES);
+  });
+
+  it('resets player settings to defaults', async () => {
+    await controller.loadTracks([makeTrack('a', 'Track A')]);
+    controller.setVolume(0.5);
+    controller.setPlaybackRate(1.5);
+    controller.setSubtitlesVisible(false);
+    controller.setSleepMode('until-end');
+    controller.resetSettings();
+
+    const snapshot = controller.getSnapshot();
+    expect(snapshot.volume).toBe(1);
+    expect(snapshot.playbackRate).toBe(1);
+    expect(snapshot.subtitlesVisible).toBe(true);
+    expect(snapshot.sleepMode).toBe('off');
+    expect(audio.playbackRate).toBe(1);
+  });
+
+  it('forwards native media events with the original event detail', async () => {
+    const waitingHandler = vi.fn();
+    controller.addEventListener('waiting', waitingHandler);
+    await controller.loadTracks([makeTrack('a', 'Track A')]);
+    const nativeEvent = new Event('waiting');
+    audio.dispatchEvent(nativeEvent);
+    expect(waitingHandler).toHaveBeenCalledTimes(1);
+    expect(waitingHandler.mock.calls[0]?.[0]).toBeInstanceOf(CustomEvent);
+    expect((waitingHandler.mock.calls[0]?.[0] as CustomEvent).detail.originalEvent).toBe(
+      nativeEvent,
+    );
+  });
+
+  it('syncs playback on visibility change while playing', async () => {
+    const segments: SubtitleSegment[] = [{ id: 's1', startTime: 0, endTime: 5, text: 'one' }];
+    await controller.loadTracks([makeTrack('a', 'Track A', { segments })]);
+    Object.defineProperty(audio, 'paused', { configurable: true, value: false });
+    Object.defineProperty(audio, 'currentTime', { configurable: true, value: 2.5, writable: true });
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' });
+    document.dispatchEvent(new Event('visibilitychange'));
+    expect(controller.currentTime).toBe(2.5);
+  });
+
+  it('does not update subtitles when updateCurrentTrackSubtitles has no active track', () => {
+    controller.updateCurrentTrackSubtitles([{ id: 's1', startTime: 0, endTime: 1, text: 'x' }]);
+    expect(controller.getSnapshot().segments).toEqual([]);
+  });
+
+  it('returns early from loadTrack when the track slot is empty', async () => {
+    await controller.loadTracks([makeTrack('a', 'Track A')]);
+    const snapshotBefore = controller.getSnapshot();
+    (controller as unknown as { tracks: (LoadedTrack | undefined)[] }).tracks = [undefined];
+    await controller.loadTrack(0);
+    expect(controller.getSnapshot().currentItem?.id).toBe(snapshotBefore.currentItem?.id);
+  });
+
+  it('pauses immediately when sleep minutes is zero', async () => {
+    await controller.loadTracks([makeTrack('a', 'Track A')]);
+    audio.pause.mockClear();
+    controller.setSleepMinutes(0);
+    controller.setSleepMode('minutes');
+    expect(controller.getSnapshot().sleepMode).toBe('off');
+    expect(audio.pause).toHaveBeenCalled();
+  });
+
+  it('resumes into segment loop after percent-based segment pause', async () => {
+    vi.useFakeTimers();
+    const segments: SubtitleSegment[] = [{ id: 's1', startTime: 0, endTime: 5, text: 'one' }];
+    await controller.loadTracks([makeTrack('a', 'Track A', { segments })]);
+    controller.setLoopMode('segment');
+    controller.setPauseMode('percentage');
+    controller.setPausePercent(200);
+    controller.seekToSegment(0);
+    Object.defineProperty(audio, 'paused', { configurable: true, value: false });
+    Object.defineProperty(audio, 'currentTime', { configurable: true, value: 5.1, writable: true });
+    audio.dispatchEvent(new Event('timeupdate'));
+
+    expect(controller.getSnapshot().segmentPausePending).toBe(true);
+    audio.play.mockClear();
+    vi.advanceTimersByTime(10_100);
+    expect(controller.currentTime).toBe(0);
+    expect(audio.play).toHaveBeenCalledTimes(1);
+    vi.useRealTimers();
   });
 });

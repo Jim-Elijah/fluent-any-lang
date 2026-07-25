@@ -5,6 +5,7 @@ import type { PracticeRecord } from '../../types/models.js';
 import * as recordDb from '../../db/record.js';
 import * as mediaDb from '../../db/media.js';
 import * as subtitleDb from '../../db/subtitle.js';
+import { NARROW_VIEWPORT_MQ } from '../../lib/layout-compact.js';
 
 vi.mock('../../lib/export-content.js', () => ({
   exportRecording: vi.fn(),
@@ -12,7 +13,8 @@ vi.mock('../../lib/export-content.js', () => ({
 
 import './record-list.js';
 import type { RecordList } from './record-list.js';
-import { mount } from '../ui/test-utils.js';
+import { exportRecording } from '../../lib/export-content.js';
+import { mount, flushUpdates } from '../ui/test-utils.js';
 import { Message } from '../ui/message.js';
 import { RECORDING_PREVIEW_OPEN_EVENT } from '../../lib/audio-focus.js';
 
@@ -192,5 +194,191 @@ describe('record-list', () => {
     await el.updateComplete;
 
     expect(openSpy).toHaveBeenCalled();
+  });
+
+  it('uses narrow row height when viewport matches narrow MQ', async () => {
+    vi.spyOn(window, 'matchMedia').mockImplementation((query) => ({
+      matches: query === NARROW_VIEWPORT_MQ,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+    vi.mocked(recordDb.getRecordingList).mockResolvedValue([sampleRecord]);
+
+    const el = await renderList();
+    await el.refresh();
+    await el.updateComplete;
+
+    const grid = el.shadowRoot?.querySelector('ui-virtual-grid') as
+      | { itemHeight?: number }
+      | null
+      | undefined;
+    expect(grid?.itemHeight).toBe(100);
+  });
+
+  it('loads recordings for a specific media id', async () => {
+    vi.mocked(recordDb.findRecordings).mockResolvedValue([sampleRecord]);
+
+    const el = await renderList(html`<record-list .mediaId=${'media-1'}></record-list>`);
+    await el.refresh();
+    await el.updateComplete;
+
+    expect(recordDb.findRecordings).toHaveBeenCalledWith('media-1');
+    expect(recordDb.getRecordingList).not.toHaveBeenCalled();
+  });
+
+  it('refreshes when mediaId changes', async () => {
+    vi.mocked(recordDb.findRecordings).mockResolvedValue([sampleRecord]);
+    const el = await renderList(html`<record-list .mediaId=${'media-1'}></record-list>`);
+    await el.refresh();
+    await el.updateComplete;
+    vi.mocked(recordDb.findRecordings).mockClear();
+
+    el.mediaId = 'media-2';
+    await el.updateComplete;
+    await flushUpdates();
+
+    expect(recordDb.findRecordings).toHaveBeenCalledWith('media-2');
+  });
+
+  it('shows load error when refresh fails', async () => {
+    vi.mocked(recordDb.getRecordingList).mockRejectedValue(new Error('db down'));
+    const el = await renderList();
+    await el.refresh();
+    await el.updateComplete;
+
+    expect(el.shadowRoot?.querySelector('ui-alert')?.textContent).toContain('无法加载录音');
+  });
+
+  it('sorts recordings by title from parent props', async () => {
+    vi.mocked(recordDb.getRecordingList).mockResolvedValue([
+      { ...sampleRecord, id: 'a', mediaTitle: 'Zulu' },
+      { ...sampleRecord, id: 'b', mediaTitle: 'Alpha', createdAt: 2 },
+    ]);
+    const el = await renderList(
+      html`<record-list sortBy="title" sortDirection="asc"></record-list>`,
+    );
+    await el.refresh();
+    await el.updateComplete;
+
+    const titles = [...(el.shadowRoot?.querySelectorAll('.title') ?? [])].map(
+      (node) => node.textContent?.trim() ?? '',
+    );
+    expect(titles).toEqual(['Alpha', 'Zulu']);
+  });
+
+  it('filters recordings by mode', async () => {
+    const echoRecord: PracticeRecord = {
+      ...sampleRecord,
+      id: 'rec-2',
+      mode: 'echo',
+      mediaTitle: 'Echo lesson',
+    };
+    vi.mocked(recordDb.getRecordingList).mockResolvedValue([sampleRecord, echoRecord]);
+
+    const el = await renderList(html`<record-list .modeFilter=${'echo'}></record-list>`);
+    await el.refresh();
+    await el.updateComplete;
+
+    expect(el.shadowRoot?.querySelectorAll('.title')).toHaveLength(1);
+    expect(el.shadowRoot?.textContent).toContain('Echo lesson');
+  });
+
+  it('shows error when recording blob is missing on preview', async () => {
+    vi.mocked(recordDb.getRecordingList).mockResolvedValue([sampleRecord]);
+    vi.mocked(recordDb.getRecordingBlob).mockResolvedValue(null);
+
+    const el = await renderList();
+    await el.refresh();
+    await el.updateComplete;
+
+    el.shadowRoot!.querySelector('ui-button[aria-label="查看"]')!.click();
+    await el.updateComplete;
+    await flushUpdates();
+
+    expect(el.shadowRoot?.querySelector('ui-alert')?.textContent).toContain('录音文件不存在');
+  });
+
+  it('exports a recording from the row action', async () => {
+    vi.mocked(recordDb.getRecordingList).mockResolvedValue([sampleRecord]);
+    vi.mocked(exportRecording).mockResolvedValue(undefined);
+
+    const el = await renderList();
+    await el.refresh();
+    await el.updateComplete;
+
+    el.shadowRoot!.querySelector('ui-button[aria-label="导出"]')!.click();
+    await flushUpdates();
+
+    expect(exportRecording).toHaveBeenCalledWith(sampleRecord);
+  });
+
+  it('shows export error when export fails', async () => {
+    vi.mocked(recordDb.getRecordingList).mockResolvedValue([sampleRecord]);
+    vi.mocked(exportRecording).mockRejectedValue(new Error('export fail'));
+
+    const el = await renderList();
+    await el.refresh();
+    await el.updateComplete;
+
+    el.shadowRoot!.querySelector('ui-button[aria-label="导出"]')!.click();
+    await el.updateComplete;
+    await flushUpdates();
+
+    expect(el.shadowRoot?.querySelector('ui-alert')?.textContent).toContain('导出失败');
+  });
+
+  it('deletes recording after confirm and dispatches recording-deleted', async () => {
+    vi.mocked(recordDb.getRecordingList)
+      .mockResolvedValueOnce([sampleRecord])
+      .mockResolvedValue([]);
+    const el = await renderList();
+    await el.updateComplete;
+    await flushUpdates();
+    const deleted = vi.fn();
+    el.addEventListener('recording-deleted', deleted);
+
+    el.shadowRoot
+      ?.querySelector('ui-popconfirm')
+      ?.dispatchEvent(new Event('confirm', { bubbles: true, composed: true }));
+    await el.updateComplete;
+    await flushUpdates();
+
+    expect(recordDb.deleteRecording).toHaveBeenCalledWith('rec-1');
+    expect(deleted).toHaveBeenCalled();
+    expect(recordDb.getRecordingList).toHaveBeenCalledTimes(2);
+  });
+
+  it('shows delete error when removal fails', async () => {
+    vi.mocked(recordDb.getRecordingList).mockResolvedValue([sampleRecord]);
+    vi.mocked(recordDb.deleteRecording).mockRejectedValue(new Error('delete fail'));
+
+    const el = await renderList();
+    await el.refresh();
+    await el.updateComplete;
+
+    el.shadowRoot
+      ?.querySelector('ui-popconfirm')
+      ?.dispatchEvent(new Event('confirm', { bubbles: true, composed: true }));
+    await el.updateComplete;
+    await flushUpdates();
+
+    expect(el.shadowRoot?.querySelector('ui-alert')?.textContent).toContain('删除失败');
+  });
+
+  it('dispatches list-metrics after rendering items', async () => {
+    vi.mocked(recordDb.getRecordingList).mockResolvedValue([sampleRecord]);
+    const el = await renderList();
+    const metrics = vi.fn();
+    el.addEventListener('list-metrics', metrics);
+    await el.refresh();
+    await el.updateComplete;
+    await flushUpdates();
+
+    expect(metrics).toHaveBeenCalled();
   });
 });

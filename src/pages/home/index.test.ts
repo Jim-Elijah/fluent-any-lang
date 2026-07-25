@@ -14,6 +14,7 @@ import './index.js';
 import type { HomePage } from './index.js';
 import type { MediaList } from '../../components/library/media-list.js';
 import { mount } from '../../components/ui/test-utils.js';
+import * as layoutCompact from '../../lib/layout-compact.js';
 
 function stubMatchMedia(matches: boolean) {
   vi.stubGlobal(
@@ -75,11 +76,76 @@ describe('home-page', () => {
 
     const list = el.shadowRoot?.querySelector('media-list') as HTMLElement;
     Object.defineProperty(list, 'clientHeight', { configurable: true, get: () => 120 });
-    // ResizeObserver callbacks are async in some environments; call sync path via update.
     (el as unknown as { _syncCompactFromSpace: () => void })._syncCompactFromSpace();
     await el.updateComplete;
 
     expect(el.compact).toBe(true);
     expect((el.shadowRoot?.querySelector('media-list') as MediaList).fillHeight).toBe(false);
+  });
+
+  it('exits compact when enough vertical space becomes available', async () => {
+    stubMatchMedia(false);
+    const measureSpy = vi.spyOn(layoutCompact, 'measurePageViewportHeight').mockReturnValue(900);
+    const el = await renderPage();
+    el.compact = true;
+    await el.updateComplete;
+
+    const intro = el.shadowRoot?.querySelector('.intro') as HTMLElement;
+    Object.defineProperty(intro, 'offsetHeight', { configurable: true, value: 40 });
+    for (const child of el.shadowRoot?.querySelector('.stack')?.children ?? []) {
+      if (child.tagName.toLowerCase() !== 'media-list') {
+        Object.defineProperty(child, 'offsetHeight', { configurable: true, value: 80 });
+      }
+    }
+
+    (el as unknown as { _syncCompactFromSpace: () => void })._syncCompactFromSpace();
+    await el.updateComplete;
+
+    expect(el.compact).toBe(false);
+    expect((el.shadowRoot?.querySelector('media-list') as MediaList).fillHeight).toBe(true);
+    measureSpy.mockRestore();
+  });
+
+  it('navigates to practice when a media item is selected', async () => {
+    stubMatchMedia(false);
+    const el = await renderPage();
+    const navigateSpy = vi.spyOn(el, 'navigate').mockImplementation(() => undefined);
+
+    el.shadowRoot?.querySelector('media-list')?.dispatchEvent(
+      new CustomEvent('media-selected', {
+        detail: { id: 'media-123' },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+
+    expect(navigateSpy).toHaveBeenCalledWith('/practice?mediaId=media-123');
+  });
+
+  it('refreshes the media list after content import', async () => {
+    stubMatchMedia(false);
+    const el = await renderPage();
+    const mediaList = el.shadowRoot?.querySelector('media-list') as MediaList;
+    const refreshSpy = vi.spyOn(mediaList, 'refresh').mockResolvedValue(undefined);
+
+    el.shadowRoot
+      ?.querySelector('content-importer')
+      ?.dispatchEvent(new CustomEvent('content-imported', { bubbles: true, composed: true }));
+
+    expect(refreshSpy).toHaveBeenCalled();
+  });
+
+  it('syncs compact mode when matchMedia changes', async () => {
+    stubMatchMedia(false);
+    const el = await renderPage();
+    expect(el.compact).toBe(false);
+
+    (
+      el as unknown as { _onCompactMqChange: (event: MediaQueryListEvent) => void }
+    )._onCompactMqChange({
+      matches: true,
+    } as MediaQueryListEvent);
+    await el.updateComplete;
+    expect(el.compact).toBe(true);
   });
 });

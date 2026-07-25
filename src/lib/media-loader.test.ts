@@ -128,4 +128,110 @@ describe('media-loader', () => {
       },
     ]);
   });
+
+  it('omits translation when sentence has none and clamps negative duration', async () => {
+    const { sentenceToLoadedTrack } = await import('./media-loader.js');
+    const track = sentenceToLoadedTrack({
+      entry: {
+        id: 'sent-2',
+        contentHash: 'hash-2',
+        text: 'Hi',
+        sourceMediaId: 'media-1',
+        sourceSegmentId: 'seg-1',
+        sourceStartTime: 0,
+        sourceEndTime: 1,
+        sourceTitleSnapshot: 'Lesson',
+        sourceMediaType: 'audio',
+        sourceAvailable: true,
+        removed: false,
+        createdAt: 1000,
+      },
+      blob: new Blob(['x']),
+      mimeType: 'audio/webm',
+      duration: -1,
+    });
+
+    expect(track.segments[0]).toEqual({
+      id: 'sent-2',
+      startTime: 0,
+      endTime: 0,
+      text: 'Hi',
+    });
+    expect(track.segments[0]?.translation).toBeUndefined();
+  });
+
+  it('returns empty list when playlist is missing', async () => {
+    const { loadPlaylistForPlayback } = await import('./media-loader.js');
+    await expect(loadPlaylistForPlayback('missing-playlist')).resolves.toEqual([]);
+  });
+
+  it('loads a sentence bank entry for practice', async () => {
+    const { putSentenceBankEntry } = await import('../db/sentence-bank.js');
+    const entry = {
+      id: 'sent-load-1',
+      contentHash: 'hash-load-1',
+      text: 'Practice me',
+      translation: '练我',
+      sourceMediaId: 'media-1',
+      sourceSegmentId: 'seg-1',
+      sourceStartTime: 0,
+      sourceEndTime: 2,
+      sourceTitleSnapshot: 'Lesson',
+      sourceMediaType: 'audio' as const,
+      sourceAvailable: true,
+      removed: false,
+      createdAt: 1000,
+    };
+    await putSentenceBankEntry(entry, {
+      entryId: entry.id,
+      blob: new Blob(['clip'], { type: 'audio/wav' }),
+      mimeType: 'audio/wav',
+      duration: 2,
+    });
+
+    const { loadSentenceForPractice } = await import('./media-loader.js');
+    const loaded = await loadSentenceForPractice(entry.id);
+
+    expect(loaded?.entry.id).toBe(entry.id);
+    expect(loaded?.entry.text).toBe('Practice me');
+    expect(loaded?.mimeType).toBe('audio/wav');
+    expect(loaded?.duration).toBe(2);
+    expect(loaded?.blob).toBeTruthy();
+  });
+
+  it('returns null for missing, removed, or blob-less sentence entries', async () => {
+    const { loadSentenceForPractice } = await import('./media-loader.js');
+    await expect(loadSentenceForPractice('missing')).resolves.toBeNull();
+
+    const { getDB } = await import('../db/index.js');
+    const { STORE_SENTENCE_BANK } = await import('../db/schema.js');
+
+    const removedEntry = {
+      id: 'sent-removed',
+      contentHash: 'hash-removed',
+      text: 'Gone',
+      sourceMediaId: 'media-1',
+      sourceSegmentId: 'seg-1',
+      sourceStartTime: 0,
+      sourceEndTime: 1,
+      sourceTitleSnapshot: 'Lesson',
+      sourceMediaType: 'audio' as const,
+      sourceAvailable: true,
+      removed: true,
+      createdAt: 1000,
+    };
+    const db = await getDB();
+    await db.put(STORE_SENTENCE_BANK, removedEntry);
+    await expect(loadSentenceForPractice(removedEntry.id)).resolves.toBeNull();
+
+    const noBlobEntry = {
+      ...removedEntry,
+      id: 'sent-no-blob',
+      contentHash: 'hash-no-blob',
+      removed: false,
+      text: 'No blob',
+    };
+    await db.put(STORE_SENTENCE_BANK, noBlobEntry);
+    await expect(loadSentenceForPractice(noBlobEntry.id)).resolves.toBeNull();
+  });
 });

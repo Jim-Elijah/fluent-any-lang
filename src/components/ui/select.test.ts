@@ -172,4 +172,109 @@ describe('ui-select', () => {
     await el.updateComplete;
     expect(el.shadowRoot?.querySelector('.selection')?.textContent?.trim()).toBe('Apple');
   });
+
+  it('opens on ArrowDown from closed selector and navigates with keyboard', async () => {
+    const el = await renderSelect();
+    const selector = el.shadowRoot!.querySelector('.selector') as HTMLElement;
+    selector.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    await el.updateComplete;
+    await flushUpdates();
+    expect(el.shadowRoot?.querySelector('.selector')?.classList.contains('open')).toBe(true);
+
+    selector.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    await el.updateComplete;
+    await flushUpdates();
+    const active = getDropdown()?.querySelector('.option.active');
+    expect(active?.textContent?.trim()).toBe('Apple');
+
+    selector.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    await el.updateComplete;
+    await flushUpdates();
+    expect(getDropdown()?.querySelector('.option.active')?.textContent?.trim()).toBe('Cherry');
+
+    selector.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    await el.updateComplete;
+    expect(el.shadowRoot?.querySelector('.selection')?.textContent?.trim()).toBe('Cherry');
+  });
+
+  it('filters options when show-search is enabled', async () => {
+    const el = await renderSelect(html`<ui-select show-search .options=${OPTIONS}></ui-select>`);
+    const searchHandler = vi.fn();
+    el.addEventListener('search', searchHandler);
+
+    el.shadowRoot?.querySelector<HTMLElement>('.selector')?.click();
+    await el.updateComplete;
+    await flushUpdates();
+
+    type SelectInternals = UiSelect & {
+      _handleSearchInput: (event: Event) => void;
+    };
+    (el as SelectInternals)._handleSearchInput.call(el, {
+      target: { value: 'cherry' },
+    } as unknown as Event);
+    await el.updateComplete;
+    await flushUpdates();
+
+    expect(searchHandler).toHaveBeenCalledWith(
+      expect.objectContaining({ detail: { value: 'cherry' } }),
+    );
+    expect(getDropdown()?.querySelectorAll('.option').length).toBe(1);
+    expect(getDropdown()?.textContent).toContain('Cherry');
+  });
+
+  it('does not select disabled options', async () => {
+    const el = await renderSelect();
+    const changeHandler = vi.fn();
+    el.addEventListener('change', changeHandler);
+
+    el.shadowRoot?.querySelector<HTMLElement>('.selector')?.click();
+    await el.updateComplete;
+    await flushUpdates();
+
+    const disabled = [...(getDropdown()?.querySelectorAll('.option') ?? [])].find((opt) =>
+      opt.classList.contains('disabled'),
+    );
+    disabled?.dispatchEvent(new Event('click', { bubbles: true }));
+    await el.updateComplete;
+    expect(changeHandler).not.toHaveBeenCalled();
+  });
+
+  it('closes dropdown on outside mousedown via portal', async () => {
+    const el = await renderSelect();
+    el.shadowRoot?.querySelector<HTMLElement>('.selector')?.click();
+    await el.updateComplete;
+    await flushUpdates();
+    expect(getDropdown()).not.toBeNull();
+
+    window.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    await el.updateComplete;
+    expect(el.shadowRoot?.querySelector('.selector')?.classList.contains('open')).toBe(false);
+    expect(getDropdown() ?? null).toBeNull();
+  });
+
+  it('shows loading and empty states in portal', async () => {
+    const el = await renderSelect(
+      html`<ui-select loading .options=${[]} not-found-content="Nothing"></ui-select>`,
+    );
+    el.shadowRoot?.querySelector<HTMLElement>('.selector')?.click();
+    await el.updateComplete;
+    await flushUpdates();
+    expect(getDropdown()?.querySelector('.loading')).not.toBeNull();
+
+    el.loading = false;
+    await el.updateComplete;
+    await flushUpdates();
+    expect(getDropdown()?.textContent).toContain('Nothing');
+  });
+
+  it('cleans up portal on disconnect', async () => {
+    const el = await renderSelect();
+    el.shadowRoot?.querySelector<HTMLElement>('.selector')?.click();
+    await el.updateComplete;
+    await flushUpdates();
+    expect(document.querySelector('[data-ui-select-portal]')).not.toBeNull();
+    cleanup?.();
+    cleanup = undefined;
+    expect(document.querySelector('[data-ui-select-portal]')).toBeNull();
+  });
 });

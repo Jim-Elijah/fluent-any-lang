@@ -5,7 +5,10 @@ import {
   PRACTICE_HOTKEY_BINDINGS,
   RECORDING_PREVIEW_HOTKEY_BINDINGS,
   SENTENCE_PRACTICE_HOTKEY_BINDINGS,
+  findActionForCode,
+  getBindingsForScope,
 } from './default-map.js';
+import type { HotkeyScopeId } from './types.js';
 
 describe('formatHotkeyCodeLabel', () => {
   it('maps common codes to display labels', () => {
@@ -62,5 +65,30 @@ describe('getHotkeyCatalog', () => {
 
   it('returns an empty list for empty scopes', () => {
     expect(getHotkeyCatalog([])).toEqual([]);
+  });
+});
+
+describe('default-map', () => {
+  const scopes: HotkeyScopeId[] = ['practice', 'recording-preview', 'sentence-practice'];
+
+  it('returns bindings for each scope', () => {
+    expect(getBindingsForScope('practice')).toEqual(PRACTICE_HOTKEY_BINDINGS);
+    expect(getBindingsForScope('recording-preview')).toEqual(RECORDING_PREVIEW_HOTKEY_BINDINGS);
+    expect(getBindingsForScope('sentence-practice')).toEqual(SENTENCE_PRACTICE_HOTKEY_BINDINGS);
+  });
+
+  it('finds actions for known codes in every scope', () => {
+    expect(findActionForCode('practice', 'Space')).toBe('togglePlay');
+    expect(findActionForCode('practice', 'KeyH')).toBe('toggleHotkeysHelp');
+    expect(findActionForCode('recording-preview', 'KeyQ')).toBe('playSource');
+    expect(findActionForCode('recording-preview', 'KeyE')).toBe('playSync');
+    expect(findActionForCode('sentence-practice', 'BracketRight')).toBe('rateUp');
+  });
+
+  it('returns undefined for unknown codes in every scope', () => {
+    for (const scope of scopes) {
+      expect(findActionForCode(scope, 'KeyZ')).toBeUndefined();
+      expect(findActionForCode(scope, 'UnknownCode')).toBeUndefined();
+    }
   });
 });

@@ -6,6 +6,7 @@ import {
   findCrossedSegmentEnd,
   findPracticeSegmentIndex,
   findSegmentIndex,
+  formatTime,
   getLongerPracticeAxis,
   getPracticeSegmentDuration,
   getPracticeSourceDuration,
@@ -13,6 +14,7 @@ import {
   getPracticeRecordingSpan,
   mapPracticeTime,
   mapPracticeViewRange,
+  shuffleIndices,
 } from './playback-utils.js';
 
 const samplePracticeSegments: PracticeSegment[] = [
@@ -91,11 +93,25 @@ describe('findPracticeSegmentIndex', () => {
   it('keeps the previous segment active in a source gap', () => {
     expect(findPracticeSegmentIndex(samplePracticeSegments, 11, 'source')).toBe(1);
   });
+
+  it('returns -1 for empty segments and times after the last segment', () => {
+    expect(findPracticeSegmentIndex([], 1, 'source')).toBe(-1);
+    expect(findPracticeSegmentIndex(samplePracticeSegments, -1, 'source')).toBe(-1);
+    expect(findPracticeSegmentIndex(samplePracticeSegments, 99, 'source')).toBe(-1);
+  });
 });
 
 describe('findSegmentIndex', () => {
   it('returns -1 before the first segment', () => {
     expect(findSegmentIndex(sampleSegments, -1)).toBe(-1);
+  });
+
+  it('returns -1 for empty segments', () => {
+    expect(findSegmentIndex([], 0)).toBe(-1);
+  });
+
+  it('returns -1 after all subtitles have ended', () => {
+    expect(findSegmentIndex(sampleSegments, 16)).toBe(-1);
   });
 
   it('keeps the previous segment active in a gap between subtitles', () => {
@@ -157,6 +173,17 @@ describe('getPracticeSegmentDuration', () => {
     expect(getPracticeSegmentDuration(samplePracticeSegments[0], 'source')).toBe(5);
     expect(getPracticeSegmentDuration(samplePracticeSegments[0], 'recording')).toBe(4.5);
   });
+
+  it('returns zero when start and end are equal', () => {
+    const segment: PracticeSegment = {
+      id: 'zero',
+      sourceStartTime: 2,
+      sourceEndTime: 2,
+      recordingStartTime: 0,
+      recordingEndTime: 0,
+    };
+    expect(getPracticeSegmentDuration(segment, 'source')).toBe(0);
+  });
 });
 
 describe('getLongerPracticeAxis', () => {
@@ -202,6 +229,26 @@ describe('mapPracticeTime', () => {
     expect(mapPracticeTime(0, 'recording', 'source', [shortRecordingSegment])).toBe(10);
     expect(mapPracticeTime(2, 'recording', 'source', [shortRecordingSegment])).toBe(15);
   });
+
+  it('returns the input time when axes match or segments are empty', () => {
+    expect(mapPracticeTime(3, 'source', 'source', samplePracticeSegments)).toBe(3);
+    expect(mapPracticeTime(3, 'source', 'recording', [])).toBe(3);
+  });
+
+  it('linearly maps times outside segment boundaries across spans', () => {
+    expect(mapPracticeTime(20, 'source', 'recording', samplePracticeSegments)).toBeGreaterThan(0);
+  });
+
+  it('returns segment start when mapped segment duration is zero', () => {
+    const zeroSegment: PracticeSegment = {
+      id: 'zero',
+      sourceStartTime: 5,
+      sourceEndTime: 5,
+      recordingStartTime: 1,
+      recordingEndTime: 3,
+    };
+    expect(mapPracticeTime(5, 'source', 'recording', [zeroSegment])).toBe(1);
+  });
 });
 
 describe('mapPracticeViewRange', () => {
@@ -218,6 +265,12 @@ describe('mapPracticeViewRange', () => {
       mapPracticeViewRange({ start: 10, end: 15 }, 'source', 'recording', [shortRecordingSegment]),
     ).toEqual({ start: 0, end: 2 });
   });
+
+  it('returns the original range when axes match', () => {
+    expect(
+      mapPracticeViewRange({ start: 1, end: 2 }, 'source', 'source', samplePracticeSegments),
+    ).toEqual({ start: 1, end: 2 });
+  });
 });
 
 describe('computeSegmentPauseMs', () => {
@@ -233,5 +286,29 @@ describe('computeSegmentPauseMs', () => {
 
   it('returns a percentage of segment duration in percentage mode', () => {
     expect(computeSegmentPauseMs(segment, 'percentage', 1, 200)).toBe(10000);
+  });
+});
+
+describe('formatTime', () => {
+  it('formats invalid and negative values as 0:00', () => {
+    expect(formatTime(Number.NaN)).toBe('0:00');
+    expect(formatTime(-1)).toBe('0:00');
+  });
+
+  it('formats sub-hour and hour-long durations', () => {
+    expect(formatTime(65)).toBe('01:05');
+    expect(formatTime(3661)).toBe('01:01:01');
+  });
+});
+
+describe('shuffleIndices', () => {
+  it('returns a permutation of all indices', () => {
+    const shuffled = shuffleIndices(6);
+    expect(shuffled).toHaveLength(6);
+    expect(new Set(shuffled)).toEqual(new Set([0, 1, 2, 3, 4, 5]));
+  });
+
+  it('returns an empty array for length zero', () => {
+    expect(shuffleIndices(0)).toEqual([]);
   });
 });

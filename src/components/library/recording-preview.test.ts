@@ -45,6 +45,7 @@ import {
   KEYBOARD_SHORTCUTS_MQ,
   setHotkeyManagerForTests,
 } from '../../lib/hotkeys/index.js';
+import { WaveformEventType } from '../../controllers/waveform-controller.js';
 import { mount, flushUpdates, getPortalShadow } from '../ui/test-utils.js';
 import { Message } from '../ui/message.js';
 import type { UiDropdown } from '../ui/dropdown.js';
@@ -120,6 +121,14 @@ type RecordingPreviewInternals = HTMLElement & {
   _refreshActiveSubtitle: () => void;
   _handleVolumeChange: (track: 'source' | 'recording', value: number) => void;
   _applyVolumes: () => void;
+  _handlePlaySource: () => Promise<void>;
+  _handlePlayRecording: () => Promise<void>;
+  _handlePlaySync: () => Promise<void>;
+  _resolveTrackViewRange: (
+    track: { id: string },
+    viewRange: { start: number; end: number } | null,
+    activeTrack: { id: string } | null,
+  ) => { start: number; end: number } | null;
 };
 
 describe('resolvePreviewSubtitle', () => {
@@ -914,5 +923,290 @@ describe('recording-preview', () => {
 
     expect(closeSpy).not.toHaveBeenCalled();
     expect(updateOpenSpy).not.toHaveBeenCalled();
+  });
+
+  async function loadDualTracks(el: RecordingPreviewInternals): Promise<void> {
+    let callCount = 0;
+    vi.spyOn(el._controller, 'addFromBlob').mockImplementation(async () => {
+      callCount += 1;
+      return callCount === 1 ? 'source-track' : 'rec-track';
+    });
+    el.sourceBlob = new Blob(['source'], { type: 'audio/webm' });
+    el.recordingBlob = new Blob(['recording'], { type: 'audio/webm' });
+    el.segments = samplePracticeSegments;
+    await el.updateComplete;
+    await flushUpdates();
+  }
+
+  it('starts source playback from the control button', async () => {
+    const el = await renderPreview();
+    await loadDualTracks(el);
+    const playback = createPlaybackMock();
+    el._playback = playback;
+    el._sourceTrackId = 'source-track';
+    el._playMode = 'idle';
+
+    const buttons = [...el.shadowRoot!.querySelectorAll('.controls ui-button')];
+    buttons[0].click();
+    await flushUpdates();
+
+    expect(playback.playSource).toHaveBeenCalled();
+  });
+
+  it('stops source playback when source button is clicked again', async () => {
+    const el = await renderPreview();
+    el.sourceBlob = new Blob(['source'], { type: 'audio/webm' });
+    await el.updateComplete;
+    await flushUpdates();
+
+    const playback = createPlaybackMock();
+    el._playback = playback;
+    el._sourceTrackId = 'source-track';
+    el._playMode = 'source';
+
+    await el._handlePlaySource();
+
+    expect(playback.stop).toHaveBeenCalled();
+  });
+
+  it('starts recording playback from the control button', async () => {
+    const el = await renderPreview();
+    await loadDualTracks(el);
+    const playback = createPlaybackMock();
+    el._playback = playback;
+    el._recordingTrackId = 'rec-track';
+    el._playMode = 'idle';
+
+    const buttons = [...el.shadowRoot!.querySelectorAll('.controls ui-button')];
+    buttons[1].click();
+    await flushUpdates();
+
+    expect(playback.playRecording).toHaveBeenCalled();
+  });
+
+  it('stops recording playback when recording button is clicked again', async () => {
+    const el = await renderPreview();
+    el.recordingBlob = new Blob(['recording'], { type: 'audio/webm' });
+    await el.updateComplete;
+    await flushUpdates();
+
+    const playback = createPlaybackMock();
+    el._playback = playback;
+    el._recordingTrackId = 'rec-track';
+    el._playMode = 'recording';
+
+    await el._handlePlayRecording();
+
+    expect(playback.stop).toHaveBeenCalled();
+  });
+
+  it('starts sync playback from the control button', async () => {
+    const el = await renderPreview();
+    await loadDualTracks(el);
+    const playback = createPlaybackMock();
+    el._playback = playback;
+    el._playMode = 'idle';
+
+    const buttons = [...el.shadowRoot!.querySelectorAll('.controls ui-button')];
+    buttons[2].click();
+    await flushUpdates();
+
+    expect(playback.playSync).toHaveBeenCalled();
+  });
+
+  it('stops sync playback when sync button is clicked again', async () => {
+    const el = await renderPreview();
+    const playback = createPlaybackMock();
+    el._playback = playback;
+    el._playMode = 'sync';
+    el.segments = samplePracticeSegments;
+
+    await el._handlePlaySync();
+
+    expect(playback.stop).toHaveBeenCalled();
+  });
+
+  it('stops playback when source play throws', async () => {
+    const el = await renderPreview();
+    el.sourceBlob = new Blob(['source'], { type: 'audio/webm' });
+    await el.updateComplete;
+    await flushUpdates();
+
+    const playback = createPlaybackMock();
+    playback.playSource.mockRejectedValue(new Error('play fail'));
+    el._playback = playback;
+    el._sourceTrackId = 'source-track';
+    el._playMode = 'idle';
+
+    await el._handlePlaySource();
+
+    expect(playback.stop).toHaveBeenCalled();
+  });
+
+  it('stops playback when recording play throws', async () => {
+    const el = await renderPreview();
+    el.recordingBlob = new Blob(['recording'], { type: 'audio/webm' });
+    await el.updateComplete;
+    await flushUpdates();
+
+    const playback = createPlaybackMock();
+    playback.playRecording.mockRejectedValue(new Error('play fail'));
+    el._playback = playback;
+    el._recordingTrackId = 'rec-track';
+    el._playMode = 'idle';
+
+    await el._handlePlayRecording();
+
+    expect(playback.stop).toHaveBeenCalled();
+  });
+
+  it('stops playback when sync play throws', async () => {
+    const el = await renderPreview();
+    const playback = createPlaybackMock();
+    playback.playSync.mockRejectedValue(new Error('play fail'));
+    el._playback = playback;
+    el._playMode = 'idle';
+    el.segments = samplePracticeSegments;
+
+    await el._handlePlaySync();
+
+    expect(playback.stop).toHaveBeenCalled();
+  });
+
+  it('warns when seeking waveform while idle', async () => {
+    const el = await renderPreview();
+    const warningSpy = vi.spyOn(Message, 'warning');
+    el._playMode = 'idle';
+    el.segments = samplePracticeSegments;
+    await el.updateComplete;
+
+    dispatchSeek(el, 2);
+
+    expect(warningSpy).toHaveBeenCalledWith(expect.stringContaining('请先选择播放模式'));
+  });
+
+  it('ignores waveform seek for the wrong track in source mode', async () => {
+    const el = await renderPreview();
+    const playback = createPlaybackMock();
+    el._playback = playback;
+    el._sourceTrackId = 'source-track';
+    el._playMode = 'source';
+    el.segments = samplePracticeSegments;
+    await el.updateComplete;
+
+    dispatchSeek(el, 2, 'wrong-track');
+
+    expect(playback.playSourceAt).not.toHaveBeenCalled();
+  });
+
+  it('ignores sync seek when clicked time is outside practice segments', async () => {
+    const el = await renderPreview();
+    const playback = createPlaybackMock();
+    el._playback = playback;
+    el._sourceTrackId = 'source-track';
+    el._recordingTrackId = 'rec-track';
+    el._playMode = 'sync';
+    el.segments = samplePracticeSegments;
+    await el.updateComplete;
+
+    dispatchSeek(el, 50);
+
+    expect(playback.playSyncAt).not.toHaveBeenCalled();
+  });
+
+  it('warns when sync seek cannot locate a subtitle sentence', async () => {
+    const el = await renderPreview();
+    const warningSpy = vi.spyOn(Message, 'warning');
+    const playback = createPlaybackMock();
+    el._playback = playback;
+    el._sourceTrackId = 'source-track';
+    el._recordingTrackId = 'rec-track';
+    el._playMode = 'sync';
+    el.subtitleSegments = sampleSegments;
+    el.segments = [samplePracticeSegments[0]];
+    await el.updateComplete;
+
+    dispatchSeek(el, 16, 'source-track');
+
+    expect(warningSpy).toHaveBeenCalledWith(expect.stringContaining('无法定位'));
+  });
+
+  it('maps view range between source and recording tracks', async () => {
+    const el = await renderPreview();
+    el.segments = samplePracticeSegments;
+    el._sourceTrackId = 'source-track';
+    el._recordingTrackId = 'rec-track';
+    await el.updateComplete;
+
+    const mapped = el._resolveTrackViewRange(
+      { id: 'rec-track' },
+      { start: 0, end: 5 },
+      { id: 'source-track' },
+    );
+
+    expect(mapped).toEqual({ start: 0, end: 4.5 });
+  });
+
+  it('loads recording-only preview when source blob is missing', async () => {
+    const el = await renderPreview();
+    vi.spyOn(el._controller, 'addFromBlob').mockResolvedValue('rec-track');
+    el.recordingBlob = new Blob(['recording'], { type: 'audio/webm' });
+    el.segments = samplePracticeSegments;
+    await el.updateComplete;
+    await flushUpdates();
+
+    expect(el._recordingTrackId).toBe('rec-track');
+    expect(el._sourceTrackId).toBe('');
+  });
+
+  it('resets view range when active waveform track changes', async () => {
+    const el = await renderPreview();
+    const setViewRangeSpy = vi.spyOn(el._controller, 'setViewRange');
+    el.segments = samplePracticeSegments;
+    await el.updateComplete;
+
+    el._controller.dispatchEvent(
+      new CustomEvent(WaveformEventType.TRACK_CHANGE, { bubbles: true }),
+    );
+    await flushUpdates();
+
+    expect(setViewRangeSpy).toHaveBeenCalled();
+  });
+
+  it('triggers play source via Q hotkey', async () => {
+    const el = await renderPreview();
+    await loadDualTracks(el);
+    const playback = createPlaybackMock();
+    el._playback = playback;
+    el._sourceTrackId = 'source-track';
+    el._playMode = 'idle';
+
+    dispatchKey('KeyQ');
+    await flushUpdates();
+
+    expect(playback.playSource).toHaveBeenCalled();
+  });
+
+  it('shows status text while playing source without segments', async () => {
+    const el = await renderPreview();
+    el._playMode = 'source';
+    el.segments = [];
+    await el.updateComplete;
+
+    expect(el.shadowRoot?.querySelector('.status')?.textContent).toContain('正在播放原音');
+  });
+
+  it('replays current segment via hotkey', async () => {
+    const el = await renderPreview();
+    const playback = createPlaybackMock();
+    el._playback = playback;
+    el._playMode = 'sync';
+    el.segments = samplePracticeSegments;
+    el._syncSegmentIndex = 0;
+    await el.updateComplete;
+
+    dispatchKey('KeyR');
+
+    expect(playback.replaySegment).toHaveBeenCalledWith(0);
   });
 });

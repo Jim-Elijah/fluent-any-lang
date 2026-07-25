@@ -27,6 +27,10 @@ Hello
 World
 `;
 
+const validLrc = `[ti:Test]
+[00:01.00]First line
+[00:05.50]Second line`;
+
 describe('importContentFiles', () => {
   beforeEach(async () => {
     await resetDatabase();
@@ -365,5 +369,265 @@ Text
         },
       ]),
     ).toBeNull();
+  });
+
+  it('reports duplicate video and subtitle files in the same group', async () => {
+    const { groupFiles } = await import('./import-content.js');
+    const { groups, errors } = groupFiles([
+      makeFile('lesson.mp4', 'video/mp4'),
+      makeFile('lesson.mp4', 'video/mp4', 'duplicate'),
+      makeFile('lesson.srt', 'application/x-subrip', validSrt),
+      makeFile('lesson.srt', 'application/x-subrip', validSrt),
+    ]);
+
+    expect(groups).toHaveLength(1);
+    expect(errors.map((error) => error.filename)).toEqual(['lesson.mp4', 'lesson.srt']);
+  });
+
+  it('imports lrc subtitles with the matching media group', async () => {
+    const { importContentFiles } = await import('./import-content.js');
+    const result = await importContentFiles([
+      makeFile('lesson.mp3', 'audio/mpeg'),
+      makeFile('lesson.lrc', 'application/x-subrip', validLrc),
+    ]);
+
+    expect(result.errors).toHaveLength(0);
+    expect(result.imported.some((item) => 'segments' in item && item.type === 'lrc')).toBe(true);
+  });
+
+  it('reports invalid subtitle files and parse warnings', async () => {
+    const { importContentFiles } = await import('./import-content.js');
+    const emptyResult = await importContentFiles([
+      makeFile('lesson.mp3', 'audio/mpeg'),
+      makeFile('lesson.srt', 'application/x-subrip', ''),
+    ]);
+    expect(emptyResult.errors.some((error) => error.message.includes('未找到有效的字幕条目'))).toBe(
+      true,
+    );
+
+    const warnedSrt = `1
+00:00:01 --> 00:00:02
+Broken
+
+2
+00:00:03,000 --> 00:00:04,000
+Ok`;
+    const warnedResult = await importContentFiles([
+      makeFile('warned.mp3', 'audio/mpeg'),
+      makeFile('warned.srt', 'application/x-subrip', warnedSrt),
+    ]);
+    expect(warnedResult.errors).toHaveLength(0);
+    expect(warnedResult.warnings.length).toBeGreaterThan(0);
+    expect(warnedResult.imported.some((item) => 'segments' in item)).toBe(true);
+  });
+
+  it('overwrites subtitle content when overwriteSubtitleMediaIds is set', async () => {
+    const { importContentFiles } = await import('./import-content.js');
+    await importContentFiles([
+      makeFile('lesson.mp3', 'audio/mpeg'),
+      makeFile('lesson.srt', 'application/x-subrip', validSrt),
+    ]);
+
+    const otherSrt = `1
+00:00:00,000 --> 00:00:02,000
+Changed
+
+2
+00:00:02,000 --> 00:00:04,000
+Text
+`;
+    const result = await importContentFiles(
+      [makeFile('lesson.srt', 'application/x-subrip', otherSrt)],
+      {
+        overwriteSubtitleMediaIds: ['hash-lesson.mp3'],
+      },
+    );
+    expect(result.conflicts).toHaveLength(0);
+    expect(result.imported).toHaveLength(1);
+  });
+
+  it('overwrites same-title media when overwriteTitleTypes is set', async () => {
+    const { importContentFiles } = await import('./import-content.js');
+    await importContentFiles([makeFile('lesson.mp3', 'audio/mpeg', 'v1')]);
+
+    const result = await importContentFiles([makeFile('lesson.m4a', 'audio/mp4', 'v2')], {
+      overwriteTitleTypes: ['lesson::audio'],
+    });
+    expect(result.conflicts).toHaveLength(0);
+    expect(result.imported).toHaveLength(1);
+    expect(result.imported[0]).toMatchObject({ filename: 'lesson.m4a' });
+  });
+
+  it('reports duration read failures and invalid media files', async () => {
+    const fileValidation = await import('./file-validation.js');
+    const { importContentFiles } = await import('./import-content.js');
+
+    vi.mocked(fileValidation.getMediaDuration).mockRejectedValueOnce(new Error('bad metadata'));
+    const durationError = await importContentFiles([makeFile('broken.mp3', 'audio/mpeg')]);
+    expect(durationError.errors[0]?.message).toMatch(/无法读取媒体时长/);
+
+    vi.spyOn(fileValidation, 'validateMediaFile').mockReturnValueOnce({
+      valid: false,
+      error: 'bad media',
+    });
+    const invalid = await importContentFiles([makeFile('bad.mp3', 'audio/mpeg')]);
+    expect(invalid.errors[0]?.message).toBe('bad media');
+  });
+
+  it('detects same-size different-duration conflicts without hashing', async () => {
+    const { getMediaDuration } = await import('./file-validation.js');
+    const { importContentFiles } = await import('./import-content.js');
+
+    vi.mocked(getMediaDuration).mockResolvedValueOnce(12.5);
+    await importContentFiles([makeFile('lesson.mp3', 'audio/mpeg', 'same-size')]);
+
+    vi.mocked(getMediaDuration).mockResolvedValueOnce(20);
+    const result = await importContentFiles([makeFile('lesson.mp3', 'audio/mpeg', 'same-size')]);
+    expect(result.conflicts[0]?.kind).toBe('media-content');
+  });
+
+  it('detects same-size-and-duration hash conflicts and allows overwrite', async () => {
+    const { importContentFiles } = await import('./import-content.js');
+    await importContentFiles([makeFile('lesson.mp3', 'audio/mpeg', 'same-meta')]);
+
+    const conflict = await importContentFiles([
+      makeFile('lesson.mp3', 'audio/mpeg', 'same-meta-diff-hash'),
+    ]);
+    expect(conflict.conflicts[0]?.kind).toBe('media-content');
+
+    const mediaId = conflict.conflicts[0]!.existingMediaId;
+    const overwrite = await importContentFiles(
+      [makeFile('lesson.mp3', 'audio/mpeg', 'same-meta-diff-hash')],
+      { overwriteMediaIds: [mediaId] },
+    );
+    expect(overwrite.imported).toHaveLength(1);
+  });
+
+  it('rejects ambiguous subtitle-only imports when multiple media share a title', async () => {
+    const { addMedia } = await import('../db/media.js');
+    await addMedia(
+      {
+        id: 'media-a',
+        title: 'lesson',
+        filename: 'lesson.mp3',
+        size: 10,
+        type: 'audio',
+        mimeType: 'audio/mpeg',
+        duration: 10,
+        createdAt: 1,
+        contentHash: 'a',
+        hasSubtitles: false,
+      },
+      { mediaId: 'media-a', blob: new Blob(['a'], { type: 'audio/mpeg' }) },
+    );
+    await addMedia(
+      {
+        id: 'media-b',
+        title: 'lesson',
+        filename: 'lesson.wav',
+        size: 10,
+        type: 'audio',
+        mimeType: 'audio/wav',
+        duration: 10,
+        createdAt: 1,
+        contentHash: 'b',
+        hasSubtitles: false,
+      },
+      { mediaId: 'media-b', blob: new Blob(['b'], { type: 'audio/wav' }) },
+    );
+
+    const { importContentFiles } = await import('./import-content.js');
+    const result = await importContentFiles([
+      makeFile('lesson.srt', 'application/x-subrip', validSrt),
+    ]);
+    expect(result.errors[0]?.message).toMatch(/多个媒体/);
+  });
+
+  it('syncs hasSubtitles when importing media that already has subtitles in db', async () => {
+    const { addMedia, addSubtitle, getMedia } = await import('../db/service.js');
+    const mediaId = 'hash-lesson.mp3';
+    await addMedia(
+      {
+        id: mediaId,
+        title: 'lesson',
+        filename: 'lesson.mp3',
+        size: 10,
+        type: 'audio',
+        mimeType: 'audio/mpeg',
+        duration: 12.5,
+        createdAt: 1,
+        contentHash: 'old',
+        hasSubtitles: false,
+      },
+      { mediaId, blob: new Blob(['audio'], { type: 'audio/mpeg' }) },
+    );
+    await addSubtitle({
+      id: 'sub-1',
+      mediaId,
+      title: 'lesson',
+      filename: 'lesson.srt',
+      type: 'srt',
+      contentHash: 'sub-hash',
+      segments: [{ id: 's1', startTime: 0, endTime: 2, text: 'Hello' }],
+    });
+
+    const { importContentFiles } = await import('./import-content.js');
+    await importContentFiles([makeFile('lesson.mp3', 'audio/mpeg', 'fresh-audio')], {
+      overwriteMediaIds: [mediaId],
+    });
+    expect((await getMedia(mediaId))?.hasSubtitles).toBe(true);
+  });
+
+  it('importSubtitleForMedia supports overwrite, warnings, and empty segments', async () => {
+    const { importContentFiles, importSubtitleForMedia } = await import('./import-content.js');
+    await importContentFiles([makeFile('lesson.mp3', 'audio/mpeg')]);
+    const mediaId = 'hash-lesson.mp3';
+
+    const warned = await importSubtitleForMedia(
+      mediaId,
+      makeFile('warn.srt', 'application/x-subrip', validSrt),
+    );
+    expect(warned.imported).toHaveLength(1);
+
+    const changedSrt = `1
+00:00:00,000 --> 00:00:03,000
+Changed text
+`;
+    const overwrite = await importSubtitleForMedia(
+      mediaId,
+      makeFile('changed.srt', 'application/x-subrip', changedSrt),
+      { overwrite: true },
+    );
+    expect(overwrite.imported).toHaveLength(1);
+
+    const empty = await importSubtitleForMedia(
+      mediaId,
+      makeFile('empty.srt', 'application/x-subrip', ''),
+    );
+    expect(empty.errors[0]?.message).toMatch(/未找到有效的字幕条目/);
+  });
+
+  it('updates hasSubtitles on existing media when subtitle is imported separately', async () => {
+    const { addMedia, getMedia } = await import('../db/service.js');
+    const mediaId = 'hash-lesson.mp3';
+    await addMedia(
+      {
+        id: mediaId,
+        title: 'lesson',
+        filename: 'lesson.mp3',
+        size: 10,
+        type: 'audio',
+        mimeType: 'audio/mpeg',
+        duration: 12.5,
+        createdAt: 1,
+        contentHash: 'existing',
+        hasSubtitles: false,
+      },
+      { mediaId, blob: new Blob(['audio'], { type: 'audio/mpeg' }) },
+    );
+
+    const { importContentFiles } = await import('./import-content.js');
+    await importContentFiles([makeFile('lesson.srt', 'application/x-subrip', validSrt)]);
+    expect((await getMedia(mediaId))?.hasSubtitles).toBe(true);
   });
 });
