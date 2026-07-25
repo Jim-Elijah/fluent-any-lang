@@ -7,6 +7,7 @@ import {
   shuffleIndices,
   ExtendedMediaEventType,
 } from '../lib/playback-utils.js';
+import { DeadlineScheduler } from '../lib/deadline-scheduler.js';
 import { throttle } from '../lib/util.js';
 import {
   PLAYBACK_RATE_LIMITS,
@@ -111,10 +112,8 @@ export class MediaController extends EventTarget {
   pauseSeconds = DEFAULT_PLAYER_SETTINGS.pauseSeconds;
   pausePercent = DEFAULT_PLAYER_SETTINGS.pausePercent;
 
-  private sleepTimerId: ReturnType<typeof setInterval> | null = null;
-  private sleepEndsAt: number | null = null;
-  private _segmentPauseResumeAt: number | null = null;
-  private _segmentPausePollId: ReturnType<typeof setInterval> | null = null;
+  private readonly _sleepScheduler = new DeadlineScheduler();
+  private readonly _segmentPauseScheduler = new DeadlineScheduler();
   private _navigationLocked = false;
   private _pendingAutoPlay = false;
 
@@ -307,7 +306,7 @@ export class MediaController extends EventTarget {
       pauseMode: this.pauseMode,
       pauseSeconds: this.pauseSeconds,
       pausePercent: this.pausePercent,
-      segmentPausePending: this._segmentPauseResumeAt !== null,
+      segmentPausePending: this._segmentPauseScheduler.isActive,
       canPreviousTrack: this.playlist.length > 1,
       canNextTrack: this.playlist.length > 1,
       canPreviousSegment: this.segments.length > 0 && this.currentSegmentIndex > 0,
@@ -664,9 +663,7 @@ export class MediaController extends EventTarget {
       return;
     }
 
-    this._checkSegmentPauseResume();
-    this._updateSleepRemaining();
-
+    // Sleep / segment-pause DeadlineSchedulers resync themselves on visibility.
     if (this.mediaElement && !this.mediaElement.paused) {
       this._syncFromMedia();
     }
@@ -822,7 +819,7 @@ export class MediaController extends EventTarget {
   }
 
   private _applySegmentLoop(): void {
-    if (this._segmentPauseResumeAt !== null) {
+    if (this._segmentPauseScheduler.isActive) {
       return;
     }
 
@@ -947,35 +944,25 @@ export class MediaController extends EventTarget {
       return;
     }
 
-    this.sleepEndsAt = Date.now() + this.sleepRemainingSeconds * 1000;
-    this.sleepTimerId = setInterval(() => {
-      this._updateSleepRemaining();
-    }, 1000);
-  }
-
-  private _updateSleepRemaining(): void {
-    if (this.sleepEndsAt === null) {
-      return;
-    }
-
-    this.sleepRemainingSeconds = Math.max(0, Math.ceil((this.sleepEndsAt - Date.now()) / 1000));
-
-    if (this.sleepRemainingSeconds <= 0) {
-      this._clearSleepTimer();
-      this.sleepMode = 'off';
-      this._clearSegmentPauseTimer();
-      this.pause();
-    }
-
-    this._emitChange();
+    this._sleepScheduler.start({
+      endsAt: Date.now() + this.sleepRemainingSeconds * 1000,
+      tickIntervalMs: 1000,
+      onTick: (remainingMs) => {
+        this.sleepRemainingSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
+        this._emitChange();
+      },
+      onFire: () => {
+        this.sleepRemainingSeconds = 0;
+        this.sleepMode = 'off';
+        this._clearSegmentPauseTimer();
+        this.pause();
+        this._emitChange();
+      },
+    });
   }
 
   private _clearSleepTimer(): void {
-    if (this.sleepTimerId !== null) {
-      clearInterval(this.sleepTimerId);
-      this.sleepTimerId = null;
-    }
-    this.sleepEndsAt = null;
+    this._sleepScheduler.clear();
   }
 
   private _applySegmentPause(segment: SubtitleSegment): void {
@@ -991,32 +978,16 @@ export class MediaController extends EventTarget {
 
     this._clearSegmentPauseTimer();
     this.pause({ reason: 'segment' });
-    this._segmentPauseResumeAt = Date.now() + pauseDuration;
-    this._startSegmentPausePoll();
+    this._segmentPauseScheduler.start({
+      endsAt: Date.now() + pauseDuration,
+      onFire: () => {
+        this._resumeAfterSegmentPause();
+      },
+    });
     this._emitChange();
   }
 
-  private _startSegmentPausePoll(): void {
-    if (this._segmentPausePollId !== null) {
-      return;
-    }
-
-    this._segmentPausePollId = setInterval(() => {
-      this._checkSegmentPauseResume();
-    }, 250);
-  }
-
-  private _checkSegmentPauseResume(): void {
-    if (this._segmentPauseResumeAt === null) {
-      return;
-    }
-
-    if (Date.now() < this._segmentPauseResumeAt) {
-      return;
-    }
-
-    this._clearSegmentPauseTimer();
-
+  private _resumeAfterSegmentPause(): void {
     if (this.loopMode === 'segment') {
       const loopIndex = this._resolveLoopSegmentIndex();
       if (loopIndex >= 0 && this._shouldLoopSegment(loopIndex)) {
@@ -1028,12 +999,7 @@ export class MediaController extends EventTarget {
   }
 
   private _clearSegmentPauseTimer(): void {
-    this._segmentPauseResumeAt = null;
-
-    if (this._segmentPausePollId !== null) {
-      clearInterval(this._segmentPausePollId);
-      this._segmentPausePollId = null;
-    }
+    this._segmentPauseScheduler.clear();
   }
 
   private _emitChange(): void {
