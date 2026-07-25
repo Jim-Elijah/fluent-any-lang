@@ -39,6 +39,17 @@ describe('ui-slider', () => {
     expect(handle?.getAttribute('aria-valuenow')).toBe('30');
   });
 
+  it('keeps track at 100% when value equals a max that is not step-aligned', async () => {
+    const el = await renderSlider(
+      html`<ui-slider value="2.37" min="0" max="2.37" step="0.1"></ui-slider>`,
+    );
+    const track = el.shadowRoot?.querySelector('.track') as HTMLElement | null;
+    expect(track?.style.width).toBe('100%');
+    expect(el.shadowRoot?.querySelector('[role="slider"]')?.getAttribute('aria-valuenow')).toBe(
+      '2.37',
+    );
+  });
+
   it('dispatches change on arrow key', async () => {
     const el = await renderSlider();
     const handler = vi.fn();

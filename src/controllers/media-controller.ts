@@ -695,6 +695,10 @@ export class MediaController extends EventTarget {
 
   private _handlePause = (): void => {
     this.isPlaying = false;
+    // Browsers often fire `pause` before `ended` when a clip finishes.
+    if (this.mediaElement?.ended) {
+      this._snapPlaybackToEnd();
+    }
     this._emitChange();
   };
 
@@ -744,7 +748,9 @@ export class MediaController extends EventTarget {
         break;
       }
       default:
+        console.log('default');
         this.isPlaying = false;
+        this._throttledEmitChange.cancel();
         this._snapPlaybackToEnd();
         this._emitChange();
         break;

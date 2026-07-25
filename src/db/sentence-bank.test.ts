@@ -10,13 +10,14 @@ import type {
 } from '../types/models.js';
 import { computeSentenceBankContentHash } from '../lib/segment-id.js';
 import { getDB } from './index.js';
-import { addMedia } from './media.js';
+import { addMedia, deleteMedia } from './media.js';
 import {
   addToSentenceBank,
   getSentenceBankBlob,
   getSentenceBankEntry,
   getSentenceBankEntryByContentHash,
   getSentenceBankList,
+  markSentenceBankSourceAvailable,
   markSentenceBankSourceUnavailable,
   putSentenceBankEntry,
   removeFromSentenceBank,
@@ -90,6 +91,27 @@ describe('sentence-bank', () => {
     await markSentenceBankSourceUnavailable(media.id);
     const list = await getSentenceBankList();
     expect(list[0]?.sourceAvailable).toBe(false);
+  });
+
+  it('restores sourceAvailable when media is re-imported', async () => {
+    const media = makeMedia();
+    await addMedia(media, { mediaId: media.id, blob: new Blob(['audio']) });
+    await addToSentenceBank({ media, segment: makeSegment() });
+
+    await deleteMedia(media.id);
+    expect((await getSentenceBankList())[0]?.sourceAvailable).toBe(false);
+
+    await addMedia(media, { mediaId: media.id, blob: new Blob(['audio']) });
+    expect((await getSentenceBankList())[0]?.sourceAvailable).toBe(true);
+  });
+
+  it('markSentenceBankSourceAvailable is a no-op when already available', async () => {
+    const media = makeMedia();
+    await addMedia(media, { mediaId: media.id, blob: new Blob(['audio']) });
+    await addToSentenceBank({ media, segment: makeSegment() });
+
+    await markSentenceBankSourceAvailable(media.id);
+    expect((await getSentenceBankList())[0]?.sourceAvailable).toBe(true);
   });
 
   it('soft-removes sentences and revives on re-add without re-clipping', async () => {

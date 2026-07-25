@@ -399,6 +399,35 @@ describe('media-player', () => {
     controller.destroy();
   });
 
+  it('toggles video visibility without removing the video element', async () => {
+    const controller = new MediaController();
+    await controller.loadTracks([makeTrack({ type: 'video' })]);
+
+    const el = await renderPlayer(controller);
+    const wrap = el.shadowRoot?.querySelector('.media-wrap.is-video');
+    expect(wrap?.classList.contains('video-hidden')).toBe(false);
+    expect(clickIcon(el, 'video-off')).not.toBeNull();
+
+    await el.updateComplete;
+    expect(wrap?.classList.contains('video-hidden')).toBe(true);
+    expect(el.shadowRoot?.querySelector('video')).not.toBeNull();
+    expect(clickIcon(el, 'video')).not.toBeNull();
+
+    await el.updateComplete;
+    expect(wrap?.classList.contains('video-hidden')).toBe(false);
+    controller.destroy();
+  });
+
+  it('does not show video visibility toggle for audio tracks', async () => {
+    const controller = new MediaController();
+    await controller.loadTracks([makeTrack({ type: 'audio' })]);
+
+    const el = await renderPlayer(controller);
+    expect(clickIcon(el, 'video-off')).toBeNull();
+    expect(clickIcon(el, 'video')).toBeNull();
+    controller.destroy();
+  });
+
   it('toggles fixed collapse and renders video surface', async () => {
     const controller = new MediaController();
     await controller.loadTracks([makeTrack({ type: 'video' })]);

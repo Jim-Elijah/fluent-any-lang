@@ -2,7 +2,10 @@ import { getDB } from './index.js';
 import { STORE_MEDIA, STORE_MEDIA_BLOB } from './schema.js';
 import type { MediaBlob, MediaItem } from '../types/models.js';
 import { markMediaRemovedInAllPlaylists } from './playlist.js';
-import { markSentenceBankSourceUnavailable } from './sentence-bank.js';
+import {
+  markSentenceBankSourceAvailable,
+  markSentenceBankSourceUnavailable,
+} from './sentence-bank.js';
 
 // create/insert
 // add media and its blob
@@ -14,6 +17,9 @@ export async function addMedia(item: MediaItem, blob: MediaBlob): Promise<void> 
   await tx.objectStore(STORE_MEDIA_BLOB).put(blob);
 
   await tx.done;
+
+  // Re-import of the same media id restores sentence-bank "view source" links.
+  await markSentenceBankSourceAvailable(item.id);
 }
 
 // get/read

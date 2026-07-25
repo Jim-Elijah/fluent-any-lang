@@ -201,6 +201,10 @@ export class SentencesPage extends NavigatorElement {
       color: var(--color-warning, #d48806);
     }
 
+    .details.unavailable .badge {
+      color: var(--color-warning, #d48806);
+    }
+
     .badge {
       display: inline-flex;
       align-items: center;

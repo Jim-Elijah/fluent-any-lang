@@ -311,6 +311,21 @@ describe('MediaController', () => {
     expect(snapshot.duration).toBe(30);
   });
 
+  it('snaps to duration on pause when media has already ended', async () => {
+    await controller.loadTracks([makeTrack('a', 'Track A')]);
+    Object.defineProperty(audio, 'currentTime', { configurable: true, value: 29.7 });
+    Object.defineProperty(audio, 'duration', { configurable: true, value: 30 });
+    Object.defineProperty(audio, 'paused', { configurable: true, value: true });
+    Object.defineProperty(audio, 'ended', { configurable: true, value: true });
+
+    audio.dispatchEvent(new Event('pause'));
+
+    const snapshot = controller.getSnapshot();
+    expect(snapshot.isPlaying).toBe(false);
+    expect(snapshot.currentTime).toBe(30);
+    expect(snapshot.duration).toBe(30);
+  });
+
   it('does not skip video when audio ended advances to a video track', async () => {
     const activeAudio = createAudioMock(false);
     controller.destroy();

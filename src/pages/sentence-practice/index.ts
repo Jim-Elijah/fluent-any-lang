@@ -271,6 +271,8 @@ export class SentencePracticePage extends NavigatorElement {
       this._error = '';
       this._entry = loaded.entry;
       await this._controller.loadTracks([sentenceToLoadedTrack(loaded)]);
+      // Single-clip practice should not inherit app defaults like segment loop.
+      this._controller.setLoopMode('none');
     } catch (error) {
       void reportError(error, { where: 'sentence-practice-page.load', entryId });
       this._error = msg('加载失败，请重试');

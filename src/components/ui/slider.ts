@@ -44,7 +44,13 @@ function clamp(value: number, min: number, max: number): number {
 
 function snapToStep(value: number, min: number, max: number, step: number): number {
   if (step <= 0) return clamp(value, min, max);
-  const stepped = min + Math.round((value - min) / step) * step;
+  const clamped = clamp(value, min, max);
+  // Endpoints are always valid so a value at max (e.g. media progress at duration)
+  // still renders 100% when max is not aligned to step.
+  if (clamped === min || clamped === max) {
+    return clamped;
+  }
+  const stepped = min + Math.round((clamped - min) / step) * step;
   return clamp(stepped, min, max);
 }
 

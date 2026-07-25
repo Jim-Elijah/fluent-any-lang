@@ -423,6 +423,10 @@ export class MediaPlayer extends LitElement {
       overflow: hidden;
     }
 
+    .media-wrap.is-video.video-hidden {
+      display: none;
+    }
+
     video {
       display: block;
       width: 100%;
@@ -497,6 +501,10 @@ export class MediaPlayer extends LitElement {
 
   @state()
   private _showSettings = false;
+
+  /** Whether the video surface is shown (audio keeps playing when hidden). */
+  @state()
+  private _videoVisible = true;
 
   private _boundController: MediaController | null = null;
 
@@ -587,6 +595,10 @@ export class MediaPlayer extends LitElement {
 
   private _toggleFixedCollapse(): void {
     this.collapsed = !this.collapsed;
+  }
+
+  private _toggleVideoVisible(): void {
+    this._videoVisible = !this._videoVisible;
   }
 
   private _toggleSettings(): void {
@@ -828,13 +840,22 @@ export class MediaPlayer extends LitElement {
     return html`
       <div class="surface">
         ${this.mode === 'normal'
-          ? html` <div class="media-wrap ${isVideo ? 'is-video' : 'is-audio'}">
+          ? html` <div
+              class="media-wrap ${isVideo ? 'is-video' : 'is-audio'}${isVideo && !this._videoVisible
+                ? ' video-hidden'
+                : ''}"
+            >
               ${isVideo
                 ? html`<video playsinline @click="${this._togglePlay}"></video>`
                 : html`<audio></audio>`}
             </div>`
           : html` <!-- For fixed mode: video is floated, audio is hidden -->
-              <div class="media-wrap ${isVideo ? 'is-video' : 'is-audio'}">
+              <div
+                class="media-wrap ${isVideo ? 'is-video' : 'is-audio'}${isVideo &&
+                !this._videoVisible
+                  ? ' video-hidden'
+                  : ''}"
+              >
                 ${isVideo
                   ? html`<video playsinline @click="${this._togglePlay}"></video>`
                   : html`<audio></audio>`}
@@ -879,7 +900,7 @@ export class MediaPlayer extends LitElement {
             <div class="progress-bar-wrap">
               <ui-slider
                 ?disabled="${this.disabled}"
-                .value="${String(snapshot.currentTime)}"
+                .value=${snapshot.currentTime}
                 min="0"
                 max="${progressMax}"
                 step="0.1"
@@ -950,6 +971,15 @@ export class MediaPlayer extends LitElement {
               <div class="action-buttons">
                 ${this.controlsConfig.playbackRate ? this._renderRateControl(snapshot) : ''}
                 ${this.controlsConfig.volume ? this._renderVolumeControl(snapshot) : ''}
+                ${isVideo
+                  ? html`<ui-icon-button
+                      name="${this._videoVisible ? 'video-off' : 'video'}"
+                      title="${this._videoVisible ? msg('隐藏视频') : msg('显示视频')}"
+                      size="var(--icon-lg)"
+                      ?disabled="${this.disabled}"
+                      @click="${this._toggleVideoVisible}"
+                    ></ui-icon-button>`
+                  : ''}
                 ${this.controlsConfig.advancedSetting !== false
                   ? html`<ui-icon-button
                       name="setting"

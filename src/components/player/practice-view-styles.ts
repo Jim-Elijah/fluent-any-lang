@@ -61,38 +61,42 @@ export const practiceViewStyles = css`
     cursor: pointer;
   }
 
-  .discrimination-ladder-row {
+  .discrimination-ladder {
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-sm);
-    margin-top: var(--space-sm);
+    flex-direction: column;
+    gap: var(--space-block);
   }
 
-  .discrimination-ladder-row > ui-select {
-    width: 4.5rem;
-    flex-shrink: 0;
+  .discrimination-ladder .setting-item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+    min-width: 0;
+  }
+
+  .discrimination-ladder .setting-label {
+    font-size: 0.75rem;
+    color: var(--color-text-secondary, #666);
+  }
+
+  .discrimination-ladder ui-select {
+    width: 100%;
+    max-width: 6rem;
+    min-width: 0;
+  }
+
+  .discrimination-ladder-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(6rem, 6rem));
+    gap: var(--space-block);
+    justify-content: start;
   }
 
   .ladder-sequence-preview {
-    flex: 1;
-    min-width: 0;
     font-size: 0.8125rem;
     color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
     line-height: 1.5;
     word-break: break-word;
-  }
-
-  .discrimination-ladder-rates {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: var(--space-sm);
-    margin-top: var(--space-sm);
-  }
-
-  .discrimination-ladder-rates ui-select {
-    width: 100%;
-    min-width: 0;
   }
 
   .ladder-progress {

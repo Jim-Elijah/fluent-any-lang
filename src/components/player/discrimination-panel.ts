@@ -175,34 +175,38 @@ export class DiscriminationPanel extends LitElement {
           </div>
           <div class="settings-group">
             <h3>${msg('速听阶梯')}</h3>
-            <div class="discrimination-ladder-row">
-              <span>${msg('次数')}</span>
-              <ui-select
-                .value=${String(settings.ladderCount)}
-                .options=${countOptions}
-                @change=${(e: CustomEvent<SelectChangeDetail>) => {
-                  this._emit<DiscriminationLadderCountDetail>('ladder-count', {
-                    count: Number(e.detail.value),
-                  });
-                }}
-              ></ui-select>
-            </div>
-            <div class="discrimination-ladder-rates">
-              ${settings.ladderRates.map(
-                (rate, index) => html`
-                  <ui-select
-                    .value=${String(rate)}
-                    .options=${rateOptions}
-                    aria-label=${msg(str`第 ${index + 1} 档倍速`)}
-                    @change=${(e: CustomEvent<SelectChangeDetail>) => {
-                      this._emit<DiscriminationLadderRateDetail>('ladder-rate', {
-                        index,
-                        rate: Number(e.detail.value),
-                      });
-                    }}
-                  ></ui-select>
-                `,
-              )}
+            <div class="discrimination-ladder">
+              <div class="setting-item discrimination-ladder-count">
+                <span class="setting-label">${msg('档位数')}</span>
+                <ui-select
+                  .value=${String(settings.ladderCount)}
+                  .options=${countOptions}
+                  @change=${(e: CustomEvent<SelectChangeDetail>) => {
+                    this._emit<DiscriminationLadderCountDetail>('ladder-count', {
+                      count: Number(e.detail.value),
+                    });
+                  }}
+                ></ui-select>
+              </div>
+              <div class="discrimination-ladder-grid">
+                ${settings.ladderRates.map(
+                  (rate, index) => html`
+                    <div class="setting-item">
+                      <span class="setting-label">${msg(str`第 ${index + 1} 档倍速`)}</span>
+                      <ui-select
+                        .value=${String(rate)}
+                        .options=${rateOptions}
+                        @change=${(e: CustomEvent<SelectChangeDetail>) => {
+                          this._emit<DiscriminationLadderRateDetail>('ladder-rate', {
+                            index,
+                            rate: Number(e.detail.value),
+                          });
+                        }}
+                      ></ui-select>
+                    </div>
+                  `,
+                )}
+              </div>
             </div>
             <span class="ladder-sequence-preview">${msg('将播放：')}${sequencePreview}</span>
             <p class="ladder-progress">${stepLabel}</p>

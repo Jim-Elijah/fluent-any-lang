@@ -3,16 +3,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   DEFAULT_DISCRIMINATION_SETTINGS,
+  DEFAULT_SETTINGS,
   DISCRIMINATION_MAX_NOISE_TRACKS,
   type DiscriminationSettings,
   type NoiseItem,
 } from '../../types/models.js';
-
-const getMaxPlaybackRate = vi.fn(() => 2);
-
-vi.mock('../../lib/app-settings.js', () => ({
-  getMaxPlaybackRate: () => getMaxPlaybackRate(),
-}));
+import { setAppSettings } from '../../lib/app-settings.js';
 
 import './discrimination-panel.js';
 import type { DiscriminationPanel } from './discrimination-panel.js';
@@ -34,7 +30,8 @@ describe('discrimination-panel', () => {
   let cleanup: (() => void) | undefined;
 
   beforeEach(() => {
-    getMaxPlaybackRate.mockReturnValue(2);
+    localStorage.clear();
+    setAppSettings({ ...DEFAULT_SETTINGS });
   });
 
   afterEach(() => {
@@ -166,7 +163,7 @@ describe('discrimination-panel', () => {
     expect(toggleHandler.mock.calls[0][0].detail).toEqual({ noiseId: 'n4', on: true });
   });
 
-  it('emits ladder-count and ladder-rate events from selects', async () => {
+  it('renders labeled ladder setting items and emits count/rate events', async () => {
     const el = await renderPanel({
       settings: {
         selected: [],
@@ -175,15 +172,23 @@ describe('discrimination-panel', () => {
       },
     });
 
+    const countItem = el.shadowRoot?.querySelector('.discrimination-ladder-count');
+    expect(countItem?.querySelector('.setting-label')?.textContent).toContain('档位数');
+
+    const rateItems = el.shadowRoot?.querySelectorAll('.discrimination-ladder-grid .setting-item');
+    expect(rateItems?.length).toBe(2);
+    expect(rateItems?.[0]?.querySelector('.setting-label')?.textContent).toContain('第 1 档倍速');
+    expect(rateItems?.[1]?.querySelector('.setting-label')?.textContent).toContain('第 2 档倍速');
+
     const countHandler = vi.fn();
     const rateHandler = vi.fn();
     el.addEventListener('ladder-count', countHandler);
     el.addEventListener('ladder-rate', rateHandler);
 
     const countSelect = el.shadowRoot?.querySelector(
-      '.discrimination-ladder-row ui-select',
+      '.discrimination-ladder-count ui-select',
     ) as HTMLElement;
-    countSelect.dispatchEvent(
+    countSelect?.dispatchEvent(
       new CustomEvent('change', {
         detail: { value: '3' },
         bubbles: true,
@@ -193,8 +198,10 @@ describe('discrimination-panel', () => {
     expect(countHandler).toHaveBeenCalledOnce();
     expect(countHandler.mock.calls[0][0].detail).toEqual({ count: 3 });
 
-    const rateSelects = el.shadowRoot?.querySelectorAll('.discrimination-ladder-rates ui-select');
-    rateSelects?.[1]?.dispatchEvent(
+    const rateSelects = el.shadowRoot?.querySelectorAll(
+      '.discrimination-ladder-grid ui-select',
+    ) as NodeListOf<HTMLElement>;
+    rateSelects[1]?.dispatchEvent(
       new CustomEvent('change', {
         detail: { value: '1.25' },
         bubbles: true,
@@ -206,7 +213,7 @@ describe('discrimination-panel', () => {
   });
 
   it('filters ladder rate options by getMaxPlaybackRate', async () => {
-    getMaxPlaybackRate.mockReturnValue(1.5);
+    setAppSettings({ maxPlaybackRate: 1.5 });
     const el = await renderPanel({
       settings: {
         selected: [],
@@ -215,14 +222,19 @@ describe('discrimination-panel', () => {
       },
     });
 
-    const rateSelect = el.shadowRoot?.querySelector(
-      '.discrimination-ladder-rates ui-select',
-    ) as HTMLElement & { options: { value: string }[] };
+    const rateItem = [...(el.shadowRoot?.querySelectorAll('.setting-item') ?? [])].find((item) =>
+      item.querySelector('.setting-label')?.textContent?.includes('档倍速'),
+    );
+    const rateSelect = rateItem?.querySelector('ui-select') as HTMLElement & {
+      options: { value: string }[];
+      value: string;
+    };
     await rateSelect.updateComplete;
     const values = rateSelect.options.map((option) => Number(option.value));
     expect(values.every((rate) => rate <= 1.5 + 1e-9)).toBe(true);
     expect(values).toContain(1.5);
     expect(values).not.toContain(2);
+    expect(rateSelect.value).toBe('1');
   });
 
   it('shows sequence preview and step progress when ladderSequence is non-empty', async () => {

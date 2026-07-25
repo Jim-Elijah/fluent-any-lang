@@ -154,7 +154,7 @@ describe('waveform-player', () => {
     expect(setViewRangeSpy).toHaveBeenCalledWith(null);
   });
 
-  it('pauses when clicking the active track while playing', async () => {
+  it('seeks and plays when clicking while playing', async () => {
     vi.useFakeTimers();
     const { canvas } = await renderPlayer();
     const pauseSpy = vi.spyOn(controller, 'pause');
@@ -164,9 +164,9 @@ describe('waveform-player', () => {
     controller.isPlaying = true;
     await clickCanvas(canvas, 10);
 
-    expect(pauseSpy).toHaveBeenCalledTimes(1);
-    expect(playSpy).not.toHaveBeenCalled();
-    expect(seekSpy).not.toHaveBeenCalled();
+    expect(pauseSpy).not.toHaveBeenCalled();
+    expect(seekSpy).toHaveBeenCalled();
+    expect(playSpy).toHaveBeenCalledTimes(1);
   });
 
   it('seeks and plays when clicking while paused', async () => {

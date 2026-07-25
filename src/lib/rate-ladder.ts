@@ -53,13 +53,7 @@ export class RateLadder {
   setRates(rates: number[]): void {
     const maxRate = getMaxPlaybackRate();
     const snapped = rates.map((rate) => snapDiscriminationRate(rate, maxRate));
-    const deduped: number[] = [];
-    for (const rate of snapped) {
-      if (deduped[deduped.length - 1] !== rate) {
-        deduped.push(rate);
-      }
-    }
-    this.sequence = buildLadderSequence(deduped.length > 0 ? deduped : [1]);
+    this.sequence = buildLadderSequence(snapped.length > 0 ? snapped : [1]);
     this.index = Math.min(this.index, Math.max(0, this.sequence.length - 1));
   }
 

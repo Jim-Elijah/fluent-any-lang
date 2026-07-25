@@ -72,6 +72,23 @@ export async function markSentenceBankSourceUnavailable(mediaId: string): Promis
   await tx.done;
 }
 
+export async function markSentenceBankSourceAvailable(mediaId: string): Promise<void> {
+  const db = await getDB();
+  const entries = await db.getAllFromIndex(STORE_SENTENCE_BANK, 'bySourceMediaId', mediaId);
+  if (entries.length === 0) {
+    return;
+  }
+
+  const tx = db.transaction(STORE_SENTENCE_BANK, 'readwrite');
+  const store = tx.objectStore(STORE_SENTENCE_BANK);
+  for (const entry of entries) {
+    if (!entry.sourceAvailable) {
+      await store.put({ ...entry, sourceAvailable: true });
+    }
+  }
+  await tx.done;
+}
+
 export type AddToSentenceBankInput = {
   media: MediaItem;
   segment: SubtitleSegment;

@@ -46,7 +46,15 @@ describe('RateLadder', () => {
   it('clamps ladder rates to maxPlaybackRate', () => {
     setAppSettings({ maxPlaybackRate: 1.5 });
     const ladder = new RateLadder([1, 2, 3]);
-    expect(ladder.getSequence()).toEqual([1, 1.5, 1]);
+    expect(ladder.getSequence()).toEqual([1, 1.5, 1.5, 1.5, 1]);
+  });
+
+  it('keeps consecutive identical rates as separate ladder steps', () => {
+    const ladder = new RateLadder([1, 1]);
+    expect(ladder.getSequence()).toEqual([1, 1, 1]);
+    expect(ladder.onMainEnded()).toEqual({ kind: 'advance', rate: 1, index: 1 });
+    expect(ladder.onMainEnded()).toEqual({ kind: 'advance', rate: 1, index: 2 });
+    expect(ladder.onMainEnded()).toEqual({ kind: 'finished', rate: 1 });
   });
 });
 
