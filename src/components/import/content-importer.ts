@@ -401,6 +401,7 @@ export class ContentImporter extends LitElement {
         imported: [...partial.imported, ...second.imported],
         skipped: [...partial.skipped, ...second.skipped],
         errors: [...partial.errors, ...second.errors],
+        warnings: [...partial.warnings, ...second.warnings],
         conflicts: second.conflicts,
       });
     } catch (error) {
@@ -432,6 +433,10 @@ export class ContentImporter extends LitElement {
     this._errors.forEach((error) => {
       Message.error({ message: `${error.filename}: ${error.message}` });
     });
+
+    for (const warning of result.warnings) {
+      Message.warning({ message: `${warning.filename}: ${warning.message}` });
+    }
   }
 
   private _dispatchImported(items: Array<MediaItem | SubtitleTrack>): void {

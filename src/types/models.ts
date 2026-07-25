@@ -227,6 +227,10 @@ export type AppSettings = {
   defaultSourceVolume: number;
   /** Default volume (0–1) when newly selecting a noise track in discrimination. */
   defaultNoiseVolume: number;
+  /** Max logical volume multiplier for media / recording preview (1 = 100%, 3 = 300%). */
+  maxVolumeBoost: number;
+  /** Max playback rate for media player / practice (1 = 1x, 4 = 4x). */
+  maxPlaybackRate: number;
   /** When true, recording countdown overlay is skipped. */
   skipRecordingCountdown: boolean;
   /** When true, shadowing mode tips modal is skipped. */
@@ -272,8 +276,15 @@ export type SentenceBankBlob = {
   duration: number;
 };
 
-/** Discrete rates offered in discrimination ladder UI (includes 3x). */
-export const DISCRIMINATION_RATE_STEPS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3] as const;
+/** Absolute playback-rate range for the media player slider / hotkeys. */
+export const PLAYBACK_RATE_LIMITS = {
+  min: 0.1,
+  max: 4,
+  step: 0.1,
+} as const;
+
+/** Discrete rates offered in discrimination ladder UI (up to 4x). */
+export const DISCRIMINATION_RATE_STEPS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3, 4] as const;
 
 export const DISCRIMINATION_MAX_NOISE_TRACKS = 3;
 export const DISCRIMINATION_LADDER_COUNT_MIN = 1;
@@ -303,6 +314,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   repeatPausePercent: 100,
   defaultSourceVolume: 1,
   defaultNoiseVolume: 0.5,
+  maxVolumeBoost: 2,
+  maxPlaybackRate: 2,
   skipRecordingCountdown: false,
   skipShadowingTips: false,
   skipEchoTips: false,
@@ -325,6 +338,8 @@ export const APP_SETTINGS_PLAYER_LIMITS = {
   repeatPausePercent: { min: 100, max: 500, step: 10 },
   defaultSourceVolume: { min: 0, max: 1, step: 0.05 },
   defaultNoiseVolume: { min: 0, max: 1, step: 0.05 },
+  maxVolumeBoost: { min: 1, max: 3, step: 0.1 },
+  maxPlaybackRate: { min: 1, max: PLAYBACK_RATE_LIMITS.max, step: PLAYBACK_RATE_LIMITS.step },
 } as const;
 
 export const DISCRIMINATION_LADDER_COUNT_LIMITS = {
@@ -369,6 +384,8 @@ export type ConflictDecision = {
 export type ImportResult = {
   imported: Array<MediaItem | SubtitleTrack>;
   errors: ImportError[];
+  /** 可继续导入时的解析告警（如跳过了个别坏行） */
+  warnings: ImportError[];
   skipped: ImportError[];
   conflicts: ImportConflict[];
 };

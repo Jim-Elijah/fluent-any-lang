@@ -1,4 +1,5 @@
 import { DISCRIMINATION_RATE_STEPS } from '../types/models.js';
+import { getMaxPlaybackRate } from './app-settings.js';
 
 export type RateLadderAdvanceResult =
   | { kind: 'advance'; rate: number; index: number }
@@ -15,11 +16,19 @@ export function buildLadderSequence(rates: number[]): number[] {
   return [...forward, ...backward];
 }
 
-export function snapDiscriminationRate(value: number): number {
-  const steps: readonly number[] = DISCRIMINATION_RATE_STEPS;
-  let best = steps[0];
+const DISCRIMINATION_RATE_MAX = DISCRIMINATION_RATE_STEPS[DISCRIMINATION_RATE_STEPS.length - 1]!;
+
+export function snapDiscriminationRate(
+  value: number,
+  maxRate: number = DISCRIMINATION_RATE_MAX,
+): number {
+  const steps: readonly number[] = DISCRIMINATION_RATE_STEPS.filter(
+    (step) => step <= maxRate + 1e-9,
+  );
+  const pool = steps.length > 0 ? steps : [Math.min(1, maxRate)];
+  let best = pool[0]!;
   let bestDist = Math.abs(value - best);
-  for (const step of steps) {
+  for (const step of pool) {
     const dist = Math.abs(value - step);
     if (dist < bestDist) {
       best = step;
@@ -42,7 +51,15 @@ export class RateLadder {
   }
 
   setRates(rates: number[]): void {
-    this.sequence = buildLadderSequence(rates.map(snapDiscriminationRate));
+    const maxRate = getMaxPlaybackRate();
+    const snapped = rates.map((rate) => snapDiscriminationRate(rate, maxRate));
+    const deduped: number[] = [];
+    for (const rate of snapped) {
+      if (deduped[deduped.length - 1] !== rate) {
+        deduped.push(rate);
+      }
+    }
+    this.sequence = buildLadderSequence(deduped.length > 0 ? deduped : [1]);
     this.index = Math.min(this.index, Math.max(0, this.sequence.length - 1));
   }
 

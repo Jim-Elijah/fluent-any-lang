@@ -155,7 +155,19 @@ describe('record-list', () => {
     vi.stubGlobal(
       'AudioContext',
       class {
+        destination = {};
+        resume = vi.fn().mockResolvedValue(undefined);
+        createGain = vi.fn(() => ({
+          gain: { value: 1 },
+          connect: vi.fn(),
+          disconnect: vi.fn(),
+        }));
+        createMediaElementSource = vi.fn(() => ({
+          connect: vi.fn(),
+          disconnect: vi.fn(),
+        }));
         decodeAudioData = vi.fn().mockResolvedValue({
+          duration: 1,
           length: 1,
           sampleRate: 48000,
           numberOfChannels: 1,

@@ -8,14 +8,20 @@ import {
   ExtendedMediaEventType,
 } from '../lib/playback-utils.js';
 import { throttle } from '../lib/util.js';
-import type {
-  LoopMode,
-  MediaItem,
-  PauseMode,
-  SleepMode,
-  SubtitleSegment,
+import {
+  PLAYBACK_RATE_LIMITS,
+  type LoopMode,
+  type MediaItem,
+  type PauseMode,
+  type SleepMode,
+  type SubtitleSegment,
 } from '../types/models.js';
-import { getAppSettings } from '../lib/app-settings.js';
+import { getAppSettings, getMaxPlaybackRate, getMaxVolumeBoost } from '../lib/app-settings.js';
+import {
+  attachMediaElementGain,
+  detachMediaElementGain,
+  setLogicalVolume,
+} from '../lib/media-element-gain.js';
 
 export type MediaControllerSnapshot = {
   playlist: MediaItem[];
@@ -132,7 +138,8 @@ export class MediaController extends EventTarget {
     }
 
     element.playbackRate = this.playbackRate;
-    element.volume = this.volume;
+    attachMediaElementGain(element);
+    setLogicalVolume(element, this.volume);
 
     // Tracks may load before the player mounts an <audio>/<video> (no currentItem yet).
     // Re-apply the object URL so play() works after late attach.
@@ -163,7 +170,9 @@ export class MediaController extends EventTarget {
       this.mediaElement.removeEventListener(evtName, this._handleNativeEvent);
     }
 
+    const element = this.mediaElement;
     this.mediaElement = null;
+    detachMediaElementGain(element);
   }
 
   private _handleNativeEvent = (event: Event): void => {
@@ -220,7 +229,7 @@ export class MediaController extends EventTarget {
       this.mediaElement.src = nextUrl;
       this.mediaElement.load();
       this.mediaElement.playbackRate = this.playbackRate;
-      this.mediaElement.volume = this.volume;
+      setLogicalVolume(this.mediaElement, this.volume);
 
       await new Promise<void>((resolve) => {
         const element = this.mediaElement;
@@ -449,18 +458,22 @@ export class MediaController extends EventTarget {
   }
 
   setPlaybackRate(rate: number): void {
-    this.playbackRate = rate;
+    const max = getMaxPlaybackRate();
+    const clamped = Math.max(PLAYBACK_RATE_LIMITS.min, Math.min(rate, max));
+    const stepped = Math.round(clamped / PLAYBACK_RATE_LIMITS.step) * PLAYBACK_RATE_LIMITS.step;
+    const next = Math.max(PLAYBACK_RATE_LIMITS.min, Math.min(Number(stepped.toFixed(10)), max));
+    this.playbackRate = next;
     if (this.mediaElement) {
-      this.mediaElement.playbackRate = rate;
+      this.mediaElement.playbackRate = next;
     }
     this._emitChange();
   }
 
   setVolume(volume: number): void {
-    const clamped = Math.max(0, Math.min(volume, 1));
+    const clamped = Math.max(0, Math.min(volume, getMaxVolumeBoost()));
     this.volume = clamped;
     if (this.mediaElement) {
-      this.mediaElement.volume = clamped;
+      setLogicalVolume(this.mediaElement, clamped);
     }
     this._emitChange();
   }
@@ -559,7 +572,7 @@ export class MediaController extends EventTarget {
 
     if (this.mediaElement) {
       this.mediaElement.playbackRate = this.playbackRate;
-      this.mediaElement.volume = this.volume;
+      setLogicalVolume(this.mediaElement, this.volume);
     }
 
     this._emitChange();

@@ -24,7 +24,8 @@ import {
   type WaveformTrack,
 } from '../../controllers/waveform-controller.js';
 import type { PracticeMode, PracticeSegment, SubtitleSegment } from '../../types/models.js';
-import { getAppSettings } from '../../lib/app-settings.js';
+import { getAppSettings, getMaxVolumeBoost } from '../../lib/app-settings.js';
+import { setLogicalVolume } from '../../lib/media-element-gain.js';
 import type { WaveformSeekRequestDetail } from '../player/waveform-player.js';
 import '../ui/button.js';
 import '../ui/dropdown.js';
@@ -173,6 +174,10 @@ export class RecordingPreview extends LitElement {
 
     .volume-trigger:hover {
       background: rgba(0, 0, 0, 0.04);
+    }
+
+    .volume-trigger--boosted {
+      color: var(--color-warning, #fa8c16);
     }
   `;
 
@@ -467,9 +472,11 @@ export class RecordingPreview extends LitElement {
 
   private _renderVolumeControl(track: 'source' | 'recording'): TemplateResult {
     const volume = track === 'source' ? this._sourceVolume : this._recordingVolume;
+    const maxVolume = getMaxVolumeBoost();
     const percent = Math.round(volume * 100);
     const label = track === 'source' ? msg('原音音量') : msg('录音音量');
     const title = `${label} ${percent}%`;
+    const boosted = volume > 1;
 
     return html`
       <ui-dropdown
@@ -483,19 +490,18 @@ export class RecordingPreview extends LitElement {
         @open-change=${stopOverlayOpenEvent}
         @update:open=${stopOverlayOpenEvent}
         .overlay=${html`
-          <span class="overlay-panel-label">${label} ${percent}%</span>
+          <span
+            class="overlay-panel-label"
+            style=${boosted ? 'color: var(--color-warning, #fa8c16);' : ''}
+            >${label} ${percent}%</span
+          >
           <ui-slider
             .value=${volume}
             style="--slider-mark-edge-padding: var(--space-sm);"
             orientation="horizontal"
             min="0"
-            max="1"
+            max=${maxVolume}
             step="0.01"
-            .marks=${{
-              0: '0%',
-              0.5: '50%',
-              1: '100%',
-            }}
             .tooltip=${{
               formatter: (v: number) => `${Math.round(v * 100)}%`,
               placement: 'top',
@@ -507,7 +513,7 @@ export class RecordingPreview extends LitElement {
       >
         <button
           type="button"
-          class="volume-trigger"
+          class="volume-trigger${boosted ? ' volume-trigger--boosted' : ''}"
           title=${title}
           aria-label=${title}
           data-volume-track=${track}
@@ -519,7 +525,7 @@ export class RecordingPreview extends LitElement {
   }
 
   private _handleVolumeChange(track: 'source' | 'recording', value: number): void {
-    const clamped = Math.max(0, Math.min(value, 1));
+    const clamped = Math.max(0, Math.min(value, getMaxVolumeBoost()));
     if (track === 'source') {
       this._sourceVolume = clamped;
     } else {
@@ -530,10 +536,10 @@ export class RecordingPreview extends LitElement {
 
   private _applyVolumes(): void {
     if (this._sourceAudio) {
-      this._sourceAudio.volume = this._sourceVolume;
+      setLogicalVolume(this._sourceAudio, this._sourceVolume);
     }
     if (this._recordingAudio) {
-      this._recordingAudio.volume = this._recordingVolume;
+      setLogicalVolume(this._recordingAudio, this._recordingVolume);
     }
   }
 

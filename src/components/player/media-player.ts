@@ -8,7 +8,10 @@ import type {
   MediaControllerSnapshot,
 } from '../../controllers/media-controller.js';
 import { formatTime, FORWARDED_MEDIA_EVENTS, MAX_SLEEP_MINUTES } from '../../lib/playback-utils.js';
+import { getMaxPlaybackRate, getMaxVolumeBoost } from '../../lib/app-settings.js';
 import { supportsKeyboardShortcuts } from '../../lib/hotkeys/index.js';
+import { playbackRateMarks, volumeMarks } from '../../lib/slider-marks.js';
+import { PLAYBACK_RATE_LIMITS } from '../../types/models.js';
 import '../ui/button.js';
 import '../ui/slider.js';
 import '../ui/tooltip.js';
@@ -230,12 +233,48 @@ export class MediaPlayer extends LitElement {
       background: rgba(0, 0, 0, 0.04);
     }
 
+    .rate-trigger--fast {
+      color: var(--color-warning, #fa8c16);
+    }
+
     .rate-trigger:disabled {
       opacity: 0.5;
       cursor: not-allowed;
     }
 
     .rate-trigger:focus-visible {
+      outline: 2px solid var(--color-primary, #1677ff);
+      outline-offset: 2px;
+    }
+
+    .volume-trigger {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: var(--space-xs);
+      border: none;
+      border-radius: var(--radius-md, 8px);
+      background: transparent;
+      color: inherit;
+      line-height: 0;
+      cursor: pointer;
+      transition: background-color 0.15s ease;
+    }
+
+    .volume-trigger:hover:not(:disabled) {
+      background: rgba(0, 0, 0, 0.04);
+    }
+
+    .volume-trigger--boosted {
+      color: var(--color-warning, #fa8c16);
+    }
+
+    .volume-trigger:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .volume-trigger:focus-visible {
       outline: 2px solid var(--color-primary, #1677ff);
       outline-offset: 2px;
     }
@@ -611,37 +650,40 @@ export class MediaPlayer extends LitElement {
 
   private _renderRateControl(snapshot: MediaControllerSnapshot): TemplateResult {
     const rate = Number(snapshot.playbackRate);
+    const maxRate = getMaxPlaybackRate();
     const rateLabel = `${rate.toFixed(1)}x`;
     const rateTitle = supportsKeyboardShortcuts() ? `${rateLabel} ([) (])` : `${rateLabel}`;
+    const fast = rate > 1;
     return this._renderSliderDropdown({
       title: rateTitle,
       placement: 'left',
       trigger: html`
         <ui-tooltip title="${rateTitle}" ?disabled=${this.disabled}>
-          <button type="button" class="rate-trigger" ?disabled=${this.disabled}>
+          <button
+            type="button"
+            class="rate-trigger${fast ? ' rate-trigger--fast' : ''}"
+            ?disabled=${this.disabled}
+          >
             ${rateLabel}
           </button>
         </ui-tooltip>
       `,
       // Arrow handlers: overlay is rendered into a portal, so method refs would lose `this`.
       overlay: html`
-        <span class="overlay-panel-label">${rateLabel}</span>
+        <span
+          class="overlay-panel-label"
+          style=${fast ? 'color: var(--color-warning, #fa8c16);' : ''}
+          >${rateLabel}</span
+        >
         <ui-slider
           ?disabled="${this.disabled}"
           .value=${rate}
           style="--slider-mark-edge-padding: var(--space-sm);"
-          min="0.1"
-          max="4"
-          step="0.1"
+          min=${PLAYBACK_RATE_LIMITS.min}
+          max=${maxRate}
+          step=${PLAYBACK_RATE_LIMITS.step}
           orientation="horizontal"
-          .marks=${{
-            0.5: '0.5x',
-            1: '1x',
-            1.5: '1.5x',
-            2: '2x',
-            3: '3x',
-            4: '4x',
-          }}
+          .marks=${playbackRateMarks(PLAYBACK_RATE_LIMITS.min, maxRate)}
           .tooltip=${{
             formatter: (v: number) => `${v.toFixed(1)}x`,
             placement: 'top',
@@ -650,33 +692,47 @@ export class MediaPlayer extends LitElement {
         ></ui-slider>
       `,
       overlayStyle:
-        '--dropdown-overlay-min-width: 220px;--dropdown-overlay-padding-block: var(--space-sm); --dropdown-overlay-padding-inline: var(--space-sm);',
+        '--dropdown-overlay-min-width: 160px;--dropdown-overlay-padding-block: var(--space-sm); --dropdown-overlay-padding-inline: var(--space-sm);',
     });
   }
 
   private _renderVolumeControl(snapshot: MediaControllerSnapshot): TemplateResult {
     const volume = Number(snapshot.volume);
+    const maxVolume = getMaxVolumeBoost();
     const percent = Math.round(volume * 100);
     const percentTitle = supportsKeyboardShortcuts() ? `${percent}% (↑) (↓)` : `${percent}%`;
+    const boosted = volume > 1;
+    const iconName = volume === 0 ? 'volume-close' : 'volume';
     return this._renderSliderDropdown({
-      icon: volume === 0 ? 'volume-close' : 'volume',
-      title: `${percentTitle}`,
+      title: percentTitle,
       placement: 'left',
+      trigger: html`
+        <ui-tooltip title="${percentTitle}" ?disabled=${this.disabled}>
+          <button
+            type="button"
+            class="volume-trigger${boosted ? ' volume-trigger--boosted' : ''}"
+            ?disabled=${this.disabled}
+            aria-label=${percentTitle}
+          >
+            <ui-icon name=${iconName} size="var(--icon-lg)"></ui-icon>
+          </button>
+        </ui-tooltip>
+      `,
       overlay: html`
-        <span class="overlay-panel-label">${percent}%</span>
+        <span
+          class="overlay-panel-label"
+          style=${boosted ? 'color: var(--color-warning, #fa8c16);' : ''}
+          >${percent}%</span
+        >
         <ui-slider
           ?disabled="${this.disabled}"
           .value=${volume}
           style="--slider-mark-edge-padding: var(--space-sm);"
           orientation="horizontal"
           min="0"
-          max="1"
+          max=${maxVolume}
           step="0.01"
-          .marks=${{
-            0: '0%',
-            0.5: '50%',
-            1: '100%',
-          }}
+          .marks=${volumeMarks(0, maxVolume)}
           .tooltip=${{
             formatter: (v: number) => `${Math.round(v * 100)}%`,
             placement: 'top',

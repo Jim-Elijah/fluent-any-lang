@@ -1,4 +1,5 @@
 import { getAudioContext } from '../lib/audio-context.js';
+import { attachMediaElementGain } from '../lib/media-element-gain.js';
 import { throttle } from '../lib/util.js';
 
 export const DEFAULT_WAVEFORM_COLORS = [
@@ -441,6 +442,8 @@ export class WaveformController extends EventTarget {
       objectUrl,
       audioEl: new Audio(objectUrl),
     };
+
+    attachMediaElementGain(track.audioEl);
 
     this._bindAudioEvents(track);
     this.tracks.push(track);

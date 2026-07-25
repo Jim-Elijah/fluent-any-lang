@@ -1,11 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  PLAYBACK_RATE_HOTKEY_STEPS,
-  formatHotkeyCodeLabel,
-  getHotkeyCatalog,
-  stepPlaybackRate,
-} from './catalog.js';
+import { formatHotkeyCodeLabel, getHotkeyCatalog } from './catalog.js';
 import {
   PRACTICE_HOTKEY_BINDINGS,
   RECORDING_PREVIEW_HOTKEY_BINDINGS,
@@ -67,18 +62,5 @@ describe('getHotkeyCatalog', () => {
 
   it('returns an empty list for empty scopes', () => {
     expect(getHotkeyCatalog([])).toEqual([]);
-  });
-});
-
-describe('stepPlaybackRate', () => {
-  it('steps within PLAYBACK_RATE_HOTKEY_STEPS and clamps at ends', () => {
-    expect(stepPlaybackRate(1, 1)).toBe(1.25);
-    expect(stepPlaybackRate(1, -1)).toBe(0.75);
-    expect(stepPlaybackRate(PLAYBACK_RATE_HOTKEY_STEPS[0], -1)).toBe(PLAYBACK_RATE_HOTKEY_STEPS[0]);
-    expect(stepPlaybackRate(PLAYBACK_RATE_HOTKEY_STEPS.at(-1)!, 1)).toBe(
-      PLAYBACK_RATE_HOTKEY_STEPS.at(-1),
-    );
-    expect(stepPlaybackRate(1.1, 1)).toBe(1.25);
-    expect(stepPlaybackRate(1.1, -1)).toBe(1);
   });
 });

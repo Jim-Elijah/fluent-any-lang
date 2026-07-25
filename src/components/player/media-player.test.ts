@@ -1,5 +1,32 @@
 import { html } from 'lit';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+class MockGainNode {
+  gain = { value: 1 };
+  disconnect = vi.fn();
+  connect = vi.fn();
+}
+
+class MockMediaElementSource {
+  connect = vi.fn();
+  disconnect = vi.fn();
+}
+
+class MockAudioContext {
+  destination = {};
+  resume = vi.fn().mockResolvedValue(undefined);
+
+  createGain(): MockGainNode {
+    return new MockGainNode();
+  }
+
+  createMediaElementSource(): MockMediaElementSource {
+    return new MockMediaElementSource();
+  }
+}
+
+vi.stubGlobal('AudioContext', MockAudioContext);
+vi.stubGlobal('webkitAudioContext', MockAudioContext);
 
 import { MediaController, type LoadedTrack } from '../../controllers/media-controller.js';
 import { flushUpdates, getPortalShadow, mount } from '../ui/test-utils.js';
@@ -62,6 +89,26 @@ describe('media-player', () => {
 
     const rateTrigger = el.shadowRoot?.querySelector('.rate-trigger');
     expect(rateTrigger?.textContent?.trim()).toBe('1.0x');
+
+    controller.destroy();
+  });
+
+  it('highlights volume icon when boosted above 1', async () => {
+    const controller = new MediaController();
+    await controller.loadTracks([makeTrack()]);
+    controller.setVolume(1.2);
+
+    const el = await renderPlayer(controller);
+    await el.updateComplete;
+    await flushUpdates();
+
+    const volumeTrigger = el.shadowRoot?.querySelector('.volume-trigger');
+    expect(volumeTrigger?.classList.contains('volume-trigger--boosted')).toBe(true);
+
+    controller.setVolume(1);
+    await el.updateComplete;
+    await flushUpdates();
+    expect(el.shadowRoot?.querySelector('.volume-trigger--boosted')).toBeNull();
 
     controller.destroy();
   });

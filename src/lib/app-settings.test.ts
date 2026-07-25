@@ -50,6 +50,8 @@ describe('app-settings', () => {
       defaultSleepMinutes: 0,
       defaultSourceVolume: 2,
       defaultNoiseVolume: -1,
+      maxVolumeBoost: 5,
+      maxPlaybackRate: 9,
     });
     expect(next.maxRecordingsPerMedia).toBe(20);
     expect(next.maxEchoPerSegment).toBe(1);
@@ -59,6 +61,8 @@ describe('app-settings', () => {
     expect(next.defaultSleepMinutes).toBe(1);
     expect(next.defaultSourceVolume).toBe(1);
     expect(next.defaultNoiseVolume).toBe(0);
+    expect(next.maxVolumeBoost).toBe(3);
+    expect(next.maxPlaybackRate).toBe(4);
   });
 
   it('parses default loop mode', () => {

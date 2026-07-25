@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 const importContentFiles = vi.fn().mockResolvedValue({
   imported: [],
   errors: [],
+  warnings: [],
   skipped: [],
   conflicts: [],
 });
@@ -55,6 +56,7 @@ describe('content-importer', () => {
     importContentFiles.mockResolvedValue({
       imported: [],
       errors: [],
+      warnings: [],
       skipped: [],
       conflicts: [],
     });
@@ -92,6 +94,7 @@ describe('content-importer', () => {
     importContentFiles.mockResolvedValueOnce({
       imported: [],
       errors: [],
+      warnings: [],
       skipped: [],
       conflicts: [
         {

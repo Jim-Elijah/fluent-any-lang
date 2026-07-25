@@ -16,10 +16,9 @@ export { HotkeyManager, getHotkeyManager, setHotkeyManagerForTests } from './hot
 export { KEYBOARD_SHORTCUTS_MQ, supportsKeyboardShortcuts } from './support.js';
 export type { HotkeyCatalogRow } from './catalog.js';
 export {
-  PLAYBACK_RATE_HOTKEY_STEPS,
+  PLAYBACK_RATE_HOTKEY_STEP,
   VOLUME_HOTKEY_STEP,
   formatHotkeyCodeLabel,
   getHotkeyActionLabel,
   getHotkeyCatalog,
-  stepPlaybackRate,
 } from './catalog.js';

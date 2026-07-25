@@ -885,6 +885,9 @@ export class SubtitlePanel extends LitElement {
       for (const error of result.errors) {
         Message.error({ message: `${error.filename}: ${error.message}` });
       }
+      for (const warning of result.warnings) {
+        Message.warning({ message: `${warning.filename}: ${warning.message}` });
+      }
       for (const skipped of result.skipped) {
         Message.info({ message: `${skipped.filename}: ${skipped.message}` });
       }

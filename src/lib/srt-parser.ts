@@ -1,23 +1,67 @@
-import { msg } from '@lit/localize';
+import { msg, str } from '@lit/localize';
 import type { SubtitleType, SubtitleSegment } from '../types/models.js';
 
+/** 宽松匹配：小时 1–2 位，毫秒 1–3 位，逗号或点分隔 */
 const SRT_TIMESTAMP =
-  /(\d{2}):(\d{2}):(\d{2})[,.](\d{3})\s*-->\s*(\d{2}):(\d{2}):(\d{2})[,.](\d{3})/;
+  /(\d{1,2}):(\d{2}):(\d{2})[,.](\d{1,3})\s*-->\s*(\d{1,2}):(\d{2}):(\d{2})[,.](\d{1,3})/;
 
-const LRC_TIMESTAMP = /^\[(\d{1,2}):(\d{2})(?:\.(\d{2,3}))?\](.*)$/;
+/** 疑似 SRT 时间轴但未通过宽松正则（用于告警） */
+const SRT_TIMESTAMP_LOOKALIKE = /\d{1,2}:\d{2}:\d{2}|-->/;
+
+/** LRC：小数秒 1 位及以上均可；元数据行另判 */
+const LRC_TIMESTAMP = /^\[(\d{1,2}):(\d{2})(?:\.(\d+))?\](.*)$/;
+const LRC_TIMESTAMP_LOOKALIKE = /^\[\d/;
 const LRC_METADATA = /^\[[a-zA-Z]+:.+\]$/;
 
 /** LRC 末行无下一句时，默认展示时长（秒） */
 const LRC_DEFAULT_DURATION = 3;
 
-function parseSrtTimestamp(h: string, m: string, s: string, ms: string): number {
-  return Number((Number(h) * 3600 + Number(m) * 60 + Number(s) + Number(ms) / 1000).toFixed(5));
+const WARNING_LINE_MAX_CHARS = 80;
+
+export type SubtitleParseWarning = {
+  /** 1-based 行号 */
+  line: number;
+  text: string;
+  reason: string;
+};
+
+export type SubtitleParseResult = {
+  segments: SubtitleSegment[];
+  warnings: SubtitleParseWarning[];
+};
+
+export type SubtitleValidateResult = {
+  segments: SubtitleSegment[] | null;
+  error?: string;
+  warnings: SubtitleParseWarning[];
+};
+
+function truncateWarningText(text: string): string {
+  const trimmed = text.trim();
+  if (trimmed.length <= WARNING_LINE_MAX_CHARS) {
+    return trimmed;
+  }
+  return `${trimmed.slice(0, WARNING_LINE_MAX_CHARS)}…`;
+}
+
+/** 将小数秒字段按字面量解析（宽入：.5 / .50 / .500 均为 0.5s） */
+function parseFractionalSeconds(fraction?: string): number {
+  if (fraction === undefined || fraction === '') {
+    return 0;
+  }
+  return Number(`0.${fraction}`);
+}
+
+function parseSrtTimestamp(h: string, m: string, s: string, fraction: string): number {
+  return Number(
+    (Number(h) * 3600 + Number(m) * 60 + Number(s) + parseFractionalSeconds(fraction)).toFixed(5),
+  );
 }
 
 function parseLrcTimestamp(minutes: string, seconds: string, fraction?: string): number {
-  const ms =
-    fraction === undefined ? 0 : fraction.length === 2 ? Number(fraction) * 10 : Number(fraction);
-  return Number((Number(minutes) * 60 + Number(seconds) + ms / 1000).toFixed(5));
+  return Number(
+    (Number(minutes) * 60 + Number(seconds) + parseFractionalSeconds(fraction)).toFixed(5),
+  );
 }
 
 function normalizeLineEndings(text: string): string {
@@ -61,22 +105,29 @@ function assignLrcEndTimes(segments: SubtitleSegment[]): void {
   }
 }
 
-function validateSegments(segments: SubtitleSegment[]): {
-  segments: SubtitleSegment[] | null;
-  error?: string;
-} {
-  console.log('validateSegments', segments);
+function formatEmptySubtitleError(warnings: SubtitleParseWarning[]): string {
+  const first = warnings[0];
+  if (!first) {
+    return msg('未找到有效的字幕条目');
+  }
+  return msg(str`未找到有效的字幕条目（第 ${first.line} 行：${truncateWarningText(first.text)}）`);
+}
+
+function validateSegments(
+  segments: SubtitleSegment[],
+  warnings: SubtitleParseWarning[],
+): SubtitleValidateResult {
   if (segments.length === 0) {
-    return { segments: null, error: msg('未找到有效的字幕条目') };
+    return { segments: null, error: formatEmptySubtitleError(warnings), warnings };
   }
 
   for (const segment of segments) {
     if (segment.endTime <= segment.startTime) {
-      return { segments: null, error: msg('字幕时间轴无效') };
+      return { segments: null, error: msg('字幕时间轴无效'), warnings };
     }
   }
 
-  return { segments };
+  return { segments, warnings };
 }
 
 export function detectSubtitleFormat(content: string): SubtitleType | null {
@@ -89,82 +140,130 @@ export function detectSubtitleFormat(content: string): SubtitleType | null {
     return 'srt';
   }
 
-  if (/^\[\d{1,2}:\d{2}(?:\.\d{2,3})?\]/m.test(normalized)) {
+  if (/^\[\d{1,2}:\d{2}(?:\.\d+)?\]/m.test(normalized)) {
     return 'lrc';
   }
 
   return null;
 }
 
-export function parseSrt(content: string): SubtitleSegment[] {
+export function parseSrt(content: string): SubtitleParseResult {
   const normalized = normalizeLineEndings(content.trim());
   if (!normalized) {
-    return [];
+    return { segments: [], warnings: [] };
   }
 
-  const blocks = normalized.split(/\n\n+/);
+  const rawLines = normalized.split('\n');
+  const warnings: SubtitleParseWarning[] = [];
   const segments: SubtitleSegment[] = [];
 
-  for (const block of blocks) {
-    const lines = block
-      .split('\n')
-      .map((line) => line.trim())
-      .filter(Boolean);
-    if (lines.length < 2) {
+  let index = 0;
+  while (index < rawLines.length) {
+    while (index < rawLines.length && !rawLines[index]!.trim()) {
+      index += 1;
+    }
+    if (index >= rawLines.length) {
+      break;
+    }
+
+    const blockLines: Array<{ line: number; text: string }> = [];
+    while (index < rawLines.length && rawLines[index]!.trim()) {
+      blockLines.push({ line: index + 1, text: rawLines[index]!.trim() });
+      index += 1;
+    }
+
+    if (blockLines.length < 2) {
       continue;
     }
 
-    const timestampLine = lines.find((line) => SRT_TIMESTAMP.test(line));
-    if (!timestampLine) {
+    const timestampEntry = blockLines.find((entry) => SRT_TIMESTAMP.test(entry.text));
+    if (!timestampEntry) {
+      const lookalike = blockLines.find((entry) => SRT_TIMESTAMP_LOOKALIKE.test(entry.text));
+      if (lookalike) {
+        warnings.push({
+          line: lookalike.line,
+          text: lookalike.text,
+          reason: msg('时间戳格式无效'),
+        });
+      }
       continue;
     }
 
-    const match = SRT_TIMESTAMP.exec(timestampLine);
+    const match = SRT_TIMESTAMP.exec(timestampEntry.text);
     if (!match) {
+      warnings.push({
+        line: timestampEntry.line,
+        text: timestampEntry.text,
+        reason: msg('时间戳格式无效'),
+      });
       continue;
     }
 
-    const timestampIndex = lines.indexOf(timestampLine);
-    const textLines = lines.slice(timestampIndex + 1);
+    const timestampIndex = blockLines.indexOf(timestampEntry);
+    const textLines = blockLines.slice(timestampIndex + 1).map((entry) => entry.text);
     const { text, translation } = parseBilingualText(textLines.join('\n'));
 
     if (!text) {
       continue;
     }
 
+    const startTime = parseSrtTimestamp(match[1]!, match[2]!, match[3]!, match[4]!);
+    const endTime = parseSrtTimestamp(match[5]!, match[6]!, match[7]!, match[8]!);
+
+    if (endTime <= startTime) {
+      warnings.push({
+        line: timestampEntry.line,
+        text: timestampEntry.text,
+        reason: msg('字幕时间轴无效'),
+      });
+      continue;
+    }
+
     segments.push({
       id: '',
-      startTime: parseSrtTimestamp(match[1], match[2], match[3], match[4]),
-      endTime: parseSrtTimestamp(match[5], match[6], match[7], match[8]),
+      startTime,
+      endTime,
       text,
       ...(translation ? { translation } : {}),
     });
   }
 
-  return segments.sort((a, b) => a.startTime - b.startTime);
+  return {
+    segments: segments.sort((a, b) => a.startTime - b.startTime),
+    warnings,
+  };
 }
 
-export function parseLrc(content: string): SubtitleSegment[] {
+export function parseLrc(content: string): SubtitleParseResult {
   const normalized = normalizeLineEndings(content.trim());
   if (!normalized) {
-    return [];
+    return { segments: [], warnings: [] };
   }
 
   const groupedByTime = new Map<number, string[]>();
+  const warnings: SubtitleParseWarning[] = [];
 
-  for (const line of normalized.split('\n')) {
-    const trimmed = line.trim();
+  const rawLines = normalized.split('\n');
+  for (let index = 0; index < rawLines.length; index += 1) {
+    const trimmed = rawLines[index]!.trim();
     if (!trimmed || LRC_METADATA.test(trimmed)) {
       continue;
     }
 
     const match = LRC_TIMESTAMP.exec(trimmed);
     if (!match) {
+      if (LRC_TIMESTAMP_LOOKALIKE.test(trimmed)) {
+        warnings.push({
+          line: index + 1,
+          text: trimmed,
+          reason: msg('时间戳格式无效'),
+        });
+      }
       continue;
     }
 
-    const startTime = parseLrcTimestamp(match[1], match[2], match[3]);
-    const lyricText = match[4].trim();
+    const startTime = parseLrcTimestamp(match[1]!, match[2]!, match[3]);
+    const lyricText = match[4]!.trim();
     if (!lyricText) {
       continue;
     }
@@ -194,10 +293,10 @@ export function parseLrc(content: string): SubtitleSegment[] {
   segments.sort((a, b) => a.startTime - b.startTime);
   assignLrcEndTimes(segments);
 
-  return segments;
+  return { segments, warnings };
 }
 
-export function parseSubtitle(content: string, format?: SubtitleType): SubtitleSegment[] {
+export function parseSubtitle(content: string, format?: SubtitleType): SubtitleParseResult {
   const resolvedFormat = format ?? detectSubtitleFormat(content);
   if (resolvedFormat === 'lrc') {
     return parseLrc(content);
@@ -205,29 +304,27 @@ export function parseSubtitle(content: string, format?: SubtitleType): SubtitleS
   if (resolvedFormat === 'srt') {
     return parseSrt(content);
   }
-  return [];
+  return { segments: [], warnings: [] };
 }
 
-export function validateSrtContent(content: string): {
-  segments: SubtitleSegment[] | null;
-  error?: string;
-} {
-  return validateSegments(parseSrt(content));
+export function formatSubtitleParseWarning(warning: SubtitleParseWarning): string {
+  return msg(str`第 ${warning.line} 行：${warning.reason}（${truncateWarningText(warning.text)}）`);
 }
 
-export function validateLrcContent(content: string): {
-  segments: SubtitleSegment[] | null;
-  error?: string;
-} {
-  return validateSegments(parseLrc(content));
+export function validateSrtContent(content: string): SubtitleValidateResult {
+  const parsed = parseSrt(content);
+  return validateSegments(parsed.segments, parsed.warnings);
+}
+
+export function validateLrcContent(content: string): SubtitleValidateResult {
+  const parsed = parseLrc(content);
+  return validateSegments(parsed.segments, parsed.warnings);
 }
 
 export function validateSubtitleContent(
   content: string,
   format?: SubtitleType,
-): {
-  segments: SubtitleSegment[] | null;
-  error?: string;
-} {
-  return validateSegments(parseSubtitle(content, format));
+): SubtitleValidateResult {
+  const parsed = parseSubtitle(content, format);
+  return validateSegments(parsed.segments, parsed.warnings);
 }

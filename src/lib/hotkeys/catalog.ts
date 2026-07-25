@@ -15,8 +15,8 @@ export type HotkeyCatalogRow = {
   scopeNote?: string;
 };
 
-/** Discrete rates used by practice `[` / `]` hotkeys. */
-export const PLAYBACK_RATE_HOTKEY_STEPS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2] as const;
+/** Continuous rate step used by practice `[` / `]` hotkeys. */
+export const PLAYBACK_RATE_HOTKEY_STEP = 0.1;
 
 export const VOLUME_HOTKEY_STEP = 0.05;
 
@@ -166,18 +166,4 @@ export function getHotkeyCatalog(scopes: readonly HotkeyScopeId[]): HotkeyCatalo
     }
     return row;
   });
-}
-
-/** Move to the next/previous discrete playback-rate step. */
-export function stepPlaybackRate(current: number, direction: 1 | -1): number {
-  const steps = PLAYBACK_RATE_HOTKEY_STEPS;
-  if (direction > 0) {
-    return steps.find((rate) => rate > current + 1e-9) ?? steps[steps.length - 1];
-  }
-  for (let i = steps.length - 1; i >= 0; i -= 1) {
-    if (steps[i] < current - 1e-9) {
-      return steps[i];
-    }
-  }
-  return steps[0];
 }

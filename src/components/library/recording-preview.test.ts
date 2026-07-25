@@ -1,6 +1,44 @@
 import { html } from 'lit';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+class MockGainNode {
+  gain = { value: 1 };
+  disconnect = vi.fn();
+  connect = vi.fn();
+}
+
+class MockMediaElementSource {
+  connect = vi.fn();
+  disconnect = vi.fn();
+}
+
+class MockAudioContext {
+  destination = {};
+  resume = vi.fn().mockResolvedValue(undefined);
+
+  createGain(): MockGainNode {
+    return new MockGainNode();
+  }
+
+  createMediaElementSource(): MockMediaElementSource {
+    return new MockMediaElementSource();
+  }
+
+  decodeAudioData = vi.fn().mockResolvedValue({
+    duration: 10,
+    length: 480000,
+    sampleRate: 48000,
+    numberOfChannels: 1,
+    getChannelData: () => new Float32Array(480000),
+  });
+
+  close = vi.fn();
+}
+
+vi.stubGlobal('AudioContext', MockAudioContext);
+vi.stubGlobal('webkitAudioContext', MockAudioContext);
+
+import { attachMediaElementGain, getMediaElementGain } from '../../lib/media-element-gain.js';
 import type { PracticeSegment, SubtitleSegment } from '../../types/models.js';
 import {
   HotkeyManager,
@@ -750,6 +788,23 @@ describe('recording-preview', () => {
     await el.updateComplete;
     expect(sourceAudio.volume).toBe(0.4);
     expect(el._sourceVolume).toBe(0.4);
+  });
+
+  it('applies gain boost above 100% on preview tracks', async () => {
+    const el = await renderPreview();
+    const sourceAudio = new Audio();
+    attachMediaElementGain(sourceAudio);
+    el._sourceAudio = sourceAudio;
+    el._recordingAudio = new Audio();
+    el._playMode = 'source';
+
+    el._handleVolumeChange('source', 1.5);
+    await el.updateComplete;
+
+    expect(sourceAudio.volume).toBe(1);
+    expect(el._sourceVolume).toBe(1.5);
+    expect(getMediaElementGain(sourceAudio)?.gainNode.gain.value).toBe(1.5);
+    expect(el.shadowRoot!.querySelector('.volume-trigger--boosted')).toBeTruthy();
   });
 
   it('shows one volume icon in recording mode and maps subtitle via practice segments', async () => {

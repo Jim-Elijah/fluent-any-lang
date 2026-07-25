@@ -1,6 +1,34 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+class MockGainNode {
+  gain = { value: 1 };
+  disconnect = vi.fn();
+  connect = vi.fn();
+}
+
+class MockMediaElementSource {
+  connect = vi.fn();
+  disconnect = vi.fn();
+}
+
+class MockAudioContext {
+  destination = {};
+  resume = vi.fn().mockResolvedValue(undefined);
+
+  createGain(): MockGainNode {
+    return new MockGainNode();
+  }
+
+  createMediaElementSource(): MockMediaElementSource {
+    return new MockMediaElementSource();
+  }
+}
+
+vi.stubGlobal('AudioContext', MockAudioContext);
+vi.stubGlobal('webkitAudioContext', MockAudioContext);
+
 import type { SubtitleSegment } from '../types/models.js';
+import { getMediaElementGain } from '../lib/media-element-gain.js';
 import { MediaController, type LoadedTrack } from './media-controller.js';
 
 type MakeTrackOptions = {
@@ -131,6 +159,34 @@ describe('MediaController', () => {
     expect(audio.volume).toBe(0.4);
     expect(controller.getSnapshot().playbackRate).toBe(1.5);
     expect(controller.getSnapshot().volume).toBe(0.4);
+  });
+
+  it('applies gain boost above 100%', async () => {
+    await controller.loadTracks([makeTrack('a', 'Track A')]);
+    controller.setVolume(1.5);
+
+    expect(audio.volume).toBe(1);
+    expect(controller.getSnapshot().volume).toBe(1.5);
+    expect(getMediaElementGain(audio)?.gainNode.gain.value).toBe(1.5);
+  });
+
+  it('clamps volume to maxVolumeBoost setting', async () => {
+    const { setAppSettings } = await import('../lib/app-settings.js');
+    setAppSettings({ maxVolumeBoost: 2.5 });
+    await controller.loadTracks([makeTrack('a', 'Track A')]);
+    controller.setVolume(3);
+
+    expect(controller.getSnapshot().volume).toBe(2.5);
+  });
+
+  it('clamps playback rate to maxPlaybackRate setting', async () => {
+    const { setAppSettings } = await import('../lib/app-settings.js');
+    setAppSettings({ maxPlaybackRate: 1.5 });
+    await controller.loadTracks([makeTrack('a', 'Track A')]);
+    controller.setPlaybackRate(3);
+
+    expect(controller.getSnapshot().playbackRate).toBe(1.5);
+    expect(audio.playbackRate).toBe(1.5);
   });
 
   it('navigates to next and previous track', async () => {

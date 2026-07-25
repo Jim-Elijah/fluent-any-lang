@@ -8,10 +8,10 @@ import { MediaController } from '../../controllers/media-controller.js';
 import { loadSentenceForPractice, sentenceToLoadedTrack } from '../../lib/media-loader.js';
 import { reportError } from '../../lib/error-reporter.js';
 import {
+  PLAYBACK_RATE_HOTKEY_STEP,
   VOLUME_HOTKEY_STEP,
   getHotkeyCatalog,
   getHotkeyManager,
-  stepPlaybackRate,
   supportsKeyboardShortcuts,
 } from '../../lib/hotkeys/index.js';
 import type { MediaControlsConfig, RouteContext, SentenceBankEntry } from '../../types/models.js';
@@ -110,6 +110,7 @@ export class SentencePracticePage extends NavigatorElement {
     .actions {
       display: flex;
       flex-wrap: wrap;
+      align-items: center;
       gap: var(--space-sm);
     }
 
@@ -216,11 +217,11 @@ export class SentencePracticePage extends NavigatorElement {
           },
           rateUp: () => {
             if (!this._sentencePracticeMediaHotkeysEnabled()) return;
-            this._nudgePlaybackRate(1);
+            this._nudgePlaybackRate(PLAYBACK_RATE_HOTKEY_STEP);
           },
           rateDown: () => {
             if (!this._sentencePracticeMediaHotkeysEnabled()) return;
-            this._nudgePlaybackRate(-1);
+            this._nudgePlaybackRate(-PLAYBACK_RATE_HOTKEY_STEP);
           },
           toggleHotkeysHelp: () => {
             this._toggleHotkeysHelp();
@@ -314,9 +315,9 @@ export class SentencePracticePage extends NavigatorElement {
     this._controller.setVolume(current + delta);
   }
 
-  private _nudgePlaybackRate(direction: 1 | -1): void {
+  private _nudgePlaybackRate(delta: number): void {
     const current = this._controller.getSnapshot().playbackRate;
-    this._controller.setPlaybackRate(stepPlaybackRate(current, direction));
+    this._controller.setPlaybackRate(current + delta);
   }
 
   private _pauseMediaBeforeRecording = (): void => {

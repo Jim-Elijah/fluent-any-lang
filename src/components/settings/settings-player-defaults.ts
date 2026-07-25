@@ -16,7 +16,12 @@ import { Message } from '../ui/message.js';
 
 type PlayerNumericKey = keyof Pick<
   AppSettings,
-  'defaultSleepMinutes' | 'repeatPausePercent' | 'defaultSourceVolume' | 'defaultNoiseVolume'
+  | 'defaultSleepMinutes'
+  | 'repeatPausePercent'
+  | 'defaultSourceVolume'
+  | 'defaultNoiseVolume'
+  | 'maxVolumeBoost'
+  | 'maxPlaybackRate'
 >;
 
 @customElement('settings-player-defaults')
@@ -92,7 +97,9 @@ export class SettingsPlayerDefaults extends LitElement {
     };
   }
 
-  private _onSliderChange(key: 'defaultSourceVolume' | 'defaultNoiseVolume') {
+  private _onSliderChange(
+    key: 'defaultSourceVolume' | 'defaultNoiseVolume' | 'maxVolumeBoost' | 'maxPlaybackRate',
+  ) {
     return (event: CustomEvent<SliderChangeDetail>) => {
       this._commitNumber(key, event.detail.value);
     };
@@ -110,6 +117,26 @@ export class SettingsPlayerDefaults extends LitElement {
   private _volumeLabel(key: 'defaultSourceVolume' | 'defaultNoiseVolume', label: string): string {
     const pct = Math.round(this._settings[key] * 100);
     return msg(str`${label}（${pct}%）`);
+  }
+
+  private _maxVolumeBoostLabel(): string {
+    const pct = Math.round(this._settings.maxVolumeBoost * 100);
+    return msg(str`最大音量上限（${pct}%）`);
+  }
+
+  private _maxVolumeBoostRangeHint(): string {
+    const { min, max } = APP_SETTINGS_PLAYER_LIMITS.maxVolumeBoost;
+    return msg(str`允许范围 ${Math.round(min * 100)}%–${Math.round(max * 100)}%`);
+  }
+
+  private _maxPlaybackRateLabel(): string {
+    const rate = Number(this._settings.maxPlaybackRate.toFixed(1));
+    return msg(str`最大播放倍速（${rate}x）`);
+  }
+
+  private _maxPlaybackRateRangeHint(): string {
+    const { min, max } = APP_SETTINGS_PLAYER_LIMITS.maxPlaybackRate;
+    return msg(str`允许范围 ${min}x–${max}x`);
   }
 
   private _numberField(key: 'repeatPausePercent', label: string) {
@@ -202,6 +229,42 @@ export class SettingsPlayerDefaults extends LitElement {
               @change=${this._onSliderChange('defaultNoiseVolume')}
             ></ui-slider>
             <p class="hint">${msg('抗噪听模式下噪音的默认音量。')}</p>
+          </div>
+          <div class="field">
+            <span class="field-label">${this._maxVolumeBoostLabel()}</span>
+            <ui-slider
+              .value=${s.maxVolumeBoost}
+              min=${APP_SETTINGS_PLAYER_LIMITS.maxVolumeBoost.min}
+              max=${APP_SETTINGS_PLAYER_LIMITS.maxVolumeBoost.max}
+              step=${APP_SETTINGS_PLAYER_LIMITS.maxVolumeBoost.step}
+              .tooltip=${{
+                formatter: (v: number) => `${Math.round(v * 100)}%`,
+                placement: 'top',
+              }}
+              @change=${this._onSliderChange('maxVolumeBoost')}
+            ></ui-slider>
+            <p class="hint">
+              ${msg('媒体播放器与录音预览的音量滑块上限。超过 100% 可能产生失真，请适度使用。')}
+              ${this._maxVolumeBoostRangeHint()}
+            </p>
+          </div>
+          <div class="field">
+            <span class="field-label">${this._maxPlaybackRateLabel()}</span>
+            <ui-slider
+              .value=${s.maxPlaybackRate}
+              min=${APP_SETTINGS_PLAYER_LIMITS.maxPlaybackRate.min}
+              max=${APP_SETTINGS_PLAYER_LIMITS.maxPlaybackRate.max}
+              step=${APP_SETTINGS_PLAYER_LIMITS.maxPlaybackRate.step}
+              .tooltip=${{
+                formatter: (v: number) => `${Number(v.toFixed(1))}x`,
+                placement: 'top',
+              }}
+              @change=${this._onSliderChange('maxPlaybackRate')}
+            ></ui-slider>
+            <p class="hint">
+              ${msg('媒体播放器倍速滑块与快捷键上限。超过 1x 可能产生失真，请适度使用。')}
+              ${this._maxPlaybackRateRangeHint()}
+            </p>
           </div>
         </div>
       </section>

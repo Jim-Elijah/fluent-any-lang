@@ -7,6 +7,7 @@ import './slider.js';
 import type { DropdownPlacement } from './dropdown.js';
 import type { SliderChangeDetail } from './slider.js';
 import { Z_INDEX } from './internal/z-index.js';
+import { buildSparseMarks } from '../../lib/slider-marks.js';
 
 export type VolumeControlChangeDetail = { value: number };
 
@@ -45,6 +46,10 @@ export class UiVolumeControl extends LitElement {
       border-color: var(--color-primary, #1677ff);
     }
 
+    .volume-trigger--boosted {
+      color: var(--color-warning, #fa8c16);
+    }
+
     .volume-trigger:disabled {
       opacity: 0.55;
       cursor: not-allowed;
@@ -77,21 +82,30 @@ export class UiVolumeControl extends LitElement {
   label = '';
 
   private get _percent(): number {
-    const range = this.max - this.min;
-    if (range <= 0) return 0;
-    const ratio = (this.value - this.min) / range;
-    return Math.round(Math.max(0, Math.min(1, ratio)) * 100);
+    return Math.round(Math.max(0, this.value) * 100);
   }
 
   private _formatPercent(value: number): string {
-    const range = this.max - this.min;
-    if (range <= 0) return '0%';
-    const ratio = (value - this.min) / range;
-    return `${Math.round(Math.max(0, Math.min(1, ratio)) * 100)}%`;
+    return `${Math.round(Math.max(0, value) * 100)}%`;
+  }
+
+  /** Noise / simple 0–1 volume: keep fixed 0 / 50 / 100 pattern (not media boost marks). */
+  private get _volumeMarks(): Record<number, string> {
+    const format = (v: number) => `${Math.round(v * 100)}%`;
+    const candidates: Array<readonly [number, string]> = [
+      [this.min, format(this.min)],
+      [0.5, '50%'],
+      [1, '100%'],
+    ];
+    if (this.max > 1 + 1e-9) {
+      candidates.push([this.max, format(this.max)]);
+    }
+    return buildSparseMarks(this.min, this.max, candidates);
   }
 
   render() {
     const percent = this._percent;
+    const boosted = this.value > 1;
     const title = this.label ? `${this.label} ${percent}%` : `${msg('音量')} ${percent}%`;
 
     return html`
@@ -103,7 +117,11 @@ export class UiVolumeControl extends LitElement {
         ?disabled=${this.disabled}
         style="--dropdown-overlay-min-width: 160px; --dropdown-overlay-padding-block: var(--space-sm); --dropdown-overlay-padding-inline: var(--space-sm);"
         .overlay=${html`
-          <span class="overlay-panel-label">${title}</span>
+          <span
+            class="overlay-panel-label"
+            style=${boosted ? 'color: var(--color-warning, #fa8c16);' : ''}
+            >${title}</span
+          >
           <ui-slider
             .value=${this.value}
             .min=${this.min}
@@ -112,11 +130,7 @@ export class UiVolumeControl extends LitElement {
             ?disabled=${this.disabled}
             style="--slider-mark-edge-padding: var(--space-sm);"
             orientation="horizontal"
-            .marks=${{
-              [this.min]: '0%',
-              [(this.min + this.max) / 2]: '50%',
-              [this.max]: '100%',
-            }}
+            .marks=${this._volumeMarks}
             .tooltip=${{
               formatter: (v: number) => this._formatPercent(v),
               placement: 'top',
@@ -127,7 +141,7 @@ export class UiVolumeControl extends LitElement {
       >
         <button
           type="button"
-          class="volume-trigger"
+          class="volume-trigger${boosted ? ' volume-trigger--boosted' : ''}"
           ?disabled=${this.disabled}
           title=${title}
           aria-label=${title}

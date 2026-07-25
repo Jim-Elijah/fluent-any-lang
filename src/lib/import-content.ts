@@ -27,7 +27,12 @@ import {
   titleTypeKey,
   validateMediaFile,
 } from './file-validation.js';
-import { validateSrtContent, validateLrcContent } from './srt-parser.js';
+import {
+  formatSubtitleParseWarning,
+  validateSrtContent,
+  validateLrcContent,
+  type SubtitleParseWarning,
+} from './srt-parser.js';
 import { assignSegmentIds } from './segment-id.js';
 import type {
   ConflictDecision,
@@ -57,9 +62,17 @@ type GroupImportResult = {
   primaryMedia?: MediaItem;
   subtitles?: SubtitleTrack;
   errors: ImportError[];
+  warnings: ImportError[];
   skipped: ImportError[];
   conflicts: ImportConflict[];
 };
+
+function warningsToImportErrors(filename: string, warnings: SubtitleParseWarning[]): ImportError[] {
+  return warnings.map((warning) => ({
+    filename,
+    message: formatSubtitleParseWarning(warning),
+  }));
+}
 
 function toOverwriteSet(values?: string[]): Set<string> {
   return new Set(values ?? []);
@@ -189,22 +202,20 @@ async function buildSubtitleTrack(
 async function parseSubtitleFile(
   file: File,
   type: SubtitleType,
-): Promise<{ segments?: SubtitleSegment[]; contentHash?: string; error?: string }> {
+): Promise<{
+  segments?: SubtitleSegment[];
+  contentHash?: string;
+  error?: string;
+  warnings: SubtitleParseWarning[];
+}> {
   const text = await file.text();
   const contentHash = await hashString(text);
-  if (type === 'srt') {
-    const validation = validateSrtContent(text);
-    return {
-      segments: validation.segments ?? undefined,
-      contentHash,
-      error: validation.error,
-    };
-  }
-  const validation = validateLrcContent(text);
+  const validation = type === 'srt' ? validateSrtContent(text) : validateLrcContent(text);
   return {
     segments: validation.segments ?? undefined,
     contentHash,
     error: validation.error,
+    warnings: validation.warnings,
   };
 }
 
@@ -484,6 +495,7 @@ async function importGroup(group: FileGroup, options: ImportOptions): Promise<Gr
   const retResult: GroupImportResult = {
     importedMedia: [],
     errors: [],
+    warnings: [],
     skipped: [],
     conflicts: [],
   };
@@ -532,12 +544,21 @@ async function importGroup(group: FileGroup, options: ImportOptions): Promise<Gr
         filename: subtitleFile.name,
         message: parsed.error ?? msg('无效的 SRT/LRC 文件'),
       });
+      // 首条坏行已写入 error，其余以 warning 补充
+      if (parsed.warnings.length > 1) {
+        retResult.warnings.push(
+          ...warningsToImportErrors(subtitleFile.name, parsed.warnings.slice(1)),
+        );
+      }
     } else if (parsed.segments.length === 0) {
       retResult.errors.push({
         filename: subtitleFile.name,
         message: msg('字幕文件没有有效片段'),
       });
     } else {
+      if (parsed.warnings.length > 0) {
+        retResult.warnings.push(...warningsToImportErrors(subtitleFile.name, parsed.warnings));
+      }
       let targetMediaId = primaryMedia?.id;
 
       if (!targetMediaId) {
@@ -617,6 +638,7 @@ export async function importContentFiles(
 ): Promise<ImportResult> {
   const { groups, errors } = groupFiles(files);
   const imported: Array<MediaItem | SubtitleTrack> = [];
+  const warnings: ImportError[] = [];
   const skipped: ImportError[] = [];
   const conflicts: ImportConflict[] = [];
 
@@ -624,6 +646,7 @@ export async function importContentFiles(
     const result = await importGroup(group, options);
 
     errors.push(...result.errors);
+    warnings.push(...result.warnings);
     skipped.push(...result.skipped);
     conflicts.push(...result.conflicts);
 
@@ -633,7 +656,7 @@ export async function importContentFiles(
     }
   }
 
-  return { imported, errors, skipped, conflicts };
+  return { imported, errors, warnings, skipped, conflicts };
 }
 
 /**
@@ -648,6 +671,7 @@ export async function importSubtitleForMedia(
   const result: ImportResult = {
     imported: [],
     errors: [],
+    warnings: [],
     skipped: [],
     conflicts: [],
   };
@@ -681,6 +705,9 @@ export async function importSubtitleForMedia(
       filename: file.name,
       message: parsed.error ?? msg('无效的 SRT/LRC 文件'),
     });
+    if (parsed.warnings.length > 1) {
+      result.warnings.push(...warningsToImportErrors(file.name, parsed.warnings.slice(1)));
+    }
     return result;
   }
 
@@ -690,6 +717,10 @@ export async function importSubtitleForMedia(
       message: msg('字幕文件没有有效片段'),
     });
     return result;
+  }
+
+  if (parsed.warnings.length > 0) {
+    result.warnings.push(...warningsToImportErrors(file.name, parsed.warnings));
   }
 
   const overwriteSubtitleMediaIds = options.overwrite ? new Set([mediaId]) : new Set<string>();

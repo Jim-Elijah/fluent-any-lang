@@ -8,6 +8,7 @@ import {
   DISCRIMINATION_MAX_NOISE_TRACKS,
   DISCRIMINATION_RATE_STEPS,
   LOOP_MODE_VALUES,
+  PLAYBACK_RATE_LIMITS,
   type AppSettings,
   type DiscriminationNoiseSelection,
   type DiscriminationSettings,
@@ -63,14 +64,17 @@ function clampNumber(
   return n;
 }
 
-function snapRate(value: unknown, fallback: number): number {
+function snapRate(value: unknown, fallback: number, maxRate: number): number {
   if (typeof value !== 'number' || !Number.isFinite(value)) {
-    return fallback;
+    return Math.min(fallback, maxRate);
   }
-  const steps: readonly number[] = DISCRIMINATION_RATE_STEPS;
-  let best = steps[0];
+  const steps: readonly number[] = DISCRIMINATION_RATE_STEPS.filter(
+    (step) => step <= maxRate + 1e-9,
+  );
+  const pool = steps.length > 0 ? steps : [Math.min(1, maxRate)];
+  let best = pool[0]!;
   let bestDist = Math.abs(value - best);
-  for (const step of steps) {
+  for (const step of pool) {
     const dist = Math.abs(value - step);
     if (dist < bestDist) {
       best = step;
@@ -100,13 +104,17 @@ function parseDiscriminationSelection(raw: unknown): DiscriminationNoiseSelectio
   return out;
 }
 
-export function normalizeDiscriminationSettings(raw: unknown): DiscriminationSettings {
+export function normalizeDiscriminationSettings(
+  raw: unknown,
+  maxPlaybackRate: number = DEFAULT_SETTINGS.maxPlaybackRate,
+): DiscriminationSettings {
   const defaults = DEFAULT_DISCRIMINATION_SETTINGS;
+  const maxRate = Math.max(PLAYBACK_RATE_LIMITS.min, maxPlaybackRate);
   if (!isRecord(raw)) {
     return {
       selected: [],
       ladderCount: defaults.ladderCount,
-      ladderRates: [...defaults.ladderRates],
+      ladderRates: defaults.ladderRates.map((rate) => Math.min(rate, maxRate)),
     };
   }
 
@@ -120,7 +128,7 @@ export function normalizeDiscriminationSettings(raw: unknown): DiscriminationSet
   const rawRates = Array.isArray(raw.ladderRates) ? raw.ladderRates : [];
   const ladderRates: number[] = [];
   for (let i = 0; i < ladderCount; i += 1) {
-    ladderRates.push(snapRate(rawRates[i], defaults.ladderRates[0] ?? 1));
+    ladderRates.push(snapRate(rawRates[i], defaults.ladderRates[0] ?? 1, maxRate));
   }
 
   return {
@@ -144,6 +152,13 @@ function parseAppSettings(raw: unknown): AppSettings {
 
   const limits = APP_SETTINGS_LIMITS;
   const playerLimits = APP_SETTINGS_PLAYER_LIMITS;
+  const maxPlaybackRate = clampNumber(
+    raw.maxPlaybackRate,
+    DEFAULT_SETTINGS.maxPlaybackRate,
+    playerLimits.maxPlaybackRate.min,
+    playerLimits.maxPlaybackRate.max,
+    playerLimits.maxPlaybackRate.step,
+  );
   return {
     maxRecordingsPerMedia: clampNumber(
       raw.maxRecordingsPerMedia,
@@ -197,6 +212,14 @@ function parseAppSettings(raw: unknown): AppSettings {
       playerLimits.defaultNoiseVolume.max,
       playerLimits.defaultNoiseVolume.step,
     ),
+    maxVolumeBoost: clampNumber(
+      raw.maxVolumeBoost,
+      DEFAULT_SETTINGS.maxVolumeBoost,
+      playerLimits.maxVolumeBoost.min,
+      playerLimits.maxVolumeBoost.max,
+      playerLimits.maxVolumeBoost.step,
+    ),
+    maxPlaybackRate,
     skipRecordingCountdown: parseBoolean(
       raw.skipRecordingCountdown,
       DEFAULT_SETTINGS.skipRecordingCountdown,
@@ -211,7 +234,7 @@ function parseAppSettings(raw: unknown): AppSettings {
       typeof raw.lastPlayedPlaylistId === 'string'
         ? raw.lastPlayedPlaylistId
         : DEFAULT_SETTINGS.lastPlayedPlaylistId,
-    discrimination: normalizeDiscriminationSettings(raw.discrimination),
+    discrimination: normalizeDiscriminationSettings(raw.discrimination, maxPlaybackRate),
   };
 }
 
@@ -285,6 +308,16 @@ export function getAppSettings(): AppSettings {
   }
 
   return parseAppSettings(null);
+}
+
+/** Max logical volume for media / recording preview (reads persisted settings). */
+export function getMaxVolumeBoost(): number {
+  return getAppSettings().maxVolumeBoost;
+}
+
+/** Max playback rate for media player / practice (reads persisted settings). */
+export function getMaxPlaybackRate(): number {
+  return getAppSettings().maxPlaybackRate;
 }
 
 export function setAppSettings(partial: Partial<AppSettings>): AppSettings {

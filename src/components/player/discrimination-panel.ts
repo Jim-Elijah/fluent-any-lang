@@ -10,6 +10,7 @@ import {
   DISCRIMINATION_MAX_NOISE_TRACKS,
   DISCRIMINATION_RATE_STEPS,
 } from '../../types/models.js';
+import { getMaxPlaybackRate } from '../../lib/app-settings.js';
 import { practiceViewStyles } from './practice-view-styles.js';
 import { getDiscriminationSummary } from './practice-tips.js';
 import '../ui/button.js';
@@ -85,10 +86,13 @@ export class DiscriminationPanel extends LitElement {
 
   render() {
     const settings = this.settings;
-    const rateOptions = DISCRIMINATION_RATE_STEPS.map((rate) => ({
-      value: String(rate),
-      label: `${rate}x`,
-    }));
+    const maxRate = getMaxPlaybackRate();
+    const rateOptions = DISCRIMINATION_RATE_STEPS.filter((rate) => rate <= maxRate + 1e-9).map(
+      (rate) => ({
+        value: String(rate),
+        label: `${rate}x`,
+      }),
+    );
     const countOptions = Array.from(
       { length: DISCRIMINATION_LADDER_COUNT_MAX - DISCRIMINATION_LADDER_COUNT_MIN + 1 },
       (_, i) => {

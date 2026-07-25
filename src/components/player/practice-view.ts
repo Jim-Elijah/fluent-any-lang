@@ -48,9 +48,9 @@ import {
   RECORDING_PREVIEW_OPEN_EVENT,
 } from '../../lib/audio-focus.js';
 import {
+  PLAYBACK_RATE_HOTKEY_STEP,
   VOLUME_HOTKEY_STEP,
   getHotkeyManager,
-  stepPlaybackRate,
   supportsKeyboardShortcuts,
 } from '../../lib/hotkeys/index.js';
 import {
@@ -151,7 +151,7 @@ export class PracticeView extends NavigatorElement {
   private _listeningMode: ListeningMode = 'free';
 
   @state()
-  private _speakingMode: SpeakingMode = 'shadowing';
+  private _speakingMode: SpeakingMode = 'echo';
 
   @state()
   private _discriminationSettings: DiscriminationSettings = {
@@ -348,12 +348,12 @@ export class PracticeView extends NavigatorElement {
           rateUp: () => {
             if (!this._practiceMediaHotkeysEnabled()) return;
             if (this._isDiscriminationMode()) return;
-            this._nudgePlaybackRate(1);
+            this._nudgePlaybackRate(PLAYBACK_RATE_HOTKEY_STEP);
           },
           rateDown: () => {
             if (!this._practiceMediaHotkeysEnabled()) return;
             if (this._isDiscriminationMode()) return;
-            this._nudgePlaybackRate(-1);
+            this._nudgePlaybackRate(-PLAYBACK_RATE_HOTKEY_STEP);
           },
           toggleSubtitles: () => {
             if (!this._practiceUiHotkeysEnabled()) return;
@@ -463,9 +463,9 @@ export class PracticeView extends NavigatorElement {
     this._controller.setVolume(current + delta);
   }
 
-  private _nudgePlaybackRate(direction: 1 | -1): void {
+  private _nudgePlaybackRate(delta: number): void {
     const current = this._controller.getSnapshot().playbackRate;
-    this._controller.setPlaybackRate(stepPlaybackRate(current, direction));
+    this._controller.setPlaybackRate(current + delta);
   }
 
   private _resolveAnalyticsMode(): PracticeAnalyticsMode {
@@ -604,6 +604,7 @@ export class PracticeView extends NavigatorElement {
     }
     this._syncMediaIdFromController();
     this._syncTimeTrackerMedia();
+    this._syncSpeakingModeAvailability();
     if (this._discriminationActive) {
       this._rateLadder.reset();
       this._ladderDisplayIndex = 0;
@@ -684,13 +685,13 @@ export class PracticeView extends NavigatorElement {
             variant="${this._practiceType === 'listening' ? 'primary' : 'secondary'}"
             @click="${() => this._setPracticeType('listening')}"
           >
-            <ui-icon name="listen" size="var(--icon-xl)"></ui-icon> ${msg('听力')}
+            ${msg('听力')}
           </ui-button>
           <ui-button
             variant="${this._practiceType === 'speaking' ? 'primary' : 'secondary'}"
             @click="${() => this._setPracticeType('speaking')}"
           >
-            <ui-icon name="speak" size="var(--icon-xl)"></ui-icon> ${msg('口语')}
+            ${msg('口语')}
           </ui-button>
         </div>
         ${isListening
@@ -729,12 +730,6 @@ export class PracticeView extends NavigatorElement {
         ${isSpeaking
           ? html`
               <div class="speaking-mode-tabs">
-                <ui-button
-                  variant="${this._speakingMode === 'shadowing' ? 'primary' : 'secondary'}"
-                  @click="${() => this._setSpeakingMode('shadowing')}"
-                >
-                  ${msg('同步跟读')}
-                </ui-button>
                 ${hasSubtitles
                   ? html`<ui-button
                       variant="${this._speakingMode === 'echo' ? 'primary' : 'secondary'}"
@@ -743,6 +738,12 @@ export class PracticeView extends NavigatorElement {
                       ${msg('回声跟读')}
                     </ui-button>`
                   : nothing}
+                <ui-button
+                  variant="${this._speakingMode === 'shadowing' ? 'primary' : 'secondary'}"
+                  @click="${() => this._setSpeakingMode('shadowing')}"
+                >
+                  ${msg('同步跟读')}
+                </ui-button>
               </div>
             `
           : nothing}
@@ -1157,6 +1158,7 @@ export class PracticeView extends NavigatorElement {
       await this._controller.loadTracks(playlist, startIndex);
       this._syncMediaIdFromController();
       this._syncTimeTrackerMedia();
+      this._syncSpeakingModeAvailability();
       await this._refreshRecordings();
       await this._refreshSentenceBankIds();
 
@@ -1190,6 +1192,9 @@ export class PracticeView extends NavigatorElement {
     this._echoSegmentIndex = -1;
     this._echoSegment = null;
     this._resetSessionUi();
+    if (type === 'speaking') {
+      this._syncSpeakingModeAvailability();
+    }
     this._timeTracker.setMode(this._resolveAnalyticsMode());
     if (type === 'speaking') {
       this._maybeShowTipsForSpeakingMode(this._speakingMode);
@@ -1197,6 +1202,28 @@ export class PracticeView extends NavigatorElement {
       void this._setupDiscrimination();
       this._maybeShowDiscriminationTips();
     }
+  }
+
+  /** Echo needs subtitles; fall back to shadowing when they are unavailable. */
+  private _syncSpeakingModeAvailability(): void {
+    const { hasSubtitles } = this._controller.getSnapshot();
+    if (hasSubtitles) {
+      return;
+    }
+    if (this._speakingMode !== 'echo') {
+      return;
+    }
+    if (this._echoListening) {
+      this._cancelEchoListen();
+    }
+    this._speakingMode = 'shadowing';
+    this._echoSegmentIndex = -1;
+    this._echoSegment = null;
+    this._echoRecorderEl?.destroy();
+    this._resetSessionUi();
+    this._recordingsModalOpen = false;
+    this._recordingPreviewOpen = false;
+    this._timeTracker.setMode(this._resolveAnalyticsMode());
   }
 
   private _setListeningMode(mode: ListeningMode): void {
@@ -1221,6 +1248,9 @@ export class PracticeView extends NavigatorElement {
 
   private _setSpeakingMode(mode: SpeakingMode): void {
     if (this._speakingMode === mode) {
+      return;
+    }
+    if (mode === 'echo' && !this._controller.getSnapshot().hasSubtitles) {
       return;
     }
 

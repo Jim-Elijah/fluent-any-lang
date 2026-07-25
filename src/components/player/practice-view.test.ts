@@ -9,7 +9,8 @@ const sampleSegments: SubtitleSegment[] = [
   { id: 's1', startTime: 5, endTime: 10, text: 'two' },
 ];
 
-function makeLoadedMedia(id: string) {
+function makeLoadedMedia(id: string, options: { hasSubtitles?: boolean } = {}) {
+  const hasSubtitles = options.hasSubtitles !== false;
   return {
     item: {
       id,
@@ -20,10 +21,10 @@ function makeLoadedMedia(id: string) {
       mimeType: 'audio/mpeg',
       duration: 120,
       createdAt: 1_000,
-      hasSubtitles: true,
+      hasSubtitles,
     },
     blob: new Blob(['audio'], { type: 'audio/mpeg' }),
-    segments: sampleSegments,
+    segments: hasSubtitles ? sampleSegments : [],
   };
 }
 
@@ -78,6 +79,7 @@ type PracticeViewInternals = PracticeView & {
       navigationLocked: boolean;
       currentSegmentIndex: number;
       currentTime: number;
+      hasSubtitles: boolean;
     };
     seekToSegment: (index: number, autoPlay?: boolean, options?: { force?: boolean }) => void;
     setNavigationLocked: (locked: boolean) => void;
@@ -88,6 +90,8 @@ type PracticeViewInternals = PracticeView & {
   _recording: boolean;
   _recordingsModalOpen: boolean;
   _recordingPreviewOpen: boolean;
+  _speakingMode: 'shadowing' | 'echo';
+  _onTrackChange: () => void;
   _shadowingRecorderEl?: {
     startRecording: () => Promise<void>;
     stopRecording: () => Promise<void>;
@@ -124,6 +128,8 @@ describe('practice-view', () => {
       }),
     );
 
+    mockLoadMedia.mockReset();
+    mockLoadPlaylist.mockReset();
     mockLoadMedia.mockResolvedValue(makeLoadedMedia('media-1'));
     mockLoadPlaylist.mockResolvedValue([makeLoadedMedia('media-1'), makeLoadedMedia('media-2')]);
     mockCountEchoRecordings.mockResolvedValue(0);
@@ -169,15 +175,83 @@ describe('practice-view', () => {
     );
     speakingButton?.click();
     await el.updateComplete;
+    await settleView(el);
+    expect(el._speakingMode).toBe('echo');
+  }
 
-    const echoButton = Array.from(el.shadowRoot!.querySelectorAll('ui-button')).find((button) =>
-      button.textContent?.includes('回声跟读'),
+  async function switchToShadowingMode(el: PracticeViewInternals) {
+    await settleView(el);
+
+    const speakingButton = Array.from(el.shadowRoot!.querySelectorAll('ui-button')).find((button) =>
+      button.textContent?.includes('口语'),
     );
-    expect(echoButton).toBeDefined();
-    echoButton?.click();
+    speakingButton?.click();
+    await el.updateComplete;
+
+    const shadowingButton = Array.from(el.shadowRoot!.querySelectorAll('ui-button')).find(
+      (button) => button.textContent?.includes('同步跟读'),
+    );
+    expect(shadowingButton).toBeDefined();
+    shadowingButton?.click();
     await el.updateComplete;
     await settleView(el);
+    expect(el._speakingMode).toBe('shadowing');
   }
+
+  it('defaults to echo speaking mode and lists echo before shadowing when subtitles exist', async () => {
+    const el = await renderView();
+    await settleView(el);
+
+    const speakingButton = Array.from(el.shadowRoot!.querySelectorAll('ui-button')).find((button) =>
+      button.textContent?.includes('口语'),
+    );
+    speakingButton?.click();
+    await el.updateComplete;
+
+    expect(el._speakingMode).toBe('echo');
+    const modeTabs = el.shadowRoot!.querySelector('.speaking-mode-tabs');
+    const labels = Array.from(modeTabs?.querySelectorAll('ui-button') ?? []).map((button) =>
+      button.textContent?.trim(),
+    );
+    expect(labels).toEqual(['回声跟读', '同步跟读']);
+  });
+
+  it('falls back to shadowing and hides echo when media has no subtitles', async () => {
+    mockLoadMedia.mockResolvedValue(makeLoadedMedia('media-1', { hasSubtitles: false }));
+    const el = await renderView();
+    await settleView(el);
+
+    const speakingButton = Array.from(el.shadowRoot!.querySelectorAll('ui-button')).find((button) =>
+      button.textContent?.includes('口语'),
+    );
+    speakingButton?.click();
+    await el.updateComplete;
+
+    expect(el._speakingMode).toBe('shadowing');
+    const modeTabs = el.shadowRoot!.querySelector('.speaking-mode-tabs');
+    const labels = Array.from(modeTabs?.querySelectorAll('ui-button') ?? []).map((button) =>
+      button.textContent?.trim(),
+    );
+    expect(labels).toEqual(['同步跟读']);
+  });
+
+  it('falls back from echo to shadowing when track change removes subtitles', async () => {
+    const el = await renderView();
+    await switchToEchoMode(el);
+    expect(el._speakingMode).toBe('echo');
+
+    const snapshot = el._controller.getSnapshot();
+    vi.spyOn(el._controller, 'getSnapshot').mockReturnValue({
+      ...snapshot,
+      hasSubtitles: false,
+      segments: [],
+    });
+
+    el._onTrackChange();
+    await settleView(el);
+
+    expect(el._speakingMode).toBe('shadowing');
+  });
 
   it('renders practice layout shell', async () => {
     const el = await renderView();
@@ -548,14 +622,6 @@ describe('practice-view', () => {
       ),
     ).toBe(true);
   });
-
-  async function switchToShadowingMode(el: PracticeViewInternals) {
-    const speakingButton = Array.from(el.shadowRoot!.querySelectorAll('ui-button')).find((button) =>
-      button.textContent?.includes('口语'),
-    );
-    speakingButton?.click();
-    await el.updateComplete;
-  }
 
   it('seeks to first segment when shadowing starts at currentTime 0', async () => {
     const el = await renderView();

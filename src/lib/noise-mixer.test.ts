@@ -95,4 +95,16 @@ describe('NoiseMixer', () => {
 
     mixer.destroy();
   });
+
+  it('clamps track volume to 100%', () => {
+    globalThis.Audio = FakeAudio as unknown as typeof Audio;
+    const mixer = new NoiseMixer();
+    mixer.setTracks([{ id: 'a', url: 'https://example.com/a.mp3', volume: 1.5 }]);
+    expect(FakeAudio.instances[0].volume).toBe(1);
+
+    mixer.setTrackVolume('a', 2);
+    expect(FakeAudio.instances[0].volume).toBe(1);
+
+    mixer.destroy();
+  });
 });
