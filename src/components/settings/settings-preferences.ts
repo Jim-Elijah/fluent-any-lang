@@ -94,12 +94,12 @@ export class SettingsPreferences extends LitElement {
             }}
           >
             <div class="label-wrap">
-              <span class="label">${msg('跳过同步跟读模式提示')}</span>
-              <span class="hint">${msg('开启后进入同步跟读模式时不再弹出说明。')}</span>
+              <span class="label">${msg('跳过影子跟读模式提示')}</span>
+              <span class="hint">${msg('开启后进入影子跟读模式时不再弹出说明。')}</span>
             </div>
             <ui-switch
               .checked=${s.skipShadowingTips}
-              .label=${msg('跳过同步跟读模式提示')}
+              .label=${msg('跳过影子跟读模式提示')}
               @change=${this._onSwitch('skipShadowingTips')}
             ></ui-switch>
           </div>

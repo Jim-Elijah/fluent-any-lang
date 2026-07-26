@@ -5,7 +5,7 @@ export type PracticeTipsKind = 'shadowing' | 'echo' | 'discrimination';
 export function getShadowingTips(): string[] {
   return [
     msg(
-      '同步跟读：点击下方【麦克风】→【倒计时】→ 播放【原音】并【开始录音】；原音播完【自动】停止录音（也可手动停止）。',
+      '影子跟读：点击下方【麦克风】→【倒计时】→ 播放【原音】并【开始录音】；原音播完【自动】停止录音（也可手动停止）。',
     ),
     msg('温馨提示：'),
     msg('1. 建议使用耳机练习。'),
@@ -43,7 +43,7 @@ export function getDiscriminationTips(): string[] {
 }
 
 export function getShadowingSummary(): string {
-  return msg('点击下方【麦克风】开始同步跟读（边听边录）。');
+  return msg('点击下方【麦克风】开始影子跟读（边听边录）。');
 }
 
 export function getDiscriminationSummary(): string {
@@ -61,7 +61,7 @@ export function getTipsForKind(kind: PracticeTipsKind): string[] {
 }
 
 export function getTipsTitle(kind: PracticeTipsKind): string {
-  if (kind === 'shadowing') return msg('同步跟读说明');
+  if (kind === 'shadowing') return msg('影子跟读说明');
   if (kind === 'echo') return msg('回声跟读说明');
   return msg('抗噪听说明');
 }

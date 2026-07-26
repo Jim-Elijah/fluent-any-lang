@@ -244,7 +244,7 @@ export class SettingsPlayerDefaults extends LitElement {
               @change=${this._onSliderChange('maxVolumeBoost')}
             ></ui-slider>
             <p class="hint">
-              ${msg('媒体播放器与录音预览的音量滑块上限。超过 100% 可能产生失真，请适度使用。')}
+              ${msg('媒体播放器与录音预览的音量上限。超过 100% 可能产生失真，请适度使用。')}
               ${this._maxVolumeBoostRangeHint()}
             </p>
           </div>
@@ -262,7 +262,7 @@ export class SettingsPlayerDefaults extends LitElement {
               @change=${this._onSliderChange('maxPlaybackRate')}
             ></ui-slider>
             <p class="hint">
-              ${msg('媒体播放器倍速滑块与快捷键上限。超过 1x 可能产生失真，请适度使用。')}
+              ${msg('媒体播放器的倍速上限。超过 1x 可能产生失真，请适度使用。')}
               ${this._maxPlaybackRateRangeHint()}
             </p>
           </div>

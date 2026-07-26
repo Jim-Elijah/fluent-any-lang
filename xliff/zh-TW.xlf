@@ -566,10 +566,6 @@
   <source>今日模式占比</source>
   <target>今日模式占比</target>
 </trans-unit>
-<trans-unit id="s71033c7cce27dd60">
-  <source>继续上次</source>
-  <target>繼續上次</target>
-</trans-unit>
 <trans-unit id="s3bc0a77ca13b7c62">
   <source>继续练习</source>
   <target>繼續練習</target>
@@ -1624,7 +1620,7 @@
   <target>自由聽</target>
 </trans-unit>
 <trans-unit id="s4f927bdc69d2af2d">
-  <source>当前阶梯：第 <x id="0" equiv-text="${this._ladderDisplayIndex + 1}"/>/<x id="1" equiv-text="${seq.length}"/> 步（<x id="2" equiv-text="${this._rateLadder.getCurrentRate()}"/>x）</source>
+  <source>当前阶梯：第 <x id="0" equiv-text="${this.ladderDisplayIndex + 1}"/>/<x id="1" equiv-text="${this.ladderSequence.length}"/> 步（<x id="2" equiv-text="${this.currentRate}"/>x）</source>
   <target>目前階梯：第 <x id="0" equiv-text="${this._ladderDisplayIndex + 1}"/>/<x id="1" equiv-text="${seq.length}"/> 步（<x id="2" equiv-text="${this._rateLadder.getCurrentRate()}"/>x）</target>
 </trans-unit>
 <trans-unit id="s1fdad508a2e2040a">
@@ -1634,10 +1630,6 @@
 <trans-unit id="sb58f4c4b1dd0894d">
   <source>速听阶梯</source>
   <target>速聽階梯</target>
-</trans-unit>
-<trans-unit id="s855d52081f258074">
-  <source>次数</source>
-  <target>次數</target>
 </trans-unit>
 <trans-unit id="s4d093e6b477349e4">
   <source>第 <x id="0" equiv-text="${index + 1}"/> 档倍速</source>
@@ -1715,10 +1707,6 @@
   <source>去资料库</source>
   <target>去資料庫</target>
 </trans-unit>
-<trans-unit id="s9a52158c3fa5f82f">
-  <source>同步跟读：点击下方【麦克风】→【倒计时】→ 播放【原音】并【开始录音】；原音播完【自动】停止录音（也可手动停止）。</source>
-  <target>同步跟讀：點擊下方【麥克風】→【倒數】→ 播放【原音】並【開始錄音】；原音播完【自動】停止錄音（也可手動停止）。</target>
-</trans-unit>
 <trans-unit id="s672b90e400e4e6e5">
   <source>2. 点击【麦克风】之前可操作播放器；点击之后播放器锁定，不可操作。</source>
   <target>2. 點擊【麥克風】之前可操作播放器；點擊之後播放器鎖定，不可操作。</target>
@@ -1759,10 +1747,6 @@
   <source>4. 该模式不显示倍速、循环、睡眠、单句暂停与高级设置。</source>
   <target>4. 該模式不顯示倍速、循環、睡眠、單句暫停與高級設置。</target>
 </trans-unit>
-<trans-unit id="sb73f53a30c841a1b">
-  <source>点击下方【麦克风】开始同步跟读（边听边录）。</source>
-  <target>點擊下方【麥克風】開始同步跟讀（邊聽邊錄）。</target>
-</trans-unit>
 <trans-unit id="s47076f09183a93a1">
   <source>只听不录；可随时调整噪音与速听阶梯，倍速由阶梯控制。</source>
   <target>只聽不錄；可隨時調整噪音與速聽階梯，倍速由階梯控制。</target>
@@ -1775,25 +1759,13 @@
   <source>抗噪听</source>
   <target>抗噪聽</target>
 </trans-unit>
-<trans-unit id="s94c7b8e9b135d3fc">
-  <source>同步跟读</source>
-  <target>同步跟讀</target>
-</trans-unit>
 <trans-unit id="sfca41063887bfbdd">
   <source>回声跟读</source>
   <target>回聲跟讀</target>
 </trans-unit>
-<trans-unit id="s2d9d8f1041e14a74">
-  <source>当前音频的同步跟读录音已达上限（<x id="0" equiv-text="${this._shadowingLimit}"/>条），删除旧录音后可继续。</source>
-  <target>當前音訊的同步跟讀錄音已達上限（<x id="0" equiv-text="${this._shadowingLimit}"/>條），刪除舊錄音後可繼續。</target>
-</trans-unit>
 <trans-unit id="se329613f6209f026">
   <source>立即前往</source>
   <target>立即前往</target>
-</trans-unit>
-<trans-unit id="sa85065fa5f49e7e2">
-  <source>同步跟读说明</source>
-  <target>同步跟讀說明</target>
 </trans-unit>
 <trans-unit id="s911f42ed312b015f">
   <source>回声跟读说明</source>
@@ -1802,10 +1774,6 @@
 <trans-unit id="sc2cfc3fa295d61ee">
   <source>抗噪听说明</source>
   <target>抗噪聽說明</target>
-</trans-unit>
-<trans-unit id="sdb69f7c39160a5b6">
-  <source>当前音频的同步跟读录音</source>
-  <target>當前音訊的同步跟讀錄音</target>
 </trans-unit>
 <trans-unit id="s352527c98a04c835">
   <source><x id="0" equiv-text="${label}"/>（<x id="1" equiv-text="${pct}"/>%）</source>
@@ -1859,14 +1827,6 @@
   <source>抗噪听模式下噪音的默认音量。</source>
   <target>抗噪聽模式下噪音的預設音量。</target>
 </trans-unit>
-<trans-unit id="sef2d6a7be796f338">
-  <source>跳过同步跟读模式提示</source>
-  <target>跳過同步跟讀模式提示</target>
-</trans-unit>
-<trans-unit id="s9ecc478a7ebe313a">
-  <source>开启后进入同步跟读模式时不再弹出说明。</source>
-  <target>開啟後進入同步跟讀模式時不再彈出說明。</target>
-</trans-unit>
 <trans-unit id="se55f56bc61c47ac9">
   <source>跳过回声跟读模式提示</source>
   <target>跳過回聲跟讀模式提示</target>
@@ -1885,78 +1845,103 @@
 </trans-unit>
 <trans-unit id="s16d703837d42e4bb">
   <source>新建播放列表…</source>
+  <target>新建播放清單…</target>
 </trans-unit>
 <trans-unit id="s66f06892017e53d9">
   <source>创建并加入</source>
+  <target>建立並加入</target>
 </trans-unit>
 <trans-unit id="s7d8f22bbd3897426">
   <source>已创建「<x id="0" equiv-text="${name}"/>」并添加</source>
+  <target>已建立「<x id="0" equiv-text="${name}"/>」並新增</target>
 </trans-unit>
 <trans-unit id="sbdbb69c195ed08a1">
   <source>创建失败，请重试</source>
+  <target>建立失敗，請重試</target>
 </trans-unit>
 <trans-unit id="s7860264c2c4ec434">
   <source>学习数据已清除</source>
+  <target>學習資料已清除</target>
 </trans-unit>
 <trans-unit id="sa89ea831369ec7a6">
   <source>清除失败</source>
+  <target>清除失敗</target>
 </trans-unit>
 <trans-unit id="sc4a05c3aa3fa1db2">
   <source>媒体：<x id="0" equiv-text="${counts.media}"/></source>
+  <target>媒體：<x id="0" equiv-text="${counts.media}"/></target>
 </trans-unit>
 <trans-unit id="sc335c4229824b585">
   <source>字幕：<x id="0" equiv-text="${counts.subtitles}"/></source>
+  <target>字幕：<x id="0" equiv-text="${counts.subtitles}"/></target>
 </trans-unit>
 <trans-unit id="s4a43d021163cfac5">
   <source>录音：<x id="0" equiv-text="${counts.recordings}"/></source>
+  <target>錄音：<x id="0" equiv-text="${counts.recordings}"/></target>
 </trans-unit>
 <trans-unit id="sf419f63663440574">
   <source>学习记录：<x id="0" equiv-text="${counts.sessions}"/></source>
+  <target>學習記錄：<x id="0" equiv-text="${counts.sessions}"/></target>
 </trans-unit>
 <trans-unit id="sf1ef1c1cfd2f92b9">
   <source>播放列表：<x id="0" equiv-text="${counts.playlists}"/></source>
+  <target>播放清單：<x id="0" equiv-text="${counts.playlists}"/></target>
 </trans-unit>
 <trans-unit id="s6055cd73955e7155">
   <source>句库：<x id="0" equiv-text="${counts.sentenceBank}"/></source>
+  <target>句庫：<x id="0" equiv-text="${counts.sentenceBank}"/></target>
 </trans-unit>
 <trans-unit id="sf0e7c0a2563bdeea">
   <source>噪音素材：<x id="0" equiv-text="${counts.noise}"/></source>
+  <target>噪音素材：<x id="0" equiv-text="${counts.noise}"/></target>
 </trans-unit>
 <trans-unit id="s00e873c398faf556">
   <source>应用设置、语言偏好与异常日志将保留。清除前建议先在上方导出备份。</source>
+  <target>應用設定、語言偏好與異常日誌將保留。清除前建議先在上方匯出備份。</target>
 </trans-unit>
 <trans-unit id="s61f6265cd8d3cf39">
   <source>我理解此操作不可恢复</source>
+  <target>我理解此操作不可復原</target>
 </trans-unit>
 <trans-unit id="s578003aca06bcd2a">
   <source>清除本地数据</source>
+  <target>清除本機資料</target>
 </trans-unit>
 <trans-unit id="s5a7ebb7bfa4908ae">
   <source>永久删除本机学习库内容。此操作不可恢复，请先导出备份。</source>
+  <target>永久刪除本機學習庫內容。此操作不可復原，請先匯出備份。</target>
 </trans-unit>
 <trans-unit id="s91c0df7b71802cd0">
   <source>清除全部学习数据</source>
+  <target>清除全部學習資料</target>
 </trans-unit>
 <trans-unit id="s9953b9fef7f248af">
   <source>当前没有可清除的学习数据</source>
+  <target>目前沒有可清除的學習資料</target>
 </trans-unit>
 <trans-unit id="s48d4fca34e1f0535">
   <source>即将清除学习数据</source>
+  <target>即將清除學習資料</target>
 </trans-unit>
 <trans-unit id="sefdb3f42e75cd5ce">
   <source>确认清除</source>
+  <target>確認清除</target>
 </trans-unit>
 <trans-unit id="saa1e061278d67a71">
   <source>即将清空异常日志</source>
+  <target>即將清空異常日誌</target>
 </trans-unit>
 <trans-unit id="sefaf2942e711ec6c">
   <source>确认清空</source>
+  <target>確認清空</target>
 </trans-unit>
 <trans-unit id="s8a6c94db7796c752">
   <source>将删除本机全部 <x id="0" equiv-text="${this._logCount}"/> 条异常日志，此操作不可恢复。</source>
+  <target>將刪除本機全部 <x id="0" equiv-text="${this._logCount}"/> 條異常日誌，此操作不可復原。</target>
 </trans-unit>
 <trans-unit id="s476368fb89c05148">
   <source>管理偏好、播放器默认、练习限额、数据备份、应用更新、诊断与清除本地数据。</source>
+  <target>管理偏好、播放器預設、練習限額、資料備份、應用更新、診斷與清除本機資料。</target>
 </trans-unit>
 <trans-unit id="s52c334ecad404034">
   <source>重播本句</source>
@@ -1970,17 +1955,9 @@
   <source>无练习片段，无法重播</source>
   <target>無練習片段，無法重播</target>
 </trans-unit>
-<trans-unit id="sc45699a414a2992e">
-  <source>请先播放后再重播</source>
-  <target>請先播放後再重播</target>
-</trans-unit>
 <trans-unit id="sa61b30b6f6e87bdc">
   <source>无练习片段</source>
   <target>無練習片段</target>
-</trans-unit>
-<trans-unit id="s15b7c82f0c838910">
-  <source>请先播放后再切换句子</source>
-  <target>請先播放後再切換句子</target>
 </trans-unit>
 <trans-unit id="s8d5d6b80846fdcd5">
   <source>已是第一句</source>
@@ -2033,6 +2010,90 @@
 <trans-unit id="s60d56e269dc47ca0">
   <source>快捷键 (H)</source>
   <target>快捷鍵 (H)</target>
+</trans-unit>
+<trans-unit id="s4309d66bb4c86fa3">
+  <source>请先选择播放模式</source>
+  <target>請先選擇播放模式</target>
+</trans-unit>
+<trans-unit id="s9bb40bdc977968e7">
+  <source>档位数</source>
+  <target>檔位數</target>
+</trans-unit>
+<trans-unit id="seea759ff4b1d52f9">
+  <source>隐藏视频</source>
+  <target>隱藏影片</target>
+</trans-unit>
+<trans-unit id="s597068f5f6cbbbfc">
+  <source>显示视频</source>
+  <target>顯示影片</target>
+</trans-unit>
+<trans-unit id="s1f18c5428c1bd3a9">
+  <source>影子跟读：点击下方【麦克风】→【倒计时】→ 播放【原音】并【开始录音】；原音播完【自动】停止录音（也可手动停止）。</source>
+  <target>影子跟讀：點擊下方【麥克風】→【倒數】→ 播放【原音】並【開始錄音】；原音播完【自動】停止錄音（也可手動停止）。</target>
+</trans-unit>
+<trans-unit id="sc705febcd28d3849">
+  <source>点击下方【麦克风】开始影子跟读（边听边录）。</source>
+  <target>點擊下方【麥克風】開始影子跟讀（邊聽邊錄）。</target>
+</trans-unit>
+<trans-unit id="s8ac486033edbcde0">
+  <source>影子跟读说明</source>
+  <target>影子跟讀說明</target>
+</trans-unit>
+<trans-unit id="sfcd50b89529539c6">
+  <source>当前音频的影子跟读录音已达上限（<x id="0" equiv-text="${this._shadowingLimit}"/>条），删除旧录音后可继续。</source>
+  <target>目前音訊的影子跟讀錄音已達上限（<x id="0" equiv-text="${this._shadowingLimit}"/>條），刪除舊錄音後可繼續。</target>
+</trans-unit>
+<trans-unit id="sbe9aedd585315b71">
+  <source>当前媒体的影子跟读录音</source>
+  <target>目前媒體的影子跟讀錄音</target>
+</trans-unit>
+<trans-unit id="s964c2a7c6fac7384">
+  <source>最大音量上限（<x id="0" equiv-text="${pct}"/>%）</source>
+  <target>最大音量上限（<x id="0" equiv-text="${pct}"/>%）</target>
+</trans-unit>
+<trans-unit id="sffb99c97f4452328">
+  <source>允许范围 <x id="0" equiv-text="${Math.round(min * 100)}"/>%–<x id="1" equiv-text="${Math.round(max * 100)}"/>%</source>
+  <target>允許範圍 <x id="0" equiv-text="${Math.round(min * 100)}"/>%–<x id="1" equiv-text="${Math.round(max * 100)}"/>%</target>
+</trans-unit>
+<trans-unit id="s8ba75b4a5cf584c6">
+  <source>最大播放倍速（<x id="0" equiv-text="${rate}"/>x）</source>
+  <target>最大播放倍速（<x id="0" equiv-text="${rate}"/>x）</target>
+</trans-unit>
+<trans-unit id="s01e4d1ef4709a2d2">
+  <source>允许范围 <x id="0" equiv-text="${min}"/>x–<x id="1" equiv-text="${max}"/>x</source>
+  <target>允許範圍 <x id="0" equiv-text="${min}"/>x–<x id="1" equiv-text="${max}"/>x</target>
+</trans-unit>
+<trans-unit id="s6d020f5cd93143d7">
+  <source>媒体播放器与录音预览的音量上限。超过 100% 可能产生失真，请适度使用。</source>
+  <target>媒體播放器與錄音預覽的音量上限。超過 100% 可能產生失真，請適度使用。</target>
+</trans-unit>
+<trans-unit id="sdc2267cf28d56f1e">
+  <source>媒体播放器的倍速上限。超过 1x 可能产生失真，请适度使用。</source>
+  <target>媒體播放器的倍速上限。超過 1x 可能產生失真，請適度使用。</target>
+</trans-unit>
+<trans-unit id="s163d157d2866bbca">
+  <source>跳过影子跟读模式提示</source>
+  <target>跳過影子跟讀模式提示</target>
+</trans-unit>
+<trans-unit id="s0fdd5836a98105cc">
+  <source>开启后进入影子跟读模式时不再弹出说明。</source>
+  <target>開啟後進入影子跟讀模式時不再彈出說明。</target>
+</trans-unit>
+<trans-unit id="sdd0c6439375f366e">
+  <source>影子跟读</source>
+  <target>影子跟讀</target>
+</trans-unit>
+<trans-unit id="s4d20049fe3f8ef2e">
+  <source>未找到有效的字幕条目（第 <x id="0" equiv-text="${first.line}"/> 行：<x id="1" equiv-text="${truncateWarningText(first.text)}"/>）</source>
+  <target>未找到有效的字幕條目（第 <x id="0" equiv-text="${first.line}"/> 行：<x id="1" equiv-text="${truncateWarningText(first.text)}"/>）</target>
+</trans-unit>
+<trans-unit id="s5f4af527a66c337d">
+  <source>时间戳格式无效</source>
+  <target>時間戳格式無效</target>
+</trans-unit>
+<trans-unit id="s35e89a435e66645e">
+  <source>第 <x id="0" equiv-text="${warning.line}"/> 行：<x id="1" equiv-text="${warning.reason}"/>（<x id="2" equiv-text="${truncateWarningText(warning.text)}"/>）</source>
+  <target>第 <x id="0" equiv-text="${warning.line}"/> 行：<x id="1" equiv-text="${warning.reason}"/>（<x id="2" equiv-text="${truncateWarningText(warning.text)}"/>）</target>
 </trans-unit>
 </body>
 </file>

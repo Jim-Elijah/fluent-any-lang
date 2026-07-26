@@ -207,12 +207,6 @@ export class PracticeStatsDashboard extends NavigatorElement {
       flex: 1;
     }
 
-    .continue-label {
-      margin: 0;
-      font-size: 0.75rem;
-      color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
-    }
-
     .continue-title {
       display: flex;
       align-items: center;
@@ -386,7 +380,7 @@ export class PracticeStatsDashboard extends NavigatorElement {
                 </div>
                 <div class="mode" role="listitem">
                   <div class="mode-name">
-                    <span class="dot shadowing" aria-hidden="true"></span>${msg('同步跟读')}
+                    <span class="dot shadowing" aria-hidden="true"></span>${msg('影子跟读')}
                   </div>
                   <div class="mode-value">${formatActiveDuration(shadowing)}</div>
                 </div>
@@ -432,7 +426,6 @@ export class PracticeStatsDashboard extends NavigatorElement {
                 ? html`
                     <div class="actions">
                       <div class="continue-meta">
-                        <p class="continue-label">${msg('继续上次')}</p>
                         <p class="continue-title">
                           <span class="continue-type">
                             <ui-tooltip

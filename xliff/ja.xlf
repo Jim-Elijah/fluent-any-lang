@@ -566,10 +566,6 @@
   <source>今日模式占比</source>
   <target>今日のモード比率</target>
 </trans-unit>
-<trans-unit id="s71033c7cce27dd60">
-  <source>继续上次</source>
-  <target>前回の続き</target>
-</trans-unit>
 <trans-unit id="s3bc0a77ca13b7c62">
   <source>继续练习</source>
   <target>練習を続ける</target>
@@ -1624,7 +1620,7 @@
   <target>フリーリスニング</target>
 </trans-unit>
 <trans-unit id="s4f927bdc69d2af2d">
-  <source>当前阶梯：第 <x id="0" equiv-text="${this._ladderDisplayIndex + 1}"/>/<x id="1" equiv-text="${seq.length}"/> 步（<x id="2" equiv-text="${this._rateLadder.getCurrentRate()}"/>x）</source>
+  <source>当前阶梯：第 <x id="0" equiv-text="${this.ladderDisplayIndex + 1}"/>/<x id="1" equiv-text="${this.ladderSequence.length}"/> 步（<x id="2" equiv-text="${this.currentRate}"/>x）</source>
   <target>現在のラダー：ステップ <x id="0" equiv-text="${this._ladderDisplayIndex + 1}"/>/<x id="1" equiv-text="${seq.length}"/>（<x id="2" equiv-text="${this._rateLadder.getCurrentRate()}"/>x）</target>
 </trans-unit>
 <trans-unit id="s1fdad508a2e2040a">
@@ -1634,10 +1630,6 @@
 <trans-unit id="sb58f4c4b1dd0894d">
   <source>速听阶梯</source>
   <target>スピードラダー</target>
-</trans-unit>
-<trans-unit id="s855d52081f258074">
-  <source>次数</source>
-  <target>ステップ数</target>
 </trans-unit>
 <trans-unit id="s4d093e6b477349e4">
   <source>第 <x id="0" equiv-text="${index + 1}"/> 档倍速</source>
@@ -1715,10 +1707,6 @@
   <source>去资料库</source>
   <target>ライブラリへ</target>
 </trans-unit>
-<trans-unit id="s9a52158c3fa5f82f">
-  <source>同步跟读：点击下方【麦克风】→【倒计时】→ 播放【原音】并【开始录音】；原音播完【自动】停止录音（也可手动停止）。</source>
-  <target>同期シャドーイング：下の【マイク】をタップ →【カウントダウン】→【原音】を再生しながら【録音開始】；原音が終わると【自動】で録音停止（手動停止も可）。</target>
-</trans-unit>
 <trans-unit id="s672b90e400e4e6e5">
   <source>2. 点击【麦克风】之前可操作播放器；点击之后播放器锁定，不可操作。</source>
   <target>2. 【マイク】をタップする前はプレーヤーを操作できます；タップ後はロックされ操作できません。</target>
@@ -1759,10 +1747,6 @@
   <source>4. 该模式不显示倍速、循环、睡眠、单句暂停与高级设置。</source>
   <target>4. このモードでは再生速度・リピート・スリープ・単一文の一時停止・詳細設定は表示されません。</target>
 </trans-unit>
-<trans-unit id="sb73f53a30c841a1b">
-  <source>点击下方【麦克风】开始同步跟读（边听边录）。</source>
-  <target>下の【マイク】をタップして同期シャドーイングを開始（聞きながら録音）。</target>
-</trans-unit>
 <trans-unit id="s47076f09183a93a1">
   <source>只听不录；可随时调整噪音与速听阶梯，倍速由阶梯控制。</source>
   <target>聞くのみで録音しません；ノイズとスピードラダーはいつでも調整でき、再生速度はラダーが制御します。</target>
@@ -1775,25 +1759,13 @@
   <source>抗噪听</source>
   <target>抗ノイズリスニング</target>
 </trans-unit>
-<trans-unit id="s94c7b8e9b135d3fc">
-  <source>同步跟读</source>
-  <target>同期シャドーイング</target>
-</trans-unit>
 <trans-unit id="sfca41063887bfbdd">
   <source>回声跟读</source>
   <target>エコーシャドーイング</target>
 </trans-unit>
-<trans-unit id="s2d9d8f1041e14a74">
-  <source>当前音频的同步跟读录音已达上限（<x id="0" equiv-text="${this._shadowingLimit}"/>条），删除旧录音后可继续。</source>
-  <target>この音声の同期シャドーイング録音が上限（<x id="0" equiv-text="${this._shadowingLimit}"/>件）に達しました。古い録音を削除すると続行できます。</target>
-</trans-unit>
 <trans-unit id="se329613f6209f026">
   <source>立即前往</source>
   <target>今すぐ開く</target>
-</trans-unit>
-<trans-unit id="sa85065fa5f49e7e2">
-  <source>同步跟读说明</source>
-  <target>同期シャドーイングの説明</target>
 </trans-unit>
 <trans-unit id="s911f42ed312b015f">
   <source>回声跟读说明</source>
@@ -1802,10 +1774,6 @@
 <trans-unit id="sc2cfc3fa295d61ee">
   <source>抗噪听说明</source>
   <target>抗ノイズリスニングの説明</target>
-</trans-unit>
-<trans-unit id="sdb69f7c39160a5b6">
-  <source>当前音频的同步跟读录音</source>
-  <target>この音声の同期シャドーイング録音</target>
 </trans-unit>
 <trans-unit id="s352527c98a04c835">
   <source><x id="0" equiv-text="${label}"/>（<x id="1" equiv-text="${pct}"/>%）</source>
@@ -1859,14 +1827,6 @@
   <source>抗噪听模式下噪音的默认音量。</source>
   <target>抗ノイズリスニングモードでのノイズのデフォルト音量。</target>
 </trans-unit>
-<trans-unit id="sef2d6a7be796f338">
-  <source>跳过同步跟读模式提示</source>
-  <target>同期シャドーイングモードの説明をスキップ</target>
-</trans-unit>
-<trans-unit id="s9ecc478a7ebe313a">
-  <source>开启后进入同步跟读模式时不再弹出说明。</source>
-  <target>オンにすると、同期シャドーイングモードに入るときに説明を表示しません。</target>
-</trans-unit>
 <trans-unit id="se55f56bc61c47ac9">
   <source>跳过回声跟读模式提示</source>
   <target>エコーシャドーイングモードの説明をスキップ</target>
@@ -1885,78 +1845,103 @@
 </trans-unit>
 <trans-unit id="s16d703837d42e4bb">
   <source>新建播放列表…</source>
+  <target>新規プレイリスト…</target>
 </trans-unit>
 <trans-unit id="s66f06892017e53d9">
   <source>创建并加入</source>
+  <target>作成して追加</target>
 </trans-unit>
 <trans-unit id="s7d8f22bbd3897426">
   <source>已创建「<x id="0" equiv-text="${name}"/>」并添加</source>
+  <target>「<x id="0" equiv-text="${name}"/>」を作成して追加しました</target>
 </trans-unit>
 <trans-unit id="sbdbb69c195ed08a1">
   <source>创建失败，请重试</source>
+  <target>作成に失敗しました。もう一度お試しください。</target>
 </trans-unit>
 <trans-unit id="s7860264c2c4ec434">
   <source>学习数据已清除</source>
+  <target>学習データを削除しました</target>
 </trans-unit>
 <trans-unit id="sa89ea831369ec7a6">
   <source>清除失败</source>
+  <target>削除に失敗しました</target>
 </trans-unit>
 <trans-unit id="sc4a05c3aa3fa1db2">
   <source>媒体：<x id="0" equiv-text="${counts.media}"/></source>
+  <target>メディア：<x id="0" equiv-text="${counts.media}"/></target>
 </trans-unit>
 <trans-unit id="sc335c4229824b585">
   <source>字幕：<x id="0" equiv-text="${counts.subtitles}"/></source>
+  <target>字幕：<x id="0" equiv-text="${counts.subtitles}"/></target>
 </trans-unit>
 <trans-unit id="s4a43d021163cfac5">
   <source>录音：<x id="0" equiv-text="${counts.recordings}"/></source>
+  <target>録音：<x id="0" equiv-text="${counts.recordings}"/></target>
 </trans-unit>
 <trans-unit id="sf419f63663440574">
   <source>学习记录：<x id="0" equiv-text="${counts.sessions}"/></source>
+  <target>学習記録：<x id="0" equiv-text="${counts.sessions}"/></target>
 </trans-unit>
 <trans-unit id="sf1ef1c1cfd2f92b9">
   <source>播放列表：<x id="0" equiv-text="${counts.playlists}"/></source>
+  <target>プレイリスト：<x id="0" equiv-text="${counts.playlists}"/></target>
 </trans-unit>
 <trans-unit id="s6055cd73955e7155">
   <source>句库：<x id="0" equiv-text="${counts.sentenceBank}"/></source>
+  <target>文庫：<x id="0" equiv-text="${counts.sentenceBank}"/></target>
 </trans-unit>
 <trans-unit id="sf0e7c0a2563bdeea">
   <source>噪音素材：<x id="0" equiv-text="${counts.noise}"/></source>
+  <target>ノイズ素材：<x id="0" equiv-text="${counts.noise}"/></target>
 </trans-unit>
 <trans-unit id="s00e873c398faf556">
   <source>应用设置、语言偏好与异常日志将保留。清除前建议先在上方导出备份。</source>
+  <target>アプリ設定、言語設定、エラーログは保持されます。削除前に上でバックアップをエクスポートすることをおすすめします。</target>
 </trans-unit>
 <trans-unit id="s61f6265cd8d3cf39">
   <source>我理解此操作不可恢复</source>
+  <target>この操作は元に戻せないことを理解しました</target>
 </trans-unit>
 <trans-unit id="s578003aca06bcd2a">
   <source>清除本地数据</source>
+  <target>ローカルデータを削除</target>
 </trans-unit>
 <trans-unit id="s5a7ebb7bfa4908ae">
   <source>永久删除本机学习库内容。此操作不可恢复，请先导出备份。</source>
+  <target>この端末の学習ライブラリ内容を完全に削除します。元に戻せません。先にバックアップをエクスポートしてください。</target>
 </trans-unit>
 <trans-unit id="s91c0df7b71802cd0">
   <source>清除全部学习数据</source>
+  <target>すべての学習データを削除</target>
 </trans-unit>
 <trans-unit id="s9953b9fef7f248af">
   <source>当前没有可清除的学习数据</source>
+  <target>削除できる学習データがありません</target>
 </trans-unit>
 <trans-unit id="s48d4fca34e1f0535">
   <source>即将清除学习数据</source>
+  <target>学習データを削除しようとしています</target>
 </trans-unit>
 <trans-unit id="sefdb3f42e75cd5ce">
   <source>确认清除</source>
+  <target>削除を確認</target>
 </trans-unit>
 <trans-unit id="saa1e061278d67a71">
   <source>即将清空异常日志</source>
+  <target>エラーログを削除しようとしています</target>
 </trans-unit>
 <trans-unit id="sefaf2942e711ec6c">
   <source>确认清空</source>
+  <target>削除を確認</target>
 </trans-unit>
 <trans-unit id="s8a6c94db7796c752">
   <source>将删除本机全部 <x id="0" equiv-text="${this._logCount}"/> 条异常日志，此操作不可恢复。</source>
+  <target>この端末のエラーログ <x id="0" equiv-text="${this._logCount}"/> 件をすべて削除します。この操作は元に戻せません。</target>
 </trans-unit>
 <trans-unit id="s476368fb89c05148">
   <source>管理偏好、播放器默认、练习限额、数据备份、应用更新、诊断与清除本地数据。</source>
+  <target>設定、プレーヤーのデフォルト、練習上限、データバックアップ、アプリ更新、診断、ローカルデータの削除を管理します。</target>
 </trans-unit>
 <trans-unit id="s52c334ecad404034">
   <source>重播本句</source>
@@ -1970,17 +1955,9 @@
   <source>无练习片段，无法重播</source>
   <target>練習セグメントがないため再生できません</target>
 </trans-unit>
-<trans-unit id="sc45699a414a2992e">
-  <source>请先播放后再重播</source>
-  <target>先に再生してからもう一度再生してください</target>
-</trans-unit>
 <trans-unit id="sa61b30b6f6e87bdc">
   <source>无练习片段</source>
   <target>練習セグメントがありません</target>
-</trans-unit>
-<trans-unit id="s15b7c82f0c838910">
-  <source>请先播放后再切换句子</source>
-  <target>先に再生してから文を切り替えてください</target>
 </trans-unit>
 <trans-unit id="s8d5d6b80846fdcd5">
   <source>已是第一句</source>
@@ -2033,6 +2010,90 @@
 <trans-unit id="s60d56e269dc47ca0">
   <source>快捷键 (H)</source>
   <target>ショートカット (H)</target>
+</trans-unit>
+<trans-unit id="s4309d66bb4c86fa3">
+  <source>请先选择播放模式</source>
+  <target>先に再生モードを選択してください</target>
+</trans-unit>
+<trans-unit id="s9bb40bdc977968e7">
+  <source>档位数</source>
+  <target>段階数</target>
+</trans-unit>
+<trans-unit id="seea759ff4b1d52f9">
+  <source>隐藏视频</source>
+  <target>動画を非表示</target>
+</trans-unit>
+<trans-unit id="s597068f5f6cbbbfc">
+  <source>显示视频</source>
+  <target>動画を表示</target>
+</trans-unit>
+<trans-unit id="s1f18c5428c1bd3a9">
+  <source>影子跟读：点击下方【麦克风】→【倒计时】→ 播放【原音】并【开始录音】；原音播完【自动】停止录音（也可手动停止）。</source>
+  <target>シャドーイング：下の【マイク】をタップ →【カウントダウン】→【原音】を再生しながら【録音開始】；原音終了で【自動】録音停止（手動停止も可）。</target>
+</trans-unit>
+<trans-unit id="sc705febcd28d3849">
+  <source>点击下方【麦克风】开始影子跟读（边听边录）。</source>
+  <target>下の【マイク】をタップしてシャドーイングを開始（聞きながら録音）。</target>
+</trans-unit>
+<trans-unit id="s8ac486033edbcde0">
+  <source>影子跟读说明</source>
+  <target>シャドーイングの説明</target>
+</trans-unit>
+<trans-unit id="sfcd50b89529539c6">
+  <source>当前音频的影子跟读录音已达上限（<x id="0" equiv-text="${this._shadowingLimit}"/>条），删除旧录音后可继续。</source>
+  <target>この音声のシャドーイング録音が上限（<x id="0" equiv-text="${this._shadowingLimit}"/>件）に達しました。古い録音を削除すると続行できます。</target>
+</trans-unit>
+<trans-unit id="sbe9aedd585315b71">
+  <source>当前媒体的影子跟读录音</source>
+  <target>現在のメディアのシャドーイング録音</target>
+</trans-unit>
+<trans-unit id="s964c2a7c6fac7384">
+  <source>最大音量上限（<x id="0" equiv-text="${pct}"/>%）</source>
+  <target>最大音量上限（<x id="0" equiv-text="${pct}"/>%）</target>
+</trans-unit>
+<trans-unit id="sffb99c97f4452328">
+  <source>允许范围 <x id="0" equiv-text="${Math.round(min * 100)}"/>%–<x id="1" equiv-text="${Math.round(max * 100)}"/>%</source>
+  <target>許可範囲 <x id="0" equiv-text="${Math.round(min * 100)}"/>%–<x id="1" equiv-text="${Math.round(max * 100)}"/>%</target>
+</trans-unit>
+<trans-unit id="s8ba75b4a5cf584c6">
+  <source>最大播放倍速（<x id="0" equiv-text="${rate}"/>x）</source>
+  <target>最大再生速度（<x id="0" equiv-text="${rate}"/>x）</target>
+</trans-unit>
+<trans-unit id="s01e4d1ef4709a2d2">
+  <source>允许范围 <x id="0" equiv-text="${min}"/>x–<x id="1" equiv-text="${max}"/>x</source>
+  <target>許可範囲 <x id="0" equiv-text="${min}"/>x–<x id="1" equiv-text="${max}"/>x</target>
+</trans-unit>
+<trans-unit id="s6d020f5cd93143d7">
+  <source>媒体播放器与录音预览的音量上限。超过 100% 可能产生失真，请适度使用。</source>
+  <target>メディアプレーヤーと録音プレビューの音量上限です。100% を超えると歪む可能性があるため、適度にご利用ください。</target>
+</trans-unit>
+<trans-unit id="sdc2267cf28d56f1e">
+  <source>媒体播放器的倍速上限。超过 1x 可能产生失真，请适度使用。</source>
+  <target>メディアプレーヤーの再生速度上限です。1x を超えると歪む可能性があるため、適度にご利用ください。</target>
+</trans-unit>
+<trans-unit id="s163d157d2866bbca">
+  <source>跳过影子跟读模式提示</source>
+  <target>シャドーイングモードの説明をスキップ</target>
+</trans-unit>
+<trans-unit id="s0fdd5836a98105cc">
+  <source>开启后进入影子跟读模式时不再弹出说明。</source>
+  <target>オンにすると、シャドーイングモードに入るときに説明を表示しません。</target>
+</trans-unit>
+<trans-unit id="sdd0c6439375f366e">
+  <source>影子跟读</source>
+  <target>シャドーイング</target>
+</trans-unit>
+<trans-unit id="s4d20049fe3f8ef2e">
+  <source>未找到有效的字幕条目（第 <x id="0" equiv-text="${first.line}"/> 行：<x id="1" equiv-text="${truncateWarningText(first.text)}"/>）</source>
+  <target>有効な字幕エントリーが見つかりません（<x id="0" equiv-text="${first.line}"/> 行目：<x id="1" equiv-text="${truncateWarningText(first.text)}"/>）</target>
+</trans-unit>
+<trans-unit id="s5f4af527a66c337d">
+  <source>时间戳格式无效</source>
+  <target>タイムスタンプ形式が無効です</target>
+</trans-unit>
+<trans-unit id="s35e89a435e66645e">
+  <source>第 <x id="0" equiv-text="${warning.line}"/> 行：<x id="1" equiv-text="${warning.reason}"/>（<x id="2" equiv-text="${truncateWarningText(warning.text)}"/>）</source>
+  <target><x id="0" equiv-text="${warning.line}"/> 行目：<x id="1" equiv-text="${warning.reason}"/>（<x id="2" equiv-text="${truncateWarningText(warning.text)}"/>）</target>
 </trans-unit>
 </body>
 </file>

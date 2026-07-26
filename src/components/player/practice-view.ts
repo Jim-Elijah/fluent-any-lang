@@ -742,7 +742,7 @@ export class PracticeView extends NavigatorElement {
                   variant="${this._speakingMode === 'shadowing' ? 'primary' : 'secondary'}"
                   @click="${() => this._setSpeakingMode('shadowing')}"
                 >
-                  ${msg('同步跟读')}
+                  ${msg('影子跟读')}
                 </ui-button>
               </div>
             `
@@ -766,7 +766,7 @@ export class PracticeView extends NavigatorElement {
                         : html`<div class="tips-summary">
                             <p>
                               ${msg(
-                                str`当前音频的同步跟读录音已达上限（${this._shadowingLimit}条），删除旧录音后可继续。`,
+                                str`当前音频的影子跟读录音已达上限（${this._shadowingLimit}条），删除旧录音后可继续。`,
                               )}
                             </p>
                           </div>`
@@ -998,7 +998,7 @@ export class PracticeView extends NavigatorElement {
     return html`
       <ui-modal
         .open=${true}
-        .title=${msg('当前音频的同步跟读录音')}
+        .title=${msg('当前媒体的影子跟读录音')}
         .centered=${true}
         .footer=${false}
         @update:open=${(e: CustomEvent<{ open: boolean }>) => {

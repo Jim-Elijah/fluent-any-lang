@@ -438,7 +438,7 @@ export class PracticeStatsPage extends NavigatorElement {
       { key: 'all', label: msg('全部') },
       { key: 'listening', label: msg('自由听') },
       { key: 'discrimination', label: msg('抗噪听') },
-      { key: 'shadowing', label: msg('同步跟读') },
+      { key: 'shadowing', label: msg('影子跟读') },
       { key: 'echo', label: msg('回声跟读') },
     ];
 
@@ -619,7 +619,7 @@ export class PracticeStatsPage extends NavigatorElement {
                     >
                   </span>
                   <span class="legend-item">
-                    <span class="dot shadowing"></span>${msg('同步跟读')}
+                    <span class="dot shadowing"></span>${msg('影子跟读')}
                     <span class="legend-value"
                       >${formatActiveDuration(shadowing)} · ${this._pct(shadowing, total)}</span
                     >

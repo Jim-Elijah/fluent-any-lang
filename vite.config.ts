@@ -51,7 +51,7 @@ export default defineConfig({
       registerType: 'prompt',
       manifest: {
         name: 'FluentAnyLang',
-        short_name: 'FluentAnyLang',
+        short_name: 'FluALang',
         description: 'Listening and speaking practice for any language — local-first.',
         start_url: '/',
         display: 'standalone',
