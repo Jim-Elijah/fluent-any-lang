@@ -1,3 +1,15 @@
+## [0.3.0](https://github.com/Jim-Elijah/fluent-any-lang/compare/v0.2.0...v0.3.0) (2026-07-26)
+
+### Features
+
+* **media:** integrate DeadlineScheduler for sleep and segment pause management ([1b129db](https://github.com/Jim-Elijah/fluent-any-lang/commit/1b129db97d12a92148665875d3b88a0e34b54f57))
+* **playback:** add video hide toggle and harden practice playback edges ([69c07df](https://github.com/Jim-Elijah/fluent-any-lang/commit/69c07df93727794286219db86dd2da1a5443b673))
+* **playback:** add volume boost and configurable rate/volume ceilings ([28f5791](https://github.com/Jim-Elijah/fluent-any-lang/commit/28f5791dedf2d729eafc62e578b19268e8bd6a44))
+* **playback:** seek and play from waveform click via absolute-time APIs ([a1cc92a](https://github.com/Jim-Elijah/fluent-any-lang/commit/a1cc92a721305cefa7223242f09f46ac692de97e))
+* **practice:** add segment replay and subtitle toggle hotkeys ([e0f533f](https://github.com/Jim-Elijah/fluent-any-lang/commit/e0f533f6a2e8f6120d027da32ec96f949202d3e7))
+* **settings:** add clear local learning data with confirmation ([21bb76e](https://github.com/Jim-Elijah/fluent-any-lang/commit/21bb76e9b061a67499c88185dbbd7cf3f9a4c4f2))
+* **settings:** introduce player defaults settings component ([8068f19](https://github.com/Jim-Elijah/fluent-any-lang/commit/8068f199acf9f78b18e34d2af72f675010124905))
+
 ## [0.2.0](https://github.com/Jim-Elijah/fluent-any-lang/compare/v0.1.0...v0.2.0) (2026-07-19)
 
 ### Features
