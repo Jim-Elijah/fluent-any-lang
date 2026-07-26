@@ -19,22 +19,22 @@
 
 ### 听力
 
-- **自由听** — 变速、音量、上下句切换，支持快捷键。
+- **自由听** — 变速、音量（可超过 100% 增益）、上下句切换；支持练习快捷键（重播当前句、切换字幕等）。
 - **抗噪听** — 可叠加最多 3 路环境噪声；可选变速阶梯，每次播完自动升速。
 - **循环与暂停** — 整轨或单句循环；按固定秒数或句长百分比在句间暂停。
 - **睡眠定时** — 按分钟数停止，或播完当前媒体后停止。
-- **灵活播放器** — 普通、固定悬浮条、迷你三种布局，适合长时间练习。
+- **灵活播放器** — 普通、固定悬浮条、迷你三种布局；可在设置中配置播放器默认项（变速/音量上限、睡眠、默认音量等）。
 
 ### 口语
 
-- **同步跟读（Sync shadowing）** — 与原音同步录音，支持倒计时提醒与实时波形。
+- **影子跟读（Shadowing）** — 与原音同步录音，支持倒计时提醒与实时波形。
 - **回声跟读（Echo）** — 先听原句再录音；每句可保留多条录音并择优复习。
-- **录音对照** — 仅原音、仅录音，或**同步播放**（按句对齐），配合波形回看。
+- **录音对照** — 仅原音、仅录音，或**同步播放**（按句对齐）；可点击波形跳转并播放。
 
 ### 媒体库与进度
 
-- **媒体、录音与噪声库** — 搜索、排序、筛选，自定义封面与导出。
-- **播放列表与收藏** — 分组整理、拖拽排序，首页可继续上次的播放列表。
+- **媒体、录音与噪声库** — 搜索、排序、筛选；字幕导入对 `.srt` / `.lrc` 更宽容，并在需留意处给出警告。
+- **播放列表与收藏** — 分组整理、拖拽排序；首页可继续上次的播放列表。
 - **句子库** — 从练习中收藏单句（含裁剪音频），稍后单独精练。
 - **练习统计** — 有效练习时长（非墙上时钟）、连续天数、模式占比、趋势与媒体排行。
 
@@ -42,6 +42,7 @@
 
 - **界面多语言** — 简体中文、英语、日语、繁体中文。
 - **备份与迁移** — ZIP 导出/导入录音、会话、句子库、播放列表、设置，媒体可选打包。
+- **清除学习数据** — 在设置中可清空本地学习数据，并保留应用偏好。
 
 ## 截图
 
@@ -50,16 +51,16 @@
 ![playlist-page](./docs/screenshots/playlist.png)
 ![sentence-bank-page](./docs/screenshots/sentence-bank.png)
 ![statistics-page](./docs/screenshots/statistics.png)
-![settings-page](./docs/screenshots/settings.gif)
+![settings-page-1](./docs/screenshots/settings-1.png)
+![settings-page-2](./docs/screenshots/settings-2.png)
+
 
 ![home-import-listen](./docs/screenshots/import-and-listen.gif)
-![practice-listen-advanced-setting](./docs/screenshots/listen-advanced-setting.gif)
-![practive-anti-noise-listen](./docs/screenshots/anti-noise-listen.gif)
-![practice-speak-shadowing](./docs/screenshots/shadowing.gif)
+![practice-free-listen](./docs/screenshots/free-listen.gif)
+![practice-anti-noise-listen](./docs/screenshots/anti-noise-listen.gif)
 ![practice-speak-echo](./docs/screenshots/echo.gif)
-![playlist](./docs/screenshots/playlist.gif)
+![practice-speak-shadowing](./docs/screenshots/shadowing.gif)
 ![sentence-bank](./docs/screenshots/sentence-bank.gif)
-
 
 ## 使用方式
 

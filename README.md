@@ -19,22 +19,22 @@ Most language apps lock you into their curriculum. FluentAnyLang is built for **
 
 ### Listening
 
-- **Free listen** — Playback speed, volume, prev/next sentence, keyboard shortcuts.
+- **Free listen** — Playback speed, volume (optional boost above 100%), prev/next sentence, and practice hotkeys (replay segment, toggle subtitles, and more).
 - **Anti-noise listen** — Mix up to 3 ambient noise tracks while listening; optional speed ladder advances after each play-through.
 - **Loop & pause** — Loop track or sentence; pause between sentences by fixed seconds or a percentage of line length.
 - **Sleep timer** — Stop after N minutes or when the current track ends.
-- **Flexible player** — Normal, fixed (floating bar), or mini layout for long sessions.
+- **Flexible player** — Normal, fixed (floating bar), or mini layout; set player defaults (rate/volume ceilings, sleep, volumes) in Settings.
 
 ### Speaking
 
-- **Sync Shadowing** — Record in sync with the original, with countdown cues and a live waveform.
+- **Shadowing** — Record in sync with the original, with countdown cues and a live waveform.
 - **Echo** — Hear the line first, then record; keep multiple takes per sentence and pick the best.
-- **Compare takes** — Play source only, recording only, or **sync play** (sentence-aligned) with waveform review.
+- **Compare takes** — Play source only, recording only, or **sync play** (sentence-aligned); click the waveform to seek and play.
 
 ### Library & progress
 
-- **Media, recordings & noise libraries** — Search, sort, filter, custom covers, and export.
-- **Playlists & favorites** — Group materials, reorder, and continue the last playlist from the home dashboard.
+- **Media, recordings & noise libraries** — Search, sort, filter, custom covers, and export; tolerant `.srt` / `.lrc` import with warnings when lines need attention.
+- **Playlists & favorites** — Group materials, reorder, create a playlist while adding media, and continue the last playlist from the home dashboard.
 - **Sentence bank** — Save individual lines (with clipped audio) and drill them later.
 - **Practice statistics** — Effective practice time (not wall-clock), streaks, mode mix, trends, and media ranking.
 
@@ -42,6 +42,7 @@ Most language apps lock you into their curriculum. FluentAnyLang is built for **
 
 - **UI locales** — Simplified Chinese, English, Japanese, and Traditional Chinese.
 - **Backup & migration** — ZIP export/import for recordings, sessions, sentence bank, playlists, settings, and optionally media.
+- **Clear study data** — Wipe local learning data from Settings while keeping app preferences.
 
 ## Screenshots
 
@@ -50,14 +51,15 @@ Most language apps lock you into their curriculum. FluentAnyLang is built for **
 ![playlist-page](./docs/screenshots/playlist.png)
 ![sentence-bank-page](./docs/screenshots/sentence-bank.png)
 ![statistics-page](./docs/screenshots/statistics.png)
-![settings-page](./docs/screenshots/settings.gif)
+![settings-page-1](./docs/screenshots/settings-1.png)
+![settings-page-2](./docs/screenshots/settings-2.png)
+
 
 ![home-import-listen](./docs/screenshots/import-and-listen.gif)
-![practice-listen-advanced-setting](./docs/screenshots/listen-advanced-setting.gif)
-![practive-anti-noise-listen](./docs/screenshots/anti-noise-listen.gif)
-![practice-speak-shadowing](./docs/screenshots/shadowing.gif)
+![practice-free-listen](./docs/screenshots/free-listen.gif)
+![practice-anti-noise-listen](./docs/screenshots/anti-noise-listen.gif)
 ![practice-speak-echo](./docs/screenshots/echo.gif)
-![playlist](./docs/screenshots/playlist.gif)
+![practice-speak-shadowing](./docs/screenshots/shadowing.gif)
 ![sentence-bank](./docs/screenshots/sentence-bank.gif)
 
 
