@@ -27,7 +27,7 @@ import '../ui/icon.js';
 import '../ui/tooltip.js';
 import '../ui/virtual-grid.js';
 import type {
-  PracticeMode,
+  SpeakingMode,
   PracticeRecord,
   SortDirection,
   SubtitleSegment,
@@ -214,7 +214,7 @@ export class RecordList extends LitElement {
   mediaId?: string;
 
   @property({ type: String })
-  modeFilter?: PracticeMode;
+  modeFilter?: SpeakingMode;
 
   @property({ type: Boolean })
   showHeader = true;
@@ -429,8 +429,8 @@ export class RecordList extends LitElement {
     `;
   }
 
-  private _modeLabel(mode: PracticeMode): string {
-    return mode === 'echo' ? msg('回声') : msg('跟读');
+  private _modeLabel(mode: SpeakingMode): string {
+    return mode === 'echo' ? msg('回声') : msg('影子');
   }
 
   private _renderItem = (item: unknown): unknown => {

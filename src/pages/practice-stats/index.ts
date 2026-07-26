@@ -167,7 +167,7 @@ export class PracticeStatsPage extends NavigatorElement {
       min-width: 0;
     }
 
-    .seg-listening {
+    .seg-free {
       background: var(--color-primary, #1677ff);
     }
     .seg-discrimination {
@@ -224,7 +224,7 @@ export class PracticeStatsPage extends NavigatorElement {
       border-radius: 50%;
     }
 
-    .dot.listening {
+    .dot.free {
       background: var(--color-primary, #1677ff);
     }
     .dot.discrimination {
@@ -411,14 +411,14 @@ export class PracticeStatsPage extends NavigatorElement {
 
   private _modeLabel(mode: PracticeAnalyticsMode): string {
     switch (mode) {
-      case 'listening':
-        return msg('听力');
+      case 'free':
+        return msg('自由听');
       case 'discrimination':
-        return msg('辨音');
+        return msg('抗噪听');
       case 'shadowing':
-        return msg('跟读');
+        return msg('影子跟读');
       case 'echo':
-        return msg('回声');
+        return msg('回声跟读');
     }
   }
 
@@ -436,7 +436,7 @@ export class PracticeStatsPage extends NavigatorElement {
     ];
     const modes: Array<{ key: ModeFilter; label: string }> = [
       { key: 'all', label: msg('全部') },
-      { key: 'listening', label: msg('自由听') },
+      { key: 'free', label: msg('自由听') },
       { key: 'discrimination', label: msg('抗噪听') },
       { key: 'shadowing', label: msg('影子跟读') },
       { key: 'echo', label: msg('回声跟读') },
@@ -541,11 +541,11 @@ export class PracticeStatsPage extends NavigatorElement {
                       <span>${b.label}</span>
                       <div class="bar-track">
                         <div class="bar-fill" style="width:${widthPct}%">
-                          ${b.byMode.listening > 0
+                          ${b.byMode.free > 0
                             ? html`<span
-                                class="seg-listening"
-                                style="flex:${b.byMode.listening}"
-                                title=${this._modeLabel('listening')}
+                                class="seg-free"
+                                style="flex:${b.byMode.free}"
+                                title=${this._modeLabel('free')}
                               ></span>`
                             : nothing}
                           ${b.byMode.discrimination > 0
@@ -582,7 +582,7 @@ export class PracticeStatsPage extends NavigatorElement {
   }
 
   private _renderBreakdown(summary: PracticeStatsSummary) {
-    const { listening, discrimination, shadowing, echo } = summary.byMode;
+    const { free, discrimination, shadowing, echo } = summary.byMode;
     const total = summary.totalMs;
 
     return html`
@@ -593,9 +593,7 @@ export class PracticeStatsPage extends NavigatorElement {
           : html`
               <div class="breakdown">
                 <div class="stack-bar" role="img" aria-label=${msg('模式构成')}>
-                  ${listening > 0
-                    ? html`<span class="seg-listening" style="flex:${listening}"></span>`
-                    : nothing}
+                  ${free > 0 ? html`<span class="seg-free" style="flex:${free}"></span>` : nothing}
                   ${discrimination > 0
                     ? html`<span class="seg-discrimination" style="flex:${discrimination}"></span>`
                     : nothing}
@@ -606,9 +604,9 @@ export class PracticeStatsPage extends NavigatorElement {
                 </div>
                 <div class="legend">
                   <span class="legend-item">
-                    <span class="dot listening"></span>${msg('自由听')}
+                    <span class="dot free"></span>${msg('自由听')}
                     <span class="legend-value"
-                      >${formatActiveDuration(listening)} · ${this._pct(listening, total)}</span
+                      >${formatActiveDuration(free)} · ${this._pct(free, total)}</span
                     >
                   </span>
                   <span class="legend-item">

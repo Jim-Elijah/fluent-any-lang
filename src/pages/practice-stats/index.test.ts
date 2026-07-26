@@ -30,7 +30,7 @@ function makeSession(overrides: Partial<PracticeSession> = {}): PracticeSession 
     mediaTitle: 'Song A',
     mediaType: 'audio',
     mediaFilename: 'Song A.mp3',
-    mode: 'listening',
+    mode: 'free',
     startedAt,
     endedAt: startedAt + 120_000,
     activeMs: 120_000,
@@ -105,7 +105,7 @@ describe('practice-stats-page', () => {
       makeSession({
         id: 's1',
         activeMs: 60_000,
-        mode: 'listening',
+        mode: 'free',
         dateKey: '2026-07-24',
         startedAt: Date.parse('2026-07-24T10:00:00'),
         endedAt: Date.parse('2026-07-24T10:01:00'),

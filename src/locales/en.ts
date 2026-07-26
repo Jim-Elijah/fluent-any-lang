@@ -149,6 +149,7 @@ export const templates = {
   s35e89a435e66645e: str`Line ${0}: ${1} (${2})`,
   s360d85b856727c52: `Failed to load media. Please try again.`,
   s36f7b9e1f4bfcc7a: `Please enter practice from media or playlist.`,
+  s371f7208b6270c04: `Shadowing`,
   s3776ceb27b24cf37: `You practiced this playlist last. Continue from here.`,
   s381abd08b78133f9: `Recording`,
   s38a5d37d83d9f800: `Sessions`,

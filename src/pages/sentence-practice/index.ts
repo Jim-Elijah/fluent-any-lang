@@ -14,7 +14,12 @@ import {
   getHotkeyManager,
   supportsKeyboardShortcuts,
 } from '../../lib/hotkeys/index.js';
-import type { MediaControlsConfig, RouteContext, SentenceBankEntry } from '../../types/models.js';
+import type {
+  MediaControlsConfig,
+  RouteContext,
+  SentenceBankEntry,
+  PracticeType,
+} from '../../types/models.js';
 import { Message } from '../../components/ui/message.js';
 import { Loading } from '../../components/ui/loading.js';
 import type { RecordingStateChangeDetail } from '../../components/player/audio-recorder.js';
@@ -25,8 +30,6 @@ import '../../components/ui/icon-button.js';
 import '../../components/ui/modal.js';
 import '../../components/player/media-player.js';
 import '../../components/player/audio-recorder.js';
-
-type PracticeMode = 'listening' | 'speaking';
 
 const SENTENCE_PLAYER_CONTROLS: MediaControlsConfig = {
   progress: true,
@@ -178,7 +181,7 @@ export class SentencePracticePage extends NavigatorElement {
   private _entry: SentenceBankEntry | null = null;
 
   @state()
-  private _mode: PracticeMode = 'listening';
+  private _mode: PracticeType = 'listening';
 
   @state()
   private _error = '';

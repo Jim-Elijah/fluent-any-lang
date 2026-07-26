@@ -16,7 +16,7 @@ import type {
 } from '../types/models.js';
 
 export const DB_NAME = 'fluent-any-lang';
-export const DB_VERSION = 12;
+export const DB_VERSION = 13;
 
 export const STORE_MEDIA = 'media';
 export const STORE_MEDIA_BLOB = 'mediaBlob';

@@ -12,7 +12,7 @@ function makeSession(overrides: Partial<PracticeSession> = {}): PracticeSession 
     mediaTitle: 'Song A',
     mediaType: 'audio',
     mediaFilename: 'Song A.mp3',
-    mode: 'listening',
+    mode: 'free',
     startedAt,
     endedAt: startedAt + 5_000,
     activeMs: 5_000,
@@ -49,7 +49,7 @@ describe('practice-session db', () => {
       makeSession({
         id: '1',
         mediaId: 'm1',
-        mode: 'listening',
+        mode: 'free',
         dateKey: '2026-07-12',
         startedAt: 1,
       }),

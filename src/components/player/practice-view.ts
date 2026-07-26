@@ -20,6 +20,8 @@ import { getMediaDuration } from '../../lib/file-validation.js';
 import type {
   DiscriminationSettings,
   ListeningMode,
+  PracticeType,
+  SpeakingMode,
   MediaItem,
   NoiseItem,
   PracticeAnalyticsMode,
@@ -108,9 +110,6 @@ import {
   getSentenceBankList,
   removeFromSentenceBank,
 } from '../../db/service.js';
-
-type PracticeType = 'listening' | 'speaking';
-type SpeakingMode = 'shadowing' | 'echo';
 
 type StorageEstimate = {
   usage: number;
@@ -470,7 +469,7 @@ export class PracticeView extends NavigatorElement {
 
   private _resolveAnalyticsMode(): PracticeAnalyticsMode {
     if (this._practiceType === 'listening') {
-      return this._listeningMode === 'discrimination' ? 'discrimination' : 'listening';
+      return this._listeningMode;
     }
     return this._speakingMode;
   }

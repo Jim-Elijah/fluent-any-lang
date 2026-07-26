@@ -45,7 +45,7 @@ describe('practice-stats-dashboard', () => {
   it('renders today totals and continue action from injected data', async () => {
     const data: HomeDashboardData = {
       todayMs: 100_000,
-      byMode: { listening: 60_000, discrimination: 0, shadowing: 0, echo: 40_000 },
+      byMode: { free: 60_000, discrimination: 0, shadowing: 0, echo: 40_000 },
       lastSession: {
         id: 's1',
         mediaId: 'm2',
@@ -80,14 +80,14 @@ describe('practice-stats-dashboard', () => {
   it('continues single media without playlistId', async () => {
     const data: HomeDashboardData = {
       todayMs: 10_000,
-      byMode: { listening: 10_000, discrimination: 0, shadowing: 0, echo: 0 },
+      byMode: { free: 10_000, discrimination: 0, shadowing: 0, echo: 0 },
       lastSession: {
         id: 's2',
         mediaId: 'm1',
         mediaTitle: 'Solo',
         mediaType: 'video',
         mediaFilename: 'Solo.mp4',
-        mode: 'listening',
+        mode: 'free',
         startedAt: 1,
         endedAt: 2,
         activeMs: 10_000,
@@ -120,7 +120,7 @@ describe('practice-stats-dashboard', () => {
   it('navigates to stats from view-all link', async () => {
     const data: HomeDashboardData = {
       todayMs: 5_000,
-      byMode: { listening: 5_000, discrimination: 0, shadowing: 0, echo: 0 },
+      byMode: { free: 5_000, discrimination: 0, shadowing: 0, echo: 0 },
       lastSession: null,
       streakDays: 1,
     };
@@ -137,7 +137,7 @@ describe('practice-stats-dashboard', () => {
   it('hides view-all link when showViewAll is false', async () => {
     const data: HomeDashboardData = {
       todayMs: 5_000,
-      byMode: { listening: 5_000, discrimination: 0, shadowing: 0, echo: 0 },
+      byMode: { free: 5_000, discrimination: 0, shadowing: 0, echo: 0 },
       lastSession: null,
       streakDays: 0,
     };
@@ -156,14 +156,14 @@ describe('practice-stats-dashboard', () => {
   it('dispatches continue-practice before navigating', async () => {
     const data: HomeDashboardData = {
       todayMs: 10_000,
-      byMode: { listening: 10_000, discrimination: 0, shadowing: 0, echo: 0 },
+      byMode: { free: 10_000, discrimination: 0, shadowing: 0, echo: 0 },
       lastSession: {
         id: 's1',
         mediaId: 'm1',
         mediaTitle: 'Track',
         mediaType: 'audio',
         mediaFilename: 'Track.mp3',
-        mode: 'listening',
+        mode: 'free',
         startedAt: 1,
         endedAt: 2,
         activeMs: 10_000,

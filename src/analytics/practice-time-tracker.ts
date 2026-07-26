@@ -29,7 +29,7 @@ export class PracticeTimeTracker {
   private mediaType: MediaType = 'audio';
   private mediaFilename = '';
   private playlistId = '';
-  private mode: PracticeAnalyticsMode = 'listening';
+  private mode: PracticeAnalyticsMode = 'free';
   private playing = false;
   private recording = false;
   private echoListening = false;
@@ -192,7 +192,7 @@ export class PracticeTimeTracker {
       return false;
     }
     switch (this.mode) {
-      case 'listening':
+      case 'free':
       case 'discrimination':
         return this.playing;
       case 'shadowing':

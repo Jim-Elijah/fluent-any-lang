@@ -46,13 +46,26 @@ export type SubtitleTrack = {
   segments: SubtitleSegment[];
 };
 
-export type PracticeMode = 'shadowing' | 'echo';
-
-/** 练习时长埋点用的模式（含听力） */
-export type PracticeAnalyticsMode = 'listening' | 'discrimination' | 'shadowing' | 'echo';
-
+/** 练习类型：听力 / 口语 */
+export type PracticeType = 'listening' | 'speaking';
 /** 听力子模式：自由听 / 辨音 */
 export type ListeningMode = 'free' | 'discrimination';
+/** 口语子模式：影子 / 回声 */
+export type SpeakingMode = 'shadowing' | 'echo';
+
+/** 练习时长埋点用的模式（= 听力子模式 ∪ 口语子模式） */
+export type PracticeAnalyticsMode = ListeningMode | SpeakingMode;
+
+/** IDB 存量可能仍为 `listening`（自由听的旧值） */
+export type LegacyPracticeAnalyticsMode = PracticeAnalyticsMode | 'listening';
+
+/** 将埋点 mode 归一为当前枚举（旧 `listening` → `free`） */
+export function normalizePracticeAnalyticsMode(
+  mode: LegacyPracticeAnalyticsMode | string,
+): PracticeAnalyticsMode {
+  if (mode === 'listening') return 'free';
+  return mode as PracticeAnalyticsMode;
+}
 
 /** 辨音训练中选中的一条噪声（含独立音量） */
 export type DiscriminationNoiseSelection = {
@@ -121,7 +134,7 @@ export type PracticeRecord = {
   mediaId: string;
   mediaTitle: string;
   mediaFilename: string;
-  mode: PracticeMode;
+  mode: SpeakingMode;
   /** echo 模式：对应的字幕句 id，便于按句查询 */
   segmentId?: string;
   mimeType: string;

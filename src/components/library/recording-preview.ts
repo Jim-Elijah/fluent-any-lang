@@ -23,7 +23,7 @@ import {
   WaveformEventType,
   type WaveformTrack,
 } from '../../controllers/waveform-controller.js';
-import type { PracticeMode, PracticeSegment, SubtitleSegment } from '../../types/models.js';
+import type { SpeakingMode, PracticeSegment, SubtitleSegment } from '../../types/models.js';
 import { getAppSettings, getMaxVolumeBoost } from '../../lib/app-settings.js';
 import { setLogicalVolume } from '../../lib/media-element-gain.js';
 import type { WaveformSeekRequestDetail } from '../player/waveform-player.js';
@@ -194,7 +194,7 @@ export class RecordingPreview extends LitElement {
   subtitleSegments: SubtitleSegment[] = [];
 
   @property({ type: String })
-  practiceMode: PracticeMode = 'shadowing';
+  practiceMode: SpeakingMode = 'shadowing';
 
   @state()
   private _controller: WaveformController = new WaveformController();

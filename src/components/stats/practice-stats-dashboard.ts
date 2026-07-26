@@ -144,7 +144,7 @@ export class PracticeStatsDashboard extends NavigatorElement {
       flex-shrink: 0;
     }
 
-    .dot.listening {
+    .dot.free {
       background: var(--color-primary, #1677ff);
     }
     .dot.discrimination {
@@ -181,7 +181,7 @@ export class PracticeStatsDashboard extends NavigatorElement {
       min-width: 0;
     }
 
-    .stack-bar .listening {
+    .stack-bar .free {
       background: var(--color-primary, #1677ff);
     }
     .stack-bar .discrimination {
@@ -212,7 +212,6 @@ export class PracticeStatsDashboard extends NavigatorElement {
       align-items: center;
       gap: var(--space-xs);
       margin: 2px 0 0;
-      font-size: 0.875rem;
       font-weight: 500;
       color: var(--color-text, rgba(0, 0, 0, 0.88));
       min-width: 0;
@@ -290,7 +289,7 @@ export class PracticeStatsDashboard extends NavigatorElement {
       this.data ??
       this._internal ?? {
         todayMs: 0,
-        byMode: { listening: 0, discrimination: 0, shadowing: 0, echo: 0 },
+        byMode: { free: 0, discrimination: 0, shadowing: 0, echo: 0 },
         lastSession: null,
         streakDays: 0,
       }
@@ -336,7 +335,7 @@ export class PracticeStatsDashboard extends NavigatorElement {
     const dash = this._dash;
     const total = dash.todayMs;
     const hasAny = total > 0 || dash.lastSession !== null || dash.streakDays > 0;
-    const { listening, discrimination, shadowing, echo } = dash.byMode;
+    const { free, discrimination, shadowing, echo } = dash.byMode;
 
     return html`
       <section class="card" aria-label=${msg('今日练习')}>
@@ -368,9 +367,9 @@ export class PracticeStatsDashboard extends NavigatorElement {
               <div class="modes" role="list">
                 <div class="mode" role="listitem">
                   <div class="mode-name">
-                    <span class="dot listening" aria-hidden="true"></span>${msg('自由听')}
+                    <span class="dot free" aria-hidden="true"></span>${msg('自由听')}
                   </div>
-                  <div class="mode-value">${formatActiveDuration(listening)}</div>
+                  <div class="mode-value">${formatActiveDuration(free)}</div>
                 </div>
                 <div class="mode" role="listitem">
                   <div class="mode-name">
@@ -395,12 +394,8 @@ export class PracticeStatsDashboard extends NavigatorElement {
               ${total > 0
                 ? html`
                     <div class="stack-bar" role="img" aria-label=${msg('今日模式占比')}>
-                      ${listening > 0
-                        ? html`<span
-                            class="listening"
-                            style="flex:${listening}"
-                            title=${msg('听力')}
-                          ></span>`
+                      ${free > 0
+                        ? html`<span class="free" style="flex:${free}" title=${msg('听力')}></span>`
                         : nothing}
                       ${discrimination > 0
                         ? html`<span

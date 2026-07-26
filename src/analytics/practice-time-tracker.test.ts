@@ -69,7 +69,7 @@ describe('PracticeTimeTracker', () => {
   it('accumulates listening time while playing and flushes on mode change', async () => {
     tracker.attach(controller as never);
     tracker.setMedia('media-1', 'Song', 'audio', 'Song.mp3');
-    tracker.setMode('listening');
+    tracker.setMode('free');
     controller.setPlaying(true);
     advance(3_000);
     tracker.setMode('shadowing');
@@ -80,7 +80,7 @@ describe('PracticeTimeTracker', () => {
       mediaTitle: 'Song',
       mediaType: 'audio',
       mediaFilename: 'Song.mp3',
-      mode: 'listening',
+      mode: 'free',
       activeMs: 3_000,
     });
   });
@@ -119,7 +119,7 @@ describe('PracticeTimeTracker', () => {
   it('pauses accumulation when document is hidden', async () => {
     tracker.attach(controller as never);
     tracker.setMedia('media-1', 'Song', 'audio', 'Song.mp3');
-    tracker.setMode('listening');
+    tracker.setMode('free');
     controller.setPlaying(true);
     advance(1_000);
 
@@ -145,7 +145,7 @@ describe('PracticeTimeTracker', () => {
   it('drops sessions shorter than MIN_ACTIVE_MS', async () => {
     tracker.attach(controller as never);
     tracker.setMedia('media-1', 'Song', 'audio', 'Song.mp3');
-    tracker.setMode('listening');
+    tracker.setMode('free');
     controller.setPlaying(true);
     advance(MIN_ACTIVE_MS - 1);
     tracker.dispose();
@@ -157,7 +157,7 @@ describe('PracticeTimeTracker', () => {
   it('flushes previous media before switching tracks', async () => {
     tracker.attach(controller as never);
     tracker.setMedia('media-1', 'A', 'audio', 'A.mp3');
-    tracker.setMode('listening');
+    tracker.setMode('free');
     controller.setPlaying(true);
     advance(2_000);
     tracker.setMedia('media-2', 'B', 'video', 'B.mp4');
@@ -173,7 +173,7 @@ describe('PracticeTimeTracker', () => {
   it('persists playlistId only when set', async () => {
     tracker.attach(controller as never);
     tracker.setMedia('media-1', 'A', 'audio', 'A.mp3', 'pl-1');
-    tracker.setMode('listening');
+    tracker.setMode('free');
     controller.setPlaying(true);
     advance(2_000);
     tracker.setMedia('media-2', 'B', 'audio', 'B.mp3');
@@ -188,7 +188,7 @@ describe('PracticeTimeTracker', () => {
 
   it('does not accumulate without mediaId', () => {
     tracker.attach(controller as never);
-    tracker.setMode('listening');
+    tracker.setMode('free');
     controller.setPlaying(true);
     advance(5_000);
     expect(tracker.getDebugState().shouldAccumulate).toBe(false);

@@ -19,7 +19,7 @@ function makeSession(overrides: Partial<PracticeSession> = {}): PracticeSession 
     mediaTitle: 'Song A',
     mediaType: 'audio',
     mediaFilename: 'Song A.mp3',
-    mode: 'listening',
+    mode: 'free',
     startedAt,
     endedAt: startedAt + 5_000,
     activeMs: 5_000,
@@ -84,7 +84,7 @@ describe('aggregatePracticeStats', () => {
   const sessions = [
     makeSession({
       id: '1',
-      mode: 'listening',
+      mode: 'free',
       activeMs: 60_000,
       dateKey: '2026-07-12',
       startedAt: Date.parse('2026-07-12T10:00:00'),
@@ -111,7 +111,7 @@ describe('aggregatePracticeStats', () => {
     }),
     makeSession({
       id: '4',
-      mode: 'listening',
+      mode: 'free',
       activeMs: 10_000,
       dateKey: '2026-07-01',
       startedAt: Date.parse('2026-07-01T09:00:00'),
@@ -126,7 +126,7 @@ describe('aggregatePracticeStats', () => {
     expect(summary.sessionCount).toBe(3);
     expect(summary.activeDayCount).toBe(2);
     expect(summary.byMode).toEqual({
-      listening: 60_000,
+      free: 60_000,
       discrimination: 0,
       shadowing: 120_000,
       echo: 30_000,
@@ -152,7 +152,24 @@ describe('aggregatePracticeStats', () => {
     expect(summary.totalMs).toBe(120_000);
     expect(summary.sessionCount).toBe(1);
     expect(summary.byMode.shadowing).toBe(120_000);
-    expect(summary.byMode.listening).toBe(0);
+    expect(summary.byMode.free).toBe(0);
+  });
+
+  it('treats legacy mode listening as free', () => {
+    const summary = aggregatePracticeStats(
+      [
+        makeSession({
+          id: 'legacy',
+          mode: 'listening' as never,
+          activeMs: 15_000,
+          dateKey: '2026-07-12',
+          startedAt: Date.parse('2026-07-12T10:00:00'),
+        }),
+      ],
+      { preset: 'today', now },
+    );
+    expect(summary.byMode.free).toBe(15_000);
+    expect(summary.totalMs).toBe(15_000);
   });
 });
 
@@ -183,7 +200,7 @@ describe('buildHomeDashboard', () => {
       }),
       makeSession({
         id: 'a',
-        mode: 'listening',
+        mode: 'free',
         dateKey: '2026-07-12',
         startedAt: Date.parse('2026-07-12T10:00:00'),
         activeMs: 60_000,
@@ -203,7 +220,7 @@ describe('buildHomeDashboard', () => {
     const dash = buildHomeDashboard(sessions, now);
     expect(dash.todayMs).toBe(100_000);
     expect(dash.byMode).toEqual({
-      listening: 60_000,
+      free: 60_000,
       discrimination: 0,
       shadowing: 0,
       echo: 40_000,

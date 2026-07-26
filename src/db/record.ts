@@ -1,6 +1,6 @@
 import { getDB } from './index.js';
 import { STORE_RECORDING_BLOB, STORE_RECORDING } from './schema.js';
-import type { PracticeMode, PracticeRecordBlob, PracticeRecord } from '../types/models.js';
+import type { SpeakingMode, PracticeRecordBlob, PracticeRecord } from '../types/models.js';
 
 function isEchoRecord(record: PracticeRecord): boolean {
   return record.mode === 'echo';
@@ -57,7 +57,7 @@ export async function countRecording(mediaId: string): Promise<number> {
 
 export async function findRecordingsByMode(
   mediaId: string,
-  mode: PracticeMode,
+  mode: SpeakingMode,
 ): Promise<PracticeRecord[]> {
   const items = await findRecordings(mediaId);
   return items.filter((item) => item.mode === mode);

@@ -1,6 +1,7 @@
 import { msg, str } from '@lit/localize';
 
 import type { MediaType, PracticeAnalyticsMode, PracticeSession } from '../types/models.js';
+import { normalizePracticeAnalyticsMode } from '../types/models.js';
 import { toLocalDateKey } from '../db/practice-session.js';
 
 export type StatsRangePreset = 'today' | 'last7' | 'month' | 'custom';
@@ -8,7 +9,7 @@ export type ModeFilter = 'all' | PracticeAnalyticsMode;
 export type StatsBucketGranularity = 'day' | 'week' | 'month';
 
 export const PRACTICE_MODES: readonly PracticeAnalyticsMode[] = [
-  'listening',
+  'free',
   'discrimination',
   'shadowing',
   'echo',
@@ -56,7 +57,7 @@ export type DateRangeBounds = {
 };
 
 export function emptyModeBreakdown(): ModeBreakdown {
-  return { listening: 0, discrimination: 0, shadowing: 0, echo: 0 };
+  return { free: 0, discrimination: 0, shadowing: 0, echo: 0 };
 }
 
 /** 将有效练习毫秒格式化为可读时长 */
@@ -214,7 +215,7 @@ export function filterSessions(
 ): PracticeSession[] {
   return sessions.filter((s) => {
     if (s.startedAt < bounds.fromMs || s.startedAt > bounds.toMs) return false;
-    if (mode !== 'all' && s.mode !== mode) return false;
+    if (mode !== 'all' && normalizePracticeAnalyticsMode(s.mode) !== mode) return false;
     return true;
   });
 }
@@ -259,8 +260,9 @@ export function aggregatePracticeStats(
 
   let totalMs = 0;
   for (const s of filtered) {
+    const sessionMode = normalizePracticeAnalyticsMode(s.mode);
     totalMs += s.activeMs;
-    byMode[s.mode] += s.activeMs;
+    byMode[sessionMode] += s.activeMs;
     activeDays.add(s.dateKey);
 
     const bKey = bucketKeyFor(s.dateKey, granularity);
@@ -275,7 +277,7 @@ export function aggregatePracticeStats(
       bucketMap.set(bKey, bucket);
     }
     bucket.totalMs += s.activeMs;
-    bucket.byMode[s.mode] += s.activeMs;
+    bucket.byMode[sessionMode] += s.activeMs;
 
     const existing = mediaMap.get(s.mediaId);
     if (existing) {
@@ -342,7 +344,7 @@ export function buildHomeDashboard(
     }
     if (s.dateKey === todayKey) {
       todayMs += s.activeMs;
-      byMode[s.mode] += s.activeMs;
+      byMode[normalizePracticeAnalyticsMode(s.mode)] += s.activeMs;
     }
   }
 

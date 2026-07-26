@@ -2129,6 +2129,10 @@
   <source>第 <x id="0" equiv-text="${warning.line}"/> 行：<x id="1" equiv-text="${warning.reason}"/>（<x id="2" equiv-text="${truncateWarningText(warning.text)}"/>）</source>
   <target>Line <x id="0" equiv-text="${warning.line}"/>: <x id="1" equiv-text="${warning.reason}"/> (<x id="2" equiv-text="${truncateWarningText(warning.text)}"/>)</target>
 </trans-unit>
+<trans-unit id="s371f7208b6270c04">
+  <source>影子</source>
+  <target>Shadowing</target>
+</trans-unit>
 </body>
 </file>
 </xliff>

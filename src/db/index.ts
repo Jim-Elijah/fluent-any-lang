@@ -20,6 +20,7 @@ import {
 } from './schema.js';
 import type { MediaItem, Playlist, SubtitleTrack } from '../types/models.js';
 import { FAVORITES_PLAYLIST_ID } from '../types/models.js';
+import { migratePracticeSessionListeningToFree } from './migrate-practice-session-mode.js';
 import { migrateSegmentIdsToDeterministic } from './migrate-segment-ids.js';
 import { migrateSentenceBankRemoved } from './migrate-sentence-bank-removed.js';
 import { migrateSentenceBankSourceMediaType } from './migrate-sentence-bank-source-media-type.js';
@@ -172,6 +173,11 @@ export function getDB(): Promise<AppDatabase> {
         // v3 briefly shipped without byMediaId for some upgrades; re-run through v4.
         if (oldVersion > 0 && oldVersion < 4 && transaction) {
           await migrateSubtitlesToMediaId(transaction);
+        }
+
+        // v13: practice analytics mode `listening` → `free`
+        if (oldVersion > 0 && oldVersion < 13 && transaction) {
+          await migratePracticeSessionListeningToFree(transaction);
         }
       },
     })
