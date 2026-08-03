@@ -20,6 +20,8 @@ import { getMediaDuration } from '../../lib/file-validation.js';
 import type {
   DiscriminationSettings,
   ListeningMode,
+  LoopMode,
+  PauseMode,
   PracticeType,
   SpeakingMode,
   MediaItem,
@@ -28,6 +30,7 @@ import type {
   PracticeRecord,
   PracticeSegment,
   RouteContext,
+  SleepMode,
   SubtitleSegment,
 } from '../../types/models.js';
 import {
@@ -217,6 +220,16 @@ export class PracticeView extends NavigatorElement {
   private _hotkeysHelpOpen = false;
 
   private _echoSegment: SubtitleSegment | null = null;
+
+  /** Playback knobs suppressed for speaking sessions; restored when the session ends. */
+  private _practicePlaybackSettingsSnapshot: {
+    loopMode: LoopMode;
+    sleepMode: SleepMode;
+    sleepMinutes: number;
+    pauseMode: PauseMode;
+    pauseSeconds: number;
+    pausePercent: number;
+  } | null = null;
 
   private _didInitialLoad = false;
 
@@ -778,7 +791,7 @@ export class PracticeView extends NavigatorElement {
                         .collectSegments=${true}
                         .disabled=${!this._recordingSupported || shadowingRemaining <= 0}
                         .hideWaveform=${true}
-                        .beforeRecordingStart=${this._resetSettingsForShadowing}
+                        .beforeRecordingStart=${this._applyShadowingPlaybackProfile}
                         @recording-complete=${this._onShadowingRecordingComplete}
                         @recording-state-change=${this._onRecordingStateChange}
                         @recording-countdown-start=${this._onSessionCountdownStart}
@@ -858,7 +871,7 @@ export class PracticeView extends NavigatorElement {
                     .pauseMediaOnSegmentEnd=${false}
                     .hideControls=${true}
                     .hideWaveform=${true}
-                    .beforeRecordingStart=${this._resetSettingsForEcho}
+                    .beforeRecordingStart=${this._applyEchoPlaybackProfile}
                     @recording-complete=${this._onEchoRecordingComplete}
                     @recording-state-change=${this._onRecordingStateChange}
                     @recording-countdown-start=${this._onSessionCountdownStart}
@@ -1301,15 +1314,9 @@ export class PracticeView extends NavigatorElement {
     this._closeTipsModal();
   };
 
-  private _resetSettingsForShadowing = (): void => {
+  private _applyShadowingPlaybackProfile = (): void => {
     const snapshot = this._controller.getSnapshot();
-    this._controller.resetSettings();
-
-    this._controller.setVolume(snapshot.volume);
-    this._controller.setPlaybackRate(snapshot.playbackRate);
-    this._controller.setPauseMode(snapshot.pauseMode);
-    this._controller.setPauseSeconds(snapshot.pauseSeconds);
-    this._controller.setPausePercent(snapshot.pausePercent);
+    this._suppressNonPracticeSettings({ pauseMode: 'keep' });
 
     // Align recording to a full sentence so PracticeSegment source/recording axes match.
     // At t=0 (typical after load / rewind), always start from the first subtitle —
@@ -1326,18 +1333,49 @@ export class PracticeView extends NavigatorElement {
     this._controller.seekToSegment(segmentIndex, false, { force: true });
   };
 
-  private _resetSettingsForEcho = (): void => {
-    const snapshot = this._controller.getSnapshot();
-    this._controller.resetSettings();
-
-    this._controller.setVolume(snapshot.volume);
-    this._controller.setPlaybackRate(snapshot.playbackRate);
-    this._controller.setPauseMode('off');
+  private _applyEchoPlaybackProfile = (): void => {
+    this._suppressNonPracticeSettings({ pauseMode: 'off' });
 
     if (this._echoSegmentIndex >= 0) {
       this._controller.seekToSegment(this._echoSegmentIndex, false, { force: true });
     }
   };
+
+  /** Temporarily ignore loop/sleep (and optionally pause) for a speaking session. */
+  private _suppressNonPracticeSettings(options: { pauseMode: 'keep' | 'off' }): void {
+    if (!this._practicePlaybackSettingsSnapshot) {
+      const snapshot = this._controller.getSnapshot();
+      this._practicePlaybackSettingsSnapshot = {
+        loopMode: snapshot.loopMode,
+        sleepMode: snapshot.sleepMode,
+        sleepMinutes: snapshot.sleepMinutes,
+        pauseMode: snapshot.pauseMode,
+        pauseSeconds: snapshot.pauseSeconds,
+        pausePercent: snapshot.pausePercent,
+      };
+    }
+
+    this._controller.setLoopMode('none');
+    this._controller.setSleepMode('off');
+    if (options.pauseMode === 'off') {
+      this._controller.setPauseMode('off');
+    }
+  }
+
+  private _restorePracticePlaybackSettings(): void {
+    const saved = this._practicePlaybackSettingsSnapshot;
+    if (!saved) {
+      return;
+    }
+    this._practicePlaybackSettingsSnapshot = null;
+
+    this._controller.setLoopMode(saved.loopMode);
+    this._controller.setSleepMinutes(saved.sleepMinutes);
+    this._controller.setSleepMode(saved.sleepMode);
+    this._controller.setPauseSeconds(saved.pauseSeconds);
+    this._controller.setPausePercent(saved.pausePercent);
+    this._controller.setPauseMode(saved.pauseMode);
+  }
 
   private _onShadowingRecordingComplete = (event: CustomEvent<RecordingCompleteDetail>): void => {
     const { blob, segments } = event.detail;
@@ -1399,10 +1437,7 @@ export class PracticeView extends NavigatorElement {
 
     const skipped = event.detail.skipped;
     this._setSessionPhase('recording');
-    this._sessionWaveformController =
-      this._speakingMode === 'echo'
-        ? (this._echoRecorderEl?.waveformController ?? null)
-        : (this._shadowingRecorderEl?.waveformController ?? null);
+    // Waveform controller is bound in _onRecordingStateChange after live analysis starts.
     if (skipped) {
       this._sessionSpeakCue = true;
       Message.primary(msg('请开始跟读'));
@@ -1480,6 +1515,7 @@ export class PracticeView extends NavigatorElement {
   }
 
   private _resetSessionUi(): void {
+    this._restorePracticePlaybackSettings();
     this._setSessionPhase('idle');
     this._sessionSpeakCue = false;
     this._sessionWaveformController = null;
@@ -1519,7 +1555,7 @@ export class PracticeView extends NavigatorElement {
     this._sessionWaveformController = null;
     this._sessionSpeakCue = false;
     this._setSessionPhase('listening');
-    this._resetSettingsForEcho();
+    this._applyEchoPlaybackProfile();
     this._echoListening = true;
     this._timeTracker.setFlags({ echoListening: true });
     this._controller.addEventListener(

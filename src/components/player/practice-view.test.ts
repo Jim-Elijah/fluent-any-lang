@@ -140,6 +140,12 @@ type PracticeViewInternals = PracticeView & {
     setVolume: (volume: number) => void;
     setPlaybackRate: (rate: number) => void;
     setSubtitlesVisible: (visible: boolean) => void;
+    setLoopMode: (mode: string) => void;
+    setSleepMode: (mode: string) => void;
+    setSleepMinutes: (minutes: number) => void;
+    setPauseMode: (mode: string) => void;
+    setPauseSeconds: (seconds: number) => void;
+    setPausePercent: (percent: number) => void;
     seek: (time: number, options?: { force?: boolean }) => void;
     addEventListener: (type: string, listener: (event?: Event) => void) => void;
     removeEventListener: (type: string, listener: (event?: Event) => void) => void;
@@ -154,6 +160,9 @@ type PracticeViewInternals = PracticeView & {
       subtitlesVisible?: boolean;
       volume?: number;
       playbackRate?: number;
+      loopMode?: string;
+      sleepMode?: string;
+      sleepMinutes?: number;
       pauseMode?: string;
       pauseSeconds?: number;
       pausePercent?: number;
@@ -332,7 +341,7 @@ describe('practice-view', () => {
     findButton(el, '口语')?.click();
     await el.updateComplete;
 
-    findButton(el, '同步跟读')?.click();
+    findButton(el, '影子跟读')?.click();
     await el.updateComplete;
     await settleView(el);
     expect(el._speakingMode).toBe('shadowing');
@@ -368,7 +377,7 @@ describe('practice-view', () => {
     const labels = Array.from(modeTabs?.querySelectorAll('ui-button') ?? []).map((button) =>
       button.textContent?.trim(),
     );
-    expect(labels).toEqual(['回声跟读', '同步跟读']);
+    expect(labels).toEqual(['回声跟读', '影子跟读']);
   });
 
   it('falls back to shadowing and hides echo when media has no subtitles', async () => {
@@ -387,7 +396,7 @@ describe('practice-view', () => {
     const labels = Array.from(modeTabs?.querySelectorAll('ui-button') ?? []).map((button) =>
       button.textContent?.trim(),
     );
-    expect(labels).toEqual(['同步跟读']);
+    expect(labels).toEqual(['影子跟读']);
   });
 
   it('falls back from echo to shadowing when track change removes subtitles', async () => {
@@ -792,8 +801,8 @@ describe('practice-view', () => {
     const seekSpy = vi.spyOn(el._controller, 'seekToSegment');
 
     (
-      el as PracticeViewInternals & { _resetSettingsForShadowing: () => void }
-    )._resetSettingsForShadowing();
+      el as PracticeViewInternals & { _applyShadowingPlaybackProfile: () => void }
+    )._applyShadowingPlaybackProfile();
 
     expect(seekSpy).toHaveBeenCalledWith(0, false, { force: true });
   });
@@ -812,10 +821,87 @@ describe('practice-view', () => {
     const seekSpy = vi.spyOn(el._controller, 'seekToSegment');
 
     (
-      el as PracticeViewInternals & { _resetSettingsForShadowing: () => void }
-    )._resetSettingsForShadowing();
+      el as PracticeViewInternals & { _applyShadowingPlaybackProfile: () => void }
+    )._applyShadowingPlaybackProfile();
 
     expect(seekSpy).toHaveBeenCalledWith(1, false, { force: true });
+  });
+
+  it('suppresses loop/sleep for shadowing then restores them after session ends', async () => {
+    const el = await renderView();
+    await switchToShadowingMode(el);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    el._controller.setLoopMode('segment');
+    el._controller.setSleepMinutes(15);
+    el._controller.setSleepMode('minutes');
+    el._controller.setVolume(0.4);
+    el._controller.setPlaybackRate(0.7);
+    el._controller.setPauseMode('seconds');
+    el._controller.setPauseSeconds(3);
+
+    (
+      el as PracticeViewInternals & { _applyShadowingPlaybackProfile: () => void }
+    )._applyShadowingPlaybackProfile();
+
+    let snap = el._controller.getSnapshot();
+    expect(snap.loopMode).toBe('none');
+    expect(snap.sleepMode).toBe('off');
+    expect(snap.volume).toBe(0.4);
+    expect(snap.playbackRate).toBe(0.7);
+    expect(snap.pauseMode).toBe('seconds');
+    expect(snap.pauseSeconds).toBe(3);
+
+    (el as PracticeViewInternals & { _resetSessionUi: () => void })._resetSessionUi();
+
+    snap = el._controller.getSnapshot();
+    expect(snap.loopMode).toBe('segment');
+    expect(snap.sleepMode).toBe('minutes');
+    expect(snap.sleepMinutes).toBe(15);
+    expect(snap.volume).toBe(0.4);
+    expect(snap.playbackRate).toBe(0.7);
+    expect(snap.pauseMode).toBe('seconds');
+    expect(snap.pauseSeconds).toBe(3);
+  });
+
+  it('suppresses loop/sleep/pause for echo then restores them after session ends', async () => {
+    const el = await renderView();
+    await switchToEchoMode(el);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    el._controller.setLoopMode('list');
+    el._controller.setSleepMode('until-end');
+    el._controller.setVolume(0.55);
+    el._controller.setPlaybackRate(1.2);
+    el._controller.setPauseMode('percentage');
+    el._controller.setPausePercent(200);
+
+    (
+      el as PracticeViewInternals & {
+        _echoSegmentIndex: number;
+        _applyEchoPlaybackProfile: () => void;
+      }
+    )._echoSegmentIndex = 0;
+    (
+      el as PracticeViewInternals & { _applyEchoPlaybackProfile: () => void }
+    )._applyEchoPlaybackProfile();
+
+    let snap = el._controller.getSnapshot();
+    expect(snap.loopMode).toBe('none');
+    expect(snap.sleepMode).toBe('off');
+    expect(snap.pauseMode).toBe('off');
+    expect(snap.volume).toBe(0.55);
+    expect(snap.playbackRate).toBe(1.2);
+
+    (el as PracticeViewInternals & { _resetSessionUi: () => void })._resetSessionUi();
+
+    snap = el._controller.getSnapshot();
+    expect(snap.loopMode).toBe('list');
+    expect(snap.sleepMode).toBe('until-end');
+    expect(snap.pauseMode).toBe('percentage');
+    expect(snap.pausePercent).toBe(200);
+    expect(snap.volume).toBe(0.55);
+    expect(snap.playbackRate).toBe(1.2);
   });
 
   it('shows compact recordings entry instead of inline record-list in shadowing', async () => {
@@ -1143,7 +1229,7 @@ describe('practice-view', () => {
       setUserSettingsLocal({ skipShadowingTips: false });
       const el = await renderView();
       await openSpeakingMode(el);
-      findButton(el, '同步跟读')?.click();
+      findButton(el, '影子跟读')?.click();
       await el.updateComplete;
 
       expect(el._tipsModalKind).toBe('shadowing');

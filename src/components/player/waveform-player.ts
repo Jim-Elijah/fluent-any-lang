@@ -144,7 +144,16 @@ export class WaveformPlayer extends LitElement {
   protected willUpdate(changed: Map<PropertyKey, unknown>): void {
     if (changed.has('controller') && this.controller !== this._boundController) {
       this._boundController = this.controller;
-      if (this.controller && !this._controllerHost) {
+      if (!this.controller) {
+        if (this._controllerHost) {
+          this.removeController(this._controllerHost);
+          this._controllerHost = null;
+        }
+        return;
+      }
+      if (this._controllerHost) {
+        this._controllerHost.setController(this.controller);
+      } else {
         this._controllerHost = new WaveformControllerHost(this, this.controller);
       }
     }

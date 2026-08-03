@@ -73,8 +73,9 @@ export class AudioRecorderController {
       };
 
       this.mediaRecorder.onstart = () => {
-        this.setState('recording');
+        // Prepare live waveform / listeners before notifying UI that recording started.
         this.options.onStart?.();
+        this.setState('recording');
       };
 
       this.mediaRecorder.onpause = () => {

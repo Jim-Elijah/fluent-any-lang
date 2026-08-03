@@ -117,7 +117,7 @@ class MockAudioContext {
   createAnalyser = vi.fn().mockReturnValue({
     fftSize: 2048,
     getByteTimeDomainData: vi.fn((arr: Uint8Array) => {
-      arr.fill(128);
+      arr.fill(160);
     }),
     connect: vi.fn(),
     disconnect: vi.fn(),

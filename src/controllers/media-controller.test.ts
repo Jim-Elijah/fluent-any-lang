@@ -475,6 +475,39 @@ describe('MediaController', () => {
     expect(controller.currentTime).toBe(0);
   });
 
+  it('keeps looping the same segment when rewind lands in the pre-segment gap', async () => {
+    const segments: SubtitleSegment[] = [
+      { id: 's1', startTime: 0, endTime: 5, text: 'His name?' },
+      { id: 's2', startTime: 5.25, endTime: 8, text: 'His name is Armand.' },
+      { id: 's3', startTime: 8.4, endTime: 12, text: 'next' },
+    ];
+    await controller.loadTracks([makeTrack('a', 'Track A', { segments })]);
+    controller.setLoopMode('segment');
+    controller.seekToSegment(1);
+    expect(controller.currentSegmentIndex).toBe(1);
+
+    let audioTime = 5.25;
+    Object.defineProperty(audio, 'paused', { configurable: true, value: false });
+    Object.defineProperty(audio, 'currentTime', {
+      configurable: true,
+      get: () => audioTime,
+      set: (value: number) => {
+        audioTime = value;
+      },
+    });
+
+    // Near end → rewind to start
+    audioTime = 7.96;
+    audio.dispatchEvent(new Event('timeupdate'));
+    expect(audioTime).toBe(5.25);
+    expect(controller.currentSegmentIndex).toBe(1);
+
+    // Browser seek undershoots into the gap between s1.end (5) and s2.start (5.25)
+    audioTime = 5.1;
+    audio.dispatchEvent(new Event('timeupdate'));
+    expect(controller.currentSegmentIndex).toBe(1);
+  });
+
   it('detects segment end during playback and emits segment-end', async () => {
     const segments: SubtitleSegment[] = [
       { id: 's1', startTime: 0, endTime: 5, text: 'one' },
@@ -528,6 +561,56 @@ describe('MediaController', () => {
 
     controller.cancelSegmentPause();
     expect(controller.getSnapshot().segmentPausePending).toBe(false);
+  });
+
+  it('resumes playback when seeking to another segment during segment pause', async () => {
+    vi.useFakeTimers();
+    const segments: SubtitleSegment[] = [
+      { id: 's1', startTime: 0, endTime: 5, text: 'one' },
+      { id: 's2', startTime: 5, endTime: 10, text: 'two' },
+    ];
+    await controller.loadTracks([makeTrack('a', 'Track A', { segments })]);
+    controller.setPauseMode('seconds');
+    controller.setPauseSeconds(2);
+    Object.defineProperty(audio, 'paused', { configurable: true, value: false });
+    Object.defineProperty(audio, 'currentTime', { configurable: true, value: 5.1, writable: true });
+    audio.dispatchEvent(new Event('timeupdate'));
+
+    expect(controller.getSnapshot().segmentPausePending).toBe(true);
+    Object.defineProperty(audio, 'paused', { configurable: true, value: true });
+
+    audio.play.mockClear();
+    controller.seekToSegment(1);
+
+    expect(controller.getSnapshot().segmentPausePending).toBe(false);
+    expect(controller.currentSegmentIndex).toBe(1);
+    expect(controller.currentTime).toBe(5);
+    expect(audio.play).toHaveBeenCalledTimes(1);
+
+    audio.play.mockClear();
+    vi.advanceTimersByTime(2100);
+    expect(audio.play).not.toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+
+  it('does not auto-play when seeking after a user pause', async () => {
+    const segments: SubtitleSegment[] = [
+      { id: 's1', startTime: 0, endTime: 5, text: 'one' },
+      { id: 's2', startTime: 5, endTime: 10, text: 'two' },
+    ];
+    await controller.loadTracks([makeTrack('a', 'Track A', { segments })]);
+    controller.setPauseMode('seconds');
+    controller.setPauseSeconds(2);
+    Object.defineProperty(audio, 'paused', { configurable: true, value: false });
+    await controller.play();
+    controller.pause();
+    Object.defineProperty(audio, 'paused', { configurable: true, value: true });
+
+    audio.play.mockClear();
+    controller.seekToSegment(1);
+
+    expect(controller.getSnapshot().segmentPausePending).toBe(false);
+    expect(audio.play).not.toHaveBeenCalled();
   });
 
   it('expires the sleep timer and pauses playback', async () => {

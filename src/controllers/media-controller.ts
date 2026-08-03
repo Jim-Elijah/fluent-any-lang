@@ -358,11 +358,16 @@ export class MediaController extends EventTarget {
     }
 
     const clamped = Math.max(0, Math.min(time, this.duration || this.mediaElement.duration || 0));
+    const resumeAfterSegmentPause = this._segmentPauseScheduler.isActive;
     this._clearSegmentPauseTimer();
     this.mediaElement.currentTime = clamped;
     this.currentTime = clamped;
     this._previousPlaybackTime = clamped;
     this._updateCurrentSegment({ allowForward: true });
+    if (resumeAfterSegmentPause) {
+      // Segment pause is a temporary study gap, not a user stop — keep the session going.
+      void this.play();
+    }
     this._emitChange();
   }
 
@@ -376,10 +381,11 @@ export class MediaController extends EventTarget {
       return;
     }
 
+    const resumeAfterSegmentPause = this._segmentPauseScheduler.isActive;
     this._setCurrentSegmentIndex(index);
     this.seek(segment.startTime, { force: true });
 
-    if (autoPlay) {
+    if (autoPlay && !resumeAfterSegmentPause) {
       void this.play();
     }
   }
@@ -643,7 +649,12 @@ export class MediaController extends EventTarget {
 
     this._detectSegmentEnd();
     this._applySegmentLoop();
-    this._updateCurrentSegment({ allowForward: this.loopMode !== 'segment' });
+    // Segment loop pins the active sentence: time-based index updates (including
+    // findSegmentIndex's "keep previous in gap" rule) can jump backward when a
+    // rewind undershoots into the pre-segment gap.
+    if (this.loopMode !== 'segment') {
+      this._updateCurrentSegment({ allowForward: true });
+    }
 
     this._previousPlaybackTime = this.currentTime;
 

@@ -5,7 +5,9 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { MediaController } from '../../controllers/media-controller.js';
 import { WaveformController } from '../../controllers/waveform-controller.js';
 import { AudioRecorderController } from '../../lib/audio-recorder.js';
+import { buildLiveDisplayPeaks } from '../../lib/live-waveform-peaks.js';
 import { ExtendedMediaEventType } from '../../lib/playback-utils.js';
+import { throttle } from '../../lib/util.js';
 import { CountdownCancelledError, runRecordingCountdown } from '../ui/countdown-overlay.js';
 import { shouldSkipRecordingCountdown } from '../../lib/user-settings.js';
 import type { PracticeSegment, SubtitleSegment } from '../../types/models.js';
@@ -119,7 +121,6 @@ export class AudioRecorder extends LitElement {
   private _liveTrackId: string | null = null;
   private _livePeaks: number[] = [];
   private _liveAnalysisDetach: (() => void) | null = null;
-  private _liveStartedAt = 0;
   private _practiceSegments: PracticeSegment[] = [];
   private _recordingStartedAt = 0;
   private _lastRecordingEndTime = 0;
@@ -463,17 +464,24 @@ export class AudioRecorder extends LitElement {
     this.controller?.removeEventListener(ExtendedMediaEventType.SEGMENT_END, this._onSegmentEnded);
   }
 
+  private _publishLivePeaks = (): void => {
+    if (!this._liveTrackId) {
+      return;
+    }
+    const peaks = buildLiveDisplayPeaks(this._livePeaks);
+    const windowDuration = Math.max(peaks.length, 1) * 0.05;
+    this._waveformController.updateLivePeaks(this._liveTrackId, peaks, windowDuration);
+  };
+
+  private readonly _throttledPublishLivePeaks = throttle(this._publishLivePeaks, 100);
+
   private _startLiveAnalysis(): void {
     this._livePeaks = [];
-    this._liveStartedAt = performance.now();
+    this._throttledPublishLivePeaks.cancel();
     try {
       this._liveAnalysisDetach = this._audioRecorder.attachWaveformAnalysis((peak) => {
         this._livePeaks.push(peak);
-        const duration = (performance.now() - this._liveStartedAt) / 1000;
-        const peaks = new Float32Array(this._livePeaks);
-        if (this._liveTrackId) {
-          this._waveformController.updateLivePeaks(this._liveTrackId, peaks, duration);
-        }
+        this._throttledPublishLivePeaks();
       });
     } catch {
       // stream may not be ready; ignore waveform errors
@@ -481,6 +489,7 @@ export class AudioRecorder extends LitElement {
   }
 
   private _stopLiveAnalysis(): void {
+    this._throttledPublishLivePeaks.cancel();
     this._liveAnalysisDetach?.();
     this._liveAnalysisDetach = null;
     this._audioRecorder.detachWaveformAnalysis();
