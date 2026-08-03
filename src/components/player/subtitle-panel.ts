@@ -165,6 +165,7 @@ const FULLSCREEN_PORTAL_STYLES = `
   .text {
     margin: 0;
     font-weight: 600;
+    text-align: center;
   }
 
   .translation {
@@ -192,6 +193,10 @@ const FULLSCREEN_PORTAL_STYLES = `
     .content {
       align-items: flex-start;
     }
+
+    .text {
+        text-align: left;
+      }
 
     // .echo-select {
     //   min-width: 96px;
@@ -306,6 +311,7 @@ export class SubtitlePanel extends LitElement {
     .text {
       margin: 0;
       font-weight: 600;
+      text-align: center;
     }
 
     .translation {
@@ -368,6 +374,9 @@ export class SubtitlePanel extends LitElement {
     @media (max-width: 767px) {
       .content {
         align-items: flex-start;
+      }
+      .text {
+        text-align: left;
       }
     }
   `;

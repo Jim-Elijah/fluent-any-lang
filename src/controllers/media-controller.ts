@@ -64,7 +64,7 @@ export type LoadedTrack = {
   segments: SubtitleSegment[];
 };
 
-const LOOP_EPSILON = 0.05;
+const LOOP_EPSILON = 0.015;
 const TIMEUPDATE_THROTTLE_MS = 250;
 
 const DEFAULT_PLAYER_SETTINGS = {
