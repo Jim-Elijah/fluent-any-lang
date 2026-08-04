@@ -9,10 +9,12 @@ import {
   DISCRIMINATION_RATE_STEPS,
   LOOP_MODE_VALUES,
   PLAYBACK_RATE_LIMITS,
+  SHADOWING_GAP_POLICY_VALUES,
   type AppSettings,
   type DiscriminationNoiseSelection,
   type DiscriminationSettings,
   type LoopMode,
+  type ShadowingGapPolicy,
 } from '../types/models.js';
 
 export const APP_SETTINGS_STORAGE_KEY = 'fluent-any-lang:app-settings';
@@ -39,6 +41,13 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function parseLoopMode(value: unknown, fallback: LoopMode): LoopMode {
   return typeof value === 'string' && (LOOP_MODE_VALUES as readonly string[]).includes(value)
     ? (value as LoopMode)
+    : fallback;
+}
+
+function parseShadowingGapPolicy(value: unknown, fallback: ShadowingGapPolicy): ShadowingGapPolicy {
+  return typeof value === 'string' &&
+    (SHADOWING_GAP_POLICY_VALUES as readonly string[]).includes(value)
+    ? (value as ShadowingGapPolicy)
     : fallback;
 }
 
@@ -225,6 +234,10 @@ function parseAppSettings(raw: unknown): AppSettings {
       DEFAULT_SETTINGS.skipRecordingCountdown,
     ),
     skipShadowingTips: parseBoolean(raw.skipShadowingTips, DEFAULT_SETTINGS.skipShadowingTips),
+    shadowingGapPolicy: parseShadowingGapPolicy(
+      raw.shadowingGapPolicy,
+      DEFAULT_SETTINGS.shadowingGapPolicy,
+    ),
     skipEchoTips: parseBoolean(raw.skipEchoTips, DEFAULT_SETTINGS.skipEchoTips),
     skipDiscriminationTips: parseBoolean(
       raw.skipDiscriminationTips,

@@ -53,6 +53,21 @@ export type ListeningMode = 'free' | 'discrimination';
 /** 口语子模式：影子 / 回声 */
 export type SpeakingMode = 'shadowing' | 'echo';
 
+/**
+ * 影子跟读句间空隙策略。
+ * - compress：录制时跳过字幕自然大 gap，句间约 1s；预览按句对齐同步。
+ * - preserve：原音完整播放（含大 gap）；预览连续对照听。
+ */
+export type ShadowingGapPolicy = 'compress' | 'preserve';
+
+export const SHADOWING_GAP_POLICY_VALUES: readonly ShadowingGapPolicy[] = [
+  'compress',
+  'preserve',
+] as const;
+
+/** compress 策略下句间固定等待（毫秒） */
+export const SHADOWING_COMPRESS_GAP_MS = 1000;
+
 /** 练习时长埋点用的模式（= 听力子模式 ∪ 口语子模式） */
 export type PracticeAnalyticsMode = ListeningMode | SpeakingMode;
 
@@ -142,6 +157,8 @@ export type PracticeRecord = {
   sourceDuration: number; // 本次练习覆盖的原音时长（秒），即 segments 首尾在原音时间轴上的跨度
   recordingDuration: number; // 录音时长
   segments: PracticeSegment[];
+  /** 影子跟读：该次录音使用的句间空隙策略；存量录音可能缺失 */
+  gapPolicy?: ShadowingGapPolicy;
 };
 
 // 录音的Blob
@@ -248,6 +265,8 @@ export type AppSettings = {
   skipRecordingCountdown: boolean;
   /** When true, shadowing mode tips modal is skipped. */
   skipShadowingTips: boolean;
+  /** 影子跟读句间空隙：compress（默认）或 preserve。 */
+  shadowingGapPolicy: ShadowingGapPolicy;
   /** When true, echo mode tips modal is skipped. */
   skipEchoTips: boolean;
   /** When true, discrimination mode tips modal is skipped. */
@@ -331,6 +350,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   maxPlaybackRate: 2,
   skipRecordingCountdown: false,
   skipShadowingTips: false,
+  shadowingGapPolicy: 'compress',
   skipEchoTips: false,
   skipDiscriminationTips: false,
   lastPlayedPlaylistId: '',

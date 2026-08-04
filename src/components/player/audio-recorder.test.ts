@@ -527,6 +527,150 @@ describe('audio-recorder component', () => {
     controller.destroy();
   });
 
+  it('leaves a hollow between practice segments across a subtitle gap', async () => {
+    vi.useFakeTimers();
+    let nowMs = 1_000;
+    vi.spyOn(performance, 'now').mockImplementation(() => nowMs);
+
+    const gappedSegments: SubtitleSegment[] = [
+      { id: 'g0', startTime: 0, endTime: 2, text: 'one' },
+      { id: 'g1', startTime: 10, endTime: 12, text: 'two' },
+    ];
+    const controller = new MediaController();
+    await controller.loadTracks([
+      {
+        ...makeTrack(),
+        segments: gappedSegments,
+      },
+    ]);
+    vi.spyOn(controller, 'play').mockResolvedValue(undefined);
+    const el = await renderRecorder({
+      controller,
+      props: { collectSegments: true, autoPlayOnStart: true },
+    });
+    const onComplete = vi.fn();
+    el.addEventListener(AudioRecorderEventType.COMPLETE, onComplete);
+
+    const startPromise = el.startRecording();
+    nowMs = 1_000 + RECORDING_HEAD_PAD_MS;
+    await vi.advanceTimersByTimeAsync(RECORDING_HEAD_PAD_MS);
+    await startPromise;
+
+    nowMs = 2_000;
+    controller.dispatchEvent(
+      new CustomEvent(ExtendedMediaEventType.SEGMENT_END, {
+        detail: { segmentIndex: 0, segment: gappedSegments[0] },
+      }),
+    );
+
+    // Wall-clock gap while source is in the subtitle hollow.
+    nowMs = 7_000;
+    controller.dispatchEvent(
+      new CustomEvent(ExtendedMediaEventType.SEGMENT_CHANGE, {
+        detail: {
+          currentIndex: 1,
+          currentSegment: gappedSegments[1],
+          previousIndex: 0,
+          previousSegment: gappedSegments[0],
+        },
+      }),
+    );
+    nowMs = 9_000;
+    controller.dispatchEvent(
+      new CustomEvent(ExtendedMediaEventType.SEGMENT_END, {
+        detail: { segmentIndex: 1, segment: gappedSegments[1] },
+      }),
+    );
+
+    const stopPromise = el.stopRecording();
+    nowMs = 9_000 + RECORDING_TAIL_PAD_MS;
+    await vi.advanceTimersByTimeAsync(RECORDING_TAIL_PAD_MS);
+    await stopPromise;
+    await el.updateComplete;
+
+    const practice = onComplete.mock.calls[0][0].detail.segments as Array<{
+      id: string;
+      recordingStartTime: number;
+      recordingEndTime: number;
+    }>;
+    expect(practice).toHaveLength(2);
+    expect(practice[1].recordingStartTime - practice[0].recordingEndTime).toBeGreaterThan(4);
+    controller.destroy();
+  });
+
+  it('ignores regressing SEGMENT_CHANGE after a cue was already finalized', async () => {
+    vi.useFakeTimers();
+    let nowMs = 1_000;
+    vi.spyOn(performance, 'now').mockImplementation(() => nowMs);
+
+    const gappedSegments: SubtitleSegment[] = [
+      { id: 'g0', startTime: 0, endTime: 2, text: 'one' },
+      { id: 'g1', startTime: 10, endTime: 12, text: 'two' },
+    ];
+    const controller = new MediaController();
+    await controller.loadTracks([{ ...makeTrack(), segments: gappedSegments }]);
+    vi.spyOn(controller, 'play').mockResolvedValue(undefined);
+    const el = await renderRecorder({
+      controller,
+      props: { collectSegments: true, autoPlayOnStart: true },
+    });
+    const onComplete = vi.fn();
+    el.addEventListener(AudioRecorderEventType.COMPLETE, onComplete);
+
+    const startPromise = el.startRecording();
+    nowMs = 1_000 + RECORDING_HEAD_PAD_MS;
+    await vi.advanceTimersByTimeAsync(RECORDING_HEAD_PAD_MS);
+    await startPromise;
+
+    nowMs = 2_000;
+    controller.dispatchEvent(
+      new CustomEvent(ExtendedMediaEventType.SEGMENT_END, {
+        detail: { segmentIndex: 0, segment: gappedSegments[0] },
+      }),
+    );
+
+    nowMs = 3_000;
+    controller.dispatchEvent(
+      new CustomEvent(ExtendedMediaEventType.SEGMENT_CHANGE, {
+        detail: {
+          currentIndex: 1,
+          currentSegment: gappedSegments[1],
+          previousIndex: 0,
+          previousSegment: gappedSegments[0],
+        },
+      }),
+    );
+
+    // Compress seek undershoot: gap snap-back to the already-closed cue.
+    nowMs = 3_010;
+    controller.dispatchEvent(
+      new CustomEvent(ExtendedMediaEventType.SEGMENT_CHANGE, {
+        detail: {
+          currentIndex: 0,
+          currentSegment: gappedSegments[0],
+          previousIndex: 1,
+          previousSegment: gappedSegments[1],
+        },
+      }),
+    );
+
+    nowMs = 5_000;
+    controller.dispatchEvent(
+      new CustomEvent(ExtendedMediaEventType.SEGMENT_END, {
+        detail: { segmentIndex: 1, segment: gappedSegments[1] },
+      }),
+    );
+
+    const stopPromise = el.stopRecording();
+    nowMs = 5_000 + RECORDING_TAIL_PAD_MS;
+    await vi.advanceTimersByTimeAsync(RECORDING_TAIL_PAD_MS);
+    await stopPromise;
+
+    const practice = onComplete.mock.calls[0][0].detail.segments as Array<{ id: string }>;
+    expect(practice.map((s) => s.id)).toEqual(['g0', 'g1']);
+    controller.destroy();
+  });
+
   it('finalizes last subtitle when currentSegmentIndex is past the end', async () => {
     vi.useFakeTimers();
     const controller = new MediaController();

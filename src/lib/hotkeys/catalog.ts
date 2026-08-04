@@ -83,7 +83,7 @@ export function getHotkeyActionLabel(action: HotkeyAction): string {
     case 'playRecording':
       return msg('播放录音');
     case 'playSync':
-      return msg('同步播放');
+      return msg('对照播放');
     case 'toggleSubtitles':
       return msg('显示/隐藏字幕');
     case 'toggleTranslation':

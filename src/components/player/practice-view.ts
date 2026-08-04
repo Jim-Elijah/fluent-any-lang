@@ -30,6 +30,7 @@ import type {
   PracticeRecord,
   PracticeSegment,
   RouteContext,
+  ShadowingGapPolicy,
   SleepMode,
   SubtitleSegment,
 } from '../../types/models.js';
@@ -227,6 +228,9 @@ export class PracticeView extends NavigatorElement {
   private _hotkeysHelpOpen = false;
 
   private _echoSegment: SubtitleSegment | null = null;
+
+  /** Gap policy applied for the in-progress shadowing take (snapshotted at record start). */
+  private _activeShadowingGapPolicy: ShadowingGapPolicy = 'compress';
 
   /** Playback knobs suppressed for speaking sessions; restored when the session ends. */
   private _practicePlaybackSettingsSnapshot: {
@@ -1344,12 +1348,17 @@ export class PracticeView extends NavigatorElement {
   };
 
   private _applyShadowingPlaybackProfile = (): void => {
-    const snapshot = this._controller.getSnapshot();
-    this._suppressNonPracticeSettings({ pauseMode: 'keep' });
+    const gapPolicy = getAppSettings().shadowingGapPolicy;
+    this._activeShadowingGapPolicy = gapPolicy;
+    this._suppressNonPracticeSettings({
+      pauseMode: gapPolicy === 'compress' ? 'off' : 'keep',
+    });
+    this._controller.setShadowingGapCompress(gapPolicy === 'compress');
 
     // Align recording to a full sentence so PracticeSegment source/recording axes match.
     // At t=0 (typical after load / rewind), always start from the first subtitle —
     // its startTime may be > 0 when there is a non-subtitled intro.
+    const snapshot = this._controller.getSnapshot();
     if (snapshot.segments.length === 0) {
       return;
     }
@@ -1363,6 +1372,7 @@ export class PracticeView extends NavigatorElement {
   };
 
   private _applyEchoPlaybackProfile = (): void => {
+    this._controller.setShadowingGapCompress(false);
     this._suppressNonPracticeSettings({ pauseMode: 'off' });
 
     if (this._echoSegmentIndex >= 0) {
@@ -1398,6 +1408,7 @@ export class PracticeView extends NavigatorElement {
     }
     this._practicePlaybackSettingsSnapshot = null;
 
+    this._controller.setShadowingGapCompress(false);
     this._controller.setLoopMode(saved.loopMode);
     this._controller.setSleepMinutes(saved.sleepMinutes);
     this._controller.setSleepMode(saved.sleepMode);
@@ -1627,6 +1638,7 @@ export class PracticeView extends NavigatorElement {
         sourceDuration: getPracticeSourceDuration(segments),
         createdAt: Date.now(),
         segments,
+        gapPolicy: this._activeShadowingGapPolicy,
       };
 
       await saveRecording(record, blob);

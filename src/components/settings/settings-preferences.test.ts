@@ -67,6 +67,23 @@ describe('settings-preferences', () => {
     const el = await renderPreferences();
     expect(switches(el).length).toBe(4);
     expect(switches(el).every((sw) => !(sw as UiSwitchLike).checked)).toBe(true);
+    expect(el.shadowRoot?.querySelector('ui-select')).not.toBeNull();
+  });
+
+  it('persists shadowing gap policy from the select control', async () => {
+    const el = await renderPreferences();
+    const select = el.shadowRoot?.querySelector('ui-select') as HTMLElement & {
+      dispatchEvent: (event: Event) => boolean;
+    };
+    select.dispatchEvent(
+      new CustomEvent('change', {
+        detail: { value: 'preserve', option: { value: 'preserve', label: 'preserve' } },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+    await el.updateComplete;
+    expect(setAppSettings).toHaveBeenCalledWith({ shadowingGapPolicy: 'preserve' });
   });
 
   it.each(PREFERENCE_TOGGLES)(

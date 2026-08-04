@@ -286,6 +286,73 @@ describe('MediaController', () => {
     expect(audio.play).toHaveBeenCalledTimes(1);
   });
 
+  it('shadowing gap compress waits on ended sentence then seeks and resumes', async () => {
+    vi.useFakeTimers();
+    const segments: SubtitleSegment[] = [
+      { id: 's1', startTime: 0, endTime: 2, text: 'one' },
+      { id: 's2', startTime: 10, endTime: 12, text: 'two' },
+    ];
+    await controller.loadTracks([makeTrack('a', 'Track A', { segments })]);
+    controller.setShadowingGapCompress(true);
+    controller.setPauseMode('seconds');
+    controller.setPauseSeconds(5);
+    controller.seekToSegment(0);
+    audio.play.mockClear();
+
+    (
+      controller as unknown as {
+        _applySegmentPause: (segment: SubtitleSegment) => void;
+      }
+    )._applySegmentPause(segments[0]!);
+
+    expect(controller.currentSegmentIndex).toBe(0);
+    expect(controller.currentTime).toBe(0);
+    expect(controller.getSnapshot().segmentPausePending).toBe(true);
+    expect(audio.play).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(controller.currentSegmentIndex).toBe(1);
+    expect(controller.currentTime).toBe(10);
+    expect(audio.play).toHaveBeenCalledTimes(1);
+    expect(controller.getSnapshot().segmentPausePending).toBe(false);
+    vi.useRealTimers();
+  });
+
+  it('shadowing gap compress does not snap back when timeupdate lands in inter-cue gap', async () => {
+    vi.useFakeTimers();
+    const segments: SubtitleSegment[] = [
+      { id: 's1', startTime: 0, endTime: 2, text: 'one' },
+      { id: 's2', startTime: 10, endTime: 12, text: 'two' },
+    ];
+    await controller.loadTracks([makeTrack('a', 'Track A', { segments })]);
+    controller.setShadowingGapCompress(true);
+    controller.seekToSegment(0);
+
+    (
+      controller as unknown as {
+        _applySegmentPause: (segment: SubtitleSegment) => void;
+      }
+    )._applySegmentPause(segments[0]!);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(controller.currentSegmentIndex).toBe(1);
+
+    const regressIndexes: number[] = [];
+    controller.addEventListener(ExtendedMediaEventType.SEGMENT_CHANGE, ((event: Event) => {
+      const detail = (event as CustomEvent<{ currentIndex: number }>).detail;
+      regressIndexes.push(detail.currentIndex);
+    }) as EventListener);
+
+    // Browser seek can briefly report a time in the hollow between cues.
+    // findSegmentIndex keeps the previous cue there — must not emit SEGMENT_CHANGE back.
+    Object.defineProperty(audio, 'currentTime', { configurable: true, writable: true, value: 5 });
+    Object.defineProperty(audio, 'paused', { configurable: true, value: false });
+    audio.dispatchEvent(new Event('timeupdate'));
+
+    expect(controller.currentSegmentIndex).toBe(1);
+    expect(regressIndexes).toEqual([]);
+    vi.useRealTimers();
+  });
+
   it('blocks track navigation while navigationLocked unless forced', async () => {
     await controller.loadTracks([makeTrack('a', 'A'), makeTrack('b', 'B')]);
     controller.setNavigationLocked(true);
@@ -467,7 +534,7 @@ describe('MediaController', () => {
     Object.defineProperty(audio, 'paused', { configurable: true, value: false });
     Object.defineProperty(audio, 'currentTime', {
       configurable: true,
-      value: 4.96,
+      value: 4.99,
       writable: true,
     });
     audio.dispatchEvent(new Event('timeupdate'));
@@ -497,7 +564,7 @@ describe('MediaController', () => {
     });
 
     // Near end → rewind to start
-    audioTime = 7.96;
+    audioTime = 7.99;
     audio.dispatchEvent(new Event('timeupdate'));
     expect(audioTime).toBe(5.25);
     expect(controller.currentSegmentIndex).toBe(1);

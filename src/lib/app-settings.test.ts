@@ -75,6 +75,15 @@ describe('app-settings', () => {
     expect(getAppSettings().defaultLoopMode).toBe('segment');
   });
 
+  it('parses shadowing gap policy with compress default', () => {
+    expect(getAppSettings().shadowingGapPolicy).toBe('compress');
+    expect(normalizeAppSettings({ shadowingGapPolicy: 'invalid' }).shadowingGapPolicy).toBe(
+      'compress',
+    );
+    setAppSettings({ shadowingGapPolicy: 'preserve' });
+    expect(getAppSettings().shadowingGapPolicy).toBe('preserve');
+  });
+
   it('migrates legacy user-settings once', () => {
     localStorage.setItem(
       USER_SETTINGS_STORAGE_KEY,

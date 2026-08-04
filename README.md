@@ -27,9 +27,9 @@ Most language apps lock you into their curriculum. FluentAnyLang is built for **
 
 ### Speaking
 
-- **Shadowing** — Record in sync with the original, with countdown cues and a live waveform.
+- **Shadowing** — Record in sync with the original, with countdown cues and a live waveform; choose inter-sentence gaps as “compress to ~1s” or “preserve full gaps” in Settings.
 - **Echo** — Hear the line first, then record; keep multiple takes per sentence and pick the best.
-- **Compare takes** — Play source only, recording only, or **sync play** (sentence-aligned); click the waveform to seek and play.
+- **Compare takes** — Play source only, recording only, or compare (sentence-aligned **sync** when gaps were compressed; **continuous compare** when full gaps were preserved); click the waveform to seek and play.
 
 ### Library & progress
 

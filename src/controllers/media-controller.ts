@@ -11,6 +11,7 @@ import { DeadlineScheduler } from '../lib/deadline-scheduler.js';
 import { throttle } from '../lib/util.js';
 import {
   PLAYBACK_RATE_LIMITS,
+  SHADOWING_COMPRESS_GAP_MS,
   type LoopMode,
   type MediaItem,
   type PauseMode,
@@ -111,6 +112,12 @@ export class MediaController extends EventTarget {
   pauseMode: PauseMode = DEFAULT_PLAYER_SETTINGS.pauseMode;
   pauseSeconds = DEFAULT_PLAYER_SETTINGS.pauseSeconds;
   pausePercent = DEFAULT_PLAYER_SETTINGS.pausePercent;
+  /**
+   * When true (shadowing + compress gap policy), SEGMENT_END waits
+   * {@link SHADOWING_COMPRESS_GAP_MS} on the ended sentence, then seeks to the
+   * next cue and resumes — instead of normal pauseMode.
+   */
+  shadowingGapCompress = false;
 
   private readonly _sleepScheduler = new DeadlineScheduler();
   private readonly _segmentPauseScheduler = new DeadlineScheduler();
@@ -542,6 +549,14 @@ export class MediaController extends EventTarget {
     this._emitChange();
   }
 
+  setShadowingGapCompress(enabled: boolean): void {
+    this.shadowingGapCompress = enabled;
+    if (!enabled) {
+      this._clearSegmentPauseTimer();
+    }
+    this._emitChange();
+  }
+
   setPauseSeconds(seconds: number): void {
     const clamped = Math.max(1, Math.min(seconds, 30));
     this.pauseSeconds = clamped;
@@ -652,8 +667,12 @@ export class MediaController extends EventTarget {
     // Segment loop pins the active sentence: time-based index updates (including
     // findSegmentIndex's "keep previous in gap" rule) can jump backward when a
     // rewind undershoots into the pre-segment gap.
+    // Compress jumps also land briefly in inter-cue hollows — never regress there.
     if (this.loopMode !== 'segment') {
-      this._updateCurrentSegment({ allowForward: true });
+      this._updateCurrentSegment({
+        allowForward: true,
+        allowBackward: !this.shadowingGapCompress,
+      });
     }
 
     this._previousPlaybackTime = this.currentTime;
@@ -879,8 +898,11 @@ export class MediaController extends EventTarget {
     );
   }
 
-  private _updateCurrentSegment(options: { allowForward?: boolean } = {}): void {
+  private _updateCurrentSegment(
+    options: { allowForward?: boolean; allowBackward?: boolean } = {},
+  ): void {
     const allowForward = options.allowForward ?? true;
+    const allowBackward = options.allowBackward ?? true;
     const nextIndex = findSegmentIndex(this.segments, this.currentTime);
 
     if (nextIndex === this.currentSegmentIndex) {
@@ -888,6 +910,15 @@ export class MediaController extends EventTarget {
     }
 
     if (!allowForward && this.currentSegmentIndex >= 0 && nextIndex > this.currentSegmentIndex) {
+      return;
+    }
+
+    if (
+      !allowBackward &&
+      this.currentSegmentIndex >= 0 &&
+      nextIndex >= 0 &&
+      nextIndex < this.currentSegmentIndex
+    ) {
       return;
     }
 
@@ -977,6 +1008,11 @@ export class MediaController extends EventTarget {
   }
 
   private _applySegmentPause(segment: SubtitleSegment): void {
+    if (this.shadowingGapCompress) {
+      this._applyShadowingGapCompress(segment);
+      return;
+    }
+
     const pauseDuration = computeSegmentPauseMs(
       segment,
       this.pauseMode,
@@ -993,6 +1029,29 @@ export class MediaController extends EventTarget {
       endsAt: Date.now() + pauseDuration,
       onFire: () => {
         this._resumeAfterSegmentPause();
+      },
+    });
+    this._emitChange();
+  }
+
+  /** Skip natural subtitle gaps: wait a fixed beat on the ended cue, then jump and play. */
+  private _applyShadowingGapCompress(endedSegment: SubtitleSegment): void {
+    const endedIndex = this.segments.findIndex((s) => s.id === endedSegment.id);
+    const nextIndex = endedIndex + 1;
+    if (endedIndex < 0 || nextIndex >= this.segments.length) {
+      return;
+    }
+
+    if (!this.segments[nextIndex] || !this.mediaElement) {
+      return;
+    }
+
+    this._clearSegmentPauseTimer();
+    this.pause({ reason: 'segment' });
+    this._segmentPauseScheduler.start({
+      endsAt: Date.now() + SHADOWING_COMPRESS_GAP_MS,
+      onFire: () => {
+        this.seekToSegment(nextIndex, true, { force: true });
       },
     });
     this._emitChange();

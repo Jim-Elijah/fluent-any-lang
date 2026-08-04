@@ -304,6 +304,35 @@ describe('DualTrackPlayback', () => {
     expect(controller.getState()).toEqual({ mode: 'sync', syncSegmentIndex: 0, paused: false });
   });
 
+  it('playContinuous maps both tracks from first-segment anchors', async () => {
+    const gapped: PracticeSegment[] = [
+      {
+        id: 'c0',
+        sourceStartTime: 1,
+        sourceEndTime: 3,
+        recordingStartTime: 0.5,
+        recordingEndTime: 2.5,
+      },
+      {
+        id: 'c1',
+        sourceStartTime: 10,
+        sourceEndTime: 12,
+        recordingStartTime: 9.5,
+        recordingEndTime: 11.5,
+      },
+    ];
+    controller.setSegments(gapped);
+    await controller.playContinuous();
+    expect(controller.getState().mode).toBe('continuous');
+    expect(source.currentTime).toBe(1);
+    expect(recording.currentTime).toBe(0.5);
+
+    const ok = await controller.playContinuousAt(11, 'source');
+    expect(ok).toBe(true);
+    expect(source.currentTime).toBe(11);
+    expect(recording.currentTime).toBeCloseTo(10.5, 5);
+  });
+
   it('playSyncAt maps mid-segment times on the recording axis', async () => {
     const ok = await controller.playSyncAt(6, 'recording');
     expect(ok).toBe(true);

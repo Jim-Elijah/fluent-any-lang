@@ -431,6 +431,7 @@ export class RecordList extends LitElement {
                 .segments=${this._modalRecording?.segments ?? []}
                 .subtitleSegments=${this._modalSubtitleSegments}
                 .practiceMode=${this._modalRecording?.mode ?? 'shadowing'}
+                .gapPolicy=${this._modalRecording?.gapPolicy ?? null}
               ></recording-preview>`
             : null}
         </ui-modal>

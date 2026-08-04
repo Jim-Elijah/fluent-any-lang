@@ -2,7 +2,11 @@ import { msg, localized } from '@lit/localize';
 import { css, html, LitElement, nothing, type TemplateResult } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 
-import { DualTrackPlayback, type DualTrackMode } from '../../lib/dual-track-playback.js';
+import {
+  DualTrackPlayback,
+  isComparePlayMode,
+  type DualTrackMode,
+} from '../../lib/dual-track-playback.js';
 import { dispatchAudioFocusRequest } from '../../lib/audio-focus.js';
 import {
   VOLUME_HOTKEY_STEP,
@@ -23,7 +27,12 @@ import {
   WaveformEventType,
   type WaveformTrack,
 } from '../../controllers/waveform-controller.js';
-import type { SpeakingMode, PracticeSegment, SubtitleSegment } from '../../types/models.js';
+import type {
+  SpeakingMode,
+  PracticeSegment,
+  ShadowingGapPolicy,
+  SubtitleSegment,
+} from '../../types/models.js';
 import { getAppSettings, getMaxVolumeBoost } from '../../lib/app-settings.js';
 import { setLogicalVolume } from '../../lib/media-element-gain.js';
 import type { WaveformSeekRequestDetail } from '../player/waveform-player.js';
@@ -65,7 +74,7 @@ export function resolvePreviewSubtitle(input: PreviewSubtitleLookup): SubtitleSe
     return input.subtitleSegments.find((segment) => segment.id === practice.id) ?? null;
   }
 
-  if (input.mode === 'source') {
+  if (input.mode === 'continuous' || input.mode === 'source') {
     const index = findSegmentIndex(input.subtitleSegments, input.sourceTime);
     return index >= 0 ? input.subtitleSegments[index] : null;
   }
@@ -196,6 +205,10 @@ export class RecordingPreview extends LitElement {
   @property({ type: String })
   practiceMode: SpeakingMode = 'shadowing';
 
+  /** Shadowing gap policy for this take; drives compare-play behavior. */
+  @property({ type: String })
+  gapPolicy: ShadowingGapPolicy | null = null;
+
   @state()
   private _controller: WaveformController = new WaveformController();
 
@@ -268,13 +281,22 @@ export class RecordingPreview extends LitElement {
     super.disconnectedCallback();
   }
 
+  private get _useContinuousCompare(): boolean {
+    return this.gapPolicy === 'preserve';
+  }
+
   render() {
     const canPlaySource = Boolean(this.sourceBlob);
     const canPlayRecording = Boolean(this.recordingBlob);
     const canPlaySync = canPlaySource && canPlayRecording && this.segments.length > 0;
-    const showSourceVolume = this._playMode === 'source' || this._playMode === 'sync';
-    const showRecordingVolume = this._playMode === 'recording' || this._playMode === 'sync';
+    const compareActive = isComparePlayMode(this._playMode);
+    const showSourceVolume = this._playMode === 'source' || compareActive;
+    const showRecordingVolume = this._playMode === 'recording' || compareActive;
     const keyboardShortcuts = supportsKeyboardShortcuts();
+    const compareLabel = this._useContinuousCompare ? msg('连续对照') : msg('同步播放');
+    const compareLabelWithKey = this._useContinuousCompare
+      ? msg('连续对照听 (E)')
+      : msg('同步播放 (E)');
 
     const sourceTitle = canPlaySource
       ? keyboardShortcuts
@@ -288,13 +310,19 @@ export class RecordingPreview extends LitElement {
       : msg('无录音，无法播放');
     const syncTitle = canPlaySync
       ? keyboardShortcuts
-        ? msg('同步播放 (E)')
-        : msg('同步播放')
+        ? compareLabelWithKey
+        : compareLabel
       : !canPlaySource
-        ? msg('无原音，无法同步播放')
+        ? this._useContinuousCompare
+          ? msg('无原音，无法连续对照')
+          : msg('无原音，无法同步播放')
         : !canPlayRecording
-          ? msg('无录音，无法同步播放')
-          : msg('无练习片段，无法同步播放');
+          ? this._useContinuousCompare
+            ? msg('无录音，无法连续对照')
+            : msg('无录音，无法同步播放')
+          : this._useContinuousCompare
+            ? msg('无练习片段，无法连续对照')
+            : msg('无练习片段，无法同步播放');
 
     return html`
       <div class="preview">
@@ -336,11 +364,11 @@ export class RecordingPreview extends LitElement {
           </div>
           <ui-tooltip title=${syncTitle} .zIndex=${Z_INDEX.MODAL + 1}>
             <ui-button
-              variant="${this._playMode === 'sync' ? 'primary' : 'secondary'}"
+              variant="${compareActive ? 'primary' : 'secondary'}"
               ?disabled=${!canPlaySync}
               @click=${() => this._handlePlaySync()}
             >
-              ${msg('同步播放')}
+              ${compareLabel}
             </ui-button>
           </ui-tooltip>
         </div>
@@ -594,6 +622,8 @@ export class RecordingPreview extends LitElement {
             : html`${msg('已暂停录音')}`;
         case 'sync':
           return msg(html`已暂停同步片段${segmentLabel}`);
+        case 'continuous':
+          return msg(html`已暂停连续对照${segmentLabel}`);
         default:
           return nothing;
       }
@@ -610,6 +640,8 @@ export class RecordingPreview extends LitElement {
           : html`${msg('正在播放录音…')}`;
       case 'sync':
         return msg(html`正在同步播放片段${segmentLabel}`);
+      case 'continuous':
+        return msg(html`正在连续对照${segmentLabel}`);
       default:
         return nothing;
     }
@@ -703,6 +735,7 @@ export class RecordingPreview extends LitElement {
       case 'recording':
         return 'recording';
       case 'sync':
+      case 'continuous':
         if (this._controller.activeId === this._recordingTrackId) {
           return 'recording';
         }
@@ -802,7 +835,7 @@ export class RecordingPreview extends LitElement {
       return;
     }
 
-    if (this._playMode !== 'sync') {
+    if (!isComparePlayMode(this._playMode)) {
       return;
     }
     if (!this._playback || this.segments.length === 0) {
@@ -818,6 +851,16 @@ export class RecordingPreview extends LitElement {
     }
 
     const axis = trackId === this._recordingTrackId ? 'recording' : 'source';
+
+    if (this._playMode === 'continuous') {
+      event.preventDefault();
+      this._requestAudioFocus();
+      void this._playback.playContinuousAt(time, axis).catch(() => {
+        this._playback?.stop();
+      });
+      return;
+    }
+
     let seekTime = time;
     let segmentIndex = findPracticeSegmentIndex(this.segments, time, axis);
     if (segmentIndex < 0 && axis === 'source' && this.subtitleSegments.length > 0) {
@@ -995,14 +1038,18 @@ export class RecordingPreview extends LitElement {
       return;
     }
 
-    if (this._playMode === 'sync') {
+    if (isComparePlayMode(this._playMode)) {
       this._playback.stop();
       return;
     }
 
     try {
       this._requestAudioFocus();
-      await this._playback.playSync();
+      if (this._useContinuousCompare) {
+        await this._playback.playContinuous();
+      } else {
+        await this._playback.playSync();
+      }
     } catch {
       this._playback.stop();
     }
@@ -1110,7 +1157,7 @@ export class RecordingPreview extends LitElement {
         if (this.segments.length > 0) {
           this._zoomToPracticeSegment(state.syncSegmentIndex);
         }
-      } else if (state.mode === 'sync') {
+      } else if (state.mode === 'sync' || state.mode === 'continuous') {
         this._setSyncActiveTrack(state.syncSegmentIndex);
         this._zoomToPracticeSegment(state.syncSegmentIndex);
       }

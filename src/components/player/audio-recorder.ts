@@ -136,7 +136,19 @@ export class AudioRecorder extends LitElement {
   private _liveAnalysisDetach: (() => void) | null = null;
   private _practiceSegments: PracticeSegment[] = [];
   private _recordingStartedAt = 0;
-  private _lastRecordingEndTime = 0;
+  /** Open sentence window: set on segment enter, closed on SEGMENT_END. */
+  private _openSegment: {
+    id: string;
+    sourceStartTime: number;
+    sourceEndTime: number;
+    recordingStartTime: number;
+  } | null = null;
+  /**
+   * Floor for the next open-window start (after head pad). Ensures the first
+   * cue starts after the pad even when performance.now does not advance under
+   * fake timers.
+   */
+  private _nextOpenStartFloor = 0;
   private _isCollectingSegments = false;
   private _stopReason: RecordingCompleteDetail['reason'] = 'manual';
   /** Bumped to cancel in-flight head/tail pad waits when start/stop races. */
@@ -152,7 +164,8 @@ export class AudioRecorder extends LitElement {
       this._recordingError = '';
       this._practiceSegments = [];
       this._recordingStartedAt = performance.now();
-      this._lastRecordingEndTime = 0;
+      this._openSegment = null;
+      this._nextOpenStartFloor = 0;
       this._isCollectingSegments = this.collectSegments;
 
       if (this.stopOnMediaEnded) {
@@ -160,6 +173,9 @@ export class AudioRecorder extends LitElement {
       }
       if (this.collectSegments || this.pauseMediaOnSegmentEnd) {
         this._attachSegmentEndListener();
+      }
+      if (this.collectSegments) {
+        this._attachSegmentChangeListener();
       }
 
       this._waveformController.clearTracks();
@@ -192,8 +208,10 @@ export class AudioRecorder extends LitElement {
       });
       this._isCollectingSegments = false;
       this._recordingStartedAt = 0;
+      this._openSegment = null;
       this._detachEndedListener();
       this._detachSegmentEndListener();
+      this._detachSegmentChangeListener();
       this._setRecording(false);
       this._audioRecorder.destroy();
 
@@ -351,10 +369,13 @@ export class AudioRecorder extends LitElement {
         return;
       }
       // Practice-segment timeline starts after the pad; pad stays in the blob.
-      this._lastRecordingEndTime = Math.max(
+      // Open the current subtitle window if playback is already on a cue.
+      this._nextOpenStartFloor = Math.max(
         this._getRecordingElapsedSeconds(),
         RECORDING_HEAD_PAD_MS / 1000,
       );
+      this._ensureOpenSegmentFromController();
+      this._nextOpenStartFloor = 0;
       if (!countdownSkipped) {
         Message.primary(msg('请跟上原音'));
       }
@@ -372,9 +393,11 @@ export class AudioRecorder extends LitElement {
 
     this._detachEndedListener();
     this._detachSegmentEndListener();
+    this._detachSegmentChangeListener();
 
     if (options.save === false) {
       this._isCollectingSegments = false;
+      this._openSegment = null;
       this._stopLiveAnalysis();
       this._waveformController.clearTracks();
       this._hasWaveform = false;
@@ -452,15 +475,7 @@ export class AudioRecorder extends LitElement {
     }
 
     if (this._isCollectingSegments && this._audioRecorder.getState() === 'recording') {
-      const recordingEndTime = this._getRecordingElapsedSeconds();
-      this._practiceSegments.push({
-        id: segment.id,
-        sourceStartTime: segment.startTime,
-        sourceEndTime: segment.endTime,
-        recordingStartTime: this._lastRecordingEndTime,
-        recordingEndTime,
-      });
-      this._lastRecordingEndTime = recordingEndTime;
+      this._closeSegmentWindow(segment);
 
       if (this.stopOnSegmentEnd) {
         this._stopReason = 'segment-end';
@@ -473,6 +488,107 @@ export class AudioRecorder extends LitElement {
       void this.controller.pause();
     }
   };
+
+  private _onSegmentChanged = (event: Event): void => {
+    if (!this._isCollectingSegments || this._audioRecorder.getState() !== 'recording') {
+      return;
+    }
+
+    const customEvent = event as CustomEvent<{
+      currentIndex: number;
+      currentSegment: SubtitleSegment | null;
+    }>;
+    const segment = customEvent.detail?.currentSegment;
+    const index = customEvent.detail?.currentIndex ?? -1;
+    if (index < 0 || !segment) {
+      return;
+    }
+
+    this._openSegmentWindow(segment);
+  };
+
+  private _openSegmentWindow(segment: SubtitleSegment): void {
+    if (this._openSegment?.id === segment.id) {
+      return;
+    }
+
+    // Already finalized this cue — ignore regressing SEGMENT_CHANGE
+    // (compress seek can briefly land in the prior cue's gap and snap back).
+    if (this._practiceSegments.some((s) => s.id === segment.id)) {
+      return;
+    }
+
+    // Missed SEGMENT_END for the previous cue — close it so gap stays hollow.
+    if (this._openSegment && this._openSegment.id !== segment.id) {
+      this._pushClosedSegment(this._openSegment, this._getRecordingElapsedSeconds());
+      this._openSegment = null;
+    }
+
+    this._openSegment = {
+      id: segment.id,
+      sourceStartTime: segment.startTime,
+      sourceEndTime: segment.endTime,
+      recordingStartTime: Math.max(this._getRecordingElapsedSeconds(), this._nextOpenStartFloor),
+    };
+  }
+
+  private _closeSegmentWindow(segment: SubtitleSegment): void {
+    const recordingEndTime = this._getRecordingElapsedSeconds();
+    if (this._openSegment?.id === segment.id) {
+      this._pushClosedSegment(this._openSegment, recordingEndTime);
+      this._openSegment = null;
+      return;
+    }
+
+    // SEGMENT_END without a matching open window (e.g. tests) — open at end would
+    // be zero-width; use a short lookback only when nothing is open yet.
+    if (!this._openSegment) {
+      const already = this._practiceSegments.some((s) => s.id === segment.id);
+      if (already) {
+        return;
+      }
+      this._practiceSegments.push({
+        id: segment.id,
+        sourceStartTime: segment.startTime,
+        sourceEndTime: segment.endTime,
+        recordingStartTime: Math.max(0, recordingEndTime - 0.01),
+        recordingEndTime,
+      });
+    }
+  }
+
+  private _pushClosedSegment(
+    open: {
+      id: string;
+      sourceStartTime: number;
+      sourceEndTime: number;
+      recordingStartTime: number;
+    },
+    recordingEndTime: number,
+  ): void {
+    const end = Math.max(open.recordingStartTime, recordingEndTime);
+    this._practiceSegments.push({
+      id: open.id,
+      sourceStartTime: open.sourceStartTime,
+      sourceEndTime: open.sourceEndTime,
+      recordingStartTime: open.recordingStartTime,
+      recordingEndTime: end,
+    });
+  }
+
+  private _ensureOpenSegmentFromController(): void {
+    if (!this.controller || !this._isCollectingSegments) {
+      return;
+    }
+    const snapshot = this.controller.getSnapshot();
+    const segment =
+      snapshot.currentSegmentIndex >= 0
+        ? (snapshot.segments[snapshot.currentSegmentIndex] ?? null)
+        : null;
+    if (segment) {
+      this._openSegmentWindow(segment);
+    }
+  }
 
   private _getRecordingElapsedSeconds(): number {
     if (this._recordingStartedAt === 0) {
@@ -525,7 +641,6 @@ export class AudioRecorder extends LitElement {
     const recordingEndTime = Math.min(now, maxExtend);
     if (recordingEndTime > last.recordingEndTime) {
       last.recordingEndTime = recordingEndTime;
-      this._lastRecordingEndTime = recordingEndTime;
     }
   }
 
@@ -535,27 +650,56 @@ export class AudioRecorder extends LitElement {
       return;
     }
 
-    const segment = this._resolveOpenSegment();
-    if (!segment) {
+    const resolved = this._resolveOpenSegment();
+
+    if (this._openSegment) {
+      // Past all cues: prefer the last subtitle when the open window is stale
+      // (e.g. jumped to outro without SEGMENT_END / SEGMENT_CHANGE).
+      if (resolved && resolved.id !== this._openSegment.id) {
+        this._openSegment = null;
+        const recordingEndTime = this._getRecordingElapsedSeconds();
+        this._practiceSegments.push({
+          id: resolved.id,
+          sourceStartTime: resolved.startTime,
+          sourceEndTime: resolved.endTime,
+          recordingStartTime: Math.max(0, recordingEndTime - 0.01),
+          recordingEndTime,
+        });
+        return;
+      }
+
+      this._pushClosedSegment(this._openSegment, this._getRecordingElapsedSeconds());
+      this._openSegment = null;
+      return;
+    }
+
+    if (!resolved) {
       this._extendLastSegmentToNow();
       return;
     }
 
     const last = this._practiceSegments[this._practiceSegments.length - 1];
-    if (last?.id === segment.id) {
+    if (last?.id === resolved.id) {
       this._extendLastSegmentToNow();
       return;
     }
 
+    // Controller still highlights an earlier cue while we already closed it
+    // (manual SEGMENT_* tests / seek races) — do not duplicate.
+    if (this._practiceSegments.some((s) => s.id === resolved.id)) {
+      this._extendLastSegmentToNow();
+      return;
+    }
+
+    // No open window but controller still on a cue — treat as started at end (degenerate).
     const recordingEndTime = this._getRecordingElapsedSeconds();
     this._practiceSegments.push({
-      id: segment.id,
-      sourceStartTime: segment.startTime,
-      sourceEndTime: segment.endTime,
-      recordingStartTime: this._lastRecordingEndTime,
+      id: resolved.id,
+      sourceStartTime: resolved.startTime,
+      sourceEndTime: resolved.endTime,
+      recordingStartTime: Math.max(0, recordingEndTime - 0.01),
       recordingEndTime,
     });
-    this._lastRecordingEndTime = recordingEndTime;
   }
 
   private _onEnded = (): void => {
@@ -577,6 +721,20 @@ export class AudioRecorder extends LitElement {
 
   private _detachSegmentEndListener(): void {
     this.controller?.removeEventListener(ExtendedMediaEventType.SEGMENT_END, this._onSegmentEnded);
+  }
+
+  private _attachSegmentChangeListener(): void {
+    this.controller?.addEventListener(
+      ExtendedMediaEventType.SEGMENT_CHANGE,
+      this._onSegmentChanged,
+    );
+  }
+
+  private _detachSegmentChangeListener(): void {
+    this.controller?.removeEventListener(
+      ExtendedMediaEventType.SEGMENT_CHANGE,
+      this._onSegmentChanged,
+    );
   }
 
   private _publishLivePeaks = (): void => {

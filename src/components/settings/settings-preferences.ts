@@ -3,10 +3,14 @@ import { customElement, state } from 'lit/decorators.js';
 import { msg, localized } from '@lit/localize';
 
 import { getAppSettings, setAppSettings } from '../../lib/app-settings.js';
-import type { AppSettings } from '../../types/models.js';
+import type { AppSettings, ShadowingGapPolicy } from '../../types/models.js';
 import { settingsCardStyles } from './settings-styles.js';
 import '../ui/switch.js';
 import type { SwitchChangeDetail } from '../ui/switch.js';
+import '../ui/select.js';
+import type { SelectChangeDetail } from '../ui/select.js';
+import '../ui/message.js';
+import { Message } from '../ui/message.js';
 
 type TipKey = keyof Pick<
   AppSettings,
@@ -26,6 +30,27 @@ export class SettingsPreferences extends LitElement {
       ui-switch {
         flex-shrink: 0;
         margin-top: 2px;
+      }
+
+      .field {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-sm);
+        padding: var(--space-sm) 0;
+        border-bottom: 1px solid var(--color-border, #f0f0f0);
+      }
+
+      .field:last-child {
+        border-bottom: none;
+      }
+
+      .field-label {
+        font-size: 0.9375rem;
+        color: var(--color-text, rgba(0, 0, 0, 0.88));
+      }
+
+      ui-select {
+        max-width: 100%;
       }
     `,
   ];
@@ -52,6 +77,15 @@ export class SettingsPreferences extends LitElement {
     };
   }
 
+  private _onGapPolicyChange(event: CustomEvent<SelectChangeDetail>): void {
+    const value = event.detail.value as ShadowingGapPolicy;
+    const prev = this._settings.shadowingGapPolicy;
+    this._settings = setAppSettings({ shadowingGapPolicy: value });
+    if (this._settings.shadowingGapPolicy !== prev) {
+      Message.success(msg('已保存'));
+    }
+  }
+
   render() {
     const s = this._settings;
     return html`
@@ -59,6 +93,22 @@ export class SettingsPreferences extends LitElement {
         <h2 id="prefs-heading">${msg('偏好与提示')}</h2>
         <p class="desc">${msg('控制练习流程中的倒计时与各练习模式说明是否自动跳过。')}</p>
         <div class="rows">
+          <div class="field">
+            <span class="field-label">${msg('影子跟读 · 句间空隙')}</span>
+            <ui-select
+              .value=${s.shadowingGapPolicy}
+              .options=${[
+                { value: 'compress', label: msg('压缩为约 1 秒（推荐）') },
+                { value: 'preserve', label: msg('保留完整间隙') },
+              ]}
+              @change=${this._onGapPolicyChange}
+            ></ui-select>
+            <p class="hint">
+              ${s.shadowingGapPolicy === 'compress'
+                ? msg('录制时跳过字幕间的长空隙，对照时按句对齐同步，更适合跟读练习。')
+                : msg('原音按完整时间轴播放；预览为连续对照听，更贴近真实影子节奏。')}
+            </p>
+          </div>
           <div
             class="row"
             role="button"

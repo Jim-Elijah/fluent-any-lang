@@ -226,6 +226,13 @@ describe('practice-view', () => {
     );
   }
 
+  function clickShadowingManageRecordings(el: PracticeViewInternals) {
+    const button = el.shadowRoot!.querySelector(
+      '.recordings-summary ui-button',
+    ) as HTMLElement | null;
+    button?.click();
+  }
+
   function setUserSettingsLocal(overrides: Record<string, unknown> = {}) {
     localStorage.setItem(
       'fluent-any-lang:user-settings',
@@ -858,8 +865,9 @@ describe('practice-view', () => {
     expect(snap.sleepMode).toBe('off');
     expect(snap.volume).toBe(0.4);
     expect(snap.playbackRate).toBe(0.7);
-    expect(snap.pauseMode).toBe('seconds');
-    expect(snap.pauseSeconds).toBe(3);
+    // Default gap policy is compress → pauseMode forced off (avoid stacking waits).
+    expect(snap.pauseMode).toBe('off');
+    expect(el._controller.shadowingGapCompress).toBe(true);
 
     (el as PracticeViewInternals & { _resetSessionUi: () => void })._resetSessionUi();
 
@@ -871,6 +879,28 @@ describe('practice-view', () => {
     expect(snap.playbackRate).toBe(0.7);
     expect(snap.pauseMode).toBe('seconds');
     expect(snap.pauseSeconds).toBe(3);
+    expect(el._controller.shadowingGapCompress).toBe(false);
+  });
+
+  it('keeps pauseMode during shadowing when gap policy is preserve', async () => {
+    const { setAppSettings } = await import('../../lib/app-settings.js');
+    setAppSettings({ shadowingGapPolicy: 'preserve' });
+
+    const el = await renderView();
+    await switchToShadowingMode(el);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    el._controller.setPauseMode('seconds');
+    el._controller.setPauseSeconds(3);
+    (
+      el as PracticeViewInternals & { _applyShadowingPlaybackProfile: () => void }
+    )._applyShadowingPlaybackProfile();
+
+    expect(el._controller.getSnapshot().pauseMode).toBe('seconds');
+    expect(el._controller.shadowingGapCompress).toBe(false);
+
+    (el as PracticeViewInternals & { _resetSessionUi: () => void })._resetSessionUi();
+    setAppSettings({ shadowingGapPolicy: 'compress' });
   });
 
   it('suppresses loop/sleep/pause for echo then restores them after session ends', async () => {
@@ -921,35 +951,29 @@ describe('practice-view', () => {
 
     const summary = el.shadowRoot!.querySelector('.recordings-summary');
     expect(summary?.textContent).toMatch(/已保存\s*2\s*\/\s*5|已保存 2\/5/);
-    expect(
-      Array.from(el.shadowRoot!.querySelectorAll('ui-button')).some((button) =>
-        button.textContent?.includes('管理录音'),
-      ),
-    ).toBe(true);
+    expect(summary?.querySelector('ui-icon[name="manage"]')).not.toBeNull();
     expect(el.shadowRoot!.querySelector('record-list')).toBeNull();
   });
 
   it('opens recordings manage modal from shadowing entry', async () => {
+    mockCountShadowingRecordings.mockResolvedValue(1);
     const el = await renderView();
     await switchToShadowingMode(el);
+    await el.updateComplete;
 
-    const manageButton = Array.from(el.shadowRoot!.querySelectorAll('ui-button')).find((button) =>
-      button.textContent?.includes('管理录音'),
-    );
-    manageButton?.click();
+    clickShadowingManageRecordings(el);
     await el.updateComplete;
 
     expect(el.shadowRoot!.querySelector('record-list')).not.toBeNull();
   });
 
   it('ignores nested update:open when managing recordings modal', async () => {
+    mockCountShadowingRecordings.mockResolvedValue(1);
     const el = await renderView();
     await switchToShadowingMode(el);
+    await el.updateComplete;
 
-    const manageButton = Array.from(el.shadowRoot!.querySelectorAll('ui-button')).find((button) =>
-      button.textContent?.includes('管理录音'),
-    );
-    manageButton?.click();
+    clickShadowingManageRecordings(el);
     await el.updateComplete;
     expect(el._recordingsModalOpen).toBe(true);
 
@@ -1709,10 +1733,12 @@ describe('practice-view', () => {
     });
 
     it('closes recordings modal from footer button', async () => {
+      mockCountShadowingRecordings.mockResolvedValue(1);
       const el = await renderView();
       await switchToShadowingMode(el);
+      await el.updateComplete;
 
-      findButton(el, '管理录音')?.click();
+      clickShadowingManageRecordings(el);
       await el.updateComplete;
       expect(el._recordingsModalOpen).toBe(true);
 
@@ -1799,6 +1825,7 @@ describe('practice-view', () => {
 
     it('clears waveform when last saved recording is deleted', async () => {
       vi.spyOn(crypto, 'randomUUID').mockReturnValue('rec-last');
+      mockCountShadowingRecordings.mockResolvedValue(1);
       const el = await renderView();
       await switchToShadowingMode(el);
 
@@ -1821,7 +1848,7 @@ describe('practice-view', () => {
       );
       await settleView(el);
 
-      findButton(el, '管理录音')?.click();
+      clickShadowingManageRecordings(el);
       await el.updateComplete;
 
       el.shadowRoot!.querySelector('record-list')!.dispatchEvent(
@@ -1901,10 +1928,12 @@ describe('practice-view', () => {
     });
 
     it('disables hotkeys while recordings modal is open', async () => {
+      mockCountShadowingRecordings.mockResolvedValue(1);
       const el = await renderView();
       await switchToShadowingMode(el);
+      await el.updateComplete;
 
-      findButton(el, '管理录音')?.click();
+      clickShadowingManageRecordings(el);
       await el.updateComplete;
 
       const toggleSpy = vi.spyOn(el._controller, 'togglePlay').mockResolvedValue(undefined);
