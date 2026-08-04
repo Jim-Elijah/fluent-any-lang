@@ -48,12 +48,16 @@ const DOCK_PORTAL_STYLES = `
 
   @keyframes session-dock-pulse {
     0% {
+      border-top-color: var(--color-border, #d9d9d9);
       box-shadow: 0 -8px 24px rgba(22, 119, 255, 0.08);
     }
     40% {
-      box-shadow: 0 -8px 32px rgba(22, 119, 255, 0.35);
+      border-top-color: var(--color-primary, #1677ff);
+      box-shadow: 0 -8px 32px rgba(22, 119, 255, 0.4);
+      background-color: rgba(22, 119, 255, 0.03);
     }
     100% {
+      border-top-color: var(--color-border, #d9d9d9);
       box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.08);
     }
   }
@@ -201,7 +205,6 @@ export class EchoSessionDock extends LitElement {
             variant="${isRecording ? 'primary' : 'secondary'}"
             @click=${isRecording ? this._onStop : this._onCancel}
           >
-            <ui-icon name="${isRecording ? 'stop-recording' : 'close'}"></ui-icon>
             ${isRecording ? msg('停止') : msg('取消')}
           </ui-button>
         </div>

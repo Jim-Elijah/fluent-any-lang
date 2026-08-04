@@ -104,6 +104,7 @@ import type { RecordList } from '../library/record-list.js';
 import { Message } from '../ui/message.js';
 import { Loading } from '../ui/loading.js';
 import {
+  EchoManageRecordingsDetail,
   EchoRecordRequestDetail,
   SubtitlePanel,
   SubtitlePanelFullscreenChangeDetail,
@@ -212,6 +213,12 @@ export class PracticeView extends NavigatorElement {
 
   @state()
   private _recordingsModalOpen = false;
+
+  @state()
+  private _recordingsModalMode: SpeakingMode = 'shadowing';
+
+  @state()
+  private _recordingsModalSegmentId: string | null = null;
 
   @state()
   private _recordingPreviewOpen = false;
@@ -789,7 +796,13 @@ export class PracticeView extends NavigatorElement {
                         id="shadowing-recorder"
                         .controller=${this._controller}
                         .collectSegments=${true}
+                        .shadowingLatencyOffset=${0.35}
                         .disabled=${!this._recordingSupported || shadowingRemaining <= 0}
+                        .disabledTitle=${shadowingRemaining <= 0
+                          ? msg(
+                              str`当前音频的影子跟读录音已达上限（${this._shadowingLimit}条），删除旧录音后可继续。`,
+                            )
+                          : ''}
                         .hideWaveform=${true}
                         .beforeRecordingStart=${this._applyShadowingPlaybackProfile}
                         @recording-complete=${this._onShadowingRecordingComplete}
@@ -846,7 +859,6 @@ export class PracticeView extends NavigatorElement {
             .recordingSupported="${this._recordingSupported}"
             .echoLimitPerSegment="${this._echoLimitPerSegment}"
             .seekDisabled=${sessionActive}
-            .previewDisabled=${sessionActive}
             .sentenceBankSegmentIds=${this._sentenceBankSegmentIds}
             .sentenceBankBusy=${this._sentenceBankBusy}
             @update:fullscreen="${(e: CustomEvent<SubtitlePanelFullscreenChangeDetail>) => {
@@ -854,6 +866,7 @@ export class PracticeView extends NavigatorElement {
             }}"
             @echo-record-request="${this._onEchoRecordRequest}"
             @echo-record-stop="${this._onEchoRecordStop}"
+            @echo-manage-recordings="${this._onEchoManageRecordings}"
             @sentence-bank-add="${this._onSentenceBankAdd}"
             @sentence-bank-remove="${this._onSentenceBankRemove}"
           ></subtitle-panel>
@@ -988,16 +1001,19 @@ export class PracticeView extends NavigatorElement {
   }
 
   private _renderShadowingRecordingsEntry() {
+    const sessionActive = this._sessionPhase !== 'idle';
     return html`
       <div class="recordings-summary">
         <p>${msg(str`已保存 ${this._shadowingCount}/${this._shadowingLimit}`)}</p>
-        <ui-button
-          variant="secondary"
-          ?disabled=${!this._shadowingCount}
-          @click=${this._openRecordingsModal}
-        >
-          ${msg('管理录音')}
-        </ui-button>
+        <ui-tooltip title="${msg('管理录音')}">
+          <ui-button
+            variant="secondary"
+            ?disabled=${!this._shadowingCount || sessionActive}
+            @click=${this._openRecordingsModal}
+          >
+            <ui-icon name="manage" size="var(--icon-md)"></ui-icon>
+          </ui-button>
+        </ui-tooltip>
       </div>
     `;
   }
@@ -1007,10 +1023,13 @@ export class PracticeView extends NavigatorElement {
       return nothing;
     }
 
+    const isEcho = this._recordingsModalMode === 'echo';
+    const title = isEcho ? msg('当前句的回声录音') : msg('当前媒体的影子跟读录音');
+
     return html`
       <ui-modal
         .open=${true}
-        .title=${msg('当前媒体的影子跟读录音')}
+        .title=${title}
         .centered=${true}
         .footer=${false}
         @update:open=${(e: CustomEvent<{ open: boolean }>) => {
@@ -1027,7 +1046,8 @@ export class PracticeView extends NavigatorElement {
         <div class="recordings-modal-body">
           <record-list
             .mediaId=${this._mediaId}
-            .modeFilter=${'shadowing'}
+            .modeFilter=${this._recordingsModalMode}
+            .segmentId=${this._recordingsModalSegmentId ?? undefined}
             .showHeader=${false}
             .popupZIndex=${Z_INDEX.MODAL + 1}
             .previewDisabled=${this._sessionPhase !== 'idle'}
@@ -1046,11 +1066,20 @@ export class PracticeView extends NavigatorElement {
   }
 
   private _openRecordingsModal = (): void => {
+    this._recordingsModalMode = 'shadowing';
+    this._recordingsModalSegmentId = null;
+    this._recordingsModalOpen = true;
+  };
+
+  private _onEchoManageRecordings = (event: CustomEvent<EchoManageRecordingsDetail>): void => {
+    this._recordingsModalMode = 'echo';
+    this._recordingsModalSegmentId = event.detail.segmentId;
     this._recordingsModalOpen = true;
   };
 
   private _closeRecordingsModal = (): void => {
     this._recordingsModalOpen = false;
+    this._recordingsModalSegmentId = null;
     this._recordingPreviewOpen = false;
   };
 
@@ -1069,7 +1098,7 @@ export class PracticeView extends NavigatorElement {
       </div>
       ${this._storageEstimate.remainingPercent <= getAppSettings().lowStorageThresholdPercent
         ? html`<ui-alert type="warning">
-            ${msg('磁盘存储空间不足，建议导出或删除旧录音。')}
+            ${msg('媒体容量不足，建议清理录音或在设置中提高媒体容量上限')}
           </ui-alert>`
         : null}
     `;
@@ -1407,6 +1436,7 @@ export class PracticeView extends NavigatorElement {
       if (event.detail.recording) {
         this._setSessionPhase('recording');
         this._sessionWaveformController = this._echoRecorderEl?.waveformController ?? null;
+        this._sessionSpeakCue = true;
       } else {
         this._echoSegmentIndex = -1;
         this._resetSessionUi();
@@ -1418,6 +1448,7 @@ export class PracticeView extends NavigatorElement {
       if (event.detail.recording) {
         this._setSessionPhase('recording');
         this._sessionWaveformController = this._shadowingRecorderEl?.waveformController ?? null;
+        this._sessionSpeakCue = true;
       } else {
         this._resetSessionUi();
       }

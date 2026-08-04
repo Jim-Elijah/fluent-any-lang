@@ -216,6 +216,10 @@ export class RecordList extends LitElement {
   @property({ type: String })
   modeFilter?: SpeakingMode;
 
+  /** When set, only show recordings for this subtitle segment (echo). */
+  @property({ type: String })
+  segmentId?: string;
+
   @property({ type: Boolean })
   showHeader = true;
 
@@ -341,6 +345,11 @@ export class RecordList extends LitElement {
     let renderedItems = this._items;
     if (this.modeFilter) {
       renderedItems = renderedItems.filter((item) => item.mode === this.modeFilter);
+    }
+    if (this.segmentId) {
+      renderedItems = renderedItems.filter(
+        (item) => (item.segmentId ?? item.segments[0]?.id) === this.segmentId,
+      );
     }
     if (this.keyword) {
       renderedItems = renderedItems.filter((item: PracticeRecord) =>

@@ -2,12 +2,6 @@ import { msg, str, localized } from '@lit/localize';
 import { css, html, LitElement, nothing, type PropertyValues, type TemplateResult } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 
-import { getMediaBlob } from '../../db/media.js';
-import { getRecordingBlob } from '../../db/service.js';
-import {
-  dispatchRecordingPreviewClose,
-  dispatchRecordingPreviewOpen,
-} from '../../lib/audio-focus.js';
 import { MediaControllerHost } from '../../controllers/media-controller-host.js';
 import type {
   MediaController,
@@ -17,17 +11,13 @@ import { importSubtitleForMedia } from '../../lib/import-content.js';
 import { formatTime } from '../../lib/playback-utils.js';
 import { supportsKeyboardShortcuts } from '../../lib/hotkeys/index.js';
 import type { PracticeRecord, SubtitleSegment, SubtitleTrack } from '../../types/models.js';
-import '../library/recording-preview.js';
 import '../ui/button.js';
 import '../ui/icon.js';
-import '../ui/modal.js';
-import '../ui/dropdown.js';
 import '../ui/tooltip.js';
 import { Message } from '../ui/message.js';
 import { isControlledOpen } from '../ui/internal/controlled-state.js';
 import { OverlayController } from '../ui/internal/overlay-controller.js';
 import { Z_INDEX } from '../ui/internal/z-index.js';
-import type { DropdownSelectDetail } from '../ui/dropdown.js';
 
 export type SubtitleImportedDetail = {
   mediaId: string;
@@ -42,8 +32,7 @@ export type EchoRecordRequestDetail = {
   segmentIndex: number;
 };
 
-export type EchoRecordingDeletedDetail = {
-  id: string;
+export type EchoManageRecordingsDetail = {
   segmentId: string;
 };
 
@@ -184,11 +173,6 @@ const FULLSCREEN_PORTAL_STYLES = `
     margin-left: auto;
   }
 
-  // .echo-select {
-  //   min-width: 120px;
-  //   max-width: 160px;
-  // }
-
   @media (max-width: 767px) {
     .content {
       align-items: flex-start;
@@ -197,11 +181,6 @@ const FULLSCREEN_PORTAL_STYLES = `
     .text {
         text-align: left;
       }
-
-    // .echo-select {
-    //   min-width: 96px;
-    //   max-width: 120px;
-    // }
   }
 `;
 
@@ -415,13 +394,8 @@ export class SubtitlePanel extends LitElement {
   echoLimitPerSegment = 10;
 
   /**
-   * When true, preview is blocked (e.g. active mic recording on the practice page).
-   */
-  @property({ type: Boolean })
-  previewDisabled = false;
-
-  /**
-   * When true, segment row clicks do not seek (speaking session lock).
+   * When true, segment row clicks do not seek and manage actions are locked
+   * (speaking session lock).
    */
   @property({ type: Boolean })
   seekDisabled = false;
@@ -444,21 +418,6 @@ export class SubtitlePanel extends LitElement {
 
   @state()
   private _internalFullscreen = false;
-
-  @state()
-  private _modalOpen = false;
-
-  @state()
-  private _modalRecording: PracticeRecord | null = null;
-
-  @state()
-  private _modalRecordingBlob: Blob | null = null;
-
-  @state()
-  private _modalSourceBlob: Blob | null = null;
-
-  @state()
-  private _modalSubtitleSegments: SubtitleSegment[] = [];
 
   @state()
   private _importingSubtitle = false;
@@ -662,7 +621,8 @@ export class SubtitlePanel extends LitElement {
             <div class="row-actions" @click="${this._stopRowClick}">
               ${this._renderSentenceBankButton(segment)}
               ${this.echoMode
-                ? html`${this._renderEchoRecordButton(index)} ${this._renderEchoSelect(segment.id)}`
+                ? html`${this._renderEchoRecordButton(index)}
+                  ${this._renderEchoManageButton(segment.id)}`
                 : nothing}
             </div>
           </li>
@@ -723,12 +683,21 @@ export class SubtitlePanel extends LitElement {
       !this.recordingSupported ||
       (this.echoRecordingSegmentIndex >= 0 && !isActiveRow) ||
       (!isActiveRow && atLimit);
+    const tip = isActiveRow
+      ? msg('停止')
+      : atLimit
+        ? msg(str`该句录音已达上限（${this.echoLimitPerSegment}条），删除旧录音后可继续。`)
+        : !this.recordingSupported
+          ? msg('当前浏览器不支持录音。')
+          : msg('跟读');
+    // Keep tip when disabled due to limit / unsupported; hide when another row is recording.
+    const tipDisabled = disabled && !atLimit && this.recordingSupported;
 
     return html`
       <ui-tooltip
-        title="${isActiveRow ? msg('停止') : msg('跟读')}"
+        title="${tip}"
         .zIndex=${this._isFullscreen() ? Z_INDEX.POPUP_ABOVE_FULLSCREEN : Z_INDEX.TOOLTIP}
-        ?disabled=${disabled}
+        ?disabled=${tipDisabled}
       >
         <ui-button
           variant="${isActiveRow ? 'primary' : 'secondary'}"
@@ -737,7 +706,7 @@ export class SubtitlePanel extends LitElement {
           @click="${() => this._handleEchoRecord(segmentIndex)}"
         >
           <ui-icon
-            name="${isActiveRow ? 'stop-recording' : 'micro-on'}"
+            name="${isActiveRow ? 'stop-recording' : 'micro'}"
             size="var(--icon-md)"
           ></ui-icon>
         </ui-button>
@@ -745,39 +714,26 @@ export class SubtitlePanel extends LitElement {
     `;
   }
 
-  private _renderEchoSelect(segmentId: string): TemplateResult | typeof nothing {
-    const recordings = this.echoRecordingsBySegmentId[segmentId] ?? [];
-    if (recordings.length === 0) {
-      return nothing;
-    }
-
-    // Newest first in the menu; labels follow creation order (oldest = 录音 1).
-    const newestFirst = [...recordings].sort((a, b) => b.createdAt - a.createdAt);
-    const labelById = new Map(
-      [...newestFirst]
-        .sort((a, b) => a.createdAt - b.createdAt)
-        .map((record, index) => [record.id, msg(str`录音 ${index + 1}`)]),
-    );
-
-    const menu = {
-      selectable: true,
-      items: newestFirst.map((record) => ({
-        key: record.id,
-        label: labelById.get(record.id) ?? msg('录音'),
-      })),
-    };
+  private _renderEchoManageButton(segmentId: string): TemplateResult {
+    const count = this.echoRecordingsBySegmentId[segmentId]?.length ?? 0;
+    const disabled = count === 0 || this.seekDisabled;
+    const tip = msg(str`已保存 ${count}/${this.echoLimitPerSegment}`);
 
     return html`
-      <ui-dropdown
-        class="echo-select"
-        trigger="click"
-        .zIndex=${this._isFullscreen() ? Z_INDEX.POPUP_ABOVE_FULLSCREEN : Z_INDEX.DROPDOWN}
-        .menu=${menu}
-        @select=${(event: CustomEvent<DropdownSelectDetail>) =>
-          this._handleEchoSelectChange(event, recordings)}
+      <ui-tooltip
+        title="${tip}"
+        .zIndex=${this._isFullscreen() ? Z_INDEX.POPUP_ABOVE_FULLSCREEN : Z_INDEX.TOOLTIP}
       >
-        <ui-button variant="secondary">${msg('录音')}</ui-button>
-      </ui-dropdown>
+        <ui-button
+          class="echo-manage"
+          variant="ghost"
+          aria-label="${msg('管理录音')}"
+          ?disabled=${disabled}
+          @click=${() => this._handleEchoManage(segmentId)}
+        >
+          <ui-icon name="manage" size="var(--icon-md)"></ui-icon>
+        </ui-button>
+      </ui-tooltip>
     `;
   }
 
@@ -789,47 +745,10 @@ export class SubtitlePanel extends LitElement {
     this._dispatch('echo-record-request', { segmentIndex } satisfies EchoRecordRequestDetail);
   }
 
-  private _handleEchoSelectChange(
-    event: CustomEvent<DropdownSelectDetail>,
-    recordings: PracticeRecord[],
-  ): void {
-    const recordId = event.detail.key;
-    const record = recordings.find((item) => item.id === recordId);
-    if (record) {
-      void this._openPreview(record);
-    }
-  }
-
-  private async _openPreview(record: PracticeRecord): Promise<void> {
-    if (this.previewDisabled) {
-      Message.warning(msg('录音中无法预览，请先结束录音。'));
-      return;
-    }
-
-    const [recordingBlob, sourceBlob] = await Promise.all([
-      getRecordingBlob(record.id),
-      getMediaBlob(record.mediaId),
-    ]);
-
-    if (!recordingBlob) {
-      return;
-    }
-
-    this._modalRecording = record;
-    this._modalRecordingBlob = recordingBlob;
-    this._modalSourceBlob = sourceBlob ?? null;
-    this._modalSubtitleSegments = this._controllerHost?.snapshot?.segments ?? [];
-    this._modalOpen = true;
-    dispatchRecordingPreviewOpen(this);
-  }
-
-  private _handleModalClose(): void {
-    this._modalOpen = false;
-    this._modalRecording = null;
-    this._modalRecordingBlob = null;
-    this._modalSourceBlob = null;
-    this._modalSubtitleSegments = [];
-    dispatchRecordingPreviewClose(this);
+  private _handleEchoManage(segmentId: string): void {
+    this._dispatch('echo-manage-recordings', {
+      segmentId,
+    } satisfies EchoManageRecordingsDetail);
   }
 
   private _fullscreenTemplate(): TemplateResult {
@@ -1027,33 +946,6 @@ export class SubtitlePanel extends LitElement {
           ? html`<div class="hidden-note">${msg('字幕已隐藏')}</div>`
           : this._renderSegmentsList(snapshot)}
       </div>
-      <ui-modal
-        title="${this._modalRecording?.mediaTitle ?? msg('录音预览')}"
-        @close="${(e: Event) => {
-          // Ignore bubbled close from nested overlays (dropdown / tooltip).
-          if (e.target !== e.currentTarget) return;
-          this._handleModalClose();
-        }}"
-        ?open=${this._modalOpen}
-        width="600px"
-        centered
-        ?mask=${true}
-        ?mask-closable=${true}
-        ?keyboard=${true}
-        ?closable=${true}
-        .footer=${false}
-        ?destroy-on-close=${true}
-      >
-        ${this._modalOpen && this._modalRecordingBlob
-          ? html`<recording-preview
-              .sourceBlob=${this._modalSourceBlob}
-              .recordingBlob=${this._modalRecordingBlob}
-              .segments=${this._modalRecording?.segments ?? []}
-              .subtitleSegments=${this._modalSubtitleSegments}
-              .practiceMode=${this._modalRecording?.mode ?? 'shadowing'}
-            ></recording-preview>`
-          : null}
-      </ui-modal>
     `;
   }
 

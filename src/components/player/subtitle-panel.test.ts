@@ -17,10 +17,8 @@ vi.mock('../../db/service.js', () => ({
 
 import { MediaController, type LoadedTrack } from '../../controllers/media-controller.js';
 import type { SubtitleSegment, SubtitleTrack } from '../../types/models.js';
-import { getRecordingBlob } from '../../db/service.js';
 import { flushUpdates, getPortalShadow, mount } from '../ui/test-utils.js';
 import { Message } from '../ui/message.js';
-import { RECORDING_PREVIEW_OPEN_EVENT } from '../../lib/audio-focus.js';
 import './subtitle-panel.js';
 import type { SubtitlePanel } from './subtitle-panel.js';
 
@@ -48,7 +46,6 @@ describe('subtitle-panel', () => {
 
   beforeEach(() => {
     importSubtitleForMedia.mockReset();
-    vi.mocked(getRecordingBlob).mockReset();
   });
 
   afterEach(() => {
@@ -241,7 +238,21 @@ describe('subtitle-panel', () => {
     expect(el.shadowRoot?.querySelector('input[type="file"]')).not.toBeNull();
   });
 
-  it('labels echo recordings by creation order with newest first in the menu', async () => {
+  it('shows echo manage button disabled when segment has no recordings', async () => {
+    const el = await renderPanel();
+    el.echoMode = true;
+    await el.updateComplete;
+    await flushUpdates();
+
+    const manageButton = el.shadowRoot?.querySelector('.row-actions ui-button.echo-manage') as
+      | (HTMLElement & { disabled?: boolean })
+      | null;
+    expect(manageButton).not.toBeNull();
+    expect(manageButton?.getAttribute('aria-label')).toBe('管理录音');
+    expect(manageButton?.hasAttribute('disabled') || manageButton?.disabled).toBe(true);
+  });
+
+  it('requests echo manage recordings when manage button is clicked', async () => {
     const el = await renderPanel();
     el.echoMode = true;
     el.echoRecordingsBySegmentId = {
@@ -287,17 +298,50 @@ describe('subtitle-panel', () => {
         },
       ],
     };
+    el.echoLimitPerSegment = 10;
     await el.updateComplete;
     await flushUpdates();
 
-    const dropdown = el.shadowRoot?.querySelector('ui-dropdown.echo-select') as {
-      menu?: { items: Array<{ key: string; label: string }> };
-    } | null;
-    expect(dropdown?.menu?.items).toEqual([
-      { key: 'newest', label: '录音 3' },
-      { key: 'middle', label: '录音 2' },
-      { key: 'oldest', label: '录音 1' },
-    ]);
+    const manageButton = el.shadowRoot?.querySelector('.row-actions ui-button.echo-manage') as
+      | (HTMLElement & { disabled?: boolean })
+      | null;
+    expect(manageButton?.hasAttribute('disabled') || manageButton?.disabled).toBeFalsy();
+
+    const managed = vi.fn();
+    el.addEventListener('echo-manage-recordings', managed);
+    manageButton?.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
+
+    expect(managed).toHaveBeenCalledWith(expect.objectContaining({ detail: { segmentId: 's1' } }));
+  });
+
+  it('shows echo manage button disabled when seekDisabled during session', async () => {
+    const el = await renderPanel({ seekDisabled: true });
+    el.echoMode = true;
+    el.echoRecordingsBySegmentId = {
+      s1: [
+        {
+          id: 'rec1',
+          mediaId: 'a',
+          mediaTitle: 'Track A',
+          mediaFilename: 'Track A.mp3',
+          mode: 'echo',
+          segmentId: 's1',
+          mimeType: 'audio/webm',
+          createdAt: 100,
+          sourceDuration: 2,
+          recordingDuration: 2,
+          segments: [],
+        },
+      ],
+    };
+    await el.updateComplete;
+    await flushUpdates();
+
+    const manageButton = el.shadowRoot?.querySelector('.row-actions ui-button.echo-manage') as
+      | (HTMLElement & { disabled?: boolean })
+      | null;
+    expect(manageButton).not.toBeNull();
+    expect(manageButton?.hasAttribute('disabled') || manageButton?.disabled).toBe(true);
   });
 
   it('does not seek when seekDisabled and marks list as navigation-locked', async () => {
@@ -506,6 +550,42 @@ describe('subtitle-panel', () => {
     );
   });
 
+  it('shows delete tip on disabled echo record button when segment at limit', async () => {
+    const el = await renderPanel();
+    el.echoMode = true;
+    el.echoLimitPerSegment = 1;
+    el.echoRecordingsBySegmentId = {
+      s1: [
+        {
+          id: 'r1',
+          mediaId: 'a',
+          mediaTitle: 'Track A',
+          mediaFilename: 'Track A.mp3',
+          mode: 'echo',
+          segmentId: 's1',
+          mimeType: 'audio/webm',
+          createdAt: 1,
+          sourceDuration: 2,
+          recordingDuration: 2,
+          segments: [],
+        },
+      ],
+    };
+    await el.updateComplete;
+    await flushUpdates();
+
+    const recordButton = el.shadowRoot?.querySelector(
+      '.row-actions ui-button[aria-label="跟读"]',
+    ) as (HTMLElement & { disabled?: boolean }) | null;
+    const tooltip = recordButton?.closest('ui-tooltip') as
+      | (HTMLElement & { title?: string; disabled?: boolean })
+      | null;
+
+    expect(recordButton?.hasAttribute('disabled') || recordButton?.disabled).toBe(true);
+    expect(tooltip?.disabled).toBe(false);
+    expect(tooltip?.title).toContain('删除旧录音后可继续');
+  });
+
   it('stops echo recording when active row record button is clicked', async () => {
     const el = await renderPanel();
     el.echoMode = true;
@@ -522,73 +602,6 @@ describe('subtitle-panel', () => {
     stopButton?.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
 
     expect(stopped).toHaveBeenCalled();
-  });
-
-  it('opens echo recording preview from dropdown selection', async () => {
-    const el = await renderPanel();
-    el.echoMode = true;
-    el.echoRecordingsBySegmentId = {
-      s1: [
-        {
-          id: 'echo-1',
-          mediaId: 'a',
-          mediaTitle: 'Track A',
-          mediaFilename: 'Track A.mp3',
-          mode: 'echo',
-          segmentId: 's1',
-          mimeType: 'audio/webm',
-          createdAt: 100,
-          sourceDuration: 2,
-          recordingDuration: 2,
-          segments: [],
-        },
-      ],
-    };
-    await el.updateComplete;
-    await flushUpdates();
-
-    vi.mocked(getRecordingBlob).mockResolvedValue(new Blob(['rec'], { type: 'audio/webm' }));
-    vi.stubGlobal(
-      'AudioContext',
-      class {
-        destination = {};
-        resume = vi.fn().mockResolvedValue(undefined);
-        createGain = vi.fn(() => ({
-          gain: { value: 1 },
-          connect: vi.fn(),
-          disconnect: vi.fn(),
-        }));
-        createMediaElementSource = vi.fn(() => ({
-          connect: vi.fn(),
-          disconnect: vi.fn(),
-        }));
-        decodeAudioData = vi.fn().mockResolvedValue({
-          duration: 1,
-          length: 1,
-          sampleRate: 48000,
-          numberOfChannels: 1,
-          getChannelData: () => new Float32Array(1),
-        });
-        close = vi.fn();
-      },
-    );
-    const openSpy = vi.fn();
-    el.addEventListener(RECORDING_PREVIEW_OPEN_EVENT, openSpy);
-
-    const dropdown = el.shadowRoot?.querySelector('ui-dropdown.echo-select') as HTMLElement & {
-      menu?: { items: Array<{ key: string }> };
-    };
-    dropdown.dispatchEvent(
-      new CustomEvent('select', {
-        detail: { key: 'echo-1' },
-        bubbles: true,
-        composed: true,
-      }),
-    );
-    await el.updateComplete;
-    await flushUpdates();
-
-    expect(openSpy).toHaveBeenCalled();
   });
 
   it('hides fullscreen control when showFullscreenIcon is false', async () => {

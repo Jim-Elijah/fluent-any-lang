@@ -180,6 +180,8 @@ type PracticeViewInternals = PracticeView & {
   _sessionPhase: string;
   _recording: boolean;
   _recordingsModalOpen: boolean;
+  _recordingsModalMode: 'shadowing' | 'echo';
+  _recordingsModalSegmentId: string | null;
   _recordingPreviewOpen: boolean;
   _speakingMode: 'shadowing' | 'echo';
   _subtitlePanelFullscreen: boolean;
@@ -704,6 +706,7 @@ describe('practice-view', () => {
   });
 
   it('disables media player and locks navigation during shadowing countdown', async () => {
+    mockCountShadowingRecordings.mockResolvedValue(2);
     const el = await renderView();
     await switchToShadowingMode(el);
 
@@ -726,6 +729,12 @@ describe('practice-view', () => {
       seekDisabled: boolean;
     };
     expect(subtitlePanel.seekDisabled).toBe(true);
+
+    const manageButton = el.shadowRoot!.querySelector('.recordings-summary ui-button') as
+      | (HTMLElement & { disabled?: boolean })
+      | null;
+    expect(manageButton).not.toBeNull();
+    expect(manageButton?.hasAttribute('disabled') || manageButton?.disabled).toBe(true);
   });
 
   it('re-enables media player when shadowing countdown is cancelled', async () => {
@@ -959,6 +968,37 @@ describe('practice-view', () => {
 
     expect(el._recordingsModalOpen).toBe(true);
     expect(el.shadowRoot!.querySelector('record-list')).not.toBeNull();
+  });
+
+  it('opens echo recordings manage modal from subtitle row', async () => {
+    const el = await renderView();
+    await settleView(el);
+
+    const panel = el.shadowRoot!.querySelector('subtitle-panel') as HTMLElement;
+    expect(panel).not.toBeNull();
+    panel.dispatchEvent(
+      new CustomEvent('echo-manage-recordings', {
+        detail: { segmentId: 's0' },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+    await el.updateComplete;
+
+    expect(el._recordingsModalOpen).toBe(true);
+    expect(el._recordingsModalMode).toBe('echo');
+    expect(el._recordingsModalSegmentId).toBe('s0');
+
+    const recordList = el.shadowRoot!.querySelector('record-list') as {
+      modeFilter?: string;
+      segmentId?: string;
+    } | null;
+    expect(recordList).not.toBeNull();
+    expect(recordList?.modeFilter).toBe('echo');
+    expect(recordList?.segmentId).toBe('s0');
+
+    const modal = el.shadowRoot!.querySelector('ui-modal') as { title?: string } | null;
+    expect(modal?.title).toBe('当前句的回声录音');
   });
 
   it('shows session dock while shadowing recording', async () => {

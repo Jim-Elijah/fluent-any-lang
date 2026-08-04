@@ -57,7 +57,14 @@ export class AudioRecorderController {
     if (this.mediaRecorder) return;
 
     try {
-      this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      this.stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          /** echoCancellation 会在 shadowing 录音时，部分句子从中间切开，导致缺音 */
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
+        },
+      });
 
       const mimeType = this.getSupportedMimeType(this.options.mimeType);
 

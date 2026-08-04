@@ -117,6 +117,33 @@ describe('record-list', () => {
     expect(el.shadowRoot?.textContent).toContain('Lesson');
   });
 
+  it('filters echo recordings by segmentId', async () => {
+    const echoA: PracticeRecord = {
+      ...sampleRecord,
+      id: 'echo-a',
+      mode: 'echo',
+      segmentId: 'seg-a',
+      mediaTitle: 'Seg A',
+    };
+    const echoB: PracticeRecord = {
+      ...sampleRecord,
+      id: 'echo-b',
+      mode: 'echo',
+      segmentId: 'seg-b',
+      mediaTitle: 'Seg B',
+    };
+    vi.mocked(recordDb.findRecordings).mockResolvedValue([echoA, echoB]);
+
+    const el = await renderList(
+      html`<record-list mediaId="media-1" .modeFilter=${'echo'} segmentId="seg-a"></record-list>`,
+    );
+    await el.refresh();
+    await el.updateComplete;
+
+    expect(el.shadowRoot?.textContent).toContain('Seg A');
+    expect(el.shadowRoot?.textContent).not.toContain('Seg B');
+  });
+
   it('supports fill-height attribute', async () => {
     const el = await renderList(html`<record-list fill-height></record-list>`);
     expect(el.fillHeight).toBe(true);

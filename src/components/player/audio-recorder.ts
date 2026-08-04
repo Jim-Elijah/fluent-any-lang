@@ -9,6 +9,7 @@ import { buildLiveDisplayPeaks } from '../../lib/live-waveform-peaks.js';
 import { ExtendedMediaEventType } from '../../lib/playback-utils.js';
 import { throttle } from '../../lib/util.js';
 import { CountdownCancelledError, runRecordingCountdown } from '../ui/countdown-overlay.js';
+import { Message } from '../ui/message.js';
 import { shouldSkipRecordingCountdown } from '../../lib/user-settings.js';
 import type { PracticeSegment, SubtitleSegment } from '../../types/models.js';
 import '../ui/alert.js';
@@ -43,6 +44,11 @@ export type RecordingStateChangeDetail = {
 export type RecordingErrorDetail = {
   message: string;
 };
+
+/** Warm-up silence before media play so MediaRecorder captures the first words. */
+export const RECORDING_HEAD_PAD_MS = 300;
+/** Keep recording briefly after stop so MediaRecorder captures the last words. */
+export const RECORDING_TAIL_PAD_MS = 250;
 
 @customElement('audio-recorder')
 @localized()
@@ -92,6 +98,10 @@ export class AudioRecorder extends LitElement {
   @property({ type: Boolean })
   disabled = false;
 
+  /** Shown on the record button tooltip while `disabled` (e.g. recording limit reached). */
+  @property({ type: String })
+  disabledTitle = '';
+
   @property({ type: Number })
   canvasHeight = 120;
 
@@ -103,6 +113,9 @@ export class AudioRecorder extends LitElement {
 
   @property({ type: Number })
   countdownSeconds = 3;
+
+  @property({ type: Number })
+  shadowingLatencyOffset = 0;
 
   /** When true, waveform is driven for external hosts (e.g. echo session dock). */
   @property({ type: Boolean })
@@ -126,6 +139,8 @@ export class AudioRecorder extends LitElement {
   private _lastRecordingEndTime = 0;
   private _isCollectingSegments = false;
   private _stopReason: RecordingCompleteDetail['reason'] = 'manual';
+  /** Bumped to cancel in-flight head/tail pad waits when start/stop races. */
+  private _recordingEpoch = 0;
   private readonly _recordingSupported =
     typeof window !== 'undefined' &&
     typeof navigator !== 'undefined' &&
@@ -140,8 +155,6 @@ export class AudioRecorder extends LitElement {
       this._lastRecordingEndTime = 0;
       this._isCollectingSegments = this.collectSegments;
 
-      this.beforeRecordingStart?.();
-
       if (this.stopOnMediaEnded) {
         this._attachEndedListener();
       }
@@ -153,11 +166,6 @@ export class AudioRecorder extends LitElement {
       this._liveTrackId = this._waveformController.prepareLiveTrack(msg('录音'));
       this._hasWaveform = true;
       this._startLiveAnalysis();
-
-      if (this.autoPlayOnStart && this.controller) {
-        void this.controller.play();
-      }
-      // @fixme if not start at a segment.startTime，segments in recording will be incorrect
     },
     onStop: (blob) => {
       this._stopLiveAnalysis();
@@ -171,7 +179,17 @@ export class AudioRecorder extends LitElement {
         void this.controller.pause();
       }
 
-      const segments = [...this._practiceSegments];
+      const totalElapsed = this._getRecordingElapsedSeconds();
+      const segments = this._practiceSegments.map((seg) => {
+        const offset = this.shadowingLatencyOffset;
+        const start = seg.recordingStartTime + offset;
+        const end = Math.min(seg.recordingEndTime + offset, totalElapsed);
+        return {
+          ...seg,
+          recordingStartTime: start,
+          recordingEndTime: end,
+        };
+      });
       this._isCollectingSegments = false;
       this._recordingStartedAt = 0;
       this._detachEndedListener();
@@ -182,6 +200,7 @@ export class AudioRecorder extends LitElement {
       this._dispatchComplete(blob, segments, this._stopReason);
     },
     onError: (error) => {
+      this._recordingEpoch += 1;
       this._detachEndedListener();
       this._detachSegmentEndListener();
       this._isCollectingSegments = false;
@@ -208,6 +227,7 @@ export class AudioRecorder extends LitElement {
   }
 
   disconnectedCallback(): void {
+    this._recordingEpoch += 1;
     this._detachEndedListener();
     this._detachSegmentEndListener();
     this._stopLiveAnalysis();
@@ -221,20 +241,25 @@ export class AudioRecorder extends LitElement {
   }
 
   render() {
+    const controlsDisabled = this.disabled || !this._recordingSupported;
+    const tip = this._recording
+      ? msg('停止')
+      : controlsDisabled && this.disabledTitle
+        ? this.disabledTitle
+        : msg('录音');
+    const tipDisabled = controlsDisabled && !this.disabledTitle;
+
     return html`
       ${!this.hideControls
         ? html`
             <div class="recording-controls">
-              <ui-tooltip
-                title="${this._recording ? msg('停止') : msg('录音')}"
-                ?disabled="${this.disabled || !this._recordingSupported}"
-              >
+              <ui-tooltip title="${tip}" ?disabled="${tipDisabled}">
                 <ui-button
                   variant="primary"
-                  ?disabled="${this.disabled || !this._recordingSupported}"
+                  ?disabled="${controlsDisabled}"
                   @click="${this.toggleRecording}"
                 >
-                  <ui-icon name="${this._recording ? 'stop-recording' : 'micro-on'}"></ui-icon>
+                  <ui-icon name="${this._recording ? 'stop-recording' : 'micro'}"></ui-icon>
                 </ui-button>
               </ui-tooltip>
               ${this._recordingError
@@ -280,8 +305,10 @@ export class AudioRecorder extends LitElement {
     this._recordingError = '';
     this._stopReason = 'manual';
 
+    let countdownSkipped = false;
     if (this.countdownBeforeStart) {
       const skipped = shouldSkipRecordingCountdown();
+      countdownSkipped = skipped;
       if (!skipped) {
         this._dispatchCountdownStart();
         try {
@@ -296,6 +323,12 @@ export class AudioRecorder extends LitElement {
       this._dispatchCountdownEnd({ skipped });
     }
 
+    // Seek / profile setup before MediaRecorder starts so the recording clock
+    // does not include pre-roll seek latency in the first practice segment.
+    this.beforeRecordingStart?.();
+
+    const epoch = ++this._recordingEpoch;
+
     try {
       await this._audioRecorder.start();
     } catch {
@@ -304,6 +337,28 @@ export class AudioRecorder extends LitElement {
         this._recordingError = message;
         this._dispatchError(message);
       }
+      return;
+    }
+
+    if (epoch !== this._recordingEpoch || this._audioRecorder.getState() !== 'recording') {
+      return;
+    }
+
+    if (this.autoPlayOnStart && this.controller) {
+      // Head pad: warm up MediaRecorder before media (and shadowing) begins.
+      await this._delay(RECORDING_HEAD_PAD_MS);
+      if (epoch !== this._recordingEpoch || this._audioRecorder.getState() !== 'recording') {
+        return;
+      }
+      // Practice-segment timeline starts after the pad; pad stays in the blob.
+      this._lastRecordingEndTime = Math.max(
+        this._getRecordingElapsedSeconds(),
+        RECORDING_HEAD_PAD_MS / 1000,
+      );
+      if (!countdownSkipped) {
+        Message.primary(msg('请跟上原音'));
+      }
+      void this.controller.play();
     }
   }
 
@@ -311,6 +366,9 @@ export class AudioRecorder extends LitElement {
     if (this._audioRecorder.getState() === 'inactive') {
       return;
     }
+
+    // Invalidate in-flight start head-pad so it will not call play() after stop.
+    this._recordingEpoch += 1;
 
     this._detachEndedListener();
     this._detachSegmentEndListener();
@@ -323,6 +381,15 @@ export class AudioRecorder extends LitElement {
       this._liveTrackId = null;
       this._audioRecorder.destroy();
       this._setRecording(false);
+      return;
+    }
+
+    // Tail pad: keep capturing so the last words are not clipped by MediaRecorder.stop.
+    if (this._audioRecorder.getState() === 'recording') {
+      await this._delay(RECORDING_TAIL_PAD_MS);
+    }
+
+    if (this._audioRecorder.getState() === 'inactive') {
       return;
     }
 
@@ -388,7 +455,6 @@ export class AudioRecorder extends LitElement {
       const recordingEndTime = this._getRecordingElapsedSeconds();
       this._practiceSegments.push({
         id: segment.id,
-        /** @fixeme 可能不是从segment.startTime开始录音 */
         sourceStartTime: segment.startTime,
         sourceEndTime: segment.endTime,
         recordingStartTime: this._lastRecordingEndTime,
@@ -415,20 +481,69 @@ export class AudioRecorder extends LitElement {
     return (performance.now() - this._recordingStartedAt) / 1000;
   }
 
-  /** 提前停止录音时，补录当前未触发 SEGMENT_END 的句子 */
+  private _delay(ms: number): Promise<void> {
+    return new Promise((resolve) => {
+      window.setTimeout(resolve, ms);
+    });
+  }
+
+  /** Resolve the in-progress subtitle when stopping mid-sentence or after the last cue. */
+  private _resolveOpenSegment(): SubtitleSegment | null {
+    if (!this.controller) {
+      return null;
+    }
+
+    const snapshot = this.controller.getSnapshot();
+    const { segments, currentSegmentIndex, currentTime } = snapshot;
+    if (segments.length === 0) {
+      return null;
+    }
+
+    if (currentSegmentIndex >= 0) {
+      return segments[currentSegmentIndex] ?? null;
+    }
+
+    // Past all subtitles (outro / snapped to duration): still finalize the last cue
+    // when SEGMENT_END raced with media ended.
+    const last = segments[segments.length - 1];
+    if (last && currentTime >= last.startTime) {
+      return last;
+    }
+
+    return null;
+  }
+
+  private _extendLastSegmentToNow(): void {
+    const last = this._practiceSegments[this._practiceSegments.length - 1];
+    if (!last) {
+      return;
+    }
+
+    const now = this._getRecordingElapsedSeconds();
+    // Cover MediaRecorder stop clipping / early SEGMENT_END, without swallowing a long outro.
+    const maxExtend = last.recordingEndTime + RECORDING_TAIL_PAD_MS / 1000 + 0.05;
+    const recordingEndTime = Math.min(now, maxExtend);
+    if (recordingEndTime > last.recordingEndTime) {
+      last.recordingEndTime = recordingEndTime;
+      this._lastRecordingEndTime = recordingEndTime;
+    }
+  }
+
+  /** 提前停止录音时，补录当前未触发 SEGMENT_END 的句子；已收尾的末句则延长到尾 pad。 */
   private _finalizeOpenSegment(): void {
     if (!this._isCollectingSegments || !this.controller) {
       return;
     }
 
-    const snapshot = this.controller.getSnapshot();
-    const segment = snapshot.segments[snapshot.currentSegmentIndex];
+    const segment = this._resolveOpenSegment();
     if (!segment) {
+      this._extendLastSegmentToNow();
       return;
     }
 
     const last = this._practiceSegments[this._practiceSegments.length - 1];
     if (last?.id === segment.id) {
+      this._extendLastSegmentToNow();
       return;
     }
 
