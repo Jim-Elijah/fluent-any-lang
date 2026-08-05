@@ -1,7 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { fetchReleaseNotes, highlightsForLocale, type ReleaseNotes } from './release-notes.js';
-import { sourceLocale } from '../locales/locale-codes.js';
+import {
+  fetchReleaseNotes,
+  highlightsForLocale,
+  RELEASE_NOTES_FALLBACK_LOCALE,
+  type ReleaseNotes,
+} from './release-notes.js';
 
 const sample: ReleaseNotes = {
   version: '0.4.0',
@@ -18,10 +22,10 @@ describe('highlightsForLocale', () => {
     expect(highlightsForLocale(sample, 'en')).toEqual(['English tip']);
   });
 
-  it('falls back to sourceLocale when locale is missing or empty', () => {
-    expect(highlightsForLocale(sample, 'ja')).toEqual(['中文要点']);
-    expect(highlightsForLocale(sample, 'fr')).toEqual(['中文要点']);
-    expect(sourceLocale).toBe('zh-CN');
+  it('falls back to English when locale is missing or empty', () => {
+    expect(highlightsForLocale(sample, 'ja')).toEqual(['English tip']);
+    expect(highlightsForLocale(sample, 'fr')).toEqual(['English tip']);
+    expect(RELEASE_NOTES_FALLBACK_LOCALE).toBe('en');
   });
 });
 

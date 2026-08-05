@@ -5,9 +5,12 @@ import { fileURLToPath } from 'node:url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 export const ROOT_DIR = resolve(__dirname, '..');
 
+/** CHANGELOG.md is English; release-notes highlights are keyed by this locale first. */
+export const CHANGELOG_LOCALE = 'en';
+
 /**
  * @param {string} [rootDir]
- * @returns {{ sourceLocale: string, locales: string[] }}
+ * @returns {{ locales: string[] }}
  */
 export function readLocales(rootDir = ROOT_DIR) {
   const config = JSON.parse(readFileSync(resolve(rootDir, 'lit-localize.json'), 'utf8'));
@@ -17,7 +20,12 @@ export function readLocales(rootDir = ROOT_DIR) {
     throw new Error('lit-localize.json: missing sourceLocale');
   }
   const locales = [sourceLocale, ...targetLocales.filter((l) => l !== sourceLocale)];
-  return { sourceLocale, locales };
+  if (!locales.includes(CHANGELOG_LOCALE)) {
+    throw new Error(
+      `lit-localize.json must include changelog locale "${CHANGELOG_LOCALE}" (source or target)`,
+    );
+  }
+  return { locales };
 }
 
 /**
@@ -80,7 +88,7 @@ export function parseLatestChangelogSection(markdown) {
 /**
  * @param {object} opts
  * @param {string} opts.version
- * @param {string} opts.sourceLocale
+ * @param {string} [opts.changelogLocale]
  * @param {string[]} opts.locales
  * @param {string[]} opts.sourceHighlights
  * @param {ReleaseNotesFile | null} [opts.existing]
@@ -88,7 +96,7 @@ export function parseLatestChangelogSection(markdown) {
  */
 export function buildReleaseNotes({
   version,
-  sourceLocale,
+  changelogLocale = CHANGELOG_LOCALE,
   locales,
   sourceHighlights,
   existing = null,
@@ -98,7 +106,7 @@ export function buildReleaseNotes({
   const sameVersion = existing?.version === version;
 
   for (const locale of locales) {
-    if (locale === sourceLocale) {
+    if (locale === changelogLocale) {
       highlights[locale] = [...sourceHighlights];
       continue;
     }
@@ -183,7 +191,7 @@ export function writeReleaseNotes(notes, rootDir = ROOT_DIR) {
  * @returns {ReleaseNotesFile}
  */
 export function generateReleaseNotes(rootDir = ROOT_DIR) {
-  const { sourceLocale, locales } = readLocales(rootDir);
+  const { locales } = readLocales(rootDir);
   const version = readPackageVersion(rootDir);
   const changelog = readFileSync(resolve(rootDir, 'CHANGELOG.md'), 'utf8');
   const { highlights: sourceHighlights } = parseLatestChangelogSection(changelog);
@@ -191,7 +199,7 @@ export function generateReleaseNotes(rootDir = ROOT_DIR) {
 
   return buildReleaseNotes({
     version,
-    sourceLocale,
+    changelogLocale: CHANGELOG_LOCALE,
     locales,
     sourceHighlights,
     existing,

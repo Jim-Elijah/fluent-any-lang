@@ -1,10 +1,12 @@
 import { getLocale } from '../i18n/localization.js';
-import { sourceLocale } from '../locales/locale-codes.js';
 
 export type ReleaseNotes = {
   version: string;
   highlights: Record<string, string[]>;
 };
+
+/** Matches scripts/release-notes-lib.mjs CHANGELOG_LOCALE — CHANGELOG.md is English. */
+export const RELEASE_NOTES_FALLBACK_LOCALE = 'en';
 
 const RELEASE_NOTES_URL = '/release-notes.json';
 
@@ -27,7 +29,7 @@ export function highlightsForLocale(notes: ReleaseNotes, locale?: string): strin
   const direct = notes.highlights[resolved];
   if (Array.isArray(direct) && direct.length > 0) return direct;
 
-  const fallback = notes.highlights[sourceLocale];
+  const fallback = notes.highlights[RELEASE_NOTES_FALLBACK_LOCALE];
   if (Array.isArray(fallback) && fallback.length > 0) return fallback;
 
   return [];

@@ -58,25 +58,25 @@ describe('parseLatestChangelogSection', () => {
 describe('buildReleaseNotes', () => {
   const locales = ['zh-CN', 'en', 'ja', 'zh-TW'];
 
-  it('overwrites source locale and keeps same-version translations', () => {
+  it('overwrites changelog locale (en) and keeps same-version translations', () => {
     const notes = buildReleaseNotes({
       version: '0.4.0',
-      sourceLocale: 'zh-CN',
+      changelogLocale: 'en',
       locales,
-      sourceHighlights: ['新要点 A', '新要点 B'],
+      sourceHighlights: ['Highlight A', 'Highlight B'],
       existing: {
         version: '0.4.0',
         highlights: {
-          'zh-CN': ['旧草稿'],
-          en: ['Existing EN'],
+          'zh-CN': ['既有简中'],
+          en: ['Old EN'],
           ja: [],
           'zh-TW': ['既有繁中'],
         },
       },
     });
 
-    expect(notes.highlights['zh-CN']).toEqual(['新要点 A', '新要点 B']);
-    expect(notes.highlights.en).toEqual(['Existing EN']);
+    expect(notes.highlights.en).toEqual(['Highlight A', 'Highlight B']);
+    expect(notes.highlights['zh-CN']).toEqual(['既有简中']);
     expect(notes.highlights.ja).toEqual([]);
     expect(notes.highlights['zh-TW']).toEqual(['既有繁中']);
   });
@@ -84,9 +84,9 @@ describe('buildReleaseNotes', () => {
   it('drops other-locale text when version changes', () => {
     const notes = buildReleaseNotes({
       version: '0.5.0',
-      sourceLocale: 'zh-CN',
+      changelogLocale: 'en',
       locales,
-      sourceHighlights: ['下一版'],
+      sourceHighlights: ['Next release'],
       existing: {
         version: '0.4.0',
         highlights: {
@@ -98,8 +98,8 @@ describe('buildReleaseNotes', () => {
       },
     });
 
-    expect(notes.highlights['zh-CN']).toEqual(['下一版']);
-    expect(notes.highlights.en).toEqual([]);
+    expect(notes.highlights.en).toEqual(['Next release']);
+    expect(notes.highlights['zh-CN']).toEqual([]);
     expect(notes.highlights.ja).toEqual([]);
     expect(notes.highlights['zh-TW']).toEqual([]);
   });
