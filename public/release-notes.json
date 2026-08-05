@@ -1,0 +1,33 @@
+{
+  "version": "0.3.1",
+  "highlights": {
+    "zh-CN": [
+      "**practice:** 影子跟读可选择压缩或保留句间空隙",
+      "**practice:** 录音更可靠，回声练习流程更顺畅统一",
+      "**practice:** 口语练习更稳定，支持实时波形并在结束后恢复设置",
+      "**pwa:** 更新时可查看多语言版本说明",
+      "**ui:** 字幕居中显示，单句循环边界更精准"
+    ],
+    "en": [
+      "**practice:** add shadowing gap policy for compress vs preserve playback",
+      "**practice:** harden recording capture and unify echo manage flow",
+      "**practice:** stabilize speaking sessions with live waveform and settings restore",
+      "**pwa:** show multilingual release notes on update",
+      "**ui:** center subtitle text and tighten segment loop epsilon"
+    ],
+    "ja": [
+      "**practice:** シャドーイングの文間ギャップを圧縮／保持から選べます",
+      "**practice:** 録音の安定性を高め、エコー練習の流れを統一しました",
+      "**practice:** スピーキング練習を安定化し、ライブ波形表示と設定の復元に対応",
+      "**pwa:** アップデート時に多言語のリリースノートを表示します",
+      "**ui:** 字幕を中央揃えにし、セグメントループの精度を向上"
+    ],
+    "zh-TW": [
+      "**practice:** 影子跟讀可選擇壓縮或保留句間空隙",
+      "**practice:** 錄音更可靠，回聲練習流程更順暢統一",
+      "**practice:** 口說練習更穩定，支援即時波形並在結束後還原設定",
+      "**pwa:** 更新時可查看多語言版本說明",
+      "**ui:** 字幕置中顯示，單句循環邊界更精準"
+    ]
+  }
+}

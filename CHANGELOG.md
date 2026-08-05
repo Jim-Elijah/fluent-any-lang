@@ -1,3 +1,13 @@
+## [0.3.1](https://github.com/Jim-Elijah/fluent-any-lang/compare/v0.3.0...v0.3.1) (2026-08-05)
+
+### Features
+
+* **practice:** add shadowing gap policy for compress vs preserve playback ([356e913](https://github.com/Jim-Elijah/fluent-any-lang/commit/356e913ccb033f74460b2034e300e000e0e2534a))
+* **practice:** harden recording capture and unify echo manage flow ([e199bbe](https://github.com/Jim-Elijah/fluent-any-lang/commit/e199bbe577fab428203c6b79a4dd69f7fe058c85))
+* **practice:** stabilize speaking sessions with live waveform and settings restore ([8c6e9ac](https://github.com/Jim-Elijah/fluent-any-lang/commit/8c6e9acd531202b8222282d988907728748ceabd))
+* **pwa:** show multilingual release notes on update ([98eb02b](https://github.com/Jim-Elijah/fluent-any-lang/commit/98eb02b49f18029089a198df0d65fd03872b220a))
+* **ui:** center subtitle text and tighten segment loop epsilon ([f60af92](https://github.com/Jim-Elijah/fluent-any-lang/commit/f60af92ecd2434d4164845eee67e76f23b5cc7fc))
+
 ## [0.3.0](https://github.com/Jim-Elijah/fluent-any-lang/compare/v0.2.0...v0.3.0) (2026-07-26)
 
 ### Features
