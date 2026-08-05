@@ -387,6 +387,13 @@ export class SubtitlePanel extends LitElement {
   @property({ type: Number })
   echoRecordingSegmentIndex = -1;
 
+  /**
+   * True while Echo is preparing/stopping a clip. Disables starting other rows;
+   * the active row stays enabled so cancel remains available.
+   */
+  @property({ type: Boolean })
+  echoBusy = false;
+
   @property({ type: Boolean })
   recordingSupported = true;
 
@@ -681,6 +688,7 @@ export class SubtitlePanel extends LitElement {
       ]?.length ?? 0) >= this.echoLimitPerSegment;
     const disabled =
       !this.recordingSupported ||
+      (this.echoBusy && !isActiveRow) ||
       (this.echoRecordingSegmentIndex >= 0 && !isActiveRow) ||
       (!isActiveRow && atLimit);
     const tip = isActiveRow

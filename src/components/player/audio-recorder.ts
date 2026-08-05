@@ -153,6 +153,11 @@ export class AudioRecorder extends LitElement {
   private _stopReason: RecordingCompleteDetail['reason'] = 'manual';
   /** Bumped to cancel in-flight head/tail pad waits when start/stop races. */
   private _recordingEpoch = 0;
+  /**
+   * True while a saving stop is running. The recorder still owns the buffered
+   * chunks until `onStop` returns, so it must not be released in that window.
+   */
+  private _stopInFlight = false;
   private readonly _recordingSupported =
     typeof window !== 'undefined' &&
     typeof navigator !== 'undefined' &&
@@ -308,6 +313,37 @@ export class AudioRecorder extends LitElement {
     await this.startRecording();
   }
 
+  /**
+   * Open the mic ahead of `startRecording` so the device/route switch it causes
+   * happens in silence instead of cutting the tail of whatever is still playing.
+   * Best effort: permission/device failures are surfaced later by `startRecording`.
+   */
+  async warmUpMicrophone(): Promise<void> {
+    if (this.disabled || !this._recordingSupported || this._recording) {
+      return;
+    }
+
+    try {
+      await this._audioRecorder.prepare();
+    } catch {
+      // Ignored on purpose — startRecording reports the error to the user.
+    }
+  }
+
+  /** Release a warmed-up mic that never went on to record. No-op while recording. */
+  releaseMicrophone(): void {
+    if (this._stopInFlight) {
+      return;
+    }
+    if (this._recording || this._audioRecorder.getState() !== 'inactive') {
+      return;
+    }
+    if (!this._audioRecorder.isReady()) {
+      return;
+    }
+    this._audioRecorder.destroy();
+  }
+
   async startRecording(): Promise<void> {
     if (this.disabled) {
       return;
@@ -418,16 +454,20 @@ export class AudioRecorder extends LitElement {
 
     this._finalizeOpenSegment();
 
+    this._stopInFlight = true;
     try {
       await this._audioRecorder.stop();
     } catch {
       this._audioRecorder.destroy();
       this._setRecording(false);
+    } finally {
+      this._stopInFlight = false;
     }
   }
 
   destroy(): void {
     void this.stopRecording({ save: false });
+    this.releaseMicrophone();
   }
 
   clearWaveform(): void {

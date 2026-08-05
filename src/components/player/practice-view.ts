@@ -53,6 +53,7 @@ import {
   RECORDING_PREVIEW_CLOSE_EVENT,
   RECORDING_PREVIEW_OPEN_EVENT,
 } from '../../lib/audio-focus.js';
+import { EchoClipPlayer } from '../../lib/echo-clip-player.js';
 import {
   PLAYBACK_RATE_HOTKEY_STEP,
   VOLUME_HOTKEY_STEP,
@@ -229,6 +230,9 @@ export class PracticeView extends NavigatorElement {
 
   private _echoSegment: SubtitleSegment | null = null;
 
+  /** Bumped on each echo start/cancel so in-flight async work cannot affect a newer session. */
+  private _echoSessionId = 0;
+
   /** Gap policy applied for the in-progress shadowing take (snapshotted at record start). */
   private _activeShadowingGapPolicy: ShadowingGapPolicy = 'compress';
 
@@ -257,6 +261,7 @@ export class PracticeView extends NavigatorElement {
   private _echoRecorderEl?: AudioRecorder;
 
   private readonly _controller = new MediaController();
+  private readonly _echoClipPlayer = new EchoClipPlayer();
   private readonly _timeTracker = new PracticeTimeTracker();
   private readonly _noiseMixer = new NoiseMixer();
   private readonly _rateLadder = new RateLadder();
@@ -284,9 +289,10 @@ export class PracticeView extends NavigatorElement {
     this.removeEventListener(RECORDING_PREVIEW_OPEN_EVENT, this._onRecordingPreviewOpen);
     this.removeEventListener(RECORDING_PREVIEW_CLOSE_EVENT, this._onRecordingPreviewClose);
     this.removeEventListener(AUDIO_FOCUS_REQUEST_EVENT, this._onAudioFocusRequest);
-    if (this._echoListening) {
+    if (this._isEchoListenPipelineActive()) {
       this._cancelEchoListen();
     }
+    this._echoClipPlayer.dispose();
     this._teardownDiscrimination();
     this._noiseMixer.destroy();
     this._timeTracker.dispose();
@@ -301,6 +307,7 @@ export class PracticeView extends NavigatorElement {
   protected updated(changed: Map<PropertyKey, unknown>): void {
     const sessionDockActive =
       this._sessionPhase === 'listening' ||
+      this._sessionPhase === 'draining' ||
       this._sessionPhase === 'countdown' ||
       this._sessionPhase === 'recording';
     this.toggleAttribute('data-session-dock', sessionDockActive);
@@ -453,8 +460,9 @@ export class PracticeView extends NavigatorElement {
 
   /** Pause practice media (and cancel echo listen) so recording review can own the speakers. */
   private _yieldPlaybackToPreview(showTip = true): void {
-    const wasPlaying = this._controller.getSnapshot().isPlaying || this._echoListening;
-    if (this._echoListening) {
+    const wasPlaying =
+      this._controller.getSnapshot().isPlaying || this._isEchoListenPipelineActive();
+    if (this._isEchoListenPipelineActive()) {
       this._cancelEchoListen(true);
     } else {
       void this._controller.pause();
@@ -619,12 +627,13 @@ export class PracticeView extends NavigatorElement {
   private _onTrackChange = (): void => {
     this._recordingError = '';
     this._lastRecordingId = null;
-    if (this._echoListening) {
+    if (this._isEchoListenPipelineActive()) {
       this._cancelEchoListen();
     } else {
       this._echoSegmentIndex = -1;
       this._echoSegment = null;
     }
+    this._echoClipPlayer.dispose();
     this._syncMediaIdFromController();
     this._syncTimeTrackerMedia();
     this._syncSpeakingModeAvailability();
@@ -860,6 +869,9 @@ export class PracticeView extends NavigatorElement {
             .echoMode="${isEcho}"
             .echoRecordingsBySegmentId="${this._echoRecordingsBySegmentId}"
             .echoRecordingSegmentIndex="${this._echoSegmentIndex}"
+            .echoBusy="${this._sessionPhase === 'preparing' ||
+            this._sessionPhase === 'stopping' ||
+            this._sessionPhase === 'draining'}"
             .recordingSupported="${this._recordingSupported}"
             .echoLimitPerSegment="${this._echoLimitPerSegment}"
             .seekDisabled=${sessionActive}
@@ -1224,7 +1236,7 @@ export class PracticeView extends NavigatorElement {
       return;
     }
 
-    if (this._echoListening) {
+    if (this._isEchoListenPipelineActive()) {
       this._cancelEchoListen();
     }
     if (this._discriminationActive) {
@@ -1258,7 +1270,7 @@ export class PracticeView extends NavigatorElement {
     if (this._speakingMode !== 'echo') {
       return;
     }
-    if (this._echoListening) {
+    if (this._isEchoListenPipelineActive()) {
       this._cancelEchoListen();
     }
     this._speakingMode = 'shadowing';
@@ -1299,7 +1311,7 @@ export class PracticeView extends NavigatorElement {
       return;
     }
 
-    if (this._echoListening) {
+    if (this._isEchoListenPipelineActive()) {
       this._cancelEchoListen();
     }
     this._speakingMode = mode;
@@ -1508,43 +1520,64 @@ export class PracticeView extends NavigatorElement {
     }
   };
 
-  private _onEchoListenSegmentEnd = (event: Event): void => {
-    const customEvent = event as CustomEvent<{ segmentIndex: number; segment: SubtitleSegment }>;
+  /** Echo listen pipeline: preparing → listening → draining → stopping, before countdown/recording. */
+  private _isEchoListenPipelineActive(): boolean {
+    return (
+      this._echoListening ||
+      this._sessionPhase === 'preparing' ||
+      this._sessionPhase === 'stopping' ||
+      this._sessionPhase === 'listening' ||
+      this._sessionPhase === 'draining'
+    );
+  }
+
+  private _seekEchoSegmentToStart(): void {
+    if (this._echoSegmentIndex < 0) {
+      return;
+    }
+    this._controller.seekToSegment(this._echoSegmentIndex, false, { force: true });
+  }
+
+  private _onEchoClipEnded = async (): Promise<void> => {
     if (!this._echoListening || !this._echoSegment) {
       return;
     }
-    if (customEvent.detail.segment.id !== this._echoSegment.id) {
+
+    const sessionId = this._echoSessionId;
+    this._echoListening = false;
+    this._timeTracker.setFlags({ echoListening: false });
+    this._seekEchoSegmentToStart();
+    this._setSessionPhase('draining');
+
+    // Let the output device finish sounding the clip before the mic opens.
+    await this._echoClipPlayer.waitForOutputDrain();
+    if (sessionId !== this._echoSessionId) {
       return;
     }
 
-    this._controller.removeEventListener(
-      ExtendedMediaEventType.SEGMENT_END,
-      this._onEchoListenSegmentEnd,
-    );
-    this._echoListening = false;
-    this._timeTracker.setFlags({ echoListening: false });
-    void this._controller.pause();
-
-    void (async () => {
-      try {
-        await this._echoRecorderEl?.startRecording();
-        if (!this._echoRecorderEl?.recording) {
-          this._clearEchoSession();
-        }
-      } catch {
+    try {
+      await this._echoRecorderEl?.startRecording();
+      if (sessionId !== this._echoSessionId) {
+        return;
+      }
+      if (!this._echoRecorderEl?.recording) {
         this._clearEchoSession();
       }
-    })();
+    } catch {
+      if (sessionId === this._echoSessionId) {
+        this._clearEchoSession();
+      }
+    }
   };
 
   private _cancelEchoListen(pauseMedia = true): void {
-    this._controller.removeEventListener(
-      ExtendedMediaEventType.SEGMENT_END,
-      this._onEchoListenSegmentEnd,
-    );
+    this._echoSessionId++;
+    this._setSessionPhase('stopping');
+    this._echoClipPlayer.stop();
     if (pauseMedia) {
       void this._controller.pause();
     }
+    this._seekEchoSegmentToStart();
     this._clearEchoSession();
   }
 
@@ -1557,6 +1590,9 @@ export class PracticeView extends NavigatorElement {
   }
 
   private _resetSessionUi(): void {
+    // Ends every echo session path (cancel, countdown cancel, mic failure): give back a
+    // mic that was warmed up for listening but never recorded. No-op while recording.
+    this._echoRecorderEl?.releaseMicrophone();
     this._restorePracticePlaybackSettings();
     this._setSessionPhase('idle');
     this._sessionSpeakCue = false;
@@ -1571,7 +1607,7 @@ export class PracticeView extends NavigatorElement {
   private _onEchoRecordRequest = async (
     event: CustomEvent<EchoRecordRequestDetail>,
   ): Promise<void> => {
-    if (!this._recordingSupported || this._recording || this._echoListening) {
+    if (!this._recordingSupported || this._recording || this._sessionPhase !== 'idle') {
       return;
     }
 
@@ -1582,13 +1618,14 @@ export class PracticeView extends NavigatorElement {
       return;
     }
 
-    const count = await countEchoRecordings(this._mediaId, segment.id);
-    if (count >= this._echoLimitPerSegment) {
-      Message.warning(
-        msg(str`该句录音已达上限（${this._echoLimitPerSegment}条），删除旧录音后可继续。`),
-      );
+    const blob = this._controller.getCurrentBlob();
+    if (!blob) {
       return;
     }
+
+    // Claim the session before the first await so repeated taps cannot open overlapping sessions.
+    const sessionId = ++this._echoSessionId;
+    const { playbackRate, volume } = snapshot;
 
     this._echoSegmentIndex = segmentIndex;
     this._echoSegment = segment;
@@ -1596,24 +1633,78 @@ export class PracticeView extends NavigatorElement {
     this._echoRecorderEl?.clearWaveform();
     this._sessionWaveformController = null;
     this._sessionSpeakCue = false;
-    this._setSessionPhase('listening');
-    this._applyEchoPlaybackProfile();
-    this._echoListening = true;
-    this._timeTracker.setFlags({ echoListening: true });
-    this._controller.addEventListener(
-      ExtendedMediaEventType.SEGMENT_END,
-      this._onEchoListenSegmentEnd,
-    );
+    this._setSessionPhase('preparing');
+    this._echoListening = false;
+    this._timeTracker.setFlags({ echoListening: false });
+
+    let count: number;
+    try {
+      count = await countEchoRecordings(this._mediaId, segment.id);
+    } catch {
+      if (sessionId === this._echoSessionId) {
+        this._clearEchoSession();
+      }
+      return;
+    }
+    if (sessionId !== this._echoSessionId) {
+      return;
+    }
+    if (count >= this._echoLimitPerSegment) {
+      Message.warning(
+        msg(str`该句录音已达上限（${this._echoLimitPerSegment}条），删除旧录音后可继续。`),
+      );
+      this._clearEchoSession();
+      return;
+    }
+
+    this._controller.setShadowingGapCompress(false);
+    this._suppressNonPracticeSettings({ pauseMode: 'off' });
+
+    // Hard-cut main player: freeze UI clock at sentence start; clip owns listen audio.
+    this._controller.pause();
+    this._seekEchoSegmentToStart();
+
+    // Open the mic while nothing is sounding: doing it after the clip lets the
+    // device/route switch cut the clip tail (and that tail lands in the recording).
+    await this._echoRecorderEl?.warmUpMicrophone();
+    if (sessionId !== this._echoSessionId) {
+      // Cancelled while the mic was opening: the session already ran its release.
+      this._echoRecorderEl?.releaseMicrophone();
+      return;
+    }
+
+    this._echoClipPlayer.onEnded = () => {
+      void this._onEchoClipEnded();
+    };
 
     try {
-      await this._controller.play();
+      await this._echoClipPlayer.prepare(blob);
+      if (sessionId !== this._echoSessionId) {
+        return;
+      }
+      await this._echoClipPlayer.play(
+        { startTime: segment.startTime, endTime: segment.endTime },
+        { playbackRate, volume },
+      );
     } catch {
-      this._cancelEchoListen();
+      if (sessionId === this._echoSessionId) {
+        this._cancelEchoListen();
+      }
+      return;
     }
+
+    if (sessionId !== this._echoSessionId) {
+      this._echoClipPlayer.stop();
+      return;
+    }
+
+    this._setSessionPhase('listening');
+    this._echoListening = true;
+    this._timeTracker.setFlags({ echoListening: true });
   };
 
   private _onEchoRecordStop = async (): Promise<void> => {
-    if (this._echoListening) {
+    if (this._isEchoListenPipelineActive()) {
       this._cancelEchoListen();
       return;
     }

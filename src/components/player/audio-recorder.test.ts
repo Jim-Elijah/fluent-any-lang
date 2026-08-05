@@ -239,6 +239,52 @@ describe('audio-recorder component', () => {
     expect(el.shadowRoot?.querySelector('waveform-player')).toBeNull();
   });
 
+  it('warms up the mic without recording, and reuses it on start', async () => {
+    const el = await renderRecorder();
+
+    await el.warmUpMicrophone();
+    expect(getUserMedia).toHaveBeenCalledTimes(1);
+    expect(el.recording).toBe(false);
+
+    await el.startRecording();
+    expect(getUserMedia).toHaveBeenCalledTimes(1);
+    expect(el.recording).toBe(true);
+  });
+
+  it('releases a warmed-up mic that never recorded', async () => {
+    const stop = vi.fn();
+    getUserMedia.mockResolvedValue({ getTracks: () => [{ stop }] } as unknown as MediaStream);
+    const el = await renderRecorder();
+
+    await el.warmUpMicrophone();
+    el.releaseMicrophone();
+
+    expect(stop).toHaveBeenCalled();
+  });
+
+  it('destroy releases a warmed-up mic', async () => {
+    const stop = vi.fn();
+    getUserMedia.mockResolvedValue({ getTracks: () => [{ stop }] } as unknown as MediaStream);
+    const el = await renderRecorder();
+
+    await el.warmUpMicrophone();
+    el.destroy();
+
+    expect(stop).toHaveBeenCalled();
+  });
+
+  it('keeps the mic while recording', async () => {
+    const stop = vi.fn();
+    getUserMedia.mockResolvedValue({ getTracks: () => [{ stop }] } as unknown as MediaStream);
+    const el = await renderRecorder();
+
+    await el.startRecording();
+    el.releaseMicrophone();
+
+    expect(stop).not.toHaveBeenCalled();
+    expect(el.recording).toBe(true);
+  });
+
   it('shows waveform after recording starts', async () => {
     const el = await renderRecorder();
     await el.startRecording();

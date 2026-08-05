@@ -127,6 +127,18 @@ describe('MediaController', () => {
     expect(snapshot.hasSubtitles).toBe(true);
   });
 
+  it('exposes the current track blob via getCurrentBlob', async () => {
+    expect(controller.getCurrentBlob()).toBeNull();
+
+    const trackA = makeTrack('a', 'Track A');
+    const trackB = makeTrack('b', 'Track B');
+    await controller.loadTracks([trackA, trackB], 0);
+    expect(controller.getCurrentBlob()).toBe(trackA.blob);
+
+    await controller.loadTrack(1);
+    expect(controller.getCurrentBlob()).toBe(trackB.blob);
+  });
+
   it('updates current track subtitles without reloading media', async () => {
     await controller.loadTracks([makeTrack('a', 'Track A')]);
     expect(controller.getSnapshot().hasSubtitles).toBe(false);
@@ -592,6 +604,162 @@ describe('MediaController', () => {
         detail: expect.objectContaining({ segmentIndex: 0 }),
       }),
     );
+  });
+
+  it('does not emit SEGMENT_END from stale currentTime after async seek restart', async () => {
+    // Echo listen cancel mid-cue then restart: seek() updates controller clocks to
+    // segment start, but the element may still report the pre-seek time until seeked.
+    // A timeupdate in that window must not treat (prev=start, curr=near-end) as a real end.
+    const segments: SubtitleSegment[] = [
+      { id: 's1', startTime: 0, endTime: 5, text: 'one' },
+      { id: 's2', startTime: 5, endTime: 10, text: 'two' },
+    ];
+    const segmentEndHandler = vi.fn();
+    controller.addEventListener(ExtendedMediaEventType.SEGMENT_END, segmentEndHandler);
+    await controller.loadTracks([makeTrack('a', 'Track A', { segments })]);
+
+    let audioTime = 4.99;
+    let seeking = false;
+    Object.defineProperty(audio, 'currentTime', {
+      configurable: true,
+      get: () => audioTime,
+      set: (value: number) => {
+        seeking = true;
+        // Defer applying the seek target (browser async seek).
+        queueMicrotask(() => {
+          audioTime = value;
+          seeking = false;
+          audio.dispatchEvent(new Event('seeked'));
+        });
+      },
+    });
+    Object.defineProperty(audio, 'seeking', {
+      configurable: true,
+      get: () => seeking,
+    });
+
+    // Mid-cue cancel position, then echo restart seek+play.
+    Object.defineProperty(audio, 'paused', { configurable: true, value: true });
+    controller.seek(0, { force: true });
+    expect(controller.getSnapshot().currentTime).toBe(0);
+
+    Object.defineProperty(audio, 'paused', { configurable: true, value: false });
+    // Stale timeupdate before seek settles — must not fire SEGMENT_END.
+    audio.dispatchEvent(new Event('timeupdate'));
+    expect(segmentEndHandler).not.toHaveBeenCalled();
+
+    await Promise.resolve(); // seek microtask applies
+    audioTime = 5.1;
+    audio.dispatchEvent(new Event('timeupdate'));
+    expect(segmentEndHandler).toHaveBeenCalledTimes(1);
+  });
+
+  it('awaits async seek before play so echo listen does not resume mid-cue', async () => {
+    await controller.loadTracks([makeTrack('a', 'Track A')]);
+
+    let audioTime = 4.5;
+    let seeking = false;
+    Object.defineProperty(audio, 'currentTime', {
+      configurable: true,
+      get: () => audioTime,
+      set: (value: number) => {
+        seeking = true;
+        queueMicrotask(() => {
+          audioTime = value;
+          seeking = false;
+          audio.dispatchEvent(new Event('seeked'));
+        });
+      },
+    });
+    Object.defineProperty(audio, 'seeking', {
+      configurable: true,
+      get: () => seeking,
+    });
+
+    audio.play.mockClear();
+    controller.seek(0, { force: true });
+    const playPromise = controller.play();
+    expect(audio.play).not.toHaveBeenCalled();
+
+    await Promise.resolve(); // seeked
+    await playPromise;
+    expect(audio.play).toHaveBeenCalledTimes(1);
+    expect(audioTime).toBe(0);
+  });
+
+  it('seekToSegmentAsync resolves only after seeked', async () => {
+    const segments: SubtitleSegment[] = [
+      { id: 's1', startTime: 0, endTime: 5, text: 'one' },
+      { id: 's2', startTime: 5, endTime: 10, text: 'two' },
+    ];
+    await controller.loadTracks([makeTrack('a', 'Track A', { segments })]);
+
+    let audioTime = 7;
+    let seeking = false;
+    Object.defineProperty(audio, 'currentTime', {
+      configurable: true,
+      get: () => audioTime,
+      set: (value: number) => {
+        seeking = true;
+        queueMicrotask(() => {
+          audioTime = value;
+          seeking = false;
+          audio.dispatchEvent(new Event('seeked'));
+        });
+      },
+    });
+    Object.defineProperty(audio, 'seeking', {
+      configurable: true,
+      get: () => seeking,
+    });
+
+    const done = controller.seekToSegmentAsync(0, false, { force: true });
+    expect(audioTime).toBe(7);
+    await done;
+    expect(audioTime).toBe(0);
+  });
+
+  it('does not settle superseded seek early when two seeks target the same time', async () => {
+    const segments: SubtitleSegment[] = [{ id: 's1', startTime: 0, endTime: 5, text: 'one' }];
+    await controller.loadTracks([makeTrack('a', 'Track A', { segments })]);
+
+    let audioTime = 4.5;
+    let seeking = false;
+    const pendingApplies: Array<() => void> = [];
+    Object.defineProperty(audio, 'currentTime', {
+      configurable: true,
+      get: () => audioTime,
+      set: (value: number) => {
+        seeking = true;
+        pendingApplies.push(() => {
+          audioTime = value;
+          seeking = false;
+          audio.dispatchEvent(new Event('seeked'));
+        });
+      },
+    });
+    Object.defineProperty(audio, 'seeking', {
+      configurable: true,
+      get: () => seeking,
+    });
+
+    controller.seek(0, { force: true });
+    controller.seek(0, { force: true });
+    expect(pendingApplies).toHaveLength(2);
+
+    const playPromise = controller.play();
+    expect(audio.play).not.toHaveBeenCalled();
+
+    pendingApplies[0]!();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(audio.play).not.toHaveBeenCalled();
+
+    pendingApplies[1]!();
+    await Promise.resolve();
+    await playPromise;
+    expect(audio.play).toHaveBeenCalledTimes(1);
+    expect(audioTime).toBe(0);
   });
 
   it('applies segment pause and resumes after the configured delay', async () => {

@@ -136,6 +136,28 @@ describe('AudioRecorderController', () => {
     expect(onStateChange).toHaveBeenCalledWith('recording');
   });
 
+  it('opens the mic on prepare without starting a recording', async () => {
+    const onStateChange = vi.fn();
+    const controller = new AudioRecorderController({ onStateChange });
+
+    await controller.prepare();
+
+    expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalledTimes(1);
+    expect(controller.isReady()).toBe(true);
+    expect(controller.getState()).toBe('inactive');
+    expect(onStateChange).not.toHaveBeenCalled();
+  });
+
+  it('reuses the prepared mic when recording starts', async () => {
+    const controller = new AudioRecorderController();
+
+    await controller.prepare();
+    await controller.start();
+
+    expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalledTimes(1);
+    expect(controller.getState()).toBe('recording');
+  });
+
   it('resolves start only after MediaRecorder fires start', async () => {
     deferRecorderStart = true;
     const onStateChange = vi.fn();

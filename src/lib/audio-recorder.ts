@@ -50,6 +50,18 @@ export class AudioRecorderController {
     this.options.onStateChange?.(state);
   }
 
+  public isReady(): boolean {
+    return this.mediaRecorder !== null;
+  }
+
+  /**
+   * 提前打开麦克风（不开始录音）。开麦会让系统切换音频输出路由，
+   * 提前到播放之前做，可避免切换时截断正在播放的音频尾部。
+   */
+  public async prepare(): Promise<void> {
+    await this.initRecorder();
+  }
+
   /**
    * 初始化麦克风和 MediaRecorder
    */
@@ -228,8 +240,10 @@ export class AudioRecorderController {
       const mimeType = this.mediaRecorder.mimeType || 'audio/webm';
 
       this.mediaRecorder.onstop = () => {
-        this.setState('inactive');
+        // Read the chunks before any notification: an `onStateChange` listener may
+        // destroy this controller, which empties `chunks` and would yield an empty blob.
         const blob = new Blob(this.chunks, { type: mimeType });
+        this.setState('inactive');
         this.options.onStop?.(blob);
         resolve(blob);
       };

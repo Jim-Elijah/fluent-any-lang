@@ -113,6 +113,22 @@ vi.mock('../../lib/rate-ladder.js', () => ({
   }),
 }));
 
+const mockEchoClipPlayer = {
+  prepare: vi.fn().mockResolvedValue(undefined),
+  play: vi.fn().mockResolvedValue(undefined),
+  waitForOutputDrain: vi.fn().mockResolvedValue(undefined),
+  stop: vi.fn(),
+  dispose: vi.fn(),
+  isPlaying: false,
+  onEnded: null as (() => void) | null,
+};
+
+vi.mock('../../lib/echo-clip-player.js', () => ({
+  EchoClipPlayer: vi.fn(function MockEchoClipPlayer() {
+    return mockEchoClipPlayer;
+  }),
+}));
+
 import './practice-view.js';
 import type { PracticeView } from './practice-view.js';
 import { mount } from '../ui/test-utils.js';
@@ -167,6 +183,7 @@ type PracticeViewInternals = PracticeView & {
       pauseSeconds?: number;
       pausePercent?: number;
     };
+    getCurrentBlob: () => Blob | null;
     seekToSegment: (index: number, autoPlay?: boolean, options?: { force?: boolean }) => void;
     setNavigationLocked: (locked: boolean) => void;
     dispatchEvent: (event: Event) => boolean;
@@ -298,6 +315,13 @@ describe('practice-view', () => {
     mockRateLadder.getCurrentRate.mockReturnValue(1);
     mockRateLadder.getSequence.mockReturnValue([1, 1.5, 1]);
     mockRateLadder.onMainEnded.mockReturnValue({ kind: 'finished', rate: 1 });
+    mockEchoClipPlayer.prepare.mockReset().mockResolvedValue(undefined);
+    mockEchoClipPlayer.play.mockReset().mockResolvedValue(undefined);
+    mockEchoClipPlayer.waitForOutputDrain.mockReset().mockResolvedValue(undefined);
+    mockEchoClipPlayer.stop.mockClear();
+    mockEchoClipPlayer.dispose.mockClear();
+    mockEchoClipPlayer.onEnded = null;
+    mockEchoClipPlayer.isPlaying = false;
   });
 
   afterEach(() => {
@@ -536,11 +560,13 @@ describe('practice-view', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
   }
 
-  it('starts playback without recording on echo-record-request', async () => {
+  it('starts echo clip listen without calling main controller.play', async () => {
     const el = await renderView();
     await switchToEchoMode(el);
 
     const playSpy = vi.spyOn(el._controller, 'play').mockResolvedValue(undefined);
+    const pauseSpy = vi.spyOn(el._controller, 'pause').mockReturnValue(undefined as never);
+    const seekSpy = vi.spyOn(el._controller, 'seekToSegment');
     const echoRecorder = el.shadowRoot!.querySelector('audio-recorder#echo-recorder') as {
       startRecording: () => Promise<void>;
       recording: boolean;
@@ -549,42 +575,69 @@ describe('practice-view', () => {
 
     await dispatchEchoRecordRequest(el);
 
-    expect(playSpy).toHaveBeenCalled();
+    expect(playSpy).not.toHaveBeenCalled();
+    expect(pauseSpy).toHaveBeenCalled();
+    expect(seekSpy).toHaveBeenCalledWith(0, false, { force: true });
+    expect(mockEchoClipPlayer.prepare).toHaveBeenCalled();
+    expect(mockEchoClipPlayer.play).toHaveBeenCalledWith(
+      { startTime: 0, endTime: 5 },
+      expect.objectContaining({ playbackRate: expect.any(Number), volume: expect.any(Number) }),
+    );
     expect(startRecordingSpy).not.toHaveBeenCalled();
     expect(el._echoListening).toBe(true);
+    expect(el._sessionPhase).toBe('listening');
   });
 
-  it('pauses playback when SEGMENT_END fires during echo listen phase', async () => {
+  it('opens the mic before the clip plays', async () => {
     const el = await renderView();
     await switchToEchoMode(el);
 
-    vi.spyOn(el._controller, 'play').mockResolvedValue(undefined);
-    const pauseSpy = vi.spyOn(el._controller, 'pause').mockResolvedValue(undefined);
+    vi.spyOn(el._controller, 'pause').mockReturnValue(undefined as never);
     const echoRecorder = el.shadowRoot!.querySelector('audio-recorder#echo-recorder') as {
+      warmUpMicrophone: () => Promise<void>;
       startRecording: () => Promise<void>;
-      recording: boolean;
     };
+    const warmUpSpy = vi.spyOn(echoRecorder, 'warmUpMicrophone').mockResolvedValue(undefined);
     vi.spyOn(echoRecorder, 'startRecording').mockResolvedValue(undefined);
 
     await dispatchEchoRecordRequest(el);
 
-    el._controller.dispatchEvent(
-      new CustomEvent(ExtendedMediaEventType.SEGMENT_END, {
-        detail: { segmentIndex: 0, segment: sampleSegments[0] },
-      }),
+    expect(warmUpSpy).toHaveBeenCalled();
+    expect(warmUpSpy.mock.invocationCallOrder[0]!).toBeLessThan(
+      mockEchoClipPlayer.play.mock.invocationCallOrder[0]!,
     );
-    await el.updateComplete;
-    await new Promise((resolve) => setTimeout(resolve, 0));
-
-    expect(pauseSpy).toHaveBeenCalled();
   });
 
-  it('starts recording after SEGMENT_END during echo listen phase', async () => {
+  it('releases a warmed-up mic when the session is cancelled', async () => {
     const el = await renderView();
     await switchToEchoMode(el);
 
-    vi.spyOn(el._controller, 'play').mockResolvedValue(undefined);
-    vi.spyOn(el._controller, 'pause').mockResolvedValue(undefined);
+    vi.spyOn(el._controller, 'pause').mockReturnValue(undefined as never);
+    const echoRecorder = el.shadowRoot!.querySelector('audio-recorder#echo-recorder') as {
+      warmUpMicrophone: () => Promise<void>;
+      releaseMicrophone: () => void;
+      startRecording: () => Promise<void>;
+    };
+    vi.spyOn(echoRecorder, 'warmUpMicrophone').mockResolvedValue(undefined);
+    const releaseSpy = vi.spyOn(echoRecorder, 'releaseMicrophone').mockReturnValue(undefined);
+    vi.spyOn(echoRecorder, 'startRecording').mockResolvedValue(undefined);
+
+    await dispatchEchoRecordRequest(el);
+    el.shadowRoot!.querySelector('subtitle-panel')!.dispatchEvent(
+      new CustomEvent('echo-record-stop', { bubbles: true, composed: true }),
+    );
+    await el.updateComplete;
+
+    expect(releaseSpy).toHaveBeenCalled();
+    expect(el._sessionPhase).toBe('idle');
+  });
+
+  it('starts recording after echo clip ends', async () => {
+    const el = await renderView();
+    await switchToEchoMode(el);
+
+    vi.spyOn(el._controller, 'pause').mockReturnValue(undefined as never);
+    const seekSpy = vi.spyOn(el._controller, 'seekToSegment');
     const echoRecorder = el.shadowRoot!.querySelector('audio-recorder#echo-recorder') as {
       startRecording: () => Promise<void>;
       recording: boolean;
@@ -596,25 +649,22 @@ describe('practice-view', () => {
     const startRecordingSpy = vi.spyOn(echoRecorder, 'startRecording').mockResolvedValue(undefined);
 
     await dispatchEchoRecordRequest(el);
+    expect(el._echoListening).toBe(true);
 
-    el._controller.dispatchEvent(
-      new CustomEvent(ExtendedMediaEventType.SEGMENT_END, {
-        detail: { segmentIndex: 0, segment: sampleSegments[0] },
-      }),
-    );
+    mockEchoClipPlayer.onEnded?.();
     await el.updateComplete;
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(startRecordingSpy).toHaveBeenCalled();
     expect(el._echoListening).toBe(false);
+    expect(seekSpy).toHaveBeenCalledWith(0, false, { force: true });
   });
 
   it('cancels echo listen session on stop without saving', async () => {
     const el = await renderView();
     await switchToEchoMode(el);
 
-    const pauseSpy = vi.spyOn(el._controller, 'pause').mockResolvedValue(undefined);
-    vi.spyOn(el._controller, 'play').mockResolvedValue(undefined);
+    const pauseSpy = vi.spyOn(el._controller, 'pause').mockReturnValue(undefined as never);
     const echoRecorder = el.shadowRoot!.querySelector('audio-recorder#echo-recorder') as {
       startRecording: () => Promise<void>;
       stopRecording: () => Promise<void>;
@@ -635,16 +685,170 @@ describe('practice-view', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(pauseSpy).toHaveBeenCalled();
+    expect(mockEchoClipPlayer.stop).toHaveBeenCalled();
     expect(startRecordingSpy).not.toHaveBeenCalled();
     expect(stopRecordingSpy).not.toHaveBeenCalled();
     expect(el._echoListening).toBe(false);
   });
 
-  it('disables media player while echo listening', async () => {
+  it('cancels pending echo listen during prepare without starting recording', async () => {
     const el = await renderView();
     await switchToEchoMode(el);
 
-    vi.spyOn(el._controller, 'play').mockResolvedValue(undefined);
+    let resolvePrepare: (() => void) | undefined;
+    const pendingPrepare = new Promise<void>((resolve) => {
+      resolvePrepare = resolve;
+    });
+    mockEchoClipPlayer.prepare.mockReturnValue(pendingPrepare);
+    vi.spyOn(el._controller, 'pause').mockReturnValue(undefined as never);
+    const echoRecorder = el.shadowRoot!.querySelector('audio-recorder#echo-recorder') as {
+      startRecording: () => Promise<void>;
+    };
+    const startRecordingSpy = vi.spyOn(echoRecorder, 'startRecording').mockResolvedValue(undefined);
+
+    const subtitlePanel = el.shadowRoot!.querySelector('subtitle-panel')!;
+    subtitlePanel.dispatchEvent(
+      new CustomEvent('echo-record-request', {
+        detail: { segmentIndex: 0 },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+    await el.updateComplete;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(el._sessionPhase).toBe('preparing');
+    expect(mockEchoClipPlayer.play).not.toHaveBeenCalled();
+
+    const busyPanel = el.shadowRoot!.querySelector('subtitle-panel') as { echoBusy: boolean };
+    expect(busyPanel.echoBusy).toBe(true);
+
+    subtitlePanel.dispatchEvent(
+      new CustomEvent('echo-record-stop', {
+        bubbles: true,
+        composed: true,
+      }),
+    );
+    await el.updateComplete;
+
+    resolvePrepare!();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await el.updateComplete;
+
+    expect(mockEchoClipPlayer.play).not.toHaveBeenCalled();
+    expect(startRecordingSpy).not.toHaveBeenCalled();
+    expect(el._sessionPhase).toBe('idle');
+    expect(el._echoListening).toBe(false);
+  });
+
+  it('waits for clip output drain before opening the mic', async () => {
+    const el = await renderView();
+    await switchToEchoMode(el);
+
+    let resolveDrain: (() => void) | undefined;
+    mockEchoClipPlayer.waitForOutputDrain.mockReturnValue(
+      new Promise<void>((resolve) => {
+        resolveDrain = resolve;
+      }),
+    );
+    vi.spyOn(el._controller, 'pause').mockReturnValue(undefined as never);
+    const echoRecorder = el.shadowRoot!.querySelector('audio-recorder#echo-recorder') as {
+      startRecording: () => Promise<void>;
+      recording: boolean;
+    };
+    Object.defineProperty(echoRecorder, 'recording', {
+      configurable: true,
+      get: () => true,
+    });
+    const startRecordingSpy = vi.spyOn(echoRecorder, 'startRecording').mockResolvedValue(undefined);
+
+    await dispatchEchoRecordRequest(el);
+    mockEchoClipPlayer.onEnded?.();
+    await el.updateComplete;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(el._sessionPhase).toBe('draining');
+    expect(startRecordingSpy).not.toHaveBeenCalled();
+
+    resolveDrain!();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(startRecordingSpy).toHaveBeenCalled();
+  });
+
+  it('cancels during output drain without opening the mic', async () => {
+    const el = await renderView();
+    await switchToEchoMode(el);
+
+    let resolveDrain: (() => void) | undefined;
+    mockEchoClipPlayer.waitForOutputDrain.mockReturnValue(
+      new Promise<void>((resolve) => {
+        resolveDrain = resolve;
+      }),
+    );
+    vi.spyOn(el._controller, 'pause').mockReturnValue(undefined as never);
+    const echoRecorder = el.shadowRoot!.querySelector('audio-recorder#echo-recorder') as {
+      startRecording: () => Promise<void>;
+    };
+    const startRecordingSpy = vi.spyOn(echoRecorder, 'startRecording').mockResolvedValue(undefined);
+
+    await dispatchEchoRecordRequest(el);
+    mockEchoClipPlayer.onEnded?.();
+    await el.updateComplete;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(el._sessionPhase).toBe('draining');
+
+    el.shadowRoot!.querySelector('subtitle-panel')!.dispatchEvent(
+      new CustomEvent('echo-record-stop', { bubbles: true, composed: true }),
+    );
+    await el.updateComplete;
+
+    resolveDrain!();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(startRecordingSpy).not.toHaveBeenCalled();
+    expect(el._sessionPhase).toBe('idle');
+  });
+
+  it('starts only one clip for repeated taps while the recording count is pending', async () => {
+    const el = await renderView();
+    await switchToEchoMode(el);
+
+    let resolveCount: ((value: number) => void) | undefined;
+    mockCountEchoRecordings.mockReturnValue(
+      new Promise<number>((resolve) => {
+        resolveCount = resolve;
+      }),
+    );
+    vi.spyOn(el._controller, 'pause').mockReturnValue(undefined as never);
+
+    const subtitlePanel = el.shadowRoot!.querySelector('subtitle-panel')!;
+    const tap = () =>
+      subtitlePanel.dispatchEvent(
+        new CustomEvent('echo-record-request', {
+          detail: { segmentIndex: 0 },
+          bubbles: true,
+          composed: true,
+        }),
+      );
+    tap();
+    tap();
+    tap();
+    await el.updateComplete;
+
+    expect(el._sessionPhase).toBe('preparing');
+
+    resolveCount!(0);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await el.updateComplete;
+
+    expect(mockEchoClipPlayer.play).toHaveBeenCalledTimes(1);
+    expect(el._sessionPhase).toBe('listening');
+  });
+
+  it('disables media player while echo listening', async () => {
+    const el = await renderView();
+    await switchToEchoMode(el);
 
     await dispatchEchoRecordRequest(el);
 
@@ -655,7 +859,6 @@ describe('practice-view', () => {
   it('locks navigation while echo listening and unlocks on cancel', async () => {
     const el = await renderView();
     await switchToEchoMode(el);
-    vi.spyOn(el._controller, 'play').mockResolvedValue(undefined);
 
     await dispatchEchoRecordRequest(el);
 
@@ -678,12 +881,11 @@ describe('practice-view', () => {
     expect(subtitlePanel.seekDisabled).toBe(false);
   });
 
-  it('keeps echo target segment after blocked seek so SEGMENT_END still starts recording', async () => {
+  it('keeps echo target segment after blocked seek so clip end still starts recording', async () => {
     const el = await renderView();
     await switchToEchoMode(el);
 
-    vi.spyOn(el._controller, 'play').mockResolvedValue(undefined);
-    vi.spyOn(el._controller, 'pause').mockResolvedValue(undefined);
+    vi.spyOn(el._controller, 'pause').mockReturnValue(undefined as never);
     const echoRecorder = el.shadowRoot!.querySelector('audio-recorder#echo-recorder') as {
       startRecording: () => Promise<void>;
       recording: boolean;
@@ -700,11 +902,7 @@ describe('practice-view', () => {
     el._controller.seekToSegment(1);
     expect(el._controller.getSnapshot().currentSegmentIndex).toBe(0);
 
-    el._controller.dispatchEvent(
-      new CustomEvent(ExtendedMediaEventType.SEGMENT_END, {
-        detail: { segmentIndex: 0, segment: sampleSegments[0] },
-      }),
-    );
+    mockEchoClipPlayer.onEnded?.();
     await el.updateComplete;
     await new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -781,7 +979,6 @@ describe('practice-view', () => {
   it('shows echo session dock while listening', async () => {
     const el = await renderView();
     await switchToEchoMode(el);
-    vi.spyOn(el._controller, 'play').mockResolvedValue(undefined);
 
     await dispatchEchoRecordRequest(el);
 
@@ -1094,8 +1291,7 @@ describe('practice-view', () => {
     const el = await renderView();
     await switchToEchoMode(el);
 
-    vi.spyOn(el._controller, 'play').mockResolvedValue(undefined);
-    const pauseSpy = vi.spyOn(el._controller, 'pause').mockResolvedValue(undefined);
+    const pauseSpy = vi.spyOn(el._controller, 'pause').mockReturnValue(undefined as never);
     vi.spyOn(Message, 'info').mockImplementation(() => ({ close: () => undefined }));
 
     await dispatchEchoRecordRequest(el);
@@ -1108,6 +1304,7 @@ describe('practice-view', () => {
 
     expect(el._echoListening).toBe(false);
     expect(pauseSpy).toHaveBeenCalled();
+    expect(mockEchoClipPlayer.stop).toHaveBeenCalled();
   });
 
   it('pauses practice media on audio-focus-request without tip', async () => {
@@ -1546,7 +1743,6 @@ describe('practice-view', () => {
       const el = await renderView();
       await switchToEchoMode(el);
 
-      vi.spyOn(el._controller, 'play').mockResolvedValue(undefined);
       await dispatchEchoRecordRequest(el);
 
       el.shadowRoot!.querySelector('audio-recorder#echo-recorder')!.dispatchEvent(
@@ -1598,8 +1794,7 @@ describe('practice-view', () => {
     it('cancels echo listen from session dock', async () => {
       const el = await renderView();
       await switchToEchoMode(el);
-      vi.spyOn(el._controller, 'play').mockResolvedValue(undefined);
-      const pauseSpy = vi.spyOn(el._controller, 'pause').mockResolvedValue(undefined);
+      const pauseSpy = vi.spyOn(el._controller, 'pause').mockReturnValue(undefined as never);
 
       await dispatchEchoRecordRequest(el);
       el.shadowRoot!.querySelector('echo-session-dock')!.dispatchEvent(
@@ -1608,6 +1803,7 @@ describe('practice-view', () => {
       await settleView(el);
 
       expect(pauseSpy).toHaveBeenCalled();
+      expect(mockEchoClipPlayer.stop).toHaveBeenCalled();
       expect(el._echoListening).toBe(false);
     });
 
@@ -1905,7 +2101,6 @@ describe('practice-view', () => {
     it('blocks media hotkeys during echo listen but allows subtitle toggles', async () => {
       const el = await renderView();
       await switchToEchoMode(el);
-      vi.spyOn(el._controller, 'play').mockResolvedValue(undefined);
 
       const toggleSpy = vi.spyOn(el._controller, 'togglePlay').mockResolvedValue(undefined);
       const subtitlesSpy = vi.spyOn(el._controller, 'setSubtitlesVisible');
@@ -1958,7 +2153,6 @@ describe('practice-view', () => {
       const unregisterSpy = vi.spyOn(manager, 'unregisterScope');
       const el = await renderView();
       await switchToEchoMode(el);
-      vi.spyOn(el._controller, 'play').mockResolvedValue(undefined);
       await dispatchEchoRecordRequest(el);
 
       cleanup?.();
@@ -1966,6 +2160,7 @@ describe('practice-view', () => {
 
       expect(unregisterSpy).toHaveBeenCalledWith('practice');
       expect(mockNoiseMixer.destroy).toHaveBeenCalled();
+      expect(mockEchoClipPlayer.dispose).toHaveBeenCalled();
     });
   });
 
@@ -1986,10 +2181,10 @@ describe('practice-view', () => {
       expect(el.shadowRoot?.textContent).not.toContain('当前存储');
     });
 
-    it('cancels echo listen when playback start fails', async () => {
+    it('cancels echo listen when clip play fails', async () => {
       const el = await renderView();
       await switchToEchoMode(el);
-      vi.spyOn(el._controller, 'play').mockRejectedValue(new Error('play blocked'));
+      mockEchoClipPlayer.play.mockRejectedValue(new Error('decode blocked'));
 
       await dispatchEchoRecordRequest(el);
       await settleView(el);
@@ -2001,8 +2196,7 @@ describe('practice-view', () => {
     it('clears echo session when recording start fails after listen', async () => {
       const el = await renderView();
       await switchToEchoMode(el);
-      vi.spyOn(el._controller, 'play').mockResolvedValue(undefined);
-      vi.spyOn(el._controller, 'pause').mockResolvedValue(undefined);
+      vi.spyOn(el._controller, 'pause').mockReturnValue(undefined as never);
       const echoRecorder = el.shadowRoot!.querySelector('audio-recorder#echo-recorder') as {
         startRecording: () => Promise<void>;
         recording: boolean;
@@ -2010,11 +2204,7 @@ describe('practice-view', () => {
       vi.spyOn(echoRecorder, 'startRecording').mockRejectedValue(new Error('mic denied'));
 
       await dispatchEchoRecordRequest(el);
-      el._controller.dispatchEvent(
-        new CustomEvent(ExtendedMediaEventType.SEGMENT_END, {
-          detail: { segmentIndex: 0, segment: sampleSegments[0] },
-        }),
-      );
+      mockEchoClipPlayer.onEnded?.();
       await settleView(el);
 
       expect(el._echoListening).toBe(false);
@@ -2024,8 +2214,7 @@ describe('practice-view', () => {
     it('clears echo session when recording does not start after listen', async () => {
       const el = await renderView();
       await switchToEchoMode(el);
-      vi.spyOn(el._controller, 'play').mockResolvedValue(undefined);
-      vi.spyOn(el._controller, 'pause').mockResolvedValue(undefined);
+      vi.spyOn(el._controller, 'pause').mockReturnValue(undefined as never);
       const echoRecorder = el.shadowRoot!.querySelector('audio-recorder#echo-recorder') as {
         startRecording: () => Promise<void>;
         recording: boolean;
@@ -2037,6 +2226,23 @@ describe('practice-view', () => {
       vi.spyOn(echoRecorder, 'startRecording').mockResolvedValue(undefined);
 
       await dispatchEchoRecordRequest(el);
+      mockEchoClipPlayer.onEnded?.();
+      await settleView(el);
+
+      expect(el._sessionPhase).toBe('idle');
+    });
+
+    it('ignores main SEGMENT_END during echo clip listen', async () => {
+      const el = await renderView();
+      await switchToEchoMode(el);
+      const echoRecorder = el.shadowRoot!.querySelector('audio-recorder#echo-recorder') as {
+        startRecording: () => Promise<void>;
+      };
+      const startRecordingSpy = vi
+        .spyOn(echoRecorder, 'startRecording')
+        .mockResolvedValue(undefined);
+
+      await dispatchEchoRecordRequest(el);
       el._controller.dispatchEvent(
         new CustomEvent(ExtendedMediaEventType.SEGMENT_END, {
           detail: { segmentIndex: 0, segment: sampleSegments[0] },
@@ -2044,24 +2250,7 @@ describe('practice-view', () => {
       );
       await settleView(el);
 
-      expect(el._sessionPhase).toBe('idle');
-    });
-
-    it('ignores SEGMENT_END for a different segment during echo listen', async () => {
-      const el = await renderView();
-      await switchToEchoMode(el);
-      vi.spyOn(el._controller, 'play').mockResolvedValue(undefined);
-      const pauseSpy = vi.spyOn(el._controller, 'pause').mockResolvedValue(undefined);
-
-      await dispatchEchoRecordRequest(el);
-      el._controller.dispatchEvent(
-        new CustomEvent(ExtendedMediaEventType.SEGMENT_END, {
-          detail: { segmentIndex: 1, segment: sampleSegments[1] },
-        }),
-      );
-      await settleView(el);
-
-      expect(pauseSpy).not.toHaveBeenCalled();
+      expect(startRecordingSpy).not.toHaveBeenCalled();
       expect(el._echoListening).toBe(true);
     });
 

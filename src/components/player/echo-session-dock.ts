@@ -9,8 +9,15 @@ import '../ui/button.js';
 import '../ui/icon.js';
 import './waveform-player.js';
 
-/** Shared session phases for Echo (listening→…) and Shadowing (recording only). */
-export type RecordingSessionPhase = 'idle' | 'listening' | 'countdown' | 'recording';
+/** Shared session phases for Echo (preparing→listening→draining→…) and Shadowing (recording only). */
+export type RecordingSessionPhase =
+  | 'idle'
+  | 'preparing'
+  | 'stopping'
+  | 'listening'
+  | 'draining'
+  | 'countdown'
+  | 'recording';
 
 /** @deprecated Prefer {@link RecordingSessionPhase}. */
 export type EchoSessionPhase = RecordingSessionPhase;
@@ -151,7 +158,7 @@ export class EchoSessionDock extends LitElement {
   }
 
   private _isVisible(): boolean {
-    return this.phase === 'listening' || this.phase === 'recording';
+    return this.phase === 'listening' || this.phase === 'draining' || this.phase === 'recording';
   }
 
   private _getPortal(): PortalHost {
@@ -182,12 +189,19 @@ export class EchoSessionDock extends LitElement {
 
   private _dockTemplate() {
     const isRecording = this.phase === 'recording';
-    const title = isRecording ? msg('录音中') : msg('正在播放原音…');
+    const isDraining = this.phase === 'draining';
+    const title = isRecording
+      ? msg('录音中')
+      : isDraining
+        ? msg('准备录音…')
+        : msg('正在播放原音…');
     const hint = isRecording
       ? this.speakCue
         ? msg('请开始跟读')
         : msg('跟读完成后点击停止')
-      : msg('听完后将开始录音');
+      : isDraining
+        ? msg('原音已结束，即将开始录音')
+        : msg('听完后将开始录音');
 
     return html`
       <div

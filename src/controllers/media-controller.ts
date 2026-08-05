@@ -94,6 +94,14 @@ export class MediaController extends EventTarget {
   private shuffleCursor = 0;
   private _previousPlaybackTime = 0;
   private _visibilityListenerAttached = false;
+  /** True after seek() until seeked (or sync seek that never sets seeking). */
+  private _seekInFlight = false;
+  /** Generation of the seek currently awaiting settle. */
+  private _pendingSeekGeneration = 0;
+  /** Count of seek() calls still awaiting a matching seeked (or sync completion). */
+  private _outstandingSeekOps = 0;
+  private _seekSettlePromise: Promise<void> | null = null;
+  private _resolveSeekSettle: (() => void) | null = null;
 
   playlist: MediaItem[] = [];
   segments: SubtitleSegment[] = [];
@@ -135,6 +143,7 @@ export class MediaController extends EventTarget {
     element.addEventListener('pause', this._handlePause);
     element.addEventListener('ended', this._handleEnded);
     element.addEventListener('loadedmetadata', this._handleLoadedMetadata);
+    element.addEventListener('seeked', this._handleSeeked);
     element.addEventListener('timeupdate', this._handleTimeUpdate);
     this._ensureVisibilityListener();
 
@@ -169,6 +178,7 @@ export class MediaController extends EventTarget {
     this.mediaElement.removeEventListener('pause', this._handlePause);
     this.mediaElement.removeEventListener('ended', this._handleEnded);
     this.mediaElement.removeEventListener('loadedmetadata', this._handleLoadedMetadata);
+    this.mediaElement.removeEventListener('seeked', this._handleSeeked);
     this.mediaElement.removeEventListener('timeupdate', this._handleTimeUpdate);
 
     // 移除原生事件转发
@@ -289,6 +299,11 @@ export class MediaController extends EventTarget {
     this._emitChange();
   }
 
+  /** Current track media blob, if a track is loaded. */
+  getCurrentBlob(): Blob | null {
+    return this.tracks[this.currentIndex]?.blob ?? null;
+  }
+
   getSnapshot(): MediaControllerSnapshot {
     const currentItem = this.playlist[this.currentIndex] ?? null;
 
@@ -338,6 +353,12 @@ export class MediaController extends EventTarget {
     if (!this.mediaElement) {
       return;
     }
+    // Only await when a seek is actually outstanding. Awaiting an already-resolved
+    // Promise.resolve() would defer mediaElement.play() to a microtask and break
+    // callers that expect play() to kick off synchronously after a sync seek.
+    if (this._seekInFlight) {
+      await this._waitForSeekSettle();
+    }
     await this.mediaElement.play();
   }
 
@@ -367,15 +388,45 @@ export class MediaController extends EventTarget {
     const clamped = Math.max(0, Math.min(time, this.duration || this.mediaElement.duration || 0));
     const resumeAfterSegmentPause = this._segmentPauseScheduler.isActive;
     this._clearSegmentPauseTimer();
+    const generation = ++this._pendingSeekGeneration;
+    // Always block SEGMENT_END until settle — do not trust mediaElement.seeking,
+    // which is not always true synchronously after assigning currentTime.
+    if (this._resolveSeekSettle) {
+      this._resolveSeekSettle();
+      this._resolveSeekSettle = null;
+      this._seekSettlePromise = null;
+    }
+    this._seekInFlight = true;
+    this._seekSettlePromise = new Promise<void>((resolve) => {
+      this._resolveSeekSettle = resolve;
+    });
+    this._outstandingSeekOps++;
     this.mediaElement.currentTime = clamped;
     this.currentTime = clamped;
     this._previousPlaybackTime = clamped;
+    if (!this.mediaElement.seeking) {
+      // Sync seek: currentTime already applied and seeked may never fire.
+      this._completeSeekOp(generation);
+    }
     this._updateCurrentSegment({ allowForward: true });
     if (resumeAfterSegmentPause) {
       // Segment pause is a temporary study gap, not a user stop — keep the session going.
       void this.play();
     }
     this._emitChange();
+  }
+
+  /** Seek and resolve only after the media element has settled on the new time. */
+  async seekAsync(time: number, options?: SeekOptions): Promise<void> {
+    if (!this.mediaElement) {
+      return;
+    }
+    if (this._navigationLocked && !options?.force) {
+      return;
+    }
+
+    this.seek(time, options);
+    await this._waitForSeekSettle();
   }
 
   seekToSegment(index: number, autoPlay = false, options?: SeekOptions): void {
@@ -394,6 +445,25 @@ export class MediaController extends EventTarget {
 
     if (autoPlay && !resumeAfterSegmentPause) {
       void this.play();
+    }
+  }
+
+  async seekToSegmentAsync(index: number, autoPlay = false, options?: SeekOptions): Promise<void> {
+    if (this._navigationLocked && !options?.force) {
+      return;
+    }
+
+    const segment = this.segments[index];
+    if (!segment) {
+      return;
+    }
+
+    const resumeAfterSegmentPause = this._segmentPauseScheduler.isActive;
+    this._setCurrentSegmentIndex(index);
+    await this.seekAsync(segment.startTime, { force: true });
+
+    if (autoPlay && !resumeAfterSegmentPause) {
+      await this.play();
     }
   }
 
@@ -646,12 +716,53 @@ export class MediaController extends EventTarget {
   }
 
   private _handleTimeUpdate = (): void => {
-    if (!this.mediaElement || this.mediaElement.paused) {
+    if (
+      !this.mediaElement ||
+      this.mediaElement.paused ||
+      this.mediaElement.seeking ||
+      this._seekInFlight
+    ) {
       return;
     }
 
     this._onPlaybackTick(false);
   };
+
+  /** Resync clocks after seek so a stale timeupdate cannot invent SEGMENT_END. */
+  private _handleSeeked = (): void => {
+    if (!this.mediaElement || this.mediaElement.seeking) {
+      return;
+    }
+    this._completeSeekOp(this._pendingSeekGeneration);
+  };
+
+  private _completeSeekOp(generation: number): void {
+    if (!this.mediaElement || !this._seekInFlight) {
+      return;
+    }
+    this._outstandingSeekOps = Math.max(0, this._outstandingSeekOps - 1);
+    if (this._outstandingSeekOps > 0 || generation !== this._pendingSeekGeneration) {
+      return;
+    }
+    this._settleSeek(generation);
+  }
+
+  private _settleSeek(generation: number): void {
+    if (!this.mediaElement || generation !== this._pendingSeekGeneration || !this._seekInFlight) {
+      return;
+    }
+    this._seekInFlight = false;
+    this.currentTime = this.mediaElement.currentTime;
+    this._previousPlaybackTime = this.currentTime;
+    const resolve = this._resolveSeekSettle;
+    this._resolveSeekSettle = null;
+    this._seekSettlePromise = null;
+    resolve?.();
+  }
+
+  private _waitForSeekSettle(): Promise<void> {
+    return this._seekSettlePromise ?? Promise.resolve();
+  }
 
   /** Shared playback tick: detect segment end, apply loop, update highlight index. */
   private _onPlaybackTick(emitImmediately: boolean): void {
