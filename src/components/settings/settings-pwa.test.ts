@@ -1,49 +1,72 @@
 import { html } from 'lit';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const pwaState = { needRefresh: false };
-const unsubscribe = vi.fn();
+const {
+  pwaState,
+  unsubscribe,
+  isPwaStandalone,
+  getPwaState,
+  subscribePwa,
+  checkForPwaUpdate,
+  applyPwaUpdate,
+  reportError,
+} = vi.hoisted(() => {
+  const pwaState = { needRefresh: false };
+  const unsubscribe = vi.fn();
+  return {
+    pwaState,
+    unsubscribe,
+    isPwaStandalone: vi.fn(() => false),
+    getPwaState: vi.fn(() => ({ ...pwaState })),
+    subscribePwa: vi.fn(() => unsubscribe),
+    checkForPwaUpdate: vi.fn(),
+    applyPwaUpdate: vi.fn(),
+    reportError: vi.fn(),
+  };
+});
 
 vi.mock('../../lib/pwa.js', () => ({
-  isPwaStandalone: vi.fn(() => false),
-  getPwaState: vi.fn(() => ({ ...pwaState })),
-  subscribePwa: vi.fn(() => unsubscribe),
-  checkForPwaUpdate: vi.fn(),
-  applyPwaUpdate: vi.fn(),
+  isPwaStandalone,
+  getPwaState,
+  subscribePwa,
+  checkForPwaUpdate,
+  applyPwaUpdate,
 }));
 
 vi.mock('../../lib/error-reporter.js', () => ({
-  reportError: vi.fn(),
+  reportError,
 }));
 
 import './settings-pwa.js';
 import type { SettingsPwa } from './settings-pwa.js';
-import {
-  applyPwaUpdate,
-  checkForPwaUpdate,
-  getPwaState,
-  isPwaStandalone,
-  subscribePwa,
-} from '../../lib/pwa.js';
-import { reportError } from '../../lib/error-reporter.js';
 import { Message } from '../ui/message.js';
 import { mount } from '../ui/test-utils.js';
 
 describe('settings-pwa', () => {
   let cleanup: (() => void) | undefined;
+  let fetchMock: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     pwaState.needRefresh = false;
-    vi.clearAllMocks();
-    vi.mocked(isPwaStandalone).mockReturnValue(false);
-    vi.mocked(getPwaState).mockImplementation(() => ({ ...pwaState }));
-    vi.mocked(subscribePwa).mockReturnValue(unsubscribe);
+    isPwaStandalone.mockClear();
+    getPwaState.mockClear();
+    subscribePwa.mockClear();
+    checkForPwaUpdate.mockClear();
+    applyPwaUpdate.mockClear();
+    reportError.mockClear();
+    unsubscribe.mockClear();
+    isPwaStandalone.mockReturnValue(false);
+    getPwaState.mockImplementation(() => ({ ...pwaState }));
+    subscribePwa.mockReturnValue(unsubscribe);
+    fetchMock = vi.fn(async () => new Response('Not Found', { status: 404 }));
+    vi.stubGlobal('fetch', fetchMock);
     Message.closeAll();
   });
 
   afterEach(() => {
     cleanup?.();
     cleanup = undefined;
+    vi.unstubAllGlobals();
     Message.closeAll();
   });
 
@@ -68,7 +91,7 @@ describe('settings-pwa', () => {
   }
 
   it('shows browser-tab install status when not standalone', async () => {
-    vi.mocked(isPwaStandalone).mockReturnValue(false);
+    isPwaStandalone.mockReturnValue(false);
     const el = await renderPwa();
 
     expect(subscribePwa).toHaveBeenCalledOnce();
@@ -77,19 +100,40 @@ describe('settings-pwa', () => {
   });
 
   it('shows standalone install status and needRefresh UI', async () => {
-    vi.mocked(isPwaStandalone).mockReturnValue(true);
+    isPwaStandalone.mockReturnValue(true);
     pwaState.needRefresh = true;
     const el = await renderPwa();
+    await el.updateComplete;
+    await Promise.resolve();
     await el.updateComplete;
 
     expect(el.shadowRoot?.textContent).toMatch(/已安装/);
     expect(el.shadowRoot?.textContent).toMatch(/有待安装的新版本/);
     expect(primaryButton(el)).not.toBeNull();
+    expect(fetchMock).toHaveBeenCalledWith('/release-notes.json', { cache: 'no-store' });
+  });
+
+  it('shows release highlights when notes are available', async () => {
+    pwaState.needRefresh = true;
+    fetchMock.mockResolvedValue(
+      Response.json({
+        version: '0.4.0',
+        highlights: { 'zh-CN': ['新功能'] },
+      }),
+    );
+
+    const el = await renderPwa();
+
+    await vi.waitFor(() => {
+      expect(el.shadowRoot?.textContent).toContain('0.4.0');
+      expect(el.shadowRoot?.textContent).toContain('更新内容');
+      expect(el.shadowRoot?.textContent).toContain('新功能');
+    });
   });
 
   it('updates needRefresh when subscribePwa callback fires', async () => {
     const el = await renderPwa();
-    const listener = vi.mocked(subscribePwa).mock.calls[0]?.[0];
+    const listener = subscribePwa.mock.calls[0]?.[0];
     expect(listener).toBeTypeOf('function');
 
     listener?.({ needRefresh: true, offlineReady: false, registered: true });
@@ -99,8 +143,8 @@ describe('settings-pwa', () => {
   });
 
   it('reports already up to date after a successful check', async () => {
-    vi.mocked(checkForPwaUpdate).mockResolvedValue(false);
-    vi.mocked(getPwaState).mockReturnValue({ needRefresh: false });
+    checkForPwaUpdate.mockResolvedValue(false);
+    getPwaState.mockReturnValue({ needRefresh: false });
     const success = vi.spyOn(Message, 'success');
     const el = await renderPwa();
 
@@ -112,7 +156,7 @@ describe('settings-pwa', () => {
   });
 
   it('reports update found when check finds or state already has refresh', async () => {
-    vi.mocked(checkForPwaUpdate).mockResolvedValue(true);
+    checkForPwaUpdate.mockResolvedValue(true);
     const info = vi.spyOn(Message, 'info');
     const el = await renderPwa();
 
@@ -123,7 +167,7 @@ describe('settings-pwa', () => {
   });
 
   it('reports check errors', async () => {
-    vi.mocked(checkForPwaUpdate).mockRejectedValue(new Error('network down'));
+    checkForPwaUpdate.mockRejectedValue(new Error('network down'));
     const error = vi.spyOn(Message, 'error');
     const el = await renderPwa();
 
@@ -136,7 +180,7 @@ describe('settings-pwa', () => {
 
   it('applies update successfully and stays busy while reload is pending', async () => {
     pwaState.needRefresh = true;
-    vi.mocked(applyPwaUpdate).mockResolvedValue(undefined);
+    applyPwaUpdate.mockResolvedValue(undefined);
     const el = await renderPwa();
 
     primaryButton(el)?.click();
@@ -148,7 +192,7 @@ describe('settings-pwa', () => {
 
   it('reports apply errors and clears busy state', async () => {
     pwaState.needRefresh = true;
-    vi.mocked(applyPwaUpdate).mockRejectedValue(new Error('apply failed'));
+    applyPwaUpdate.mockRejectedValue(new Error('apply failed'));
     const error = vi.spyOn(Message, 'error');
     const el = await renderPwa();
 
@@ -163,7 +207,7 @@ describe('settings-pwa', () => {
 
   it('uses fallback message for non-Error apply failures', async () => {
     pwaState.needRefresh = true;
-    vi.mocked(applyPwaUpdate).mockRejectedValue('apply failed');
+    applyPwaUpdate.mockRejectedValue('apply failed');
     const error = vi.spyOn(Message, 'error');
     const el = await renderPwa();
 
@@ -176,7 +220,7 @@ describe('settings-pwa', () => {
   });
 
   it('uses fallback message for non-Error check failures', async () => {
-    vi.mocked(checkForPwaUpdate).mockRejectedValue('network down');
+    checkForPwaUpdate.mockRejectedValue('network down');
     const error = vi.spyOn(Message, 'error');
     const el = await renderPwa();
 
@@ -189,9 +233,9 @@ describe('settings-pwa', () => {
   });
 
   it('reports update found when state already has needRefresh', async () => {
-    vi.mocked(checkForPwaUpdate).mockResolvedValue(false);
+    checkForPwaUpdate.mockResolvedValue(false);
     pwaState.needRefresh = true;
-    vi.mocked(getPwaState).mockReturnValue({ needRefresh: true });
+    getPwaState.mockReturnValue({ needRefresh: true });
     const info = vi.spyOn(Message, 'info');
     const el = await renderPwa();
 

@@ -82,6 +82,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}', 'manifest.webmanifest'],
+        globIgnores: ['**/release-notes.json'],
         navigateFallback: 'index.html',
         navigateFallbackDenylist: [/^\/api/],
       },
@@ -93,7 +94,7 @@ export default defineConfig({
   test: {
     environment: 'happy-dom',
     setupFiles: ['src/test/setup.ts'],
-    include: ['src/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'scripts/**/*.test.ts'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],

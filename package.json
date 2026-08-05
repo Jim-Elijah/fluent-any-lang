@@ -20,7 +20,8 @@
     "localize:build": "lit-localize build",
     "changelog": "conventional-changelog -p conventionalcommits -i CHANGELOG.md -o CHANGELOG.md",
     "changelog:first": "conventional-changelog -p conventionalcommits -i CHANGELOG.md -o CHANGELOG.md -r 0",
-    "version": "pnpm run changelog && git add CHANGELOG.md",
+    "release:notes": "node scripts/release-notes.mjs",
+    "release:commit": "node scripts/release-commit.mjs",
     "prepare": "husky"
   },
   "lint-staged": {

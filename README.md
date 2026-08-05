@@ -98,6 +98,19 @@ Useful scripts:
 | `pnpm test:e2e` | Playwright end-to-end tests |
 | `pnpm lint` | ESLint |
 | `pnpm localize:extract` / `pnpm localize:build` | i18n extract / build |
+| `pnpm release:notes` | Regenerate CHANGELOG + draft `public/release-notes.json` |
+| `pnpm release:commit` | Validate multilingual notes, then commit + tag |
+
+### Releasing
+
+Use a two-step flow so Agent/human translation can happen between bump and tag:
+
+1. `pnpm version <patch|minor|major> --no-git-tag-version` — bump `package.json` only (no commit/tag).
+2. `pnpm run release:notes` — refresh `CHANGELOG.md` and write `public/release-notes.json` (latest version only; locales come from `lit-localize.json`).
+3. Fill non-source locale highlights (Agent or manual) and proofread.
+4. `pnpm run release:commit` — requires every locale non-empty and matching `package.json` version → commit + `vX.Y.Z` tag (does not push).
+
+PWA update UI fetches `/release-notes.json` with `cache: 'no-store'` (and the file is excluded from Workbox precache) so an old page can still show the new version’s highlights.
 
 When hosting the production build as static files, configure SPA fallback so deep links (`/library`, `/practice`, …) rewrite to `index.html`. HTTPS is required for the service worker (and for microphone access).
 

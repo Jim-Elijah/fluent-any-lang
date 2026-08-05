@@ -7,18 +7,33 @@ type PwaSubscriber = (state: {
   registered: boolean;
 }) => void;
 
-const subscribePwa = vi.fn<(listener: PwaSubscriber) => () => void>();
-const applyPwaUpdate = vi.fn(async () => undefined);
-const clearOfflineReady = vi.fn();
-const dismissNeedRefresh = vi.fn();
-
-let pwaListener: PwaSubscriber | undefined;
-const unsubscribe = vi.fn();
+const {
+  subscribePwaFn,
+  applyPwaUpdate,
+  clearOfflineReady,
+  dismissNeedRefresh,
+  unsubscribe,
+  pwaRef,
+  messageSuccess,
+} = vi.hoisted(() => {
+  const pwaRef: { listener: PwaSubscriber | undefined } = { listener: undefined };
+  const unsubscribe = vi.fn();
+  const subscribePwaFn = vi.fn<(listener: PwaSubscriber) => () => void>();
+  return {
+    subscribePwaFn,
+    applyPwaUpdate: vi.fn(async () => undefined),
+    clearOfflineReady: vi.fn(),
+    dismissNeedRefresh: vi.fn(),
+    unsubscribe,
+    pwaRef,
+    messageSuccess: vi.fn(),
+  };
+});
 
 vi.mock('../../lib/pwa.js', () => ({
   subscribePwa: (listener: PwaSubscriber) => {
-    subscribePwa(listener);
-    pwaListener = listener;
+    subscribePwaFn(listener);
+    pwaRef.listener = listener;
     listener({ needRefresh: false, offlineReady: false, registered: false });
     return unsubscribe;
   },
@@ -26,8 +41,6 @@ vi.mock('../../lib/pwa.js', () => ({
   clearOfflineReady: () => clearOfflineReady(),
   dismissNeedRefresh: () => dismissNeedRefresh(),
 }));
-
-const messageSuccess = vi.fn();
 
 vi.mock('../ui/message.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../ui/message.js')>();
@@ -46,20 +59,24 @@ import { mount } from '../ui/test-utils.js';
 
 describe('pwa-update-banner', () => {
   let cleanup: (() => void) | undefined;
+  let fetchMock: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
-    subscribePwa.mockClear();
+    subscribePwaFn.mockClear();
     applyPwaUpdate.mockClear();
     clearOfflineReady.mockClear();
     dismissNeedRefresh.mockClear();
     messageSuccess.mockClear();
     unsubscribe.mockClear();
-    pwaListener = undefined;
+    pwaRef.listener = undefined;
+    fetchMock = vi.fn(async () => new Response('Not Found', { status: 404 }));
+    vi.stubGlobal('fetch', fetchMock);
   });
 
   afterEach(() => {
     cleanup?.();
     cleanup = undefined;
+    vi.unstubAllGlobals();
   });
 
   async function renderBanner() {
@@ -73,21 +90,53 @@ describe('pwa-update-banner', () => {
   it('stays hidden when needRefresh is false', async () => {
     const el = await renderBanner();
     expect(el.shadowRoot?.querySelector('.banner')).toBeNull();
-    expect(subscribePwa).toHaveBeenCalledOnce();
+    expect(subscribePwaFn).toHaveBeenCalledOnce();
   });
 
   it('shows banner when needRefresh becomes true', async () => {
     const el = await renderBanner();
-    pwaListener?.({ needRefresh: true, offlineReady: false, registered: true });
+    pwaRef.listener?.({ needRefresh: true, offlineReady: false, registered: true });
+    await el.updateComplete;
+    await Promise.resolve();
     await el.updateComplete;
 
     expect(el.shadowRoot?.querySelector('.banner')).not.toBeNull();
     expect(el.shadowRoot?.textContent).toContain('有新版本可用');
+    expect(fetchMock).toHaveBeenCalledWith('/release-notes.json', { cache: 'no-store' });
+  });
+
+  it('shows version and highlights when release notes load', async () => {
+    fetchMock.mockResolvedValue(
+      Response.json({
+        version: '0.4.0',
+        highlights: { 'zh-CN': ['要点一'], en: ['Tip one'] },
+      }),
+    );
+
+    const el = await renderBanner();
+    pwaRef.listener?.({ needRefresh: true, offlineReady: false, registered: true });
+    await el.updateComplete;
+
+    await vi.waitFor(() => {
+      expect(el.shadowRoot?.textContent).toContain('0.4.0');
+      expect(el.shadowRoot?.textContent).toContain('要点一');
+    });
+  });
+
+  it('keeps generic title when release notes fetch fails', async () => {
+    const el = await renderBanner();
+    pwaRef.listener?.({ needRefresh: true, offlineReady: false, registered: true });
+    await el.updateComplete;
+    await Promise.resolve();
+    await el.updateComplete;
+
+    expect(el.shadowRoot?.textContent).toContain('有新版本可用');
+    expect(el.shadowRoot?.querySelector('.highlights')).toBeNull();
   });
 
   it('calls applyPwaUpdate when update button is clicked', async () => {
     const el = await renderBanner();
-    pwaListener?.({ needRefresh: true, offlineReady: false, registered: true });
+    pwaRef.listener?.({ needRefresh: true, offlineReady: false, registered: true });
     await el.updateComplete;
 
     const buttons = el.shadowRoot?.querySelectorAll('ui-button');
@@ -98,7 +147,7 @@ describe('pwa-update-banner', () => {
 
   it('calls dismissNeedRefresh when dismiss button is clicked', async () => {
     const el = await renderBanner();
-    pwaListener?.({ needRefresh: true, offlineReady: false, registered: true });
+    pwaRef.listener?.({ needRefresh: true, offlineReady: false, registered: true });
     await el.updateComplete;
 
     const buttons = el.shadowRoot?.querySelectorAll('ui-button');
@@ -110,9 +159,9 @@ describe('pwa-update-banner', () => {
   it('shows offline-ready toast once and clears offline state', async () => {
     const el = await renderBanner();
 
-    pwaListener?.({ needRefresh: false, offlineReady: true, registered: true });
+    pwaRef.listener?.({ needRefresh: false, offlineReady: true, registered: true });
     await el.updateComplete;
-    pwaListener?.({ needRefresh: false, offlineReady: true, registered: true });
+    pwaRef.listener?.({ needRefresh: false, offlineReady: true, registered: true });
     await el.updateComplete;
 
     expect(messageSuccess).toHaveBeenCalledOnce();

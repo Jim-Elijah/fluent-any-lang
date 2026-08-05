@@ -97,6 +97,19 @@ pnpm dev
 | `pnpm test:e2e` | Playwright 端到端测试 |
 | `pnpm lint` | ESLint |
 | `pnpm localize:extract` / `pnpm localize:build` | 提取 / 构建文案 |
+| `pnpm release:notes` | 更新 CHANGELOG 并生成 `public/release-notes.json` 草稿 |
+| `pnpm release:commit` | 校验多语要点后 commit + tag |
+
+### 发版流程
+
+两段脚本，中间留给 Agent/人工翻译与校对：
+
+1. `pnpm version <patch|minor|major> --no-git-tag-version` — 只改 `package.json` 版本（不 commit/tag）。
+2. `pnpm run release:notes` — 刷新 `CHANGELOG.md`，写入仅含最新版的 `public/release-notes.json`（语言列表取自 `lit-localize.json`）。
+3. 补齐非 source 语言要点并校对。
+4. `pnpm run release:commit` — 校验各语言非空且版本一致 → commit + `vX.Y.Z` tag（不 push）。
+
+PWA 更新提示以 `cache: 'no-store'` 拉取 `/release-notes.json`（且该文件不进 Workbox 预缓存），旧页面也能展示新版本要点。
 
 静态托管生产构建时，请配置 SPA 回退，使深链（`/library`、`/practice` 等）重写到 `index.html`。Service Worker（以及麦克风）需要 HTTPS。
 

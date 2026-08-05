@@ -1,6 +1,6 @@
 import { css, html, LitElement, nothing } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
-import { msg, localized } from '@lit/localize';
+import { msg, str, localized } from '@lit/localize';
 
 import {
   applyPwaUpdate,
@@ -9,6 +9,11 @@ import {
   isPwaStandalone,
   subscribePwa,
 } from '../../lib/pwa.js';
+import {
+  fetchReleaseNotes,
+  highlightsForLocale,
+  type ReleaseNotes,
+} from '../../lib/release-notes.js';
 import { reportError } from '../../lib/error-reporter.js';
 import { settingsCardStyles } from './settings-styles.js';
 import '../ui/button.js';
@@ -32,6 +37,29 @@ export class SettingsPwa extends LitElement {
         color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
       }
 
+      .highlights-wrap {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+      }
+
+      .highlights-title {
+        margin: 0;
+        font-size: 0.875rem;
+        color: var(--color-text, rgba(0, 0, 0, 0.88));
+      }
+
+      .highlights {
+        margin: 0;
+        padding-left: 1.1rem;
+        font-size: 0.875rem;
+        color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
+      }
+
+      .highlights li {
+        margin: 0.15rem 0;
+      }
+
       .actions {
         display: flex;
         flex-wrap: wrap;
@@ -50,14 +78,27 @@ export class SettingsPwa extends LitElement {
   @state()
   private _standalone = false;
 
+  @state()
+  private _notes: ReleaseNotes | null = null;
+
   private _unsubscribe: (() => void) | undefined;
+  private _notesFetchAttempted = false;
 
   connectedCallback(): void {
     super.connectedCallback();
     this._standalone = isPwaStandalone();
     this._needRefresh = getPwaState().needRefresh;
+    if (this._needRefresh) {
+      void this._ensureNotes();
+    }
     this._unsubscribe = subscribePwa((state) => {
       this._needRefresh = state.needRefresh;
+      if (state.needRefresh) {
+        void this._ensureNotes();
+      } else {
+        this._notes = null;
+        this._notesFetchAttempted = false;
+      }
     });
   }
 
@@ -67,6 +108,12 @@ export class SettingsPwa extends LitElement {
     super.disconnectedCallback();
   }
 
+  private async _ensureNotes(): Promise<void> {
+    if (this._notesFetchAttempted) return;
+    this._notesFetchAttempted = true;
+    this._notes = await fetchReleaseNotes();
+  }
+
   private async _onCheck(): Promise<void> {
     if (this._busy) return;
     this._busy = true;
@@ -74,6 +121,7 @@ export class SettingsPwa extends LitElement {
       const found = await checkForPwaUpdate();
       if (found || getPwaState().needRefresh) {
         Message.info(msg('发现新版本，可立即更新'));
+        void this._ensureNotes();
       } else {
         Message.success(msg('已是最新版本'));
       }
@@ -98,6 +146,8 @@ export class SettingsPwa extends LitElement {
   }
 
   render() {
+    const highlights = this._needRefresh && this._notes ? highlightsForLocale(this._notes) : [];
+
     return html`
       <section class="card" aria-labelledby="pwa-heading">
         <h2 id="pwa-heading">${msg('应用与更新')}</h2>
@@ -111,8 +161,25 @@ export class SettingsPwa extends LitElement {
               ? msg('已安装（独立窗口）')
               : msg('浏览器标签页（可从浏览器菜单添加到主屏幕）')}
           </li>
-          ${this._needRefresh ? html`<li>${msg('状态')}：${msg('有待安装的新版本')}</li>` : nothing}
+          ${this._needRefresh
+            ? html`<li>
+                ${msg('状态')}：${this._notes?.version
+                  ? msg(str`有待安装的新版本（${this._notes.version}）`)
+                  : msg('有待安装的新版本')}
+              </li>`
+            : nothing}
         </ul>
+
+        ${highlights.length > 0
+          ? html`
+              <div class="highlights-wrap">
+                <p class="highlights-title">${msg('更新内容')}</p>
+                <ul class="highlights">
+                  ${highlights.map((item) => html`<li>${item}</li>`)}
+                </ul>
+              </div>
+            `
+          : nothing}
 
         <div class="actions">
           <ui-button variant="secondary" ?disabled=${this._busy} @click=${this._onCheck}>
