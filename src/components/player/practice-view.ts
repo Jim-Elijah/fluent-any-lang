@@ -246,7 +246,7 @@ export class PracticeView extends NavigatorElement {
   /** Gap policy applied for the in-progress shadowing take (snapshotted at record start). */
   private _activeShadowingGapPolicy: ShadowingGapPolicy = 'compress';
 
-  /** Playback knobs suppressed for speaking sessions; restored when the session ends. */
+  /** Playback knobs suppressed for sessions; restored when the session ends. */
   private _practicePlaybackSettingsSnapshot: {
     loopMode: LoopMode;
     sleepMode: SleepMode;
@@ -254,6 +254,7 @@ export class PracticeView extends NavigatorElement {
     pauseMode: PauseMode;
     pauseSeconds: number;
     pausePercent: number;
+    playbackRate: number;
   } | null = null;
 
   private _didInitialLoad = false;
@@ -626,9 +627,7 @@ export class PracticeView extends NavigatorElement {
 
   private async _setupDiscrimination(): Promise<void> {
     this._discriminationActive = true;
-    this._controller.setLoopMode('none');
-    this._controller.setSleepMode('off');
-    this._controller.setPauseMode('off');
+    this._suppressNonPracticeSettings({ pauseMode: 'off' });
     this._rateLadder.setRates(this._discriminationSettings.ladderRates);
     this._rateLadder.reset();
     this._ladderDisplayIndex = 0;
@@ -641,6 +640,7 @@ export class PracticeView extends NavigatorElement {
     this._ladderAdvancing = false;
     this._noiseMixer.setPlaying(false);
     this._noiseMixer.setTracks([]);
+    this._restorePracticePlaybackSettings();
   }
 
   private _syncTimeTrackerMedia(): void {
@@ -1435,7 +1435,7 @@ export class PracticeView extends NavigatorElement {
     }
   };
 
-  /** Temporarily ignore loop/sleep (and optionally pause) for a speaking session. */
+  /** Temporarily ignore loop/sleep (and optionally pause) during sessions. */
   private _suppressNonPracticeSettings(options: { pauseMode: 'keep' | 'off' }): void {
     if (!this._practicePlaybackSettingsSnapshot) {
       const snapshot = this._controller.getSnapshot();
@@ -1446,6 +1446,7 @@ export class PracticeView extends NavigatorElement {
         pauseMode: snapshot.pauseMode,
         pauseSeconds: snapshot.pauseSeconds,
         pausePercent: snapshot.pausePercent,
+        playbackRate: snapshot.playbackRate,
       };
     }
 
@@ -1470,6 +1471,7 @@ export class PracticeView extends NavigatorElement {
     this._controller.setPauseSeconds(saved.pauseSeconds);
     this._controller.setPausePercent(saved.pausePercent);
     this._controller.setPauseMode(saved.pauseMode);
+    this._controller.setPlaybackRate(saved.playbackRate);
   }
 
   private _onShadowingRecordingComplete = (event: CustomEvent<RecordingCompleteDetail>): void => {

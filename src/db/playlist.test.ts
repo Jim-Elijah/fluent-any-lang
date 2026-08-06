@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { resetDatabase } from '../test/db-helpers.js';
 import type { MediaBlob, MediaItem } from '../types/models.js';
 import { FAVORITES_PLAYLIST_ID } from '../types/models.js';
+import type { Playlist, PlaylistEntry } from '../types/models.js';
 import {
   addMedia,
   addMediaToPlaylist,
@@ -12,6 +13,8 @@ import {
   getPlaylistList,
   isMediaInFavorites,
   isPlaylistNameConflictError,
+  orderPlaylistEntriesByTitle,
+  orderPlaylistIdsByName,
   removeMediaFromPlaylist,
   toggleFavorites,
   updatePlaylist,
@@ -141,5 +144,43 @@ describe('playlist', () => {
     expect(fav?.entries[0]?.removed).toBe(true);
     expect(fav?.entries[0]?.titleSnapshot).toBe('Song 1');
     expect(pl1?.entries[0]?.removed).toBe(true);
+  });
+
+  it('orders playlist ids by name with favorites pinned first', () => {
+    const playlists = [
+      { id: FAVORITES_PLAYLIST_ID, name: '喜欢', kind: 'favorites' },
+      { id: 'b', name: 'Zebra', kind: 'user' },
+      { id: 'a', name: 'Alpha', kind: 'user' },
+    ] as Playlist[];
+
+    expect(orderPlaylistIdsByName(playlists, 'asc')).toEqual([FAVORITES_PLAYLIST_ID, 'a', 'b']);
+    expect(orderPlaylistIdsByName(playlists, 'desc')).toEqual([FAVORITES_PLAYLIST_ID, 'b', 'a']);
+  });
+
+  it('orders active playlist entries by title and keeps removed at the end', () => {
+    const entries: PlaylistEntry[] = [
+      { mediaId: 'c', removed: false },
+      { mediaId: 'gone', removed: true },
+      { mediaId: 'a', removed: false },
+      { mediaId: 'b', removed: false },
+    ];
+    const titles: Record<string, string> = {
+      a: 'Alpha',
+      b: 'Beta',
+      c: 'Charlie',
+      gone: 'ZZZ',
+    };
+
+    expect(
+      orderPlaylistEntriesByTitle(entries, (entry) => titles[entry.mediaId] ?? '', 'asc').map(
+        (entry) => entry.mediaId,
+      ),
+    ).toEqual(['a', 'b', 'c', 'gone']);
+
+    expect(
+      orderPlaylistEntriesByTitle(entries, (entry) => titles[entry.mediaId] ?? '', 'desc').map(
+        (entry) => entry.mediaId,
+      ),
+    ).toEqual(['c', 'b', 'a', 'gone']);
   });
 });

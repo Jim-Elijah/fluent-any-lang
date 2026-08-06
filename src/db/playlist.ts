@@ -145,6 +145,43 @@ export async function deletePlaylist(id: string): Promise<boolean> {
   return true;
 }
 
+export type NameSortDirection = 'asc' | 'desc';
+
+/**
+ * Build playlist id order by name (A→Z / Z→A). Favorites stay first when present.
+ */
+export function orderPlaylistIdsByName(
+  playlists: Playlist[],
+  direction: NameSortDirection,
+): string[] {
+  const favorites = playlists.find((playlist) => playlist.kind === 'favorites');
+  const users = playlists.filter((playlist) => playlist.kind !== 'favorites');
+  const sortedUsers = [...users].sort((a, b) => {
+    const cmp = a.name.localeCompare(b.name);
+    return direction === 'asc' ? cmp : -cmp;
+  });
+  const userIds = sortedUsers.map((playlist) => playlist.id);
+  return favorites ? [favorites.id, ...userIds] : userIds;
+}
+
+/**
+ * Sort active (non-removed) entries by title; removed entries stay at the end
+ * in their relative order.
+ */
+export function orderPlaylistEntriesByTitle(
+  entries: PlaylistEntry[],
+  titleOf: (entry: PlaylistEntry) => string,
+  direction: NameSortDirection,
+): PlaylistEntry[] {
+  const active = entries.filter((entry) => !entry.removed);
+  const removed = entries.filter((entry) => entry.removed);
+  const sortedActive = [...active].sort((a, b) => {
+    const cmp = titleOf(a).localeCompare(titleOf(b));
+    return direction === 'asc' ? cmp : -cmp;
+  });
+  return [...sortedActive, ...removed];
+}
+
 /** Reorder playlists by the given ids array (favorites must be first). */
 export async function reorderPlaylists(ids: string[]): Promise<void> {
   if (ids[0] !== FAVORITES_PLAYLIST_ID) {

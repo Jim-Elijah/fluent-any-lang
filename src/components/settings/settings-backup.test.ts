@@ -192,6 +192,8 @@ describe('settings-backup', () => {
       recordingsSkipped: 0,
       sessionsImported: 3,
       sessionsSkipped: 0,
+      playlistsImported: 1,
+      playlistsSkipped: 0,
       sentenceBankImported: 0,
       sentenceBankSkipped: 0,
       noiseImported: 0,
@@ -221,6 +223,8 @@ describe('settings-backup', () => {
       recordingsSkipped: 0,
       sessionsImported: 0,
       sessionsSkipped: 0,
+      playlistsImported: 0,
+      playlistsSkipped: 0,
       sentenceBankImported: 0,
       sentenceBankSkipped: 0,
       noiseImported: 0,
@@ -338,5 +342,23 @@ describe('settings-backup', () => {
 
     expect(el.shadowRoot?.textContent).toMatch(/无/);
     expect(el.shadowRoot?.textContent).toMatch(/包内无媒体/);
+  });
+
+  it('shows playlist count in import preview', async () => {
+    vi.mocked(previewBackup).mockResolvedValue(preview);
+    const el = await renderBackup();
+    const file = new File(['zip'], 'backup.zip', { type: 'application/zip' });
+    await selectBackupFile(el, file);
+
+    expect(el.shadowRoot?.textContent).toMatch(/播放列表/);
+    expect(el.shadowRoot?.textContent).toMatch(/1/);
+  });
+
+  it('does not offer a playlist export checkbox', async () => {
+    const el = await renderBackup();
+    const labels = [...(el.shadowRoot?.querySelectorAll('label.check') ?? [])].map(
+      (label) => label.textContent ?? '',
+    );
+    expect(labels.some((text) => text.includes('播放列表'))).toBe(false);
   });
 });

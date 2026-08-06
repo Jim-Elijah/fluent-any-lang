@@ -520,6 +520,7 @@ describe('backup export/import', () => {
     expect(result.subtitlesSkipped).toBe(1);
     expect(result.errors.some((e) => e.includes('缺少录音文件'))).toBe(true);
     expect(result.sessionsImported).toBe(1);
+    expect(result.playlistsSkipped).toBe(1);
     expect(result.sentenceBankSkipped).toBe(1);
     expect(result.errors.some((e) => e.includes('缺少句库音频'))).toBe(true);
     expect(result.noiseSkipped).toBe(1);

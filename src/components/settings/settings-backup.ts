@@ -140,7 +140,7 @@ export class SettingsBackup extends LitElement {
       const manifest = await exportBackup(this._exportOptions);
       Message.success(
         msg(
-          str`已导出备份（录音 ${manifest.counts.recordings}，学习记录 ${manifest.counts.sessions}，句库 ${manifest.counts.sentenceBank}，噪音 ${manifest.counts.noise}，媒体 ${manifest.counts.media}）`,
+          str`已导出备份（录音 ${manifest.counts.recordings}，学习记录 ${manifest.counts.sessions}，播放列表 ${manifest.counts.playlists}，句库 ${manifest.counts.sentenceBank}，噪音 ${manifest.counts.noise}，媒体 ${manifest.counts.media}）`,
         ),
       );
     } catch (error) {
@@ -223,6 +223,7 @@ export class SettingsBackup extends LitElement {
         <li>${msg('字幕')}：${manifest.counts.subtitles}</li>
         <li>${msg('录音')}：${manifest.counts.recordings}</li>
         <li>${msg('学习记录')}：${manifest.counts.sessions}</li>
+        <li>${msg('播放列表')}：${manifest.counts.playlists ?? 0}</li>
         <li>${msg('句库')}：${manifest.counts.sentenceBank ?? 0}</li>
         <li>${msg('噪音素材')}：${manifest.counts.noise ?? 0}</li>
       </ul>
@@ -246,6 +247,9 @@ export class SettingsBackup extends LitElement {
             ${msg(str`学习记录：导入 ${result.sessionsImported}，跳过 ${result.sessionsSkipped}`)}
           </div>
           <div>
+            ${msg(str`播放列表：导入 ${result.playlistsImported}，跳过 ${result.playlistsSkipped}`)}
+          </div>
+          <div>
             ${msg(
               str`句库：导入 ${result.sentenceBankImported}，跳过 ${result.sentenceBankSkipped}`,
             )}
@@ -264,7 +268,7 @@ export class SettingsBackup extends LitElement {
     return html`
       <section class="card" aria-labelledby="backup-heading">
         <h2 id="backup-heading">${msg('数据备份与迁移')}</h2>
-        <p class="desc">${msg('导出备份可用于换设备迁移。设置始终包含在备份中。')}</p>
+        <p class="desc">${msg('导出备份可用于换设备迁移。设置与播放列表始终包含在备份中。')}</p>
         <p class="hint">
           ${msg('媒体文件若未纳入备份，请在库页用相同文件名重新导入原音视频与字幕，录音即可对齐。')}
         </p>

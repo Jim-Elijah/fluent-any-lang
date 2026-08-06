@@ -163,6 +163,8 @@ export async function importBackup(file: File): Promise<BackupImportResult> {
     recordingsSkipped: 0,
     sessionsImported: 0,
     sessionsSkipped: 0,
+    playlistsImported: 0,
+    playlistsSkipped: 0,
     sentenceBankImported: 0,
     sentenceBankSkipped: 0,
     noiseImported: 0,
@@ -278,10 +280,12 @@ export async function importBackup(file: File): Promise<BackupImportResult> {
       const existing = await getPlaylist(playlist.id);
       if (existing) {
         // Skip: playlists are user-curated; don't overwrite.
+        result.playlistsSkipped += 1;
         continue;
       }
       const db = await getDB();
       await db.put(STORE_PLAYLIST, playlist);
+      result.playlistsImported += 1;
     } catch (error) {
       result.errors.push(
         error instanceof Error ? error.message : msg(str`导入播放列表失败：${playlist.id}`),

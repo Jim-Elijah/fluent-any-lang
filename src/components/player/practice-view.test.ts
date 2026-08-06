@@ -1372,6 +1372,46 @@ describe('practice-view', () => {
       expect(mockNoiseMixer.setTracks).toHaveBeenCalledWith([]);
     });
 
+    it('suppresses loop/sleep/pause for discrimination then restores them in free listen', async () => {
+      const el = await renderView();
+      el._controller.setLoopMode('segment');
+      el._controller.setSleepMinutes(15);
+      el._controller.setSleepMode('minutes');
+      el._controller.setPauseMode('seconds');
+      el._controller.setPauseSeconds(3);
+
+      await switchToDiscriminationMode(el);
+
+      let snap = el._controller.getSnapshot();
+      expect(snap.loopMode).toBe('none');
+      expect(snap.sleepMode).toBe('off');
+      expect(snap.pauseMode).toBe('off');
+
+      findButton(el, '自由听')?.click();
+      await el.updateComplete;
+
+      snap = el._controller.getSnapshot();
+      expect(snap.loopMode).toBe('segment');
+      expect(snap.sleepMode).toBe('minutes');
+      expect(snap.sleepMinutes).toBe(15);
+      expect(snap.pauseMode).toBe('seconds');
+      expect(snap.pauseSeconds).toBe(3);
+    });
+
+    it('applies ladder rate in discrimination then restores free-listen rate', async () => {
+      const el = await renderView();
+      el._controller.setPlaybackRate(0.8);
+      mockRateLadder.getCurrentRate.mockReturnValue(1.5);
+
+      await switchToDiscriminationMode(el);
+      expect(el._controller.getSnapshot().playbackRate).toBe(1.5);
+
+      findButton(el, '自由听')?.click();
+      await el.updateComplete;
+
+      expect(el._controller.getSnapshot().playbackRate).toBe(0.8);
+    });
+
     it('tears down discrimination when switching to speaking', async () => {
       const el = await renderView();
       await switchToDiscriminationMode(el);

@@ -12,6 +12,8 @@ import {
   getPlaylistEntryDisplayTitle,
   getPlaylistList,
   isPlaylistNameConflictError,
+  orderPlaylistEntriesByTitle,
+  orderPlaylistIdsByName,
   removeMediaFromPlaylist,
   reorderPlaylists,
   setPlaylistEntryOrder,
@@ -29,6 +31,7 @@ import '../../components/ui/button.js';
 import '../../components/ui/dropdown.js';
 import '../../components/ui/drawer.js';
 import '../../components/ui/icon.js';
+import '../../components/ui/icon-button.js';
 import '../../components/ui/input.js';
 import '../../components/ui/modal.js';
 import '../../components/ui/popconfirm.js';
@@ -41,6 +44,8 @@ type PlaylistEntryView = {
   entry: PlaylistEntry;
   media?: MediaItem;
 };
+
+type NameSortIcon = 'ascend' | 'descend';
 
 const NavigatorElement = navigator(LitElement);
 
@@ -114,6 +119,13 @@ export class PlaylistsPage extends NavigatorElement {
       margin: 0;
       font-size: 1.125rem;
       font-weight: 600;
+    }
+
+    .header-meta {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-xs);
+      flex-shrink: 0;
     }
 
     .count {
@@ -216,6 +228,15 @@ export class PlaylistsPage extends NavigatorElement {
       display: flex;
       flex-direction: column;
       min-height: 0;
+    }
+
+    .entry-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: var(--space-xs);
+      margin-bottom: var(--space-sm);
+      flex-shrink: 0;
     }
 
     .detail-header {
@@ -427,6 +448,12 @@ export class PlaylistsPage extends NavigatorElement {
   private _busyKey = '';
 
   @state()
+  private _playlistSortIcon: NameSortIcon = 'ascend';
+
+  @state()
+  private _entrySortIcon: NameSortIcon = 'ascend';
+
+  @state()
   private _pendingDeletePlaylistId = '';
 
   private _compactMq?: MediaQueryList;
@@ -485,7 +512,18 @@ export class PlaylistsPage extends NavigatorElement {
 
     this._selectedPlaylistId = id;
     this._renaming = false;
+    this._entrySortIcon = 'ascend';
     await this._loadSelectedPlaylist();
+  }
+
+  private _clearSelection(): void {
+    this._selectedPlaylistId = '';
+    this._selectedPlaylist = undefined;
+    this._entryViews = [];
+    this._detailLoading = false;
+    this._renaming = false;
+    this._renameValue = '';
+    this._entrySortIcon = 'ascend';
   }
 
   private async _loadSelectedPlaylist(): Promise<void> {
@@ -598,15 +636,6 @@ export class PlaylistsPage extends NavigatorElement {
 
     void reportError(error, { where });
     Message.error(fallbackMessage);
-  }
-
-  private _clearSelection(): void {
-    this._selectedPlaylistId = '';
-    this._selectedPlaylist = undefined;
-    this._entryViews = [];
-    this._detailLoading = false;
-    this._renaming = false;
-    this._renameValue = '';
   }
 
   private _closeDrawer(): void {
@@ -795,6 +824,78 @@ export class PlaylistsPage extends NavigatorElement {
     }
   }
 
+  private _sortDirectionFromIcon(icon: NameSortIcon): 'asc' | 'desc' {
+    return icon === 'ascend' ? 'asc' : 'desc';
+  }
+
+  private _nextSortIcon(icon: NameSortIcon): NameSortIcon {
+    return icon === 'ascend' ? 'descend' : 'ascend';
+  }
+
+  private _playlistSortTitle(): string {
+    return this._playlistSortIcon === 'ascend' ? msg('按名称升序') : msg('按名称降序');
+  }
+
+  private _entrySortTitle(): string {
+    return this._entrySortIcon === 'ascend' ? msg('按名称升序') : msg('按名称降序');
+  }
+
+  private async _handleSortPlaylistsByName(): Promise<void> {
+    const userCount = this._playlists.filter((playlist) => playlist.kind !== 'favorites').length;
+    if (userCount < 2 || this._busyKey === 'sort-playlists') return;
+
+    const direction = this._sortDirectionFromIcon(this._playlistSortIcon);
+    const orderedIds = orderPlaylistIdsByName(this._playlists, direction);
+
+    this._busyKey = 'sort-playlists';
+    try {
+      await reorderPlaylists(orderedIds);
+      await this._loadPlaylists();
+      this._playlistSortIcon = this._nextSortIcon(this._playlistSortIcon);
+    } catch (error) {
+      void reportError(error, { where: 'playlists-page.sortPlaylistsByName' });
+      Message.error(msg('调整顺序失败'));
+    } finally {
+      this._busyKey = '';
+    }
+  }
+
+  private async _handleSortEntriesByTitle(): Promise<void> {
+    const playlist = this._selectedPlaylist;
+    if (!playlist || this._entryViews.length < 2 || this._busyKey === 'sort-entries') return;
+
+    const titleByMediaId = new Map(
+      this._entryViews.map((item) => [
+        item.entry.mediaId,
+        getPlaylistEntryDisplayTitle(item.media?.title, item.entry.titleSnapshot),
+      ]),
+    );
+    const direction = this._sortDirectionFromIcon(this._entrySortIcon);
+    const nextEntries = orderPlaylistEntriesByTitle(
+      playlist.entries,
+      (entry) =>
+        titleByMediaId.get(entry.mediaId) ??
+        getPlaylistEntryDisplayTitle(undefined, entry.titleSnapshot),
+      direction,
+    );
+
+    this._busyKey = 'sort-entries';
+    try {
+      await setPlaylistEntryOrder(playlist.id, nextEntries);
+      await this._loadPlaylists();
+      await this._loadSelectedPlaylist();
+      this._entrySortIcon = this._nextSortIcon(this._entrySortIcon);
+    } catch (error) {
+      void reportError(error, {
+        where: 'playlists-page.sortEntriesByTitle',
+        playlistId: playlist.id,
+      });
+      Message.error(msg('调整顺序失败'));
+    } finally {
+      this._busyKey = '';
+    }
+  }
+
   private async _handleRemoveEntry(mediaId: string): Promise<void> {
     const playlist = this._selectedPlaylist;
     if (!playlist) return;
@@ -870,7 +971,17 @@ export class PlaylistsPage extends NavigatorElement {
         <div class="list-section">
           <div class="header">
             <h2>${msg('播放列表库')}</h2>
-            <span class="count">${this._playlists.length} ${msg('项')}</span>
+            <div class="header-meta">
+              <span class="count">${this._playlists.length} ${msg('项')}</span>
+              <ui-icon-button
+                name=${this._playlistSortIcon}
+                title=${this._playlistSortTitle()}
+                size="var(--icon-md)"
+                ?disabled=${this._busyKey === 'sort-playlists' ||
+                this._playlists.filter((playlist) => playlist.kind !== 'favorites').length < 2}
+                @click=${() => void this._handleSortPlaylistsByName()}
+              ></ui-icon-button>
+            </div>
           </div>
 
           <div class="list-viewport">
@@ -1046,6 +1157,17 @@ export class PlaylistsPage extends NavigatorElement {
                     : this._entryViews.length === 0
                       ? html`<div class="empty drawer-empty">${msg('播放列表为空')}</div>`
                       : html`
+                          <div class="entry-toolbar">
+                            <ui-icon-button
+                              name=${this._entrySortIcon}
+                              title=${this._entrySortTitle()}
+                              size="var(--icon-md)"
+                              .zIndex=${Z_INDEX.MODAL + 1}
+                              ?disabled=${this._busyKey === 'sort-entries' ||
+                              this._entryViews.length < 2}
+                              @click=${() => void this._handleSortEntriesByTitle()}
+                            ></ui-icon-button>
+                          </div>
                           <div class="entry-list">
                             ${this._entryViews.map((item, index) => {
                               const title = getPlaylistEntryDisplayTitle(

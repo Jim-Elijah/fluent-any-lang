@@ -25,12 +25,16 @@ type PlaylistsPageHarness = PlaylistsPage & {
   _handleCreatePlaylist(): Promise<void>;
   _handleMoveEntry(index: number, direction: -1 | 1): Promise<void>;
   _handleMovePlaylist(id: string, direction: -1 | 1): Promise<void>;
+  _handleSortPlaylistsByName(): Promise<void>;
+  _handleSortEntriesByTitle(): Promise<void>;
   _handleRemoveEntry(mediaId: string): Promise<void>;
   _saveRename(): Promise<void>;
   _newPlaylistName: string;
   _renameValue: string;
   _renaming: boolean;
   _pendingDeletePlaylistId: string;
+  _playlistSortIcon: 'ascend' | 'descend';
+  _entrySortIcon: 'ascend' | 'descend';
 };
 
 function stubMatchMedia(matches: boolean) {
@@ -539,6 +543,37 @@ describe('playlists-page', () => {
     expect(names.indexOf('喜欢')).toBe(0);
   });
 
+  it('sorts user playlists by name from the library header and toggles the icon', async () => {
+    stubMatchMedia(false);
+    await createPlaylist('Zebra');
+    await createPlaylist('Alpha');
+    const el = (await renderPage()) as PlaylistsPageHarness;
+    await settlePage(el);
+
+    const sortButton = el.shadowRoot?.querySelector(
+      '.header-meta ui-icon-button',
+    ) as HTMLElement | null;
+    expect(sortButton?.getAttribute('name')).toBe('ascend');
+
+    sortButton?.dispatchEvent(new Event('click', { bubbles: true, composed: true }));
+    await settlePage(el);
+
+    const names = [...(el.shadowRoot?.querySelectorAll('.playlist-name') ?? [])].map(
+      (node) => node.textContent?.trim() ?? '',
+    );
+    expect(names).toEqual(['喜欢', 'Alpha', 'Zebra']);
+    expect(el._playlistSortIcon).toBe('descend');
+
+    sortButton?.dispatchEvent(new Event('click', { bubbles: true, composed: true }));
+    await settlePage(el);
+
+    const namesDesc = [...(el.shadowRoot?.querySelectorAll('.playlist-name') ?? [])].map(
+      (node) => node.textContent?.trim() ?? '',
+    );
+    expect(namesDesc).toEqual(['喜欢', 'Zebra', 'Alpha']);
+    expect(el._playlistSortIcon).toBe('ascend');
+  });
+
   it('deletes a playlist through the confirmation modal', async () => {
     stubMatchMedia(false);
     const playlist = await createPlaylist('Gone Soon');
@@ -588,6 +623,34 @@ describe('playlists-page', () => {
     );
     expect(titles[0]).toContain('Second');
     expect(titles[1]).toContain('First');
+  });
+
+  it('sorts playlist entries by title from the drawer toolbar and toggles the icon', async () => {
+    stubMatchMedia(false);
+    const first = makeMedia('m1', 'Zebra Track');
+    const second = makeMedia('m2', 'Alpha Track');
+    await addMedia(first, { mediaId: first.id, blob: new Blob(['a']) });
+    await addMedia(second, { mediaId: second.id, blob: new Blob(['b']) });
+    const playlist = await createPlaylist('Sort Entries');
+    await addMediaToPlaylist(playlist.id, first.id);
+    await addMediaToPlaylist(playlist.id, second.id);
+
+    const el = (await renderPage()) as PlaylistsPageHarness;
+    await openPlaylistDrawer(el, 'Sort Entries');
+
+    const sortButton = getDrawer(el)?.querySelector(
+      '.entry-toolbar ui-icon-button',
+    ) as HTMLElement | null;
+    expect(sortButton?.getAttribute('name')).toBe('ascend');
+
+    sortButton?.dispatchEvent(new Event('click', { bubbles: true, composed: true }));
+    await settlePage(el);
+
+    const titles = [...(getDrawer(el)?.querySelectorAll('.entry-title') ?? [])].map(
+      (node) => node.textContent?.trim() ?? '',
+    );
+    expect(titles).toEqual(['Alpha Track', 'Zebra Track']);
+    expect(el._entrySortIcon).toBe('descend');
   });
 
   it('opens delete confirmation from playlist overflow menu', async () => {

@@ -60,6 +60,8 @@ export type BackupImportResult = {
   recordingsSkipped: number;
   sessionsImported: number;
   sessionsSkipped: number;
+  playlistsImported: number;
+  playlistsSkipped: number;
   sentenceBankImported: number;
   sentenceBankSkipped: number;
   noiseImported: number;
