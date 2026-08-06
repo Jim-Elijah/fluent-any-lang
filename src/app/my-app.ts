@@ -4,17 +4,9 @@ import { msg, localized } from '@lit/localize';
 import { RouteContext } from '../types/models.js';
 import { router, navigator, Routes } from 'lit-element-router';
 
-import '../pages/home/index.js';
-import '../pages/library/index.js';
-import '../pages/playlists/index.js';
-import '../pages/sentences/index.js';
-import '../pages/sentence-practice/index.js';
-import '../pages/practice/index.js';
-import '../pages/practice-stats/index.js';
-import '../pages/settings/index.js';
-import '../pages/not-found/index.js';
 import '../components/ui/locale-switcher.js';
 import '../components/ui/menu.js';
+import { Loading, type LoadingInstance } from '../components/ui/loading.js';
 import { MenuItem, MenuOpenChangeDetail, MenuSelectDetail } from '../components/ui/menu.js';
 import { getLocale, isLocale, Locale, LOCALE_STORAGE_KEY } from '../i18n/localization.js';
 
@@ -31,6 +23,30 @@ type AppRoute =
 type RouteRenderContext = {
   routeContext: RouteContext;
 };
+
+const ROUTE_LOADERS: Record<AppRoute, () => Promise<unknown>> = {
+  home: () => import('../pages/home/index.js'),
+  practice: () => import('../pages/practice/index.js'),
+  library: () => import('../pages/library/index.js'),
+  playlists: () => import('../pages/playlists/index.js'),
+  sentences: () => import('../pages/sentences/index.js'),
+  'sentence-practice': () => import('../pages/sentence-practice/index.js'),
+  stats: () => import('../pages/practice-stats/index.js'),
+  settings: () => import('../pages/settings/index.js'),
+  'not-found': () => import('../pages/not-found/index.js'),
+};
+
+/** Module-level cache so each page chunk is fetched once. */
+const pageModuleLoads = new Map<AppRoute, Promise<void>>();
+
+function loadPageModule(route: AppRoute): Promise<void> {
+  let load = pageModuleLoads.get(route);
+  if (!load) {
+    load = ROUTE_LOADERS[route]().then(() => undefined);
+    pageModuleLoads.set(route, load);
+  }
+  return load;
+}
 
 const ROUTE_PAGES: Record<AppRoute, (ctx: RouteRenderContext) => TemplateResult> = {
   home: () => html`<home-page></home-page>`,
@@ -205,6 +221,8 @@ export class MyApp extends RouterNavigatorApp {
   @state()
   private _isMobile = false;
   private _mq?: MediaQueryList;
+  private _mainEl: HTMLElement | null = null;
+  private _pageLoading: LoadingInstance | null = null;
 
   @state()
   routeContext: RouteContext = {
@@ -222,6 +240,9 @@ export class MyApp extends RouterNavigatorApp {
 
   @state()
   locale: Locale;
+
+  @state()
+  private _loadedRoutes = new Set<AppRoute>();
 
   private _getMenuItems(): Array<MenuItem & { link: string }> {
     return [
@@ -300,6 +321,9 @@ export class MyApp extends RouterNavigatorApp {
   disconnectedCallback() {
     super.disconnectedCallback();
     this._mq?.removeEventListener('change', this._onMediaChange);
+    this._pageLoading?.close();
+    this._pageLoading = null;
+    this._mainEl = null;
   }
   private _onMediaChange = (e: MediaQueryListEvent) => {
     this._isMobile = e.matches;
@@ -320,6 +344,9 @@ export class MyApp extends RouterNavigatorApp {
     };
     const menuKey = route === 'sentence-practice' ? 'sentences' : route || 'home';
     this.selectedKeys = [menuKey];
+    if (route in ROUTE_LOADERS) {
+      void this._ensurePageLoaded(route as AppRoute);
+    }
   }
 
   private _handleMenuSelect(event: CustomEvent<MenuSelectDetail>) {
@@ -334,11 +361,51 @@ export class MyApp extends RouterNavigatorApp {
     this.openKeys = event.detail.openKeys;
   }
 
+  private _getMainEl(): HTMLElement | null {
+    if (this._mainEl?.isConnected) return this._mainEl;
+    this._mainEl = this.renderRoot.querySelector('main');
+    return this._mainEl;
+  }
+
+  private _ensurePageLoaded(route: AppRoute): Promise<void> {
+    if (this._loadedRoutes.has(route)) {
+      return Promise.resolve();
+    }
+    const main = this._getMainEl();
+    if (main && !this._pageLoading) {
+      this._pageLoading = Loading.service({
+        fullscreen: false,
+        target: main,
+        text: msg('加载中'),
+      });
+    }
+    return loadPageModule(route)
+      .then(() => {
+        if (!this.isConnected || this._loadedRoutes.has(route)) {
+          return;
+        }
+        const next = new Set(this._loadedRoutes);
+        next.add(route);
+        this._loadedRoutes = next;
+      })
+      .finally(() => {
+        this._pageLoading?.close();
+        this._pageLoading = null;
+      });
+  }
+
   private _renderActivePage() {
     const route = (this.activeRoute || 'home') as AppRoute;
-    // 渲染当前active的路由页面，非active的路由页面会销毁（原来的是display: none）
     const render = ROUTE_PAGES[route];
-    return render ? render({ routeContext: this.routeContext }) : nothing;
+    if (!render) {
+      return nothing;
+    }
+    if (!this._loadedRoutes.has(route)) {
+      void this._ensurePageLoaded(route);
+      return nothing; // 遮罩盖在 main 上，不再渲染文案占位
+    }
+    // 渲染当前 active 的路由页面，非 active 的路由页面会销毁
+    return render({ routeContext: this.routeContext });
   }
 
   render() {

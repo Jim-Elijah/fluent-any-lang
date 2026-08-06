@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../i18n/localization.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../i18n/localization.js')>();
@@ -15,6 +15,22 @@ import '../app/my-app.js';
 import type { MyApp } from '../app/my-app.js';
 import { LOCALE_STORAGE_KEY } from '../i18n/localization.js';
 import type { MenuOpenChangeDetail, MenuSelectDetail } from '../components/ui/menu.js';
+
+// Register page custom elements before any app-shell render (avoids happy-dom
+// upgrade races when chunks load mid-test).
+beforeAll(async () => {
+  await Promise.all([
+    import('../pages/home/index.js'),
+    import('../pages/library/index.js'),
+    import('../pages/playlists/index.js'),
+    import('../pages/sentences/index.js'),
+    import('../pages/sentence-practice/index.js'),
+    import('../pages/practice/index.js'),
+    import('../pages/practice-stats/index.js'),
+    import('../pages/settings/index.js'),
+    import('../pages/not-found/index.js'),
+  ]);
+});
 
 function stubMatchMedia(initialMatches = false) {
   const listeners = new Set<(event: MediaQueryListEvent) => void>();
@@ -49,11 +65,18 @@ function stubMatchMedia(initialMatches = false) {
   };
 }
 
+async function waitForSelector(el: MyApp, selector: string) {
+  await vi.waitFor(() => {
+    expect(el.shadowRoot?.querySelector(selector)).not.toBeNull();
+  });
+}
+
 describe('app-shell', () => {
   let cleanup: (() => void) | undefined;
 
   beforeEach(async () => {
     localStorage.clear();
+    window.history.replaceState({}, '', '/');
     const { resetDatabase } = await import('../test/db-helpers.js');
     await resetDatabase();
   });
@@ -69,6 +92,9 @@ describe('app-shell', () => {
     cleanup = result.cleanup;
     const el = result.container.querySelector('app-shell') as MyApp;
     await el.updateComplete;
+    await vi.waitFor(() => {
+      expect(el.shadowRoot?.querySelector('main')?.children.length).toBeGreaterThan(0);
+    });
     return el;
   }
 
@@ -109,7 +135,7 @@ describe('app-shell', () => {
       data: { title: 'Library' },
     });
     expect(el.selectedKeys).toEqual(['library']);
-    expect(el.shadowRoot?.querySelector('library-page')).not.toBeNull();
+    await waitForSelector(el, 'library-page');
   });
 
   it('maps sentence-practice route to sentences menu selection', async () => {
@@ -120,7 +146,7 @@ describe('app-shell', () => {
     await el.updateComplete;
 
     expect(el.selectedKeys).toEqual(['sentences']);
-    expect(el.shadowRoot?.querySelector('sentence-practice-page')).not.toBeNull();
+    await waitForSelector(el, 'sentence-practice-page');
   });
 
   it('navigates from menu selection and tracks open keys', async () => {
@@ -172,16 +198,13 @@ describe('app-shell', () => {
     const el = await renderApp();
 
     el.router('practice', { mediaId: 'm1' }, {}, {});
-    await el.updateComplete;
-    expect(el.shadowRoot?.querySelector('practice-page')).not.toBeNull();
+    await waitForSelector(el, 'practice-page');
 
     el.router('stats', {}, {}, { title: 'Stats' });
-    await el.updateComplete;
-    expect(el.shadowRoot?.querySelector('practice-stats-page')).not.toBeNull();
+    await waitForSelector(el, 'practice-stats-page');
 
     el.router('not-found', {}, {}, {});
-    await el.updateComplete;
-    expect(el.shadowRoot?.querySelector('not-found-page')).not.toBeNull();
+    await waitForSelector(el, 'not-found-page');
   });
 
   it('renders library, playlists, and sentences routes', async () => {
@@ -189,16 +212,13 @@ describe('app-shell', () => {
     const el = await renderApp();
 
     el.router('library', {}, {}, {});
-    await el.updateComplete;
-    expect(el.shadowRoot?.querySelector('library-page')).not.toBeNull();
+    await waitForSelector(el, 'library-page');
 
     el.router('playlists', {}, {}, {});
-    await el.updateComplete;
-    expect(el.shadowRoot?.querySelector('playlists-page')).not.toBeNull();
+    await waitForSelector(el, 'playlists-page');
 
     el.router('sentences', {}, {}, {});
-    await el.updateComplete;
-    expect(el.shadowRoot?.querySelector('sentences-page')).not.toBeNull();
+    await waitForSelector(el, 'sentences-page');
   });
 
   it('passes routeContext into practice pages', async () => {
@@ -212,7 +232,7 @@ describe('app-shell', () => {
     };
 
     el.router('practice', routeContext.params, routeContext.query, routeContext.data);
-    await el.updateComplete;
+    await waitForSelector(el, 'practice-page');
 
     const page = el.shadowRoot?.querySelector('practice-page') as HTMLElement & {
       routeContext?: typeof routeContext;

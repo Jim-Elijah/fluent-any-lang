@@ -9,7 +9,19 @@ export const LOCALE_STORAGE_KEY = 'fluent-any-lang:locale';
 const localization = configureLocalization({
   sourceLocale,
   targetLocales,
-  loadLocale: (locale) => import(`../locales/${locale}.ts`),
+  // Explicit imports so locale-codes.ts is not pulled into the dynamic glob.
+  loadLocale: (locale) => {
+    switch (locale) {
+      case 'en':
+        return import('../locales/en.js');
+      case 'ja':
+        return import('../locales/ja.js');
+      case 'zh-TW':
+        return import('../locales/zh-TW.js');
+      default:
+        return Promise.reject(new Error(`Unsupported locale: ${locale}`));
+    }
+  },
 });
 
 export const { getLocale, setLocale } = localization;
