@@ -755,12 +755,12 @@ export class RecordingPreview extends LitElement {
     this._handleVolumeChange(track, current + delta);
   }
 
-  /** Restore first-render track/view after leaving a play mode (true stop, not Space pause). */
+  /** Restore first-render track/view after leaving a play mode (true stop / deselect). */
   private _resetPreviewContextAfterStop(): void {
-    if (this._sourceTrackId) {
-      this._controller.setActiveId(this._sourceTrackId);
-    } else if (this._recordingTrackId) {
+    if (this._recordingTrackId) {
       this._controller.setActiveId(this._recordingTrackId);
+    } else if (this._sourceTrackId) {
+      this._controller.setActiveId(this._sourceTrackId);
     }
 
     if (this.segments.length === 0) {
@@ -1078,10 +1078,11 @@ export class RecordingPreview extends LitElement {
     if (this._sourceTrackId || this._recordingTrackId) {
       /** make sure layout is overlay, otherwise clicking waveform will switch track unexpectedly */
       this._controller.setLayout('overlay');
-      if (this._sourceTrackId) {
-        this._controller.setActiveId(this._sourceTrackId);
-      } else if (this._recordingTrackId) {
+      // Prefer recording as the default preview focus (mode arms recording paused on init).
+      if (this._recordingTrackId) {
         this._controller.setActiveId(this._recordingTrackId);
+      } else if (this._sourceTrackId) {
+        this._controller.setActiveId(this._sourceTrackId);
       }
     }
 
@@ -1162,6 +1163,13 @@ export class RecordingPreview extends LitElement {
         this._zoomToPracticeSegment(state.syncSegmentIndex);
       }
     });
+
+    // Default selection: recording (or source if no recording), paused — no autoplay on open.
+    if (this._recordingTrackId) {
+      this._playback.selectPaused('recording');
+    } else if (this._sourceTrackId) {
+      this._playback.selectPaused('source');
+    }
   }
 
   private async _ensurePlayback(): Promise<boolean> {

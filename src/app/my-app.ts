@@ -73,6 +73,8 @@ export class MyApp extends RouterNavigatorApp {
       overflow: hidden;
       --nav-width: 200px;
       --nav-height: 56px;
+      /* Desktop: side nav. Mobile media query sets the fixed bottom-nav footprint. */
+      --app-bottom-nav-inset: 0px;
     }
 
     .layout {
@@ -179,6 +181,10 @@ export class MyApp extends RouterNavigatorApp {
 
     /* 移动：固定在底部 */
     @media (max-width: 767px) {
+      :host {
+        --app-bottom-nav-inset: calc(var(--nav-height) + env(safe-area-inset-bottom, 0px));
+      }
+
       .layout {
         flex-direction: column;
         max-width: none;
@@ -206,7 +212,7 @@ export class MyApp extends RouterNavigatorApp {
 
       .main-content {
         padding: var(--space-page-x) var(--space-page-x)
-          calc(var(--nav-height) + env(safe-area-inset-bottom, 0) + var(--space-page-x));
+          calc(var(--app-bottom-nav-inset) + var(--space-page-x));
       }
 
       .brand {
@@ -317,6 +323,8 @@ export class MyApp extends RouterNavigatorApp {
     this._mq = window.matchMedia('(max-width: 767px)');
     this._isMobile = this._mq.matches;
     this._mq.addEventListener('change', this._onMediaChange);
+    // Defer so :host media-query vars are computed before mirroring to :root.
+    requestAnimationFrame(() => this._syncAppBottomNavInsetToRoot());
   }
   disconnectedCallback() {
     super.disconnectedCallback();
@@ -324,10 +332,18 @@ export class MyApp extends RouterNavigatorApp {
     this._pageLoading?.close();
     this._pageLoading = null;
     this._mainEl = null;
+    document.documentElement.style.removeProperty('--app-bottom-nav-inset');
   }
   private _onMediaChange = (e: MediaQueryListEvent) => {
     this._isMobile = e.matches;
+    requestAnimationFrame(() => this._syncAppBottomNavInsetToRoot());
   };
+
+  /** Mirror host nav inset to :root so portals (session dock, etc.) can read it. */
+  private _syncAppBottomNavInsetToRoot(): void {
+    const value = getComputedStyle(this).getPropertyValue('--app-bottom-nav-inset').trim() || '0px';
+    document.documentElement.style.setProperty('--app-bottom-nav-inset', value);
+  }
 
   router(
     route: string,

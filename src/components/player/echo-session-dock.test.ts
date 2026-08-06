@@ -39,16 +39,38 @@ describe('echo-session-dock', () => {
     const portal = getPortalShadow('[data-echo-session-dock-portal]');
     expect(portal?.querySelector('.dock')).not.toBeNull();
     expect(portal?.textContent).toContain('正在播放原音');
-    expect(document.documentElement.style.getPropertyValue('scroll-padding-bottom')).toBe('140px');
-    expect(document.documentElement.style.getPropertyValue('--session-dock-inset')).toBe('140px');
+    expect(document.documentElement.style.getPropertyValue('scroll-padding-bottom')).toBe('180px');
+    expect(document.documentElement.style.getPropertyValue('--session-dock-inset')).toBe('180px');
   });
 
-  it('hides during countdown phase', async () => {
+  it('reserves inset during preparing before the dock is visible', async () => {
+    await renderDock('preparing');
+    expect(document.querySelector('[data-echo-session-dock-portal]')).not.toBeNull();
+    expect(document.documentElement.style.getPropertyValue('--session-dock-inset')).toBe('180px');
+    const portal = getPortalShadow('[data-echo-session-dock-portal]');
+    expect(portal?.querySelector('.dock')).toBeNull();
+  });
+
+  it('keeps the taller recording inset after switching from listening', async () => {
+    const { el, controller } = await renderDock('listening');
+    expect(document.documentElement.style.getPropertyValue('--session-dock-inset')).toBe('180px');
+
+    el.phase = 'recording';
+    el.waveformController = controller;
+    await el.updateComplete;
+    // Floor stays at the max (recording) height even if listening measured smaller.
+    expect(
+      Number.parseFloat(document.documentElement.style.getPropertyValue('--session-dock-inset')),
+    ).toBeGreaterThanOrEqual(180);
+  });
+
+  it('hides dock during countdown but keeps inset reserved', async () => {
     const { el } = await renderDock('listening');
     el.phase = 'countdown';
     await el.updateComplete;
     const portal = getPortalShadow('[data-echo-session-dock-portal]');
     expect(portal?.querySelector('.dock')).toBeNull();
+    expect(document.documentElement.style.getPropertyValue('--session-dock-inset')).toBe('180px');
   });
 
   it('shows waveform and stop control while recording', async () => {

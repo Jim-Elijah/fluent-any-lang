@@ -7,7 +7,7 @@ export type DualTrackMode = 'idle' | 'source' | 'recording' | 'sync' | 'continuo
 export type DualTrackPlaybackState = {
   mode: DualTrackMode;
   syncSegmentIndex: number;
-  /** True when mode is active but audio is paused (e.g. Space). Mode stays non-idle. */
+  /** True when mode is selected but audio is not playing (Space pause, end-of-mode, or default arm). */
   paused: boolean;
 };
 
@@ -24,6 +24,8 @@ export class DualTrackPlayback {
   private mode: DualTrackMode = 'idle';
   private syncSegmentIndex = 0;
   private paused = false;
+  /** True after natural end-of-mode; resume/Space restarts from the mode start. */
+  private _finished = false;
   private _syncSegment: PracticeSegment | null = null;
   private _syncSegmentIndex = -1;
   private _sourceEndTime: number | null = null;
@@ -62,23 +64,7 @@ export class DualTrackPlayback {
 
   /** Enter or continue source mode from an absolute source timeline time. */
   async playSourceAt(time: number): Promise<void> {
-    this._stopSyncMonitor();
-    this.recordingAudio.pause();
-
-    if (this.segments.length > 0) {
-      const last = this.segments[this.segments.length - 1];
-      this._sourceEndTime = last.sourceEndTime;
-      const index = findPracticeSegmentIndex(this.segments, time, 'source');
-      this.syncSegmentIndex = index >= 0 ? index : 0;
-    } else {
-      this._sourceEndTime = null;
-      this.syncSegmentIndex = 0;
-    }
-
-    this.sourceAudio.currentTime = this._clampAudioTime(this.sourceAudio, time);
-    this.mode = 'source';
-    this.paused = false;
-    this._emitState();
+    this._enterSourceAt(time, true);
     await this.sourceAudio.play();
   }
 
@@ -89,24 +75,22 @@ export class DualTrackPlayback {
 
   /** Enter or continue recording mode from an absolute recording timeline time. */
   async playRecordingAt(time: number): Promise<void> {
-    this._stopSyncMonitor();
-    this.sourceAudio.pause();
-
-    if (this.segments.length > 0) {
-      const last = this.segments[this.segments.length - 1];
-      this._recordingEndTime = last.recordingEndTime;
-      const index = findPracticeSegmentIndex(this.segments, time, 'recording');
-      this.syncSegmentIndex = index >= 0 ? index : 0;
-    } else {
-      this._recordingEndTime = null;
-      this.syncSegmentIndex = 0;
-    }
-
-    this.recordingAudio.currentTime = this._clampAudioTime(this.recordingAudio, time);
-    this.mode = 'recording';
-    this.paused = false;
-    this._emitState();
+    this._enterRecordingAt(time, true);
     await this.recordingAudio.play();
+  }
+
+  /**
+   * Select a single-track mode paused at practice start without playing.
+   * Used when opening the preview with a default mode (recording preferred).
+   */
+  selectPaused(mode: 'source' | 'recording'): void {
+    if (mode === 'source') {
+      const start = this.segments.length > 0 ? this.segments[0].sourceStartTime : 0;
+      this._enterSourceAt(start, false);
+      return;
+    }
+    const start = this.segments.length > 0 ? this.segments[0].recordingStartTime : 0;
+    this._enterRecordingAt(start, false);
   }
 
   async playSync(): Promise<void> {
@@ -150,6 +134,7 @@ export class DualTrackPlayback {
     this.recordingAudio.pause();
     this.mode = 'continuous';
     this.paused = false;
+    this._finished = false;
     this._sourceEndTime = last.sourceEndTime;
     this._recordingEndTime = last.recordingEndTime;
     this.sourceAudio.currentTime = this._clampAudioTime(this.sourceAudio, sourceTime);
@@ -211,6 +196,7 @@ export class DualTrackPlayback {
 
     const wasPaused = this.paused;
     const segment = this.segments[index];
+    this._finished = false;
 
     if (this.mode === 'sync') {
       this.sourceAudio.pause();
@@ -274,6 +260,7 @@ export class DualTrackPlayback {
       return;
     }
     this.paused = false;
+    this._finished = false;
     await this.goToSegment(index);
   }
 
@@ -291,6 +278,12 @@ export class DualTrackPlayback {
   /** Resume audio after {@link pause}, keeping the current play mode. */
   async resume(): Promise<void> {
     if (this.mode === 'idle' || !this.paused) {
+      return;
+    }
+
+    // Natural end-of-mode: Space / play restarts from the beginning of the mode.
+    if (this._finished) {
+      await this._restartFromStart();
       return;
     }
 
@@ -352,6 +345,83 @@ export class DualTrackPlayback {
     this.syncSegmentIndex = 0;
     this.mode = 'idle';
     this.paused = false;
+    this._finished = false;
+    this._emitState();
+  }
+
+  /**
+   * End of natural playback: keep the selected mode, pause, and mark finished so
+   * resume/Space restarts from the mode start (deselect still uses {@link stop}).
+   */
+  private _pauseAtEnd(): void {
+    if (this.mode === 'idle') {
+      return;
+    }
+    this.sourceAudio.pause();
+    this.recordingAudio.pause();
+    this.paused = true;
+    this._finished = true;
+    this._emitState();
+  }
+
+  private async _restartFromStart(): Promise<void> {
+    switch (this.mode) {
+      case 'source':
+        await this.playSource();
+        return;
+      case 'recording':
+        await this.playRecording();
+        return;
+      case 'sync':
+        await this.playSync();
+        return;
+      case 'continuous':
+        await this.playContinuous();
+        return;
+      default:
+        return;
+    }
+  }
+
+  private _enterSourceAt(time: number, play: boolean): void {
+    this._stopSyncMonitor();
+    this.recordingAudio.pause();
+
+    if (this.segments.length > 0) {
+      const last = this.segments[this.segments.length - 1];
+      this._sourceEndTime = last.sourceEndTime;
+      const index = findPracticeSegmentIndex(this.segments, time, 'source');
+      this.syncSegmentIndex = index >= 0 ? index : 0;
+    } else {
+      this._sourceEndTime = null;
+      this.syncSegmentIndex = 0;
+    }
+
+    this.sourceAudio.currentTime = this._clampAudioTime(this.sourceAudio, time);
+    this.mode = 'source';
+    this.paused = !play;
+    this._finished = false;
+    this._emitState();
+  }
+
+  private _enterRecordingAt(time: number, play: boolean): void {
+    this._stopSyncMonitor();
+    this.sourceAudio.pause();
+
+    if (this.segments.length > 0) {
+      const last = this.segments[this.segments.length - 1];
+      this._recordingEndTime = last.recordingEndTime;
+      const index = findPracticeSegmentIndex(this.segments, time, 'recording');
+      this.syncSegmentIndex = index >= 0 ? index : 0;
+    } else {
+      this._recordingEndTime = null;
+      this.syncSegmentIndex = 0;
+    }
+
+    this.recordingAudio.currentTime = this._clampAudioTime(this.recordingAudio, time);
+    this.mode = 'recording';
+    this.paused = !play;
+    this._finished = false;
     this._emitState();
   }
 
@@ -368,13 +438,13 @@ export class DualTrackPlayback {
 
   private _handleSourceEnded = (): void => {
     if (this.mode === 'source' || this.mode === 'continuous') {
-      this.stop();
+      this._pauseAtEnd();
     }
   };
 
   private _handleRecordingEnded = (): void => {
     if (this.mode === 'recording' || this.mode === 'continuous') {
-      this.stop();
+      this._pauseAtEnd();
     }
   };
 
@@ -452,6 +522,7 @@ export class DualTrackPlayback {
     this.recordingAudio.pause();
     this.mode = 'sync';
     this.paused = false;
+    this._finished = false;
     this.syncSegmentIndex = index;
     this._syncSegment = segment;
     this._syncSegmentIndex = index;
@@ -472,7 +543,7 @@ export class DualTrackPlayback {
       if (nextIndex < this.segments.length) {
         await this.playSyncFromSegment(nextIndex);
       } else {
-        this.stop();
+        this._pauseAtEnd();
       }
     }
   }
@@ -503,7 +574,7 @@ export class DualTrackPlayback {
     }
 
     if (this.sourceAudio.currentTime >= this._sourceEndTime - SYNC_END_EPSILON) {
-      this.stop();
+      this._pauseAtEnd();
     }
   }
 
@@ -513,7 +584,7 @@ export class DualTrackPlayback {
     }
 
     if (this.recordingAudio.currentTime >= this._recordingEndTime - SYNC_END_EPSILON) {
-      this.stop();
+      this._pauseAtEnd();
     }
   }
 
@@ -558,7 +629,7 @@ export class DualTrackPlayback {
     if (nextIndex < this.segments.length) {
       this._startSyncSegment(nextIndex);
     } else {
-      this.stop();
+      this._pauseAtEnd();
     }
   }
 
@@ -613,14 +684,14 @@ export class DualTrackPlayback {
       this._sourceEndTime !== null &&
       this.sourceAudio.currentTime >= this._sourceEndTime - SYNC_END_EPSILON
     ) {
-      this.stop();
+      this._pauseAtEnd();
       return;
     }
     if (
       this._recordingEndTime !== null &&
       this.recordingAudio.currentTime >= this._recordingEndTime - SYNC_END_EPSILON
     ) {
-      this.stop();
+      this._pauseAtEnd();
     }
   }
 

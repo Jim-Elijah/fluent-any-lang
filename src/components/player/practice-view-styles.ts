@@ -145,7 +145,7 @@ export const practiceViewStyles = css`
   }
 
   :host([data-session-dock]) {
-    padding-bottom: var(--session-dock-inset, var(--echo-dock-inset, 140px));
+    padding-bottom: var(--session-dock-inset, var(--echo-dock-inset, 180px));
   }
 
   .tips-summary {

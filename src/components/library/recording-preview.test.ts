@@ -99,8 +99,11 @@ type RecordingPreviewInternals = HTMLElement & {
     playSync: () => Promise<void>;
     playSyncFromSegment: (index: number) => Promise<void>;
     playSyncAt: (time: number, axis: 'source' | 'recording') => Promise<boolean>;
+    playContinuous: () => Promise<void>;
+    playContinuousAt: (time: number, axis: 'source' | 'recording') => Promise<boolean>;
     goToSegment: (index: number) => Promise<void>;
     replaySegment: (index?: number) => Promise<void>;
+    selectPaused: (mode: 'source' | 'recording') => void;
     pause: () => void;
     resume: () => Promise<void>;
     togglePause: () => Promise<void>;
@@ -263,7 +266,7 @@ describe('recording-preview', () => {
     await el.updateComplete;
     await flushUpdates();
 
-    expect(setViewRangeSpy).toHaveBeenCalledWith({ start: 0, end: 5 });
+    expect(setViewRangeSpy).toHaveBeenCalledWith({ start: 0, end: 4.5 });
   });
 
   it('sets view range to full practice span after loading shadowing tracks', async () => {
@@ -278,7 +281,7 @@ describe('recording-preview', () => {
     await el.updateComplete;
     await flushUpdates();
 
-    expect(setViewRangeSpy).toHaveBeenCalledWith({ start: 0, end: 10 });
+    expect(setViewRangeSpy).toHaveBeenCalledWith({ start: 0, end: 9 });
   });
 
   it('clamps view range to practice bounds when user zooms outside segments', async () => {
@@ -324,8 +327,11 @@ describe('recording-preview', () => {
       playSync: vi.fn().mockResolvedValue(undefined),
       playSyncFromSegment,
       playSyncAt: vi.fn().mockResolvedValue(true),
+      playContinuous: vi.fn().mockResolvedValue(undefined),
+      playContinuousAt: vi.fn().mockResolvedValue(true),
       goToSegment: vi.fn().mockResolvedValue(undefined),
       replaySegment: vi.fn().mockResolvedValue(undefined),
+      selectPaused: vi.fn(),
       stop: vi.fn(),
       pause: vi.fn(),
       resume: vi.fn().mockResolvedValue(undefined),
@@ -937,6 +943,18 @@ describe('recording-preview', () => {
     await el.updateComplete;
     await flushUpdates();
   }
+
+  it('defaults to recording mode paused without autoplay after loading tracks', async () => {
+    const el = await renderPreview();
+    await loadDualTracks(el);
+
+    expect(el._playMode).toBe('recording');
+    expect(el._playbackPaused).toBe(true);
+    expect(el._recordingTrackId).toBe('rec-track');
+    expect(
+      el.shadowRoot?.querySelector('.controls ui-button[variant="primary"]')?.textContent,
+    ).toContain('播放录音');
+  });
 
   it('starts source playback from the control button', async () => {
     const el = await renderPreview();

@@ -909,6 +909,7 @@ export class PracticeView extends NavigatorElement {
             .echoBusy="${this._sessionPhase === 'preparing' ||
             this._sessionPhase === 'stopping' ||
             this._sessionPhase === 'draining'}"
+            .reserveSessionDockInset=${sessionActive}
             .recordingSupported="${this._recordingSupported}"
             .micReady=${this._canUseMicrophone}
             .micBlockedTitle=${this._micDisabledTitle}
@@ -1411,12 +1412,21 @@ export class PracticeView extends NavigatorElement {
     this._controller.setShadowingGapCompress(gapPolicy === 'compress');
 
     // Align recording to a full sentence so PracticeSegment source/recording axes match.
-    // At t=0 (typical after load / rewind), always start from the first subtitle —
-    // its startTime may be > 0 when there is a non-subtitled intro.
+    this._alignShadowingStartSegment();
+    void this._scrollSubtitleActiveIntoView();
+  };
+
+  /**
+   * Seek to the sentence that shadowing should start from.
+   * Returns -1 when there are no subtitle segments (audio-only shadowing).
+   */
+  private _alignShadowingStartSegment(): number {
     const snapshot = this._controller.getSnapshot();
     if (snapshot.segments.length === 0) {
-      return;
+      return -1;
     }
+    // At t=0 (typical after load / rewind), always start from the first subtitle —
+    // its startTime may be > 0 when there is a non-subtitled intro.
     const segmentIndex =
       snapshot.currentTime <= 0
         ? 0
@@ -1424,7 +1434,18 @@ export class PracticeView extends NavigatorElement {
           ? snapshot.currentSegmentIndex
           : 0;
     this._controller.seekToSegment(segmentIndex, false, { force: true });
-  };
+    return segmentIndex;
+  }
+
+  private async _scrollSubtitleActiveIntoView(): Promise<void> {
+    await this.updateComplete;
+    await this._subtitlePanelEl?.updateComplete;
+    // Let session-dock inset (and reserveSessionDockInset) settle before visibility check.
+    await new Promise<void>((resolve) => {
+      requestAnimationFrame(() => resolve());
+    });
+    this._subtitlePanelEl?.scrollActiveIntoView();
+  }
 
   private _applyEchoPlaybackProfile = (): void => {
     this._controller.setShadowingGapCompress(false);
@@ -1565,6 +1586,12 @@ export class PracticeView extends NavigatorElement {
   private _onSessionCountdownStart = (): void => {
     this._setSessionPhase('countdown');
     this._sessionSpeakCue = false;
+    // Shadowing: align + scroll as soon as the user taps record (first cue may be off-screen).
+    // No-op when there are no subtitle segments.
+    if (this._speakingMode === 'shadowing') {
+      this._alignShadowingStartSegment();
+      void this._scrollSubtitleActiveIntoView();
+    }
   };
 
   private _onSessionCountdownEnd = (event: CustomEvent<RecordingCountdownEndDetail>): void => {

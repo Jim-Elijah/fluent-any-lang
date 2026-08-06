@@ -18,6 +18,7 @@ import { Message } from '../ui/message.js';
 import { isControlledOpen } from '../ui/internal/controlled-state.js';
 import { OverlayController } from '../ui/internal/overlay-controller.js';
 import { Z_INDEX } from '../ui/internal/z-index.js';
+import { SESSION_DOCK_INSET_PX } from './echo-session-dock.js';
 
 export type SubtitleImportedDetail = {
   mediaId: string;
@@ -239,7 +240,7 @@ export class SubtitlePanel extends LitElement {
       padding: 6px var(--space-inline);
       cursor: pointer;
       transition: background-color 0.15s ease;
-      /* Keep active rows clear of the session dock on any scroll container. */
+      /* Keep active rows clear of the session dock (covers mobile nav while active). */
       scroll-margin-bottom: var(--session-dock-inset, 0px);
     }
 
@@ -393,6 +394,13 @@ export class SubtitlePanel extends LitElement {
    */
   @property({ type: Boolean })
   echoBusy = false;
+
+  /**
+   * When true, treat the tallest session-dock height as bottom chrome even before
+   * `--session-dock-inset` is published (shadowing countdown / echo preparing).
+   */
+  @property({ type: Boolean })
+  reserveSessionDockInset = false;
 
   @property({ type: Boolean })
   recordingSupported = true;
@@ -975,6 +983,24 @@ export class SubtitlePanel extends LitElement {
     this._translationVisible = !this._translationVisible;
   }
 
+  /**
+   * Scroll the active subtitle row into view if needed.
+   * No-op when there are no subtitle segments (e.g. shadowing without cues).
+   */
+  scrollActiveIntoView(): void {
+    const snapshot = this._controllerHost?.snapshot;
+    if (!snapshot?.hasSubtitles || snapshot.segments.length === 0) {
+      return;
+    }
+    const index = this._getActiveSegmentIndex(snapshot);
+    if (index < 0 || index >= snapshot.segments.length) {
+      return;
+    }
+    // Force a pass even when the active index did not change (e.g. shadowing record).
+    this._lastScrolledIndex = index;
+    this._scrollActiveIntoView(index);
+  }
+
   private _handleSegmentClick(index: number): void {
     if (this.seekDisabled) {
       return;
@@ -988,9 +1014,115 @@ export class SubtitlePanel extends LitElement {
     }
 
     const selector = `[data-segment-index="${index}"]`;
-    const block = this.echoMode && this.echoRecordingSegmentIndex >= 0 ? 'nearest' : 'center';
-    this.renderRoot.querySelector(selector)?.scrollIntoView({ block, behavior: 'smooth' });
-    this._overlay?.getPopupEl(selector)?.scrollIntoView({ block, behavior: 'smooth' });
+
+    const scrollTarget = (el: Element | null | undefined) => {
+      if (!(el instanceof HTMLElement)) {
+        return;
+      }
+      // Skip when already fully visible (dock + mobile nav accounted for); otherwise center.
+      if (this._isElementFullyVisible(el)) {
+        return;
+      }
+      el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    };
+
+    scrollTarget(this.renderRoot.querySelector(selector));
+    scrollTarget(this._overlay?.getPopupEl(selector));
+  }
+
+  /** True when `el` is fully inside every clipping ancestor and the clear viewport (minus bottom chrome). */
+  private _isElementFullyVisible(el: Element): boolean {
+    const rect = el.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) {
+      return false;
+    }
+
+    const bottomInset = this._readBottomChromeInset();
+    const epsilon = 1;
+
+    // Viewport: session dock covers the mobile bottom nav while a session is active.
+    if (
+      rect.top < -epsilon ||
+      rect.left < -epsilon ||
+      rect.bottom > window.innerHeight - bottomInset + epsilon ||
+      rect.right > window.innerWidth + epsilon
+    ) {
+      return false;
+    }
+
+    let ancestor = this._parentCrossingRoots(el);
+    while (ancestor) {
+      const style = getComputedStyle(ancestor);
+      const clipsY = SubtitlePanel._overflowClips(style.overflowY);
+      const clipsX = SubtitlePanel._overflowClips(style.overflowX);
+      if (clipsY || clipsX) {
+        const parentRect = ancestor.getBoundingClientRect();
+        const top = parentRect.top + ancestor.clientTop;
+        const left = parentRect.left + ancestor.clientLeft;
+        const bottom = top + ancestor.clientHeight;
+        const right = left + ancestor.clientWidth;
+
+        if (
+          (clipsY && (rect.top < top - epsilon || rect.bottom > bottom + epsilon)) ||
+          (clipsX && (rect.left < left - epsilon || rect.right > right + epsilon))
+        ) {
+          return false;
+        }
+      }
+      ancestor = this._parentCrossingRoots(ancestor);
+    }
+
+    return true;
+  }
+
+  /**
+   * Bottom obstruction: session dock (covers nav) or mobile nav when no dock.
+   * While an echo row is active but CSS inset is not applied yet, reserve the
+   * tallest dock floor so scroll-before-dock does not leave the line under the dock.
+   */
+  private _readBottomChromeInset(): number {
+    const dockCss = SubtitlePanel._resolveCssLength(
+      getComputedStyle(document.documentElement).getPropertyValue('--session-dock-inset'),
+    );
+    const nav = SubtitlePanel._resolveCssLength(
+      getComputedStyle(this).getPropertyValue('--app-bottom-nav-inset') ||
+        getComputedStyle(document.documentElement).getPropertyValue('--app-bottom-nav-inset'),
+    );
+    const sessionReserve =
+      this.reserveSessionDockInset || (this.echoMode && this.echoRecordingSegmentIndex >= 0)
+        ? SESSION_DOCK_INSET_PX
+        : 0;
+    return Math.max(dockCss, sessionReserve, nav);
+  }
+
+  /** Resolve a CSS length (incl. `calc` / `env`) to CSS pixels. */
+  private static _resolveCssLength(raw: string): number {
+    const value = raw.trim();
+    if (!value) {
+      return 0;
+    }
+    if (/^-?[\d.]+px$/i.test(value)) {
+      return Number.parseFloat(value);
+    }
+    const probe = document.createElement('div');
+    probe.style.cssText =
+      'position:absolute;visibility:hidden;pointer-events:none;padding-bottom:' + value;
+    document.body.appendChild(probe);
+    const px = Number.parseFloat(getComputedStyle(probe).paddingBottom);
+    probe.remove();
+    return Number.isFinite(px) ? px : 0;
+  }
+
+  private _parentCrossingRoots(el: Element): Element | null {
+    if (el.parentElement) {
+      return el.parentElement;
+    }
+    const root = el.getRootNode();
+    return root instanceof ShadowRoot ? root.host : null;
+  }
+
+  private static _overflowClips(value: string): boolean {
+    return value === 'auto' || value === 'scroll' || value === 'hidden' || value === 'overlay';
   }
 }
 

@@ -27,8 +27,8 @@ export const EchoSessionDockEventType = {
   CANCEL: 'echo-session-cancel',
 } as const;
 
-/** Approx. dock height for scroll-padding / page inset when visible. */
-export const SESSION_DOCK_INSET_PX = 140;
+/** Approx. dock *content* height for the taller recording state (with waveform). */
+export const SESSION_DOCK_INSET_PX = 180;
 
 /** @deprecated Prefer {@link SESSION_DOCK_INSET_PX}. */
 export const ECHO_SESSION_DOCK_INSET_PX = SESSION_DOCK_INSET_PX;
@@ -38,6 +38,7 @@ const DOCK_PORTAL_STYLES = `
     position: fixed;
     left: 0;
     right: 0;
+    /* Cover the mobile bottom nav during the session to keep focus on practice. */
     bottom: 0;
     z-index: var(--session-dock-z, ${Z_INDEX.ECHO_SESSION_DOCK});
     pointer-events: auto;
@@ -127,10 +128,14 @@ export class EchoSessionDock extends LitElement {
 
   private _portal: PortalHost | null = null;
   private _insetApplied = false;
+  /** Tallest dock content height seen this session (listening vs recording). */
+  private _maxDockContentPx = 0;
   private _pulseTimer: ReturnType<typeof setTimeout> | null = null;
+  private _measureFrame: number | null = null;
 
   disconnectedCallback(): void {
     this._clearPulseTimer();
+    this._cancelMeasure();
     this._clearInset();
     this._portal?.destroy();
     this._portal = null;
@@ -157,6 +162,11 @@ export class EchoSessionDock extends LitElement {
     return nothing;
   }
 
+  /** Reserve scroll room for the whole session, including preparing / countdown. */
+  private _shouldReserveInset(): boolean {
+    return this.phase !== 'idle';
+  }
+
   private _isVisible(): boolean {
     return this.phase === 'listening' || this.phase === 'draining' || this.phase === 'recording';
   }
@@ -177,14 +187,23 @@ export class EchoSessionDock extends LitElement {
     const portal = this._getPortal();
     portal.updateOptions({ zIndex: this.zIndex, popupContainer: this.popupContainer });
 
-    if (!this._isVisible()) {
+    if (!this._shouldReserveInset()) {
       portal.hide();
       this._clearInset();
       return;
     }
 
+    // Apply the tallest-state floor before paint so lyric scroll sees dock clearance.
     this._applyInset();
+
+    if (!this._isVisible()) {
+      portal.ensureMount();
+      portal.hide();
+      return;
+    }
+
     portal.render(this._dockTemplate(), this);
+    this._scheduleMeasureInset();
   }
 
   private _dockTemplate() {
@@ -269,34 +288,76 @@ export class EchoSessionDock extends LitElement {
     }
   }
 
+  private _cancelMeasure(): void {
+    if (this._measureFrame !== null) {
+      cancelAnimationFrame(this._measureFrame);
+      this._measureFrame = null;
+    }
+  }
+
+  private _scheduleMeasureInset(): void {
+    this._cancelMeasure();
+    this._measureFrame = requestAnimationFrame(() => {
+      this._measureFrame = null;
+      const dockEl = this._portal?.getPopupEl('.dock');
+      if (!dockEl) {
+        return;
+      }
+      const measured = Math.ceil(dockEl.getBoundingClientRect().height);
+      if (measured > this._maxDockContentPx) {
+        this._maxDockContentPx = measured;
+        this._applyInset();
+      }
+    });
+  }
+
+  /**
+   * Publishes dock content clearance (max of listening/recording heights).
+   * Dock is bottom:0 and covers the mobile nav during the session.
+   */
   private _applyInset(): void {
     if (typeof document === 'undefined') {
       return;
     }
-    const value = `${SESSION_DOCK_INSET_PX}px`;
+    const contentPx = Math.max(SESSION_DOCK_INSET_PX, this._maxDockContentPx);
+    this._maxDockContentPx = contentPx;
+    const value = `${contentPx}px`;
     document.documentElement.style.setProperty('scroll-padding-bottom', value);
     document.documentElement.style.setProperty('--session-dock-inset', value);
     // Compat for subtitle fullscreen padding until consumers migrate.
     document.documentElement.style.setProperty('--echo-dock-inset', value);
-    const main = document.querySelector('.main-content');
-    if (main instanceof HTMLElement) {
+    const main = this._findMainContent();
+    if (main) {
       main.style.scrollPaddingBottom = value;
     }
     this._insetApplied = true;
   }
 
   private _clearInset(): void {
+    this._cancelMeasure();
+    this._maxDockContentPx = 0;
     if (!this._insetApplied || typeof document === 'undefined') {
       return;
     }
     document.documentElement.style.removeProperty('scroll-padding-bottom');
     document.documentElement.style.removeProperty('--session-dock-inset');
     document.documentElement.style.removeProperty('--echo-dock-inset');
-    const main = document.querySelector('.main-content');
-    if (main instanceof HTMLElement) {
+    const main = this._findMainContent();
+    if (main) {
       main.style.scrollPaddingBottom = '';
     }
     this._insetApplied = false;
+  }
+
+  private _findMainContent(): HTMLElement | null {
+    const fromShell = document
+      .querySelector('app-shell')
+      ?.shadowRoot?.querySelector('.main-content');
+    if (fromShell instanceof HTMLElement) {
+      return fromShell;
+    }
+    const fallback = document.querySelector('.main-content');
+    return fallback instanceof HTMLElement ? fallback : null;
   }
 }
 
