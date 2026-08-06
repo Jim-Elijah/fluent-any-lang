@@ -129,6 +129,16 @@ vi.mock('../../lib/echo-clip-player.js', () => ({
   }),
 }));
 
+const mockCheckMicrophoneStatus = vi.fn().mockResolvedValue('granted');
+
+vi.mock('../../lib/microphone-access.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../lib/microphone-access.js')>();
+  return {
+    ...actual,
+    checkMicrophoneStatus: (...args: unknown[]) => mockCheckMicrophoneStatus(...args),
+  };
+});
+
 import './practice-view.js';
 import type { PracticeView } from './practice-view.js';
 import { mount } from '../ui/test-utils.js';
@@ -277,7 +287,17 @@ describe('practice-view', () => {
     vi.stubGlobal('navigator', {
       ...navigator,
       mediaDevices: {
-        getUserMedia: vi.fn().mockResolvedValue({ getTracks: () => [] }),
+        getUserMedia: vi.fn().mockResolvedValue({
+          getTracks: () => [],
+          getAudioTracks: () => [],
+        }),
+      },
+      permissions: {
+        query: vi.fn().mockResolvedValue({
+          state: 'granted',
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn(),
+        }),
       },
       vibrate: vi.fn(),
     });
@@ -303,6 +323,7 @@ describe('practice-view', () => {
       remaining: 100,
       remainingPercent: 100,
     });
+    mockCheckMicrophoneStatus.mockResolvedValue('granted');
     mockReportError.mockResolvedValue(undefined);
     mockLoadingClose.mockClear();
     mockNoiseMixer.setPlaying.mockClear();
@@ -834,6 +855,8 @@ describe('practice-view', () => {
     tap();
     tap();
     tap();
+    await el.updateComplete;
+    await new Promise((resolve) => setTimeout(resolve, 0));
     await el.updateComplete;
 
     expect(el._sessionPhase).toBe('preparing');

@@ -83,6 +83,7 @@ import {
   AudioRecorder,
   type RecordingCompleteDetail,
   type RecordingCountdownEndDetail,
+  type RecordingErrorDetail,
   type RecordingStateChangeDetail,
 } from './audio-recorder.js';
 import type { RecordingSessionPhase } from './echo-session-dock.js';
@@ -116,6 +117,12 @@ import {
   getSentenceBankList,
   removeFromSentenceBank,
 } from '../../db/service.js';
+import {
+  canRecordWithMicrophone,
+  checkMicrophoneStatus,
+  invalidateMicrophoneStatusCache,
+  type MicrophoneStatus,
+} from '../../lib/microphone-access.js';
 
 type StorageEstimate = {
   usage: number;
@@ -176,6 +183,9 @@ export class PracticeView extends NavigatorElement {
 
   @state()
   private _recordingError = '';
+
+  @state()
+  private _micStatus: MicrophoneStatus = 'prompt';
 
   @state()
   private _shadowingCount = 0;
@@ -281,6 +291,24 @@ export class PracticeView extends NavigatorElement {
     typeof navigator !== 'undefined' &&
     'mediaDevices' in navigator &&
     typeof MediaRecorder !== 'undefined';
+  private _micPermissionStatus: PermissionStatus | null = null;
+
+  private get _canUseMicrophone(): boolean {
+    return this._recordingSupported && canRecordWithMicrophone(this._micStatus);
+  }
+
+  private get _micDisabledTitle(): string {
+    if (!this._recordingSupported) {
+      return msg('当前浏览器不支持录音。');
+    }
+    if (this._micStatus === 'denied') {
+      return msg('未能开启麦克风，请检查权限。');
+    }
+    if (this._micStatus === 'unavailable') {
+      return msg('未检测到可用麦克风。');
+    }
+    return '';
+  }
 
   disconnectedCallback(): void {
     if (supportsKeyboardShortcuts()) {
@@ -289,6 +317,9 @@ export class PracticeView extends NavigatorElement {
     this.removeEventListener(RECORDING_PREVIEW_OPEN_EVENT, this._onRecordingPreviewOpen);
     this.removeEventListener(RECORDING_PREVIEW_CLOSE_EVENT, this._onRecordingPreviewClose);
     this.removeEventListener(AUDIO_FOCUS_REQUEST_EVENT, this._onAudioFocusRequest);
+    document.removeEventListener('visibilitychange', this._onVisibilityChange);
+    this._micPermissionStatus?.removeEventListener('change', this._onMicPermissionChange);
+    this._micPermissionStatus = null;
     if (this._isEchoListenPipelineActive()) {
       this._cancelEchoListen();
     }
@@ -345,6 +376,9 @@ export class PracticeView extends NavigatorElement {
     this.addEventListener(RECORDING_PREVIEW_OPEN_EVENT, this._onRecordingPreviewOpen);
     this.addEventListener(RECORDING_PREVIEW_CLOSE_EVENT, this._onRecordingPreviewClose);
     this.addEventListener(AUDIO_FOCUS_REQUEST_EVENT, this._onAudioFocusRequest);
+    document.addEventListener('visibilitychange', this._onVisibilityChange);
+    void this._attachMicPermissionListener();
+    void this._refreshMicStatus();
     void this._refreshNoiseItems();
     if (supportsKeyboardShortcuts()) {
       getHotkeyManager().registerScope({
@@ -810,16 +844,19 @@ export class PracticeView extends NavigatorElement {
                         .controller=${this._controller}
                         .collectSegments=${true}
                         .shadowingLatencyOffset=${0.35}
-                        .disabled=${!this._recordingSupported || shadowingRemaining <= 0}
+                        .disabled=${!this._recordingSupported ||
+                        !this._canUseMicrophone ||
+                        shadowingRemaining <= 0}
                         .disabledTitle=${shadowingRemaining <= 0
                           ? msg(
                               str`当前音频的影子跟读录音已达上限（${this._shadowingLimit}条），删除旧录音后可继续。`,
                             )
-                          : ''}
+                          : this._micDisabledTitle}
                         .hideWaveform=${true}
                         .beforeRecordingStart=${this._applyShadowingPlaybackProfile}
                         @recording-complete=${this._onShadowingRecordingComplete}
                         @recording-state-change=${this._onRecordingStateChange}
+                        @recording-error=${this._onRecordingError}
                         @recording-countdown-start=${this._onSessionCountdownStart}
                         @recording-countdown-end=${this._onSessionCountdownEnd}
                       ></audio-recorder>`,
@@ -873,6 +910,8 @@ export class PracticeView extends NavigatorElement {
             this._sessionPhase === 'stopping' ||
             this._sessionPhase === 'draining'}"
             .recordingSupported="${this._recordingSupported}"
+            .micReady=${this._canUseMicrophone}
+            .micBlockedTitle=${this._micDisabledTitle}
             .echoLimitPerSegment="${this._echoLimitPerSegment}"
             .seekDisabled=${sessionActive}
             .sentenceBankSegmentIds=${this._sentenceBankSegmentIds}
@@ -900,9 +939,11 @@ export class PracticeView extends NavigatorElement {
                     .pauseMediaOnSegmentEnd=${false}
                     .hideControls=${true}
                     .hideWaveform=${true}
+                    .disabled=${!this._canUseMicrophone}
                     .beforeRecordingStart=${this._applyEchoPlaybackProfile}
                     @recording-complete=${this._onEchoRecordingComplete}
                     @recording-state-change=${this._onRecordingStateChange}
+                    @recording-error=${this._onRecordingError}
                     @recording-countdown-start=${this._onSessionCountdownStart}
                     @recording-countdown-end=${this._onSessionCountdownEnd}
                   ></audio-recorder>`,
@@ -1251,6 +1292,7 @@ export class PracticeView extends NavigatorElement {
     this._resetSessionUi();
     if (type === 'speaking') {
       this._syncSpeakingModeAvailability();
+      void this._refreshMicStatus();
     }
     this._timeTracker.setMode(this._resolveAnalyticsMode());
     if (type === 'speaking') {
@@ -1324,6 +1366,7 @@ export class PracticeView extends NavigatorElement {
     this._recordingsModalOpen = false;
     this._recordingPreviewOpen = false;
     this._timeTracker.setMode(this._resolveAnalyticsMode());
+    void this._refreshMicStatus();
     this._maybeShowTipsForSpeakingMode(mode);
   }
 
@@ -1451,6 +1494,45 @@ export class PracticeView extends NavigatorElement {
     this._echoSegmentIndex = -1;
     this._echoSegment = null;
   };
+
+  private _onRecordingError = (event: CustomEvent<RecordingErrorDetail>): void => {
+    Message.error(event.detail.message);
+    invalidateMicrophoneStatusCache();
+    void this._refreshMicStatus({ force: true });
+  };
+
+  private _onVisibilityChange = (): void => {
+    if (document.visibilityState === 'visible') {
+      void this._refreshMicStatus();
+    }
+  };
+
+  private _onMicPermissionChange = (): void => {
+    invalidateMicrophoneStatusCache();
+    void this._refreshMicStatus({ force: true });
+  };
+
+  private async _attachMicPermissionListener(): Promise<void> {
+    try {
+      const status = await navigator.permissions?.query({
+        name: 'microphone' as PermissionName,
+      });
+      if (!status) {
+        return;
+      }
+      this._micPermissionStatus = status;
+      status.addEventListener('change', this._onMicPermissionChange);
+    } catch {
+      // Permissions API may not support microphone query in this browser.
+    }
+  }
+
+  private async _refreshMicStatus(options: { force?: boolean } = {}): Promise<void> {
+    const status = await checkMicrophoneStatus(options);
+    if (this._micStatus !== status) {
+      this._micStatus = status;
+    }
+  }
 
   private _onRecordingStateChange = (event: CustomEvent<RecordingStateChangeDetail>): void => {
     this._recording = event.detail.recording;
@@ -1608,6 +1690,12 @@ export class PracticeView extends NavigatorElement {
     event: CustomEvent<EchoRecordRequestDetail>,
   ): Promise<void> => {
     if (!this._recordingSupported || this._recording || this._sessionPhase !== 'idle') {
+      return;
+    }
+
+    await this._refreshMicStatus({ force: true });
+    if (!this._canUseMicrophone) {
+      Message.error(this._micDisabledTitle || msg('未能开启麦克风，请检查权限。'));
       return;
     }
 

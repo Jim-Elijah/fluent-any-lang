@@ -171,8 +171,10 @@ describe('audio-recorder component', () => {
 
   beforeEach(() => {
     lastRecorder = null;
+    const tracks = [{ stop: vi.fn() }];
     const stream = {
-      getTracks: () => [{ stop: vi.fn() }],
+      getTracks: () => tracks,
+      getAudioTracks: () => tracks,
     } as unknown as MediaStream;
 
     getUserMedia = vi.fn().mockResolvedValue(stream);
@@ -253,7 +255,10 @@ describe('audio-recorder component', () => {
 
   it('releases a warmed-up mic that never recorded', async () => {
     const stop = vi.fn();
-    getUserMedia.mockResolvedValue({ getTracks: () => [{ stop }] } as unknown as MediaStream);
+    getUserMedia.mockResolvedValue({
+      getTracks: () => [{ stop }],
+      getAudioTracks: () => [{ stop }],
+    } as unknown as MediaStream);
     const el = await renderRecorder();
 
     await el.warmUpMicrophone();
@@ -264,7 +269,10 @@ describe('audio-recorder component', () => {
 
   it('destroy releases a warmed-up mic', async () => {
     const stop = vi.fn();
-    getUserMedia.mockResolvedValue({ getTracks: () => [{ stop }] } as unknown as MediaStream);
+    getUserMedia.mockResolvedValue({
+      getTracks: () => [{ stop }],
+      getAudioTracks: () => [{ stop }],
+    } as unknown as MediaStream);
     const el = await renderRecorder();
 
     await el.warmUpMicrophone();
@@ -275,7 +283,10 @@ describe('audio-recorder component', () => {
 
   it('keeps the mic while recording', async () => {
     const stop = vi.fn();
-    getUserMedia.mockResolvedValue({ getTracks: () => [{ stop }] } as unknown as MediaStream);
+    getUserMedia.mockResolvedValue({
+      getTracks: () => [{ stop }],
+      getAudioTracks: () => [{ stop }],
+    } as unknown as MediaStream);
     const el = await renderRecorder();
 
     await el.startRecording();
@@ -438,8 +449,32 @@ describe('audio-recorder component', () => {
     await el.startRecording();
     await el.updateComplete;
 
-    expect(el.shadowRoot?.textContent).toContain('未能开启麦克风');
-    expect(onError).toHaveBeenCalled();
+    expect(el.shadowRoot?.querySelector('ui-alert')).toBeNull();
+    expect(onError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        detail: expect.objectContaining({
+          message: expect.stringContaining('未能开启麦克风'),
+        }),
+      }),
+    );
+  });
+
+  it('shows unavailable error when no microphone device is found', async () => {
+    getUserMedia.mockRejectedValue(new DOMException('not found', 'NotFoundError'));
+    const el = await renderRecorder();
+    const onError = vi.fn();
+    el.addEventListener(AudioRecorderEventType.ERROR, onError);
+
+    await el.startRecording();
+    await el.updateComplete;
+
+    expect(onError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        detail: expect.objectContaining({
+          message: expect.stringContaining('未检测到可用麦克风'),
+        }),
+      }),
+    );
   });
 
   it('shows generic recorder error from MediaRecorder failure', async () => {
@@ -451,8 +486,14 @@ describe('audio-recorder component', () => {
     lastRecorder?.dispatchError(new DOMException('failed', 'UnknownError'));
     await el.updateComplete;
 
-    expect(el.shadowRoot?.textContent).toContain('录音失败');
-    expect(onError).toHaveBeenCalled();
+    expect(el.shadowRoot?.querySelector('ui-alert')).toBeNull();
+    expect(onError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        detail: expect.objectContaining({
+          message: expect.stringContaining('录音失败'),
+        }),
+      }),
+    );
   });
 
   it('does not start when disabled', async () => {
@@ -482,8 +523,14 @@ describe('audio-recorder component', () => {
     await el.startRecording();
     await el.updateComplete;
 
-    expect(el.shadowRoot?.textContent).toContain('当前浏览器不支持录音');
-    expect(onError).toHaveBeenCalled();
+    expect(el.shadowRoot?.querySelector('ui-alert')).toBeNull();
+    expect(onError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        detail: expect.objectContaining({
+          message: expect.stringContaining('当前浏览器不支持录音'),
+        }),
+      }),
+    );
   });
 
   it('stops without saving when save is false', async () => {

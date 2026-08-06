@@ -397,6 +397,13 @@ export class SubtitlePanel extends LitElement {
   @property({ type: Boolean })
   recordingSupported = true;
 
+  /** False when the microphone is denied or unavailable. */
+  @property({ type: Boolean })
+  micReady = true;
+
+  @property({ type: String })
+  micBlockedTitle = '';
+
   @property({ type: Number })
   echoLimitPerSegment = 10;
 
@@ -688,6 +695,7 @@ export class SubtitlePanel extends LitElement {
       ]?.length ?? 0) >= this.echoLimitPerSegment;
     const disabled =
       !this.recordingSupported ||
+      !this.micReady ||
       (this.echoBusy && !isActiveRow) ||
       (this.echoRecordingSegmentIndex >= 0 && !isActiveRow) ||
       (!isActiveRow && atLimit);
@@ -697,9 +705,10 @@ export class SubtitlePanel extends LitElement {
         ? msg(str`该句录音已达上限（${this.echoLimitPerSegment}条），删除旧录音后可继续。`)
         : !this.recordingSupported
           ? msg('当前浏览器不支持录音。')
-          : msg('跟读');
-    // Keep tip when disabled due to limit / unsupported; hide when another row is recording.
-    const tipDisabled = disabled && !atLimit && this.recordingSupported;
+          : !this.micReady
+            ? this.micBlockedTitle || msg('未能开启麦克风，请检查权限。')
+            : msg('跟读');
+    const tipDisabled = disabled && !atLimit && this.recordingSupported && this.micReady;
 
     return html`
       <ui-tooltip

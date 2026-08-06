@@ -1,5 +1,6 @@
 import { msg } from '@lit/localize';
 import { getAudioContext } from './audio-context.js';
+// import { Message } from '../components/ui/message.js';
 
 export type RecorderState = 'inactive' | 'recording' | 'paused';
 
@@ -71,12 +72,32 @@ export class AudioRecorderController {
     try {
       this.stream = await navigator.mediaDevices.getUserMedia({
         audio: {
-          /** echoCancellation 会在 shadowing 录音时，部分句子从中间切开，导致缺音 */
+          /** 关闭 AEC (自动回声消除)，否则会在 shadowing 录音时，部分句子从中间切开，导致缺音 */
           echoCancellation: false,
-          noiseSuppression: false,
-          autoGainControl: false,
+          /** 开启 ANS (自动噪声抑制) 和 AGC (自动增益控制) */
+          noiseSuppression: true,
+          autoGainControl: true,
         },
       });
+
+      /**
+       * 打印当前麦克风信息
+       */
+      // const track = this.stream.getAudioTracks()[0];
+      // if (track?.getSettings) {
+      //   const settings = track.getSettings();
+      //   const micInfo = {
+      //     label: track.label,
+      //     deviceId: settings.deviceId,
+      //     groupId: settings.groupId,
+      //     sampleRate: settings.sampleRate,
+      //     channelCount: settings.channelCount,
+      //     echoCancellation: settings.echoCancellation,
+      //     noiseSuppression: settings.noiseSuppression,
+      //     autoGainControl: settings.autoGainControl,
+      //   };
+      //   console.log('[AudioRecorder] 当前麦克风:', micInfo);
+      // }
 
       const mimeType = this.getSupportedMimeType(this.options.mimeType);
 

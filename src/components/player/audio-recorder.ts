@@ -5,6 +5,7 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { MediaController } from '../../controllers/media-controller.js';
 import { WaveformController } from '../../controllers/waveform-controller.js';
 import { AudioRecorderController } from '../../lib/audio-recorder.js';
+import { getMicrophoneErrorMessage } from '../../lib/microphone-access.js';
 import { buildLiveDisplayPeaks } from '../../lib/live-waveform-peaks.js';
 import { ExtendedMediaEventType } from '../../lib/playback-utils.js';
 import { throttle } from '../../lib/util.js';
@@ -12,7 +13,6 @@ import { CountdownCancelledError, runRecordingCountdown } from '../ui/countdown-
 import { Message } from '../ui/message.js';
 import { shouldSkipRecordingCountdown } from '../../lib/user-settings.js';
 import type { PracticeSegment, SubtitleSegment } from '../../types/models.js';
-import '../ui/alert.js';
 import '../ui/icon.js';
 import '../ui/button.js';
 import '../ui/tooltip.js';
@@ -125,9 +125,6 @@ export class AudioRecorder extends LitElement {
   private _recording = false;
 
   @state()
-  private _recordingError = '';
-
-  @state()
   private _hasWaveform = false;
 
   private readonly _waveformController = new WaveformController();
@@ -166,7 +163,6 @@ export class AudioRecorder extends LitElement {
 
   private readonly _audioRecorder = new AudioRecorderController({
     onStart: () => {
-      this._recordingError = '';
       this._practiceSegments = [];
       this._recordingStartedAt = performance.now();
       this._openSegment = null;
@@ -233,12 +229,7 @@ export class AudioRecorder extends LitElement {
       this._hasWaveform = false;
       this._liveTrackId = null;
 
-      const message =
-        error.name === 'NotAllowedError'
-          ? msg('未能开启麦克风，请检查权限。')
-          : msg('录音失败，请重试。');
-      this._recordingError = message;
-      this._dispatchError(message);
+      this._dispatchError(getMicrophoneErrorMessage(error));
     },
     onStateChange: (state) => {
       this._setRecording(state === 'recording' || state === 'paused');
@@ -285,9 +276,6 @@ export class AudioRecorder extends LitElement {
                   <ui-icon name="${this._recording ? 'stop-recording' : 'micro'}"></ui-icon>
                 </ui-button>
               </ui-tooltip>
-              ${this._recordingError
-                ? html`<ui-alert type="error">${this._recordingError}</ui-alert>`
-                : null}
             </div>
           `
         : null}
@@ -350,13 +338,10 @@ export class AudioRecorder extends LitElement {
     }
 
     if (!this._recordingSupported) {
-      const message = msg('当前浏览器不支持录音。');
-      this._recordingError = message;
-      this._dispatchError(message);
+      this._dispatchError(msg('当前浏览器不支持录音。'));
       return;
     }
 
-    this._recordingError = '';
     this._stopReason = 'manual';
 
     let countdownSkipped = false;
@@ -386,11 +371,7 @@ export class AudioRecorder extends LitElement {
     try {
       await this._audioRecorder.start();
     } catch {
-      if (!this._recordingError) {
-        const message = msg('未能开启麦克风，请检查权限。');
-        this._recordingError = message;
-        this._dispatchError(message);
-      }
+      // onError already dispatched recording-error for init/start failures.
       return;
     }
 
