@@ -6,6 +6,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import basicSsl from '@vitejs/plugin-basic-ssl';
 
 const rootDir = dirname(fileURLToPath(import.meta.url));
 
@@ -37,6 +38,9 @@ function readCommitHash(): string {
 }
 
 export default defineConfig({
+  server: {
+    host: true,
+  },
   define: {
     __APP_VERSION__: JSON.stringify(readPackageVersion()),
     __COMMIT_HASH__: JSON.stringify(readCommitHash()),
@@ -90,6 +94,7 @@ export default defineConfig({
         enabled: false,
       },
     }),
+    basicSsl(),
   ],
   test: {
     environment: 'happy-dom',
