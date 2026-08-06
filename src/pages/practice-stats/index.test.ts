@@ -22,8 +22,20 @@ vi.mock('../../lib/error-reporter.js', () => ({
 import './index.js';
 import type { PracticeStatsPage } from './index.js';
 
+/** Local calendar date key for `daysAgo` days before today (0 = today). */
+function dateKeyDaysAgo(daysAgo: number): string {
+  const d = new Date();
+  d.setHours(12, 0, 0, 0);
+  d.setDate(d.getDate() - daysAgo);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 function makeSession(overrides: Partial<PracticeSession> = {}): PracticeSession {
-  const startedAt = overrides.startedAt ?? Date.parse('2026-07-10T10:00:00');
+  const dateKey = overrides.dateKey ?? dateKeyDaysAgo(1);
+  const startedAt = overrides.startedAt ?? Date.parse(`${dateKey}T10:00:00`);
   return {
     id: 'sess-1',
     mediaId: 'media-1',
@@ -34,7 +46,7 @@ function makeSession(overrides: Partial<PracticeSession> = {}): PracticeSession 
     startedAt,
     endedAt: startedAt + 120_000,
     activeMs: 120_000,
-    dateKey: '2026-07-10',
+    dateKey,
     ...overrides,
   };
 }
@@ -101,14 +113,16 @@ describe('practice-stats-page', () => {
   });
 
   it('renders populated dashboard with trend, breakdown, and ranking', async () => {
+    const day1 = dateKeyDaysAgo(2);
+    const day2 = dateKeyDaysAgo(1);
     mockGetAllPracticeSessions.mockResolvedValue([
       makeSession({
         id: 's1',
         activeMs: 60_000,
         mode: 'free',
-        dateKey: '2026-07-24',
-        startedAt: Date.parse('2026-07-24T10:00:00'),
-        endedAt: Date.parse('2026-07-24T10:01:00'),
+        dateKey: day1,
+        startedAt: Date.parse(`${day1}T10:00:00`),
+        endedAt: Date.parse(`${day1}T10:01:00`),
       }),
       makeSession({
         id: 's2',
@@ -117,9 +131,9 @@ describe('practice-stats-page', () => {
         mediaType: 'video',
         mode: 'echo',
         activeMs: 90_000,
-        dateKey: '2026-07-25',
-        startedAt: Date.parse('2026-07-25T12:00:00'),
-        endedAt: Date.parse('2026-07-25T12:01:30'),
+        dateKey: day2,
+        startedAt: Date.parse(`${day2}T12:00:00`),
+        endedAt: Date.parse(`${day2}T12:01:30`),
       }),
     ]);
     const el = await renderPage();
@@ -157,13 +171,14 @@ describe('practice-stats-page', () => {
   });
 
   it('shows custom date inputs and navigates from ranking', async () => {
+    const dateKey = dateKeyDaysAgo(1);
     mockGetAllPracticeSessions.mockResolvedValue([
       makeSession({
         mediaTitle: 'Ranked Track',
         activeMs: 180_000,
-        dateKey: '2026-07-25',
-        startedAt: Date.parse('2026-07-25T09:00:00'),
-        endedAt: Date.parse('2026-07-25T09:03:00'),
+        dateKey,
+        startedAt: Date.parse(`${dateKey}T09:00:00`),
+        endedAt: Date.parse(`${dateKey}T09:03:00`),
       }),
     ]);
     const el = await renderPage();

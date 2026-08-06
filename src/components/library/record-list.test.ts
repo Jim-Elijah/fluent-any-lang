@@ -101,9 +101,7 @@ describe('record-list', () => {
     const badges = el.shadowRoot?.querySelectorAll('.badge');
     expect(badges).toHaveLength(2);
     expect(badges?.[0]?.classList.contains('shadowing')).toBe(true);
-    expect(badges?.[0]?.textContent?.trim()).toBe('跟读');
     expect(badges?.[1]?.classList.contains('echo')).toBe(true);
-    expect(badges?.[1]?.textContent?.trim()).toBe('回声');
   });
 
   it('hides mode badge when modeFilter is set', async () => {

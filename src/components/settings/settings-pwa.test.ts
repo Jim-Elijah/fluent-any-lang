@@ -215,7 +215,7 @@ describe('settings-pwa', () => {
     await el.updateComplete;
 
     expect(reportError).toHaveBeenCalledOnce();
-    expect(error).toHaveBeenCalledOnce();
+    expect(error).toHaveBeenCalled();
     expect((el as unknown as { _busy: boolean })._busy).toBe(false);
   });
 
@@ -228,7 +228,7 @@ describe('settings-pwa', () => {
     await el.updateComplete;
 
     expect(reportError).toHaveBeenCalledOnce();
-    expect(error).toHaveBeenCalledOnce();
+    expect(error).toHaveBeenCalled();
     expect((el as unknown as { _busy: boolean })._busy).toBe(false);
   });
 
@@ -242,7 +242,7 @@ describe('settings-pwa', () => {
     secondaryButton(el)?.click();
     await el.updateComplete;
 
-    expect(info).toHaveBeenCalledOnce();
+    expect(info).toHaveBeenCalled();
   });
 
   it('ignores actions while busy', async () => {

@@ -98,7 +98,7 @@ export async function checkMicrophoneStatus(
       return setCache(await probeMicrophoneAvailability());
     }
   } catch {
-    return setCache('unavailable');
+    // Permissions API unsupported or failed — fall through to prompt/probe.
   }
 
   if (!options.force) {
