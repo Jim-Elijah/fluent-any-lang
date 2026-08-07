@@ -40,6 +40,11 @@ export type WaveformControllerSnapshot = {
   canLoopSelection: boolean;
 };
 
+export type SetActiveIdOptions = {
+  /** When false, only update focus — do not pause the previous track (dual-track compare). Default true. */
+  pausePrevious?: boolean;
+};
+
 export type PeakIndexRange = { iStart: number; iEnd: number };
 
 export type TrackRect = { id: string; y0: number; y1: number };
@@ -290,7 +295,7 @@ export class WaveformController extends EventTarget {
     this._emitChange();
   }
 
-  setActiveId(id: string): void {
+  setActiveId(id: string, options: SetActiveIdOptions = {}): void {
     if (!this.tracks.some((track) => track.id === id)) {
       return;
     }
@@ -300,9 +305,11 @@ export class WaveformController extends EventTarget {
     }
 
     const previousId = this.activeId;
+    const pausePrevious = options.pausePrevious !== false;
 
-    // 暂停之前正在 active 的 track
-    if (previousId) {
+    // Single-track focus: pause the previous active track. Dual-track compare
+    // (overlay) passes pausePrevious: false so both elements keep playing.
+    if (pausePrevious && previousId) {
       const previous = this.tracks.find((track) => track.id === previousId);
       previous?.audioEl.pause();
     }

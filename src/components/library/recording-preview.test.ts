@@ -85,11 +85,14 @@ type RecordingPreviewInternals = HTMLElement & {
   _controller: {
     activeId: string | null;
     isPlaying: boolean;
-    setActiveId: (id: string) => void;
+    setActiveId: (id: string, options?: { pausePrevious?: boolean }) => void;
     setViewRange: (range: { start: number; end: number } | null) => void;
     addFromBlob: (blob: Blob, name?: string) => Promise<string>;
     getSnapshot: () => { viewRange: { start: number; end: number } | null };
     pause: () => void;
+    prepareLiveTrack: (name?: string) => string;
+    getAudioElement: (id: string) => HTMLAudioElement | null;
+    updateLivePeaks: (id: string, peaks: Float32Array, duration: number) => void;
   };
   _playback: {
     playSource: () => Promise<void>;
@@ -127,6 +130,7 @@ type RecordingPreviewInternals = HTMLElement & {
   _handlePlaySource: () => Promise<void>;
   _handlePlayRecording: () => Promise<void>;
   _handlePlaySync: () => Promise<void>;
+  _setSyncActiveTrack: (segmentIndex: number) => void;
   _resolveTrackViewRange: (
     track: { id: string },
     viewRange: { start: number; end: number } | null,
@@ -1042,6 +1046,47 @@ describe('recording-preview', () => {
     await el._handlePlaySync();
 
     expect(playback.stop).toHaveBeenCalled();
+  });
+
+  it('keeps the other compare track playing when continuous focus flips longer axis', async () => {
+    const el = await renderPreview();
+    const sourceId = el._controller.prepareLiveTrack('原音');
+    const recordingId = el._controller.prepareLiveTrack('录音');
+    el._controller.updateLivePeaks(sourceId, new Float32Array([0.1, 0.2]), 10);
+    el._controller.updateLivePeaks(recordingId, new Float32Array([0.1, 0.2]), 10);
+    el._sourceTrackId = sourceId;
+    el._recordingTrackId = recordingId;
+
+    const sourceAudio = el._controller.getAudioElement(sourceId)!;
+    const recordingAudio = el._controller.getAudioElement(recordingId)!;
+    sourceAudio.pause = vi.fn();
+    recordingAudio.pause = vi.fn();
+
+    // Segment 0: recording longer → active recording. Segment 1: source longer → flips focus.
+    el.segments = [
+      {
+        id: 'a',
+        sourceStartTime: 0,
+        sourceEndTime: 1,
+        recordingStartTime: 0,
+        recordingEndTime: 2,
+      },
+      {
+        id: 'b',
+        sourceStartTime: 2,
+        sourceEndTime: 5,
+        recordingStartTime: 2.5,
+        recordingEndTime: 3.5,
+      },
+    ];
+    el._controller.setActiveId(recordingId);
+    vi.mocked(sourceAudio.pause).mockClear();
+    vi.mocked(recordingAudio.pause).mockClear();
+
+    el._setSyncActiveTrack(1);
+
+    expect(recordingAudio.pause).not.toHaveBeenCalled();
+    expect(el._controller.activeId).toBe(sourceId);
   });
 
   it('stops playback when source play throws', async () => {

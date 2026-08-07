@@ -3,7 +3,7 @@ import { html } from 'lit';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ExtendedMediaEventType } from '../../lib/playback-utils.js';
-import type { SubtitleSegment } from '../../types/models.js';
+import type { PracticeSegment, SubtitleSegment } from '../../types/models.js';
 import { MediaController, type LoadedTrack } from '../../controllers/media-controller.js';
 import { mount } from '../ui/test-utils.js';
 import './audio-recorder.js';
@@ -11,6 +11,7 @@ import {
   AudioRecorderEventType,
   RECORDING_HEAD_PAD_MS,
   RECORDING_TAIL_PAD_MS,
+  applyRecordingLatencyOffset,
   type AudioRecorder,
 } from './audio-recorder.js';
 
@@ -162,6 +163,39 @@ function makeTrack(): LoadedTrack {
     segments: sampleSegments,
   };
 }
+
+describe('applyRecordingLatencyOffset', () => {
+  const base: PracticeSegment[] = [
+    {
+      id: 'a',
+      sourceStartTime: 0,
+      sourceEndTime: 2,
+      recordingStartTime: 0.3,
+      recordingEndTime: 2.0,
+    },
+    {
+      id: 'b',
+      sourceStartTime: 2,
+      sourceEndTime: 4,
+      recordingStartTime: 2.1,
+      recordingEndTime: 2.12,
+    },
+  ];
+
+  it('clamps so recordingEndTime is never before recordingStartTime', () => {
+    const result = applyRecordingLatencyOffset(base.slice(0, 1), 0.35, 2.2);
+    expect(result).toHaveLength(1);
+    expect(result[0].recordingStartTime).toBeCloseTo(0.65, 5);
+    expect(result[0].recordingEndTime).toBeGreaterThanOrEqual(result[0].recordingStartTime);
+    expect(result[0].recordingEndTime).toBeLessThanOrEqual(2.2);
+  });
+
+  it('drops near-zero windows that would invert past totalElapsed', () => {
+    const result = applyRecordingLatencyOffset(base, 0.35, 2.3);
+    expect(result.map((s) => s.id)).toEqual(['a']);
+    expect(result[0].recordingEndTime).toBeGreaterThanOrEqual(result[0].recordingStartTime);
+  });
+});
 
 describe('audio-recorder component', () => {
   let cleanup: (() => void) | undefined;
@@ -564,6 +598,9 @@ describe('audio-recorder component', () => {
 
   it('collects practice segments and can stop on segment end', async () => {
     vi.useFakeTimers();
+    let nowMs = 1_000;
+    vi.spyOn(performance, 'now').mockImplementation(() => nowMs);
+
     const controller = new MediaController();
     await controller.loadTracks([makeTrack()]);
     const el = await renderRecorder({
@@ -574,13 +611,17 @@ describe('audio-recorder component', () => {
     el.addEventListener(AudioRecorderEventType.COMPLETE, onComplete);
 
     const startPromise = el.startRecording();
+    nowMs = 1_000 + RECORDING_HEAD_PAD_MS;
     await vi.advanceTimersByTimeAsync(RECORDING_HEAD_PAD_MS);
     await startPromise;
+
+    nowMs = 3_000;
     controller.dispatchEvent(
       new CustomEvent(ExtendedMediaEventType.SEGMENT_END, {
         detail: { segmentIndex: 0, segment: sampleSegments[0] },
       }),
     );
+    nowMs = 3_000 + RECORDING_TAIL_PAD_MS;
     await vi.advanceTimersByTimeAsync(RECORDING_TAIL_PAD_MS);
     await el.updateComplete;
 
@@ -592,6 +633,9 @@ describe('audio-recorder component', () => {
 
   it('anchors first practice segment after head pad when auto-playing', async () => {
     vi.useFakeTimers();
+    let nowMs = 1_000;
+    vi.spyOn(performance, 'now').mockImplementation(() => nowMs);
+
     const controller = new MediaController();
     await controller.loadTracks([makeTrack()]);
     vi.spyOn(controller, 'play').mockResolvedValue(undefined);
@@ -603,14 +647,17 @@ describe('audio-recorder component', () => {
     el.addEventListener(AudioRecorderEventType.COMPLETE, onComplete);
 
     const startPromise = el.startRecording();
+    nowMs = 1_000 + RECORDING_HEAD_PAD_MS;
     await vi.advanceTimersByTimeAsync(RECORDING_HEAD_PAD_MS);
     await startPromise;
 
+    nowMs = 3_000;
     controller.dispatchEvent(
       new CustomEvent(ExtendedMediaEventType.SEGMENT_END, {
         detail: { segmentIndex: 0, segment: sampleSegments[0] },
       }),
     );
+    nowMs = 3_000 + RECORDING_TAIL_PAD_MS;
     await vi.advanceTimersByTimeAsync(RECORDING_TAIL_PAD_MS);
     await el.updateComplete;
 
@@ -766,9 +813,15 @@ describe('audio-recorder component', () => {
 
   it('finalizes last subtitle when currentSegmentIndex is past the end', async () => {
     vi.useFakeTimers();
+    let nowMs = 1_000;
+    vi.spyOn(performance, 'now').mockImplementation(() => nowMs);
+
     const controller = new MediaController();
     await controller.loadTracks([makeTrack()]);
     vi.spyOn(controller, 'play').mockResolvedValue(undefined);
+    // Start already on the last cue so ensureOpen anchors s1.
+    controller.currentSegmentIndex = 1;
+    controller.currentTime = 7;
     const el = await renderRecorder({
       controller,
       props: { collectSegments: true, autoPlayOnStart: true },
@@ -777,14 +830,17 @@ describe('audio-recorder component', () => {
     el.addEventListener(AudioRecorderEventType.COMPLETE, onComplete);
 
     const startPromise = el.startRecording();
+    nowMs = 1_000 + RECORDING_HEAD_PAD_MS;
     await vi.advanceTimersByTimeAsync(RECORDING_HEAD_PAD_MS);
     await startPromise;
 
     // Simulate finishing past the last subtitle without a SEGMENT_END event.
+    nowMs = 5_000;
     Object.defineProperty(controller, 'currentSegmentIndex', { get: () => -1, configurable: true });
     Object.defineProperty(controller, 'currentTime', { get: () => 30, configurable: true });
 
     const stopPromise = el.stopRecording();
+    nowMs = 5_000 + RECORDING_TAIL_PAD_MS;
     await vi.advanceTimersByTimeAsync(RECORDING_TAIL_PAD_MS);
     await stopPromise;
 
@@ -855,6 +911,9 @@ describe('audio-recorder component', () => {
 
   it('applies shadowingLatencyOffset to collected segments', async () => {
     vi.useFakeTimers();
+    let nowMs = 1_000;
+    vi.spyOn(performance, 'now').mockImplementation(() => nowMs);
+
     const controller = new MediaController();
     await controller.loadTracks([makeTrack()]);
     const el = await renderRecorder({
@@ -865,13 +924,17 @@ describe('audio-recorder component', () => {
     el.addEventListener(AudioRecorderEventType.COMPLETE, onComplete);
 
     const startPromise = el.startRecording();
+    nowMs = 1_000 + RECORDING_HEAD_PAD_MS;
     await vi.advanceTimersByTimeAsync(RECORDING_HEAD_PAD_MS);
     await startPromise;
+
+    nowMs = 3_000;
     controller.dispatchEvent(
       new CustomEvent(ExtendedMediaEventType.SEGMENT_END, {
         detail: { segmentIndex: 0, segment: sampleSegments[0] },
       }),
     );
+    nowMs = 3_000 + RECORDING_TAIL_PAD_MS;
     await vi.advanceTimersByTimeAsync(RECORDING_TAIL_PAD_MS);
     await el.updateComplete;
 
@@ -883,6 +946,121 @@ describe('audio-recorder component', () => {
     // with 0.35s offset, it should be around 0.65s.
     expect(segment.recordingStartTime).toBeGreaterThanOrEqual(0.65 - 0.02);
     expect(segment.recordingStartTime).toBeLessThan(0.65 + 0.05);
+    expect(segment.recordingEndTime).toBeGreaterThanOrEqual(segment.recordingStartTime);
+    controller.destroy();
+  });
+
+  it('keeps a mid-stop cue as a partial practice segment with clipped source end', async () => {
+    vi.useFakeTimers();
+    let nowMs = 1_000;
+    vi.spyOn(performance, 'now').mockImplementation(() => nowMs);
+
+    const controller = new MediaController();
+    await controller.loadTracks([makeTrack()]);
+    vi.spyOn(controller, 'play').mockResolvedValue(undefined);
+    const el = await renderRecorder({
+      controller,
+      props: { collectSegments: true, autoPlayOnStart: true, shadowingLatencyOffset: 0.35 },
+    });
+    const onComplete = vi.fn();
+    el.addEventListener(AudioRecorderEventType.COMPLETE, onComplete);
+
+    const startPromise = el.startRecording();
+    nowMs = 1_000 + RECORDING_HEAD_PAD_MS;
+    await vi.advanceTimersByTimeAsync(RECORDING_HEAD_PAD_MS);
+    await startPromise;
+
+    nowMs = 2_500;
+    controller.dispatchEvent(
+      new CustomEvent(ExtendedMediaEventType.SEGMENT_END, {
+        detail: { segmentIndex: 0, segment: sampleSegments[0] },
+      }),
+    );
+
+    nowMs = 2_600;
+    controller.currentSegmentIndex = 1;
+    controller.currentTime = 7.2;
+    controller.dispatchEvent(
+      new CustomEvent(ExtendedMediaEventType.SEGMENT_CHANGE, {
+        detail: {
+          currentIndex: 1,
+          currentSegment: sampleSegments[1],
+          previousIndex: 0,
+          previousSegment: sampleSegments[0],
+        },
+      }),
+    );
+
+    // Stop mid-cue on s1 (subtitle 5–10s); keep a meaningful partial take.
+    nowMs = 4_100;
+    const stopPromise = el.stopRecording();
+    nowMs = 4_100 + RECORDING_TAIL_PAD_MS;
+    await vi.advanceTimersByTimeAsync(RECORDING_TAIL_PAD_MS);
+    await stopPromise;
+    await el.updateComplete;
+
+    const practice = onComplete.mock.calls[0][0].detail.segments as PracticeSegment[];
+    expect(practice).toHaveLength(2);
+    expect(practice[1].id).toBe('s1');
+    expect(practice[1].sourceStartTime).toBe(5);
+    expect(practice[1].sourceEndTime).toBe(7.2);
+    expect(practice[1].recordingEndTime).toBeGreaterThan(practice[1].recordingStartTime);
+    controller.destroy();
+  });
+
+  it('drops a near-zero mid-stop cue after latency offset instead of inverted times', async () => {
+    vi.useFakeTimers();
+    let nowMs = 1_000;
+    vi.spyOn(performance, 'now').mockImplementation(() => nowMs);
+
+    const controller = new MediaController();
+    await controller.loadTracks([makeTrack()]);
+    vi.spyOn(controller, 'play').mockResolvedValue(undefined);
+    const el = await renderRecorder({
+      controller,
+      props: { collectSegments: true, autoPlayOnStart: true, shadowingLatencyOffset: 0.35 },
+    });
+    const onComplete = vi.fn();
+    el.addEventListener(AudioRecorderEventType.COMPLETE, onComplete);
+
+    const startPromise = el.startRecording();
+    nowMs = 1_000 + RECORDING_HEAD_PAD_MS;
+    await vi.advanceTimersByTimeAsync(RECORDING_HEAD_PAD_MS);
+    await startPromise;
+
+    nowMs = 2_000;
+    controller.dispatchEvent(
+      new CustomEvent(ExtendedMediaEventType.SEGMENT_END, {
+        detail: { segmentIndex: 0, segment: sampleSegments[0] },
+      }),
+    );
+
+    // Open s1 and stop almost immediately — offset would invert without clamp/drop.
+    nowMs = 2_020;
+    controller.currentSegmentIndex = 1;
+    controller.currentTime = 5.05;
+    controller.dispatchEvent(
+      new CustomEvent(ExtendedMediaEventType.SEGMENT_CHANGE, {
+        detail: {
+          currentIndex: 1,
+          currentSegment: sampleSegments[1],
+          previousIndex: 0,
+          previousSegment: sampleSegments[0],
+        },
+      }),
+    );
+    nowMs = 2_030;
+    const stopPromise = el.stopRecording();
+    nowMs = 2_030 + RECORDING_TAIL_PAD_MS;
+    await vi.advanceTimersByTimeAsync(RECORDING_TAIL_PAD_MS);
+    await stopPromise;
+    await el.updateComplete;
+
+    const practice = onComplete.mock.calls[0][0].detail.segments as PracticeSegment[];
+    expect(practice.map((s) => s.id)).toEqual(['s0']);
+    for (const seg of practice) {
+      expect(seg.recordingEndTime).toBeGreaterThanOrEqual(seg.recordingStartTime);
+    }
     controller.destroy();
   });
 

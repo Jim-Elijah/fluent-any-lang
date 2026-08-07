@@ -199,6 +199,23 @@ describe('WaveformController', () => {
     controller.destroy();
   });
 
+  it('can switch active id without pausing the previous track', () => {
+    const controller = new WaveformController();
+    const id1 = prepareTrack(controller, 'a');
+    const id2 = prepareTrack(controller, 'b');
+    const audio1 = controller.getAudioElement(id1)!;
+    Object.defineProperty(audio1, 'paused', { configurable: true, value: false });
+
+    controller.setActiveId(id1);
+    vi.mocked(audio1.pause).mockClear();
+
+    controller.setActiveId(id2, { pausePrevious: false });
+
+    expect(audio1.pause).not.toHaveBeenCalled();
+    expect(controller.getSnapshot().activeId).toBe(id2);
+    controller.destroy();
+  });
+
   it('removes and clears tracks while dispatching track-change', () => {
     const controller = new WaveformController();
     const id1 = prepareTrack(controller, 'a');

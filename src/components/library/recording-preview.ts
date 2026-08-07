@@ -1009,7 +1009,8 @@ export class RecordingPreview extends LitElement {
     const longerAxis = getLongerPracticeAxis(segment);
     const activeTrackId = longerAxis === 'recording' ? this._recordingTrackId : this._sourceTrackId;
     if (activeTrackId) {
-      this._controller.setActiveId(activeTrackId);
+      // Dual-track compare owns play/pause; only move waveform focus.
+      this._controller.setActiveId(activeTrackId, { pausePrevious: false });
     }
   }
 

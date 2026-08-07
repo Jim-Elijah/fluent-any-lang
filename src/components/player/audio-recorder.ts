@@ -49,6 +49,36 @@ export type RecordingErrorDetail = {
 export const RECORDING_HEAD_PAD_MS = 300;
 /** Keep recording briefly after stop so MediaRecorder captures the last words. */
 export const RECORDING_TAIL_PAD_MS = 250;
+/**
+ * After latency offset, drop practice segments shorter than this (seconds).
+ * Filters open-cue-and-stop noise / inverted windows without discarding real partial takes.
+ */
+export const MIN_PRACTICE_SEGMENT_RECORDING_S = 0.05;
+
+/**
+ * Shift recording windows by shadowing latency and clamp into [0, totalElapsed].
+ * Drops near-zero windows (e.g. offset pushed a mid-stop cue past the blob end).
+ */
+export function applyRecordingLatencyOffset(
+  segments: PracticeSegment[],
+  offset: number,
+  totalElapsed: number,
+): PracticeSegment[] {
+  const elapsed = Math.max(0, totalElapsed);
+  return segments
+    .map((seg) => {
+      const start = Math.max(0, Math.min(seg.recordingStartTime + offset, elapsed));
+      const end = Math.max(start, Math.min(seg.recordingEndTime + offset, elapsed));
+      return {
+        ...seg,
+        recordingStartTime: start,
+        recordingEndTime: end,
+      };
+    })
+    .filter(
+      (seg) => seg.recordingEndTime - seg.recordingStartTime >= MIN_PRACTICE_SEGMENT_RECORDING_S,
+    );
+}
 
 @customElement('audio-recorder')
 @localized()
@@ -197,16 +227,11 @@ export class AudioRecorder extends LitElement {
       }
 
       const totalElapsed = this._getRecordingElapsedSeconds();
-      const segments = this._practiceSegments.map((seg) => {
-        const offset = this.shadowingLatencyOffset;
-        const start = seg.recordingStartTime + offset;
-        const end = Math.min(seg.recordingEndTime + offset, totalElapsed);
-        return {
-          ...seg,
-          recordingStartTime: start,
-          recordingEndTime: end,
-        };
-      });
+      const segments = applyRecordingLatencyOffset(
+        this._practiceSegments,
+        this.shadowingLatencyOffset,
+        totalElapsed,
+      );
       this._isCollectingSegments = false;
       this._recordingStartedAt = 0;
       this._openSegment = null;
@@ -665,6 +690,15 @@ export class AudioRecorder extends LitElement {
     }
   }
 
+  /** Clip source end to playback position so a mid-stop cue is a partial window. */
+  private _clipSourceEndToPlayback(sourceStartTime: number, sourceEndTime: number): number {
+    if (!this.controller) {
+      return sourceEndTime;
+    }
+    const { currentTime } = this.controller.getSnapshot();
+    return Math.min(sourceEndTime, Math.max(sourceStartTime, currentTime));
+  }
+
   /** 提前停止录音时，补录当前未触发 SEGMENT_END 的句子；已收尾的末句则延长到尾 pad。 */
   private _finalizeOpenSegment(): void {
     if (!this._isCollectingSegments || !this.controller) {
@@ -674,24 +708,31 @@ export class AudioRecorder extends LitElement {
     const resolved = this._resolveOpenSegment();
 
     if (this._openSegment) {
-      // Past all cues: prefer the last subtitle when the open window is stale
-      // (e.g. jumped to outro without SEGMENT_END / SEGMENT_CHANGE).
+      // Controller moved on (or past cues) while this window is still open — close it
+      // first so a mid-stop / missed SEGMENT_END take is not discarded.
       if (resolved && resolved.id !== this._openSegment.id) {
+        const sourceEndTime = this._clipSourceEndToPlayback(
+          this._openSegment.sourceStartTime,
+          this._openSegment.sourceEndTime,
+        );
+        this._pushClosedSegment(
+          { ...this._openSegment, sourceEndTime },
+          this._getRecordingElapsedSeconds(),
+        );
         this._openSegment = null;
-        const recordingEndTime = this._getRecordingElapsedSeconds();
-        this._practiceSegments.push({
-          id: resolved.id,
-          sourceStartTime: resolved.startTime,
-          sourceEndTime: resolved.endTime,
-          recordingStartTime: Math.max(0, recordingEndTime - 0.01),
-          recordingEndTime,
-        });
+        // Fall through to attach `resolved` if it is not already finalized.
+      } else {
+        const sourceEndTime = this._clipSourceEndToPlayback(
+          this._openSegment.sourceStartTime,
+          this._openSegment.sourceEndTime,
+        );
+        this._pushClosedSegment(
+          { ...this._openSegment, sourceEndTime },
+          this._getRecordingElapsedSeconds(),
+        );
+        this._openSegment = null;
         return;
       }
-
-      this._pushClosedSegment(this._openSegment, this._getRecordingElapsedSeconds());
-      this._openSegment = null;
-      return;
     }
 
     if (!resolved) {
@@ -717,7 +758,7 @@ export class AudioRecorder extends LitElement {
     this._practiceSegments.push({
       id: resolved.id,
       sourceStartTime: resolved.startTime,
-      sourceEndTime: resolved.endTime,
+      sourceEndTime: this._clipSourceEndToPlayback(resolved.startTime, resolved.endTime),
       recordingStartTime: Math.max(0, recordingEndTime - 0.01),
       recordingEndTime,
     });
