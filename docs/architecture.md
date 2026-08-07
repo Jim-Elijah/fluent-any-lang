@@ -50,7 +50,7 @@ IndexedDB: `fluent-any-lang`, version in `db/schema.ts`. Open/upgrade: `db/index
 | Free Listening | Controller loop / segment nav / pause |
 | Discrimination | `NoiseMixer`, `RateLadder`, `discrimination-panel` |
 | Shadowing | `audio-recorder` synced to source; gap policy on controller |
-| Echo | `EchoClipPlayer` (Web Audio clip) + per-segment record |
+| Echo | `EchoClipPlayer` (private media element clip) + per-segment record |
 
 Sentence practice (`/sentence-practice`) is a lighter path on clipped Sentence Bank audio — not the full four-mode stack.
 

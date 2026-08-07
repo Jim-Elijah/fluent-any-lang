@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { getAudioContext } from './audio-context.js';
 import { EchoClipPlayer } from './echo-clip-player.js';
@@ -7,144 +7,185 @@ vi.mock('./audio-context.js', () => ({
   getAudioContext: vi.fn(),
 }));
 
-type MockSource = {
-  buffer: AudioBuffer | null;
-  playbackRate: { value: number };
-  onended: ((ev?: Event) => void) | null;
-  connect: ReturnType<typeof vi.fn>;
-  disconnect: ReturnType<typeof vi.fn>;
-  start: ReturnType<typeof vi.fn>;
-  stop: ReturnType<typeof vi.fn>;
+vi.mock('./media-element-gain.js', () => ({
+  attachMediaElementGain: vi.fn(() => null),
+  detachMediaElementGain: vi.fn(),
+  setLogicalVolume: vi.fn((element: HTMLMediaElement, volume: number) => {
+    element.volume = Math.max(0, Math.min(1, volume));
+  }),
+}));
+
+type MockMedia = HTMLMediaElement & {
+  _currentTime: number;
+  _seeking: boolean;
+  play: ReturnType<typeof vi.fn>;
+  pause: ReturnType<typeof vi.fn>;
+  load: ReturnType<typeof vi.fn>;
 };
 
-type MockGain = {
-  gain: { value: number };
-  connect: ReturnType<typeof vi.fn>;
-  disconnect: ReturnType<typeof vi.fn>;
-};
+function createMockMedia(tag: 'audio' | 'video' = 'audio'): MockMedia {
+  const el = document.createElement(tag) as MockMedia;
+  el._currentTime = 0;
+  el._seeking = false;
 
-function createMockAudioContext() {
-  const buffer = {
-    length: 100,
-    numberOfChannels: 1,
-    sampleRate: 10,
-    duration: 10,
-    getChannelData: () => new Float32Array(100),
-  } as unknown as AudioBuffer;
+  Object.defineProperty(el, 'currentTime', {
+    configurable: true,
+    get: () => el._currentTime,
+    set: (value: number) => {
+      el._currentTime = value;
+      el._seeking = true;
+      queueMicrotask(() => {
+        el._seeking = false;
+        el.dispatchEvent(new Event('seeked'));
+      });
+    },
+  });
+  Object.defineProperty(el, 'seeking', {
+    configurable: true,
+    get: () => el._seeking,
+  });
+  Object.defineProperty(el, 'paused', {
+    configurable: true,
+    get: () => true,
+  });
+  Object.defineProperty(el, 'readyState', {
+    configurable: true,
+    get: () => 0,
+  });
+  Object.defineProperty(el, 'preservesPitch', {
+    configurable: true,
+    writable: true,
+    value: false,
+  });
 
-  const sources: MockSource[] = [];
-  const gains: MockGain[] = [];
+  el.play = vi.fn().mockResolvedValue(undefined);
+  el.pause = vi.fn();
+  el.load = vi.fn(() => {
+    queueMicrotask(() => el.dispatchEvent(new Event('loadedmetadata')));
+  });
 
-  const ctx = {
-    state: 'running' as AudioContextState,
-    currentTime: 0,
-    resume: vi.fn(async () => {
-      ctx.state = 'running';
-    }),
-    decodeAudioData: vi.fn(async () => buffer),
-    createBufferSource: vi.fn(() => {
-      const source: MockSource = {
-        buffer: null,
-        playbackRate: { value: 1 },
-        onended: null,
-        connect: vi.fn(),
-        disconnect: vi.fn(),
-        start: vi.fn(),
-        stop: vi.fn(),
-      };
-      sources.push(source);
-      return source;
-    }),
-    createGain: vi.fn(() => {
-      const gain: MockGain = {
-        gain: { value: 1 },
-        connect: vi.fn(),
-        disconnect: vi.fn(),
-      };
-      gains.push(gain);
-      return gain;
-    }),
-    destination: {} as AudioDestinationNode,
-  };
-
-  return { ctx, buffer, sources, gains };
+  return el;
 }
 
 describe('EchoClipPlayer', () => {
+  let media: MockMedia;
+  let createElementSpy: ReturnType<typeof vi.spyOn>;
+  let player: EchoClipPlayer;
+  const nativeCreateElement = document.createElement.bind(document);
+
   beforeEach(() => {
     vi.clearAllMocks();
+    player = new EchoClipPlayer();
+    media = createMockMedia('audio');
+    createElementSpy = vi.spyOn(document, 'createElement').mockImplementation((tagName: string) => {
+      if (tagName === 'audio' || tagName === 'video') {
+        return media;
+      }
+      return nativeCreateElement(tagName);
+    });
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:echo-clip');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+    vi.mocked(getAudioContext).mockReturnValue({
+      state: 'running',
+      outputLatency: 0,
+      baseLatency: 0,
+    } as unknown as AudioContext);
   });
 
-  it('plays the exact subtitle range with rate and volume on the nodes', async () => {
-    const { ctx, sources, gains } = createMockAudioContext();
-    vi.mocked(getAudioContext).mockReturnValue(ctx as unknown as AudioContext);
+  afterEach(() => {
+    player.dispose();
+    createElementSpy.mockRestore();
+    vi.restoreAllMocks();
+  });
 
-    const player = new EchoClipPlayer();
-    await player.prepare(new Blob(['audio']));
+  it('plays the subtitle range with rate and volume on a private media element', async () => {
+    await player.prepare(new Blob(['audio'], { type: 'audio/mpeg' }));
     await player.play({ startTime: 1.5, endTime: 4 }, { playbackRate: 1.25, volume: 0.6 });
 
-    expect(sources).toHaveLength(1);
-    expect(gains).toHaveLength(1);
-    expect(sources[0]!.playbackRate.value).toBe(1.25);
-    expect(gains[0]!.gain.value).toBe(0.6);
-    expect(sources[0]!.start).toHaveBeenCalledWith(0, 1.5, 2.5);
+    expect(media.preservesPitch).toBe(true);
+    expect(media.playbackRate).toBe(1.25);
+    expect(media.volume).toBe(0.6);
+    expect(media._currentTime).toBe(1.5);
+    expect(media.play).toHaveBeenCalled();
     expect(player.isPlaying).toBe(true);
   });
 
-  it('does not fire onEnded after stop for a superseded source', async () => {
-    const { ctx, sources } = createMockAudioContext();
-    vi.mocked(getAudioContext).mockReturnValue(ctx as unknown as AudioContext);
+  it('uses a video element for video blobs', async () => {
+    media = createMockMedia('video');
+    createElementSpy.mockImplementation((tagName: string) => {
+      if (tagName === 'audio' || tagName === 'video') {
+        return media;
+      }
+      return nativeCreateElement(tagName);
+    });
 
+    await player.prepare(new Blob(['video'], { type: 'video/mp4' }));
+
+    expect(createElementSpy).toHaveBeenCalledWith('video');
+  });
+
+  it('does not fire onEnded after stop', async () => {
     const onEnded = vi.fn();
-    const player = new EchoClipPlayer();
     player.onEnded = onEnded;
 
-    await player.prepare(new Blob(['audio']));
+    await player.prepare(new Blob(['audio'], { type: 'audio/mpeg' }));
     await player.play({ startTime: 0, endTime: 2 }, { playbackRate: 1, volume: 1 });
-    const first = sources[0]!;
 
     player.stop();
-    first.onended?.(new Event('ended'));
+    media._currentTime = 2;
+    media.dispatchEvent(new Event('timeupdate'));
+    media.dispatchEvent(new Event('ended'));
 
     expect(onEnded).not.toHaveBeenCalled();
     expect(player.isPlaying).toBe(false);
-    expect(first.stop).toHaveBeenCalled();
-    expect(first.disconnect).toHaveBeenCalled();
+    expect(media.pause).toHaveBeenCalled();
   });
 
-  it('destroys the previous source when play is called again', async () => {
-    const { ctx, sources } = createMockAudioContext();
-    vi.mocked(getAudioContext).mockReturnValue(ctx as unknown as AudioContext);
-
+  it('stops previous playback when play is called again', async () => {
     const onEnded = vi.fn();
-    const player = new EchoClipPlayer();
     player.onEnded = onEnded;
 
-    await player.prepare(new Blob(['audio']));
+    await player.prepare(new Blob(['audio'], { type: 'audio/mpeg' }));
     await player.play({ startTime: 0, endTime: 1 }, { playbackRate: 1, volume: 1 });
     await player.play({ startTime: 1, endTime: 2 }, { playbackRate: 1, volume: 1 });
 
-    expect(sources).toHaveLength(2);
-    expect(sources[0]!.stop).toHaveBeenCalled();
-    expect(sources[0]!.disconnect).toHaveBeenCalled();
-    expect(sources[1]!.start).toHaveBeenCalledWith(0, 1, 1);
+    expect(media.play).toHaveBeenCalledTimes(2);
+    expect(media._currentTime).toBe(1);
 
-    sources[0]!.onended?.(new Event('ended'));
+    media._currentTime = 0.5;
+    media.dispatchEvent(new Event('timeupdate'));
     expect(onEnded).not.toHaveBeenCalled();
 
-    sources[1]!.onended?.(new Event('ended'));
+    media._currentTime = 2;
+    media.dispatchEvent(new Event('timeupdate'));
     expect(onEnded).toHaveBeenCalledTimes(1);
     expect(player.isPlaying).toBe(false);
   });
 
+  it('fires onEnded when the clip reaches endTime', async () => {
+    const onEnded = vi.fn();
+    player.onEnded = onEnded;
+
+    await player.prepare(new Blob(['audio'], { type: 'audio/mpeg' }));
+    await player.play({ startTime: 1, endTime: 3 }, { playbackRate: 1, volume: 1 });
+
+    media._currentTime = 3;
+    media.dispatchEvent(new Event('timeupdate'));
+
+    expect(onEnded).toHaveBeenCalledTimes(1);
+    expect(player.isPlaying).toBe(false);
+    expect(media.pause).toHaveBeenCalled();
+  });
+
   it('drains for the reported output latency plus safety margin', async () => {
-    const { ctx } = createMockAudioContext();
-    Object.assign(ctx, { outputLatency: 0.12, baseLatency: 0.01 });
-    vi.mocked(getAudioContext).mockReturnValue(ctx as unknown as AudioContext);
+    vi.mocked(getAudioContext).mockReturnValue({
+      state: 'running',
+      outputLatency: 0.12,
+      baseLatency: 0.01,
+    } as unknown as AudioContext);
 
     vi.useFakeTimers();
     try {
-      const player = new EchoClipPlayer();
       const drained = vi.fn();
       void player.waitForOutputDrain().then(drained);
 
@@ -159,12 +200,8 @@ describe('EchoClipPlayer', () => {
   });
 
   it('drains for the minimum window when latency is unreported', async () => {
-    const { ctx } = createMockAudioContext();
-    vi.mocked(getAudioContext).mockReturnValue(ctx as unknown as AudioContext);
-
     vi.useFakeTimers();
     try {
-      const player = new EchoClipPlayer();
       const drained = vi.fn();
       void player.waitForOutputDrain().then(drained);
 
@@ -178,15 +215,19 @@ describe('EchoClipPlayer', () => {
     }
   });
 
-  it('reuses the decoded buffer for the same blob reference', async () => {
-    const { ctx } = createMockAudioContext();
-    vi.mocked(getAudioContext).mockReturnValue(ctx as unknown as AudioContext);
-
-    const blob = new Blob(['audio']);
-    const player = new EchoClipPlayer();
+  it('reuses the prepared element for the same blob reference', async () => {
+    const blob = new Blob(['audio'], { type: 'audio/mpeg' });
     await player.prepare(blob);
     await player.prepare(blob);
 
-    expect(ctx.decodeAudioData).toHaveBeenCalledTimes(1);
+    expect(URL.createObjectURL).toHaveBeenCalledTimes(1);
+    expect(createElementSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('revokes the object URL on dispose', async () => {
+    await player.prepare(new Blob(['audio'], { type: 'audio/mpeg' }));
+    player.dispose();
+
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:echo-clip');
   });
 });
