@@ -1,33 +1,41 @@
 {
-  "version": "0.3.1",
+  "version": "0.3.2",
   "highlights": {
     "zh-CN": [
-      "**practice:** 影子跟读可选择压缩或保留句间空隙",
-      "**practice:** 录音更可靠，回声练习流程更顺畅统一",
-      "**practice:** 口语练习更稳定，支持实时波形并在结束后恢复设置",
-      "**pwa:** 更新时可查看多语言版本说明",
-      "**ui:** 字幕居中显示，单句循环边界更精准"
+      "**app:** 页面按需加载，切换时显示加载遮罩",
+      "**practice:** 录音前检查麦克风状态，并给出更清晰的错误提示",
+      "**practice:** 句子练习同步麦克风检查，缩放预览覆盖句间空隙",
+      "**practice:** 双轨模式播完后仍可继续，并始终可见当前字幕",
+      "**practice:** 回声听原音在变速时保持音高不变",
+      "**practice:** 中途停止也保留已录片段，双轨波形切换更顺畅",
+      "**playlists:** 播放列表排序更可靠，备份包含播放列表，辩音后恢复播放设置"
     ],
     "en": [
-      "**practice:** add shadowing gap policy for compress vs preserve playback",
-      "**practice:** harden recording capture and unify echo manage flow",
-      "**practice:** stabilize speaking sessions with live waveform and settings restore",
-      "**pwa:** show multilingual release notes on update",
-      "**ui:** center subtitle text and tighten segment loop epsilon"
+      "**app:** lazy-load route pages with loading overlay",
+      "**practice:** gate recording on mic status and surface clearer errors",
+      "**practice:** gate sentence-practice mic and zoom preview through segment gaps",
+      "**practice:** keep dual-track mode after end and keep active cue always visible",
+      "**practice:** play Echo listen on private media element to preserve pitch",
+      "**practice:** preserve mid-stop segments and dual-track waveform focus",
+      "**playlists:** harden playlists sort, backup playlists, and discrimination restore"
     ],
     "ja": [
-      "**practice:** シャドーイングの文間ギャップを圧縮／保持から選べます",
-      "**practice:** 録音の安定性を高め、エコー練習の流れを統一しました",
-      "**practice:** スピーキング練習を安定化し、ライブ波形表示と設定の復元に対応",
-      "**pwa:** アップデート時に多言語のリリースノートを表示します",
-      "**ui:** 字幕を中央揃えにし、セグメントループの精度を向上"
+      "**app:** ページを必要時に読み込み、切り替え時に読み込み表示を出します",
+      "**practice:** 録音前にマイク状態を確認し、わかりやすいエラーを表示します",
+      "**practice:** センテンス練習でもマイクを確認し、ズームプレビューが文間ギャップまで含みます",
+      "**practice:** デュアルトラック終了後も継続でき、アクティブな字幕を常に表示します",
+      "**practice:** エコーの聞き取り再生で速度変更時も音高を保ちます",
+      "**practice:** 途中停止でも録音済み区間を保持し、デュアルトラック波形の切り替えを安定化",
+      "**playlists:** プレイリスト並び替えを強化し、バックアップに含め、弁別後の再生設定を復元"
     ],
     "zh-TW": [
-      "**practice:** 影子跟讀可選擇壓縮或保留句間空隙",
-      "**practice:** 錄音更可靠，回聲練習流程更順暢統一",
-      "**practice:** 口說練習更穩定，支援即時波形並在結束後還原設定",
-      "**pwa:** 更新時可查看多語言版本說明",
-      "**ui:** 字幕置中顯示，單句循環邊界更精準"
+      "**app:** 頁面按需載入，切換時顯示載入遮罩",
+      "**practice:** 錄音前檢查麥克風狀態，並提供更清楚的錯誤提示",
+      "**practice:** 句子練習同步麥克風檢查，縮放預覽涵蓋句間空隙",
+      "**practice:** 雙軌模式播完後仍可繼續，並始終可見目前字幕",
+      "**practice:** 回聲聽原音在變速時保持音高不變",
+      "**practice:** 中途停止也保留已錄片段，雙軌波形切換更順暢",
+      "**playlists:** 播放清單排序更可靠，備份包含播放清單，辨音後還原播放設定"
     ]
   }
 }

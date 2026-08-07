@@ -1,3 +1,21 @@
+## [0.3.2](https://github.com/Jim-Elijah/fluent-any-lang/compare/v0.3.1...v0.3.2) (2026-08-07)
+
+### Features
+
+* **app:** lazy-load route pages with loading overlay ([33edaae](https://github.com/Jim-Elijah/fluent-any-lang/commit/33edaae3f2ffb1e7806a8d94527759a42ec18a53))
+* **dev:** enable local HTTPS with basic ssl plugin ([beb8a86](https://github.com/Jim-Elijah/fluent-any-lang/commit/beb8a868082f6b3e06004ac3fc735966ed12a7ab))
+* harden playlists sort, backup playlists, and discrimination restore ([eaaf678](https://github.com/Jim-Elijah/fluent-any-lang/commit/eaaf678fd039bc3350fc0273526895477fee3b6b))
+* **practice:** gate recording on mic status and surface clearer errors ([baddd41](https://github.com/Jim-Elijah/fluent-any-lang/commit/baddd418d9576dcf3bfa8c5c640024139e8e151c))
+* **practice:** gate sentence-practice mic and zoom preview through segment gaps ([5d977a6](https://github.com/Jim-Elijah/fluent-any-lang/commit/5d977a691f1815056537812755f46df469f4c030))
+* **practice:** isolate echo listen via Web Audio and warm up mic ([7b98a4d](https://github.com/Jim-Elijah/fluent-any-lang/commit/7b98a4d67bc00f39163c478dc8aa3d83883eb830))
+* **practice:** keep dual-track mode after end and keep active cue always visible ([4a03cb6](https://github.com/Jim-Elijah/fluent-any-lang/commit/4a03cb61d4aa31b5eb9fe13ea71c758d04a98fd8))
+
+### Bug Fixes
+
+* **practice:** play Echo listen on private media element to preserve pitch ([c6c2240](https://github.com/Jim-Elijah/fluent-any-lang/commit/c6c224005248219a5991621d4ef498dd1a90bc2d))
+* **practice:** preserve mid-stop segments and dual-track waveform focus ([4148685](https://github.com/Jim-Elijah/fluent-any-lang/commit/414868587712a30c6186c03f28abe7d2c38d7f73))
+* **test:** normalize Vitest mock importers and harden related checks ([a681f5e](https://github.com/Jim-Elijah/fluent-any-lang/commit/a681f5e269c2fc20a4004e0d2d129de9c0d43955))
+
 ## [0.3.1](https://github.com/Jim-Elijah/fluent-any-lang/compare/v0.3.0...v0.3.1) (2026-08-05)
 
 ### Features
