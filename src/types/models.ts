@@ -55,8 +55,8 @@ export type SpeakingMode = 'shadowing' | 'echo';
 
 /**
  * 影子跟读句间空隙策略。
- * - compress：录制时跳过字幕自然大 gap，句间约 1s；预览按句对齐同步。
- * - preserve：原音完整播放（含大 gap）；预览连续对照听。
+ * - compress：录制时跳过字幕自然大 gap，句间约 1s；预览按句同步播放。
+ * - preserve：原音完整播放（含大 gap）；预览连续对照。
  */
 export type ShadowingGapPolicy = 'compress' | 'preserve';
 

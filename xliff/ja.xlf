@@ -250,10 +250,6 @@
   <source>剩余</source>
 <target>残り</target>
   </trans-unit>
-<trans-unit id="s8b9445de9e1ddfa3">
-  <source>磁盘存储空间不足，建议导出或删除旧录音。</source>
-<target>ディスク空き容量が不足しています。古い録音のエクスポートまたは削除をお勧めします。</target>
-  </trans-unit>
 <trans-unit id="s360d85b856727c52">
   <source>加载媒体失败，请重试。</source>
 <target>メディアの読み込みに失敗しました。やり直してください。</target>
@@ -411,7 +407,7 @@
   <target>録音</target>
 </trans-unit>
 <trans-unit id="s3fd93394e75f5977">
-  <source>该句录音已达上限（<x id="0" equiv-text="${this._echoLimitPerSegment}"/>条），删除旧录音后可继续。</source>
+  <source>该句录音已达上限（<x id="0" equiv-text="${this.echoLimitPerSegment}"/>条），删除旧录音后可继续。</source>
   <target>この文の録音が上限（<x id="0" equiv-text="${this._echoLimitPerSegment}"/>件）に達しました。古い録音を削除すると続行できます。</target>
 </trans-unit>
 <trans-unit id="s19575e089d1dae1b">
@@ -702,10 +698,6 @@
   <source>练习最多的材料</source>
   <target>最も練習した教材</target>
 </trans-unit>
-<trans-unit id="s422bd01f5c5c935f">
-  <source>录音 <x id="0" equiv-text="${index + 1}"/></source>
-  <target>録音 <x id="0" equiv-text="${index + 1}"/></target>
-</trans-unit>
 <trans-unit id="sf2224b0955929227">
   <source>选项</source>
   <target>オプション</target>
@@ -789,9 +781,6 @@
 <trans-unit id="sb9be459c62ad8278">
   <source>听完后将开始录音</source>
 <target>聴取後に録音が開始されます</target></trans-unit>
-<trans-unit id="sc6ab818871dabc0d">
-  <source>5. 录音时底部会显示状态与波形，全屏字幕下也可看到。</source>
-<target>5. 録音中は下部にステータスと波形が表示され、全画面字幕でも確認できます。</target></trans-unit>
 <trans-unit id="s23254af2ecd02e26">
   <source>4. 录音时底部会显示状态与波形，全屏字幕下也可看到。</source>
 <target>4. 録音中は下部にステータスと波形が表示され、全画面字幕でも確認できます。</target></trans-unit>
@@ -805,7 +794,7 @@
   <source>以后不再提醒</source>
 <target>今後は通知しない</target></trans-unit>
 <trans-unit id="s63ec61b31b4127a3">
-  <source>已保存 <x id="0" equiv-text="${this._shadowingCount}"/>/<x id="1" equiv-text="${this._shadowingLimit}"/></source>
+  <source>已保存 <x id="0" equiv-text="${count}"/>/<x id="1" equiv-text="${this.echoLimitPerSegment}"/></source>
 <target>保存済み <x id="0" equiv-text="${this._shadowingCount}"/>/<x id="1" equiv-text="${this._shadowingLimit}"/></target></trans-unit>
 <trans-unit id="sff4e4efc83c85d46">
   <source>管理录音</source>
@@ -858,9 +847,6 @@
 <trans-unit id="s6125cd6135aebc0b">
   <source>数据备份与迁移</source>
 <target>データのバックアップと移行</target></trans-unit>
-<trans-unit id="sc0dc83897c9457ff">
-  <source>导出备份可用于换设备迁移。设置始终包含在备份中。</source>
-<target>エクスポートしたバックアップは、デバイス間の移行に使用できます。設定は常にバックアップに含まれます。</target></trans-unit>
 <trans-unit id="s6fc1d53f35ccc853">
   <source>媒体文件若未纳入备份，请在库页用相同文件名重新导入原音视频与字幕，录音即可对齐。</source>
 <target>メディアファイルがバックアップに含まれていない場合は、ライブラリページで同じファイル名で元の音声・動画と字幕を再インポートすると、録音が同期されます。</target></trans-unit>
@@ -1639,10 +1625,6 @@
   <source>最多选择 <x id="0" equiv-text="${DISCRIMINATION_MAX_NOISE_TRACKS}"/> 条噪音</source>
   <target>ノイズは最大 <x id="0" equiv-text="${DISCRIMINATION_MAX_NOISE_TRACKS}"/> トラックまで選択できます</target>
 </trans-unit>
-<trans-unit id="s09b6271fff16003d">
-  <source>已导出备份（录音 <x id="0" equiv-text="${manifest.counts.recordings}"/>，学习记录 <x id="1" equiv-text="${manifest.counts.sessions}"/>，句库 <x id="2" equiv-text="${manifest.counts.sentenceBank}"/>，噪音 <x id="3" equiv-text="${manifest.counts.noise}"/>，媒体 <x id="4" equiv-text="${manifest.counts.media}"/>）</source>
-  <target>バックアップをエクスポートしました（録音 <x id="0" equiv-text="${manifest.counts.recordings}"/>、学習記録 <x id="1" equiv-text="${manifest.counts.sessions}"/>、文庫 <x id="2" equiv-text="${manifest.counts.sentenceBank}"/>、ノイズ <x id="3" equiv-text="${manifest.counts.noise}"/>、メディア <x id="4" equiv-text="${manifest.counts.media}"/>）</target>
-</trans-unit>
 <trans-unit id="s9aae08e72d7a488b">
   <source>噪音：导入 <x id="0" equiv-text="${result.noiseImported}"/>，跳过 <x id="1" equiv-text="${result.noiseSkipped}"/></source>
   <target>ノイズ：インポート <x id="0" equiv-text="${result.noiseImported}"/>、スキップ <x id="1" equiv-text="${result.noiseSkipped}"/></target>
@@ -2098,6 +2080,122 @@
 <trans-unit id="s371f7208b6270c04">
   <source>影子</source>
   <target>影</target>
+</trans-unit>
+<trans-unit id="sab6771cc5dc25b00">
+  <source>连续对照</source>
+  <target>連続対照</target>
+</trans-unit>
+<trans-unit id="sa21025f7c3ca7e31">
+  <source>无原音，无法连续对照</source>
+  <target>原音がないため連続対照できません</target>
+</trans-unit>
+<trans-unit id="s8c13fdf3a710c143">
+  <source>无录音，无法连续对照</source>
+  <target>録音がないため連続対照できません</target>
+</trans-unit>
+<trans-unit id="s3dd57d017ffaa19a">
+  <source>无练习片段，无法连续对照</source>
+  <target>練習セグメントがないため連続対照できません</target>
+</trans-unit>
+<trans-unit id="h140f021e65a0b1a0">
+  <source>已暂停连续对照<x id="0" equiv-text="${segmentLabel}"/></source>
+  <target>連続対照を一時停止<x id="0" equiv-text="${segmentLabel}"/></target>
+</trans-unit>
+<trans-unit id="ha59cbea2705f92bb">
+  <source>正在连续对照<x id="0" equiv-text="${segmentLabel}"/></source>
+  <target>連続対照中<x id="0" equiv-text="${segmentLabel}"/></target>
+</trans-unit>
+<trans-unit id="sd140f999a4743cb5">
+  <source>请跟上原音</source>
+  <target>原音に合わせてください</target>
+</trans-unit>
+<trans-unit id="s35ae0d190d87f204">
+  <source>准备录音…</source>
+  <target>録音準備中…</target>
+</trans-unit>
+<trans-unit id="se2bc10f8fe2fdef3">
+  <source>原音已结束，即将开始录音</source>
+  <target>原音が終了しました。まもなく録音を開始します</target>
+</trans-unit>
+<trans-unit id="se18ee8139083e570">
+  <source>6. 录音时底部会显示状态与波形，全屏字幕下也可看到。</source>
+  <target>6. 録音中は下部にステータスと波形が表示され、全画面字幕でも確認できます。</target>
+</trans-unit>
+<trans-unit id="sd493dc3269382d8a">
+  <source>当前句的回声录音</source>
+  <target>現在の文のエコー録音</target>
+</trans-unit>
+<trans-unit id="saee0c927737ba43f">
+  <source>媒体容量不足，建议清理录音或在设置中提高媒体容量上限</source>
+  <target>メディア容量が不足しています。録音を整理するか、設定でメディア容量上限を上げてください</target>
+</trans-unit>
+<trans-unit id="se269683981628e08">
+  <source>有新版本可用（<x id="0" equiv-text="${this._notes.version}"/>）</source>
+  <target>新しいバージョンが利用可能です（<x id="0" equiv-text="${this._notes.version}"/>）</target>
+</trans-unit>
+<trans-unit id="s3c3df540457b94a7">
+  <source>已导出备份（录音 <x id="0" equiv-text="${manifest.counts.recordings}"/>，学习记录 <x id="1" equiv-text="${manifest.counts.sessions}"/>，播放列表 <x id="2" equiv-text="${manifest.counts.playlists}"/>，句库 <x id="3" equiv-text="${manifest.counts.sentenceBank}"/>，噪音 <x id="4" equiv-text="${manifest.counts.noise}"/>，媒体 <x id="5" equiv-text="${manifest.counts.media}"/>）</source>
+  <target>バックアップをエクスポートしました（録音 <x id="0" equiv-text="${manifest.counts.recordings}"/>、学習記録 <x id="1" equiv-text="${manifest.counts.sessions}"/>、プレイリスト <x id="2" equiv-text="${manifest.counts.playlists}"/>、文庫 <x id="3" equiv-text="${manifest.counts.sentenceBank}"/>、ノイズ <x id="4" equiv-text="${manifest.counts.noise}"/>、メディア <x id="5" equiv-text="${manifest.counts.media}"/>）</target>
+</trans-unit>
+<trans-unit id="s877df6e724237c8c">
+  <source>播放列表：导入 <x id="0" equiv-text="${result.playlistsImported}"/>，跳过 <x id="1" equiv-text="${result.playlistsSkipped}"/></source>
+  <target>プレイリスト：インポート <x id="0" equiv-text="${result.playlistsImported}"/>、スキップ <x id="1" equiv-text="${result.playlistsSkipped}"/></target>
+</trans-unit>
+<trans-unit id="sd5e9a3909ce1fe03">
+  <source>导出备份可用于换设备迁移。设置与播放列表始终包含在备份中。</source>
+  <target>エクスポートしたバックアップは別デバイスへの移行に使えます。設定とプレイリストは常にバックアップに含まれます。</target>
+</trans-unit>
+<trans-unit id="s5e16b421c7fcf9f1">
+  <source>影子跟读 · 句间空隙</source>
+  <target>シャドーイング · 文間ギャップ</target>
+</trans-unit>
+<trans-unit id="s6bff9ff9bb594e87">
+  <source>压缩为约 1 秒（推荐）</source>
+  <target>約1秒に圧縮（推奨）</target>
+</trans-unit>
+<trans-unit id="sc5e69bb89790de2e">
+  <source>保留完整空隙</source>
+  <target>ギャップをそのまま保持</target>
+</trans-unit>
+<trans-unit id="s7a5eca3551f11eda">
+  <source>有待安装的新版本（<x id="0" equiv-text="${this._notes.version}"/>）</source>
+  <target>インストール待ちの新バージョンがあります（<x id="0" equiv-text="${this._notes.version}"/>）</target>
+</trans-unit>
+<trans-unit id="s025ba344e69729c7">
+  <source>更新内容</source>
+  <target>更新内容</target>
+</trans-unit>
+<trans-unit id="s03d3c122ed2410b6">
+  <source>对照播放</source>
+  <target>対照再生</target>
+</trans-unit>
+<trans-unit id="sbc409e9af86c490c">
+  <source>未检测到可用麦克风。</source>
+  <target>利用可能なマイクが検出されませんでした。</target>
+</trans-unit>
+<trans-unit id="sfa07c99ffbe3cc67">
+  <source>按名称升序</source>
+  <target>名前の昇順</target>
+</trans-unit>
+<trans-unit id="s97c729a235101c91">
+  <source>按名称降序</source>
+  <target>名前の降順</target>
+</trans-unit>
+<trans-unit id="sd3d8b374fd3724ea">
+  <source>连续对照 (E)</source>
+  <target>連続対照 (E)</target>
+</trans-unit>
+<trans-unit id="se5f169c7b54a4486">
+  <source>5. 设置中可选择句间空隙：压缩为约 1 秒（推荐，便于按句同步对照），或保留完整空隙（更贴近原音节奏）。</source>
+  <target>5. 設定で文間ギャップを選べます：約1秒に圧縮（推奨。文ごとの同期対照がしやすい）、またはギャップをそのまま保持（原音のリズムに近い）。</target>
+</trans-unit>
+<trans-unit id="s0c72c74a9946e750">
+  <source>录制时跳过字幕间的长静音，句间只留约 1 秒；对照时按句同步播放，便于逐句对比。</source>
+  <target>録音時は字幕間の長い無音をスキップし、文間は約1秒だけ残します。対照時は文ごとに同期再生し、一文ずつ比べやすくします。</target>
+</trans-unit>
+<trans-unit id="s1c9e5f3aff527a20">
+  <source>按原音完整时间轴跟读（含句间长静音）；对照时为连续双轨，更贴近真实影子节奏。</source>
+  <target>原音の完全なタイムラインに沿ってシャドーイングします（文間の長い無音を含む）。対照は連続デュアルトラックで、実際のシャドーイングのリズムに近くなります。</target>
 </trans-unit>
 </body>
 </file>

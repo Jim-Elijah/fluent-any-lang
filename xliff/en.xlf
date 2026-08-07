@@ -202,10 +202,6 @@
   <source>剩余</source>
 <target>Remaining</target>
   </trans-unit>
-<trans-unit id="s8b9445de9e1ddfa3">
-  <source>磁盘存储空间不足，建议导出或删除旧录音。</source>
-<target>Low disk space. We recommend exporting or deleting old recordings.</target>
-  </trans-unit>
 <trans-unit id="sa51509d5238300c9">
   <source>未能开启麦克风，请检查权限。</source>
 <target>Failed to access microphone. Please check permissions.</target>
@@ -411,7 +407,7 @@
   <target>Recording</target>
 </trans-unit>
 <trans-unit id="s3fd93394e75f5977">
-  <source>该句录音已达上限（<x id="0" equiv-text="${this._echoLimitPerSegment}"/>条），删除旧录音后可继续。</source>
+  <source>该句录音已达上限（<x id="0" equiv-text="${this.echoLimitPerSegment}"/>条），删除旧录音后可继续。</source>
   <target>Recordings for this sentence have reached the limit (<x id="0" equiv-text="${this._echoLimitPerSegment}"/>). Delete older ones to continue.</target>
 </trans-unit>
 <trans-unit id="s19575e089d1dae1b">
@@ -702,10 +698,6 @@
   <source>练习最多的材料</source>
   <target>Most practiced materials</target>
 </trans-unit>
-<trans-unit id="s422bd01f5c5c935f">
-  <source>录音 <x id="0" equiv-text="${index + 1}"/></source>
-  <target>Recording <x id="0" equiv-text="${index + 1}"/></target>
-</trans-unit>
 <trans-unit id="sf2224b0955929227">
   <source>选项</source>
   <target>Options</target>
@@ -789,9 +781,6 @@
 <trans-unit id="sb9be459c62ad8278">
   <source>听完后将开始录音</source>
 <target>Recording will start after listening</target></trans-unit>
-<trans-unit id="sc6ab818871dabc0d">
-  <source>5. 录音时底部会显示状态与波形，全屏字幕下也可看到。</source>
-<target>5. During recording, the status and waveform will be displayed at the bottom, which is also visible under full-screen subtitles.</target></trans-unit>
 <trans-unit id="s23254af2ecd02e26">
   <source>4. 录音时底部会显示状态与波形，全屏字幕下也可看到。</source>
 <target>4. During recording, the status and waveform will be displayed at the bottom, which is also visible under full-screen subtitles.</target></trans-unit>
@@ -805,7 +794,7 @@
   <source>以后不再提醒</source>
 <target>Don't remind me again</target></trans-unit>
 <trans-unit id="s63ec61b31b4127a3">
-  <source>已保存 <x id="0" equiv-text="${this._shadowingCount}"/>/<x id="1" equiv-text="${this._shadowingLimit}"/></source>
+  <source>已保存 <x id="0" equiv-text="${count}"/>/<x id="1" equiv-text="${this.echoLimitPerSegment}"/></source>
 <target>Saved <x id="0" equiv-text="${this._shadowingCount}"/>/<x id="1" equiv-text="${this._shadowingLimit}"/></target></trans-unit>
 <trans-unit id="sff4e4efc83c85d46">
   <source>管理录音</source>
@@ -858,9 +847,6 @@
 <trans-unit id="s6125cd6135aebc0b">
   <source>数据备份与迁移</source>
 <target>Data Backup &amp; Migration</target></trans-unit>
-<trans-unit id="sc0dc83897c9457ff">
-  <source>导出备份可用于换设备迁移。设置始终包含在备份中。</source>
-<target>Exported backups can be used for migration to another device. Settings are always included in the backup.</target></trans-unit>
 <trans-unit id="s6fc1d53f35ccc853">
   <source>媒体文件若未纳入备份，请在库页用相同文件名重新导入原音视频与字幕，录音即可对齐。</source>
 <target>If media files are not included in the backup, re-import the original audio/video and subtitles with the same filename on the Library page to align the recordings.</target></trans-unit>
@@ -1673,10 +1659,6 @@
   <source>最多选择 <x id="0" equiv-text="${DISCRIMINATION_MAX_NOISE_TRACKS}"/> 条噪音</source>
   <target>Select up to <x id="0" equiv-text="${DISCRIMINATION_MAX_NOISE_TRACKS}"/> noise tracks</target>
 </trans-unit>
-<trans-unit id="s09b6271fff16003d">
-  <source>已导出备份（录音 <x id="0" equiv-text="${manifest.counts.recordings}"/>，学习记录 <x id="1" equiv-text="${manifest.counts.sessions}"/>，句库 <x id="2" equiv-text="${manifest.counts.sentenceBank}"/>，噪音 <x id="3" equiv-text="${manifest.counts.noise}"/>，媒体 <x id="4" equiv-text="${manifest.counts.media}"/>）</source>
-  <target>Backup exported (recordings <x id="0" equiv-text="${manifest.counts.recordings}"/>, sessions <x id="1" equiv-text="${manifest.counts.sessions}"/>, sentence bank <x id="2" equiv-text="${manifest.counts.sentenceBank}"/>, noise <x id="3" equiv-text="${manifest.counts.noise}"/>, media <x id="4" equiv-text="${manifest.counts.media}"/>)</target>
-</trans-unit>
 <trans-unit id="s9aae08e72d7a488b">
   <source>噪音：导入 <x id="0" equiv-text="${result.noiseImported}"/>，跳过 <x id="1" equiv-text="${result.noiseSkipped}"/></source>
   <target>Noise: imported <x id="0" equiv-text="${result.noiseImported}"/>, skipped <x id="1" equiv-text="${result.noiseSkipped}"/></target>
@@ -2132,6 +2114,122 @@
 <trans-unit id="s371f7208b6270c04">
   <source>影子</source>
   <target>Shadowing</target>
+</trans-unit>
+<trans-unit id="sab6771cc5dc25b00">
+  <source>连续对照</source>
+  <target>Continuous compare</target>
+</trans-unit>
+<trans-unit id="sa21025f7c3ca7e31">
+  <source>无原音，无法连续对照</source>
+  <target>No original audio for continuous compare</target>
+</trans-unit>
+<trans-unit id="s8c13fdf3a710c143">
+  <source>无录音，无法连续对照</source>
+  <target>No recording for continuous compare</target>
+</trans-unit>
+<trans-unit id="s3dd57d017ffaa19a">
+  <source>无练习片段，无法连续对照</source>
+  <target>No practice segments for continuous compare</target>
+</trans-unit>
+<trans-unit id="h140f021e65a0b1a0">
+  <source>已暂停连续对照<x id="0" equiv-text="${segmentLabel}"/></source>
+  <target>Paused continuous compare<x id="0" equiv-text="${segmentLabel}"/></target>
+</trans-unit>
+<trans-unit id="ha59cbea2705f92bb">
+  <source>正在连续对照<x id="0" equiv-text="${segmentLabel}"/></source>
+  <target>Continuous compare in progress<x id="0" equiv-text="${segmentLabel}"/></target>
+</trans-unit>
+<trans-unit id="sd140f999a4743cb5">
+  <source>请跟上原音</source>
+  <target>Please keep up with the original</target>
+</trans-unit>
+<trans-unit id="s35ae0d190d87f204">
+  <source>准备录音…</source>
+  <target>Preparing to record…</target>
+</trans-unit>
+<trans-unit id="se2bc10f8fe2fdef3">
+  <source>原音已结束，即将开始录音</source>
+  <target>Original ended; recording will start soon</target>
+</trans-unit>
+<trans-unit id="se18ee8139083e570">
+  <source>6. 录音时底部会显示状态与波形，全屏字幕下也可看到。</source>
+  <target>6. During recording, the status and waveform will be displayed at the bottom, which is also visible under full-screen subtitles.</target>
+</trans-unit>
+<trans-unit id="sd493dc3269382d8a">
+  <source>当前句的回声录音</source>
+  <target>Echo recordings for current sentence</target>
+</trans-unit>
+<trans-unit id="saee0c927737ba43f">
+  <source>媒体容量不足，建议清理录音或在设置中提高媒体容量上限</source>
+  <target>Not enough media storage; delete recordings or raise the media size limit in Settings</target>
+</trans-unit>
+<trans-unit id="se269683981628e08">
+  <source>有新版本可用（<x id="0" equiv-text="${this._notes.version}"/>）</source>
+  <target>A new version is available (<x id="0" equiv-text="${this._notes.version}"/>)</target>
+</trans-unit>
+<trans-unit id="s3c3df540457b94a7">
+  <source>已导出备份（录音 <x id="0" equiv-text="${manifest.counts.recordings}"/>，学习记录 <x id="1" equiv-text="${manifest.counts.sessions}"/>，播放列表 <x id="2" equiv-text="${manifest.counts.playlists}"/>，句库 <x id="3" equiv-text="${manifest.counts.sentenceBank}"/>，噪音 <x id="4" equiv-text="${manifest.counts.noise}"/>，媒体 <x id="5" equiv-text="${manifest.counts.media}"/>）</source>
+  <target>Backup exported (recordings <x id="0" equiv-text="${manifest.counts.recordings}"/>, study records <x id="1" equiv-text="${manifest.counts.sessions}"/>, playlists <x id="2" equiv-text="${manifest.counts.playlists}"/>, sentence bank <x id="3" equiv-text="${manifest.counts.sentenceBank}"/>, noise <x id="4" equiv-text="${manifest.counts.noise}"/>, media <x id="5" equiv-text="${manifest.counts.media}"/>)</target>
+</trans-unit>
+<trans-unit id="s877df6e724237c8c">
+  <source>播放列表：导入 <x id="0" equiv-text="${result.playlistsImported}"/>，跳过 <x id="1" equiv-text="${result.playlistsSkipped}"/></source>
+  <target>Playlists: Imported <x id="0" equiv-text="${result.playlistsImported}"/>, Skipped <x id="1" equiv-text="${result.playlistsSkipped}"/></target>
+</trans-unit>
+<trans-unit id="sd5e9a3909ce1fe03">
+  <source>导出备份可用于换设备迁移。设置与播放列表始终包含在备份中。</source>
+  <target>Exported backups can be used to migrate to another device. Settings and playlists are always included in the backup.</target>
+</trans-unit>
+<trans-unit id="s5e16b421c7fcf9f1">
+  <source>影子跟读 · 句间空隙</source>
+  <target>Shadowing · Inter-sentence gap</target>
+</trans-unit>
+<trans-unit id="s6bff9ff9bb594e87">
+  <source>压缩为约 1 秒（推荐）</source>
+  <target>Compress to about 1 second (recommended)</target>
+</trans-unit>
+<trans-unit id="sc5e69bb89790de2e">
+  <source>保留完整空隙</source>
+  <target>Keep full gaps</target>
+</trans-unit>
+<trans-unit id="s7a5eca3551f11eda">
+  <source>有待安装的新版本（<x id="0" equiv-text="${this._notes.version}"/>）</source>
+  <target>A new version is waiting to install (<x id="0" equiv-text="${this._notes.version}"/>)</target>
+</trans-unit>
+<trans-unit id="s025ba344e69729c7">
+  <source>更新内容</source>
+  <target>What's new</target>
+</trans-unit>
+<trans-unit id="s03d3c122ed2410b6">
+  <source>对照播放</source>
+  <target>Compare playback</target>
+</trans-unit>
+<trans-unit id="sbc409e9af86c490c">
+  <source>未检测到可用麦克风。</source>
+  <target>No usable microphone detected.</target>
+</trans-unit>
+<trans-unit id="sfa07c99ffbe3cc67">
+  <source>按名称升序</source>
+  <target>Name ascending</target>
+</trans-unit>
+<trans-unit id="s97c729a235101c91">
+  <source>按名称降序</source>
+  <target>Name descending</target>
+</trans-unit>
+<trans-unit id="sd3d8b374fd3724ea">
+  <source>连续对照 (E)</source>
+  <target>Continuous compare (E)</target>
+</trans-unit>
+<trans-unit id="se5f169c7b54a4486">
+  <source>5. 设置中可选择句间空隙：压缩为约 1 秒（推荐，便于按句同步对照），或保留完整空隙（更贴近原音节奏）。</source>
+  <target>5. In Settings you can choose the inter-sentence gap: compress to about 1 second (recommended, easier for sentence-synced compare), or keep full gaps (closer to the original rhythm).</target>
+</trans-unit>
+<trans-unit id="s0c72c74a9946e750">
+  <source>录制时跳过字幕间的长静音，句间只留约 1 秒；对照时按句同步播放，便于逐句对比。</source>
+  <target>While recording, skip long silence between subtitles and leave about 1 second between sentences; on compare, play sentence-synced for easier line-by-line contrast.</target>
+</trans-unit>
+<trans-unit id="s1c9e5f3aff527a20">
+  <source>按原音完整时间轴跟读（含句间长静音）；对照时为连续双轨，更贴近真实影子节奏。</source>
+  <target>Shadow along the full original timeline (including long gaps between sentences); compare uses continuous dual tracks, closer to real Shadowing rhythm.</target>
 </trans-unit>
 </body>
 </file>

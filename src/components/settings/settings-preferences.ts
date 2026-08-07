@@ -105,8 +105,12 @@ export class SettingsPreferences extends LitElement {
             ></ui-select>
             <p class="hint">
               ${s.shadowingGapPolicy === 'compress'
-                ? msg('录制时跳过字幕间的长空隙，对照时按句对齐同步，更适合跟读练习。')
-                : msg('原音按完整时间轴播放；预览为连续对照听，更贴近真实影子节奏。')}
+                ? msg(
+                    '录制时跳过字幕间的长静音，句间只留约 1 秒；对照时按句同步播放，便于逐句对比。',
+                  )
+                : msg(
+                    '按原音完整时间轴跟读（含句间长静音）；对照时为连续双轨，更贴近真实影子节奏。',
+                  )}
             </p>
           </div>
           <div

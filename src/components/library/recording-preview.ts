@@ -296,7 +296,7 @@ export class RecordingPreview extends LitElement {
     const keyboardShortcuts = supportsKeyboardShortcuts();
     const compareLabel = this._useContinuousCompare ? msg('连续对照') : msg('同步播放');
     const compareLabelWithKey = this._useContinuousCompare
-      ? msg('连续对照听 (E)')
+      ? msg('连续对照 (E)')
       : msg('同步播放 (E)');
 
     const sourceTitle = canPlaySource
