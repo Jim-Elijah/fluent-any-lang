@@ -10,6 +10,7 @@ import type {
 import { importSubtitleForMedia } from '../../lib/import-content.js';
 import { formatTime } from '../../lib/playback-utils.js';
 import { supportsKeyboardShortcuts } from '../../lib/hotkeys/index.js';
+import { getMicrophoneBlockedMessage } from '../../lib/microphone-access.js';
 import type { PracticeRecord, SubtitleSegment, SubtitleTrack } from '../../types/models.js';
 import '../ui/button.js';
 import '../ui/icon.js';
@@ -712,9 +713,9 @@ export class SubtitlePanel extends LitElement {
       : atLimit
         ? msg(str`该句录音已达上限（${this.echoLimitPerSegment}条），删除旧录音后可继续。`)
         : !this.recordingSupported
-          ? msg('当前浏览器不支持录音。')
+          ? getMicrophoneBlockedMessage('unsupported')
           : !this.micReady
-            ? this.micBlockedTitle || msg('未能开启麦克风，请检查权限。')
+            ? this.micBlockedTitle || getMicrophoneBlockedMessage('denied')
             : msg('跟读');
     const tipDisabled = disabled && !atLimit && this.recordingSupported && this.micReady;
 

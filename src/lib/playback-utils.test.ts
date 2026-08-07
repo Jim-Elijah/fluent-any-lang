@@ -9,6 +9,7 @@ import {
   formatTime,
   getLongerPracticeAxis,
   getPracticeSegmentDuration,
+  getPracticeSegmentViewRange,
   getPracticeSourceDuration,
   getPracticeSourceSpan,
   getPracticeRecordingSpan,
@@ -207,6 +208,38 @@ describe('getLongerPracticeAxis', () => {
       recordingEndTime: 2,
     };
     expect(getLongerPracticeAxis(segment)).toBe('recording');
+  });
+});
+
+describe('getPracticeSegmentViewRange', () => {
+  it('includes the trailing gap until the next segment starts', () => {
+    // samplePracticeSegments[1] ends at source 10; [2] starts at 12
+    expect(getPracticeSegmentViewRange(samplePracticeSegments, 1, 'source')).toEqual({
+      start: 5,
+      end: 12,
+    });
+    expect(getPracticeSegmentViewRange(samplePracticeSegments, 1, 'recording')).toEqual({
+      start: 4.5,
+      end: 9,
+    });
+  });
+
+  it('ends at the segment end for the last practice segment', () => {
+    expect(getPracticeSegmentViewRange(samplePracticeSegments, 2, 'source')).toEqual({
+      start: 12,
+      end: 15,
+    });
+  });
+
+  it('returns null for an out-of-range index', () => {
+    expect(getPracticeSegmentViewRange(samplePracticeSegments, 9, 'source')).toBeNull();
+  });
+
+  it('matches segment bounds when there is no gap', () => {
+    expect(getPracticeSegmentViewRange(samplePracticeSegments, 0, 'source')).toEqual({
+      start: 0,
+      end: 5,
+    });
   });
 });
 

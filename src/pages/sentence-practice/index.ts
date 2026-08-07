@@ -22,7 +22,18 @@ import type {
 } from '../../types/models.js';
 import { Message } from '../../components/ui/message.js';
 import { Loading } from '../../components/ui/loading.js';
-import type { RecordingStateChangeDetail } from '../../components/player/audio-recorder.js';
+import type {
+  RecordingErrorDetail,
+  RecordingStateChangeDetail,
+} from '../../components/player/audio-recorder.js';
+import {
+  canRecordWithMicrophone,
+  checkMicrophoneStatus,
+  getMicrophoneBlockedMessage,
+  invalidateMicrophoneStatusCache,
+  isRecordingSupported,
+  type MicrophoneStatus,
+} from '../../lib/microphone-access.js';
 
 import '../../components/ui/alert.js';
 import '../../components/ui/button.js';
@@ -192,11 +203,27 @@ export class SentencePracticePage extends NavigatorElement {
   @state()
   private _recording = false;
 
+  @state()
+  private _micStatus: MicrophoneStatus = 'prompt';
+
   private readonly _controller = new MediaController();
   private _didLoad = false;
+  private readonly _recordingSupported = isRecordingSupported();
+  private _micPermissionStatus: PermissionStatus | null = null;
+
+  private get _canUseMicrophone(): boolean {
+    return this._recordingSupported && canRecordWithMicrophone(this._micStatus);
+  }
+
+  private get _micDisabledTitle(): string {
+    return getMicrophoneBlockedMessage(this._recordingSupported ? this._micStatus : 'unsupported');
+  }
 
   connectedCallback(): void {
     super.connectedCallback();
+    document.addEventListener('visibilitychange', this._onVisibilityChange);
+    void this._attachMicPermissionListener();
+    void this._refreshMicStatus();
     if (supportsKeyboardShortcuts()) {
       getHotkeyManager().registerScope({
         id: 'sentence-practice',
@@ -238,6 +265,9 @@ export class SentencePracticePage extends NavigatorElement {
     if (supportsKeyboardShortcuts()) {
       getHotkeyManager().unregisterScope('sentence-practice');
     }
+    document.removeEventListener('visibilitychange', this._onVisibilityChange);
+    this._micPermissionStatus?.removeEventListener('change', this._onMicPermissionChange);
+    this._micPermissionStatus = null;
     this.shadowRoot?.querySelector('audio-recorder')?.destroy();
     this._controller.destroy();
     super.disconnectedCallback();
@@ -334,6 +364,52 @@ export class SentencePracticePage extends NavigatorElement {
   private _onRecordingStateChange = (event: CustomEvent<RecordingStateChangeDetail>): void => {
     this._recording = event.detail.recording;
   };
+
+  private _onRecordingError = (event: CustomEvent<RecordingErrorDetail>): void => {
+    Message.error(event.detail.message);
+    invalidateMicrophoneStatusCache();
+    void this._refreshMicStatus({ force: true });
+  };
+
+  private _onVisibilityChange = (): void => {
+    if (document.visibilityState === 'visible') {
+      void this._refreshMicStatus();
+    }
+  };
+
+  private _onMicPermissionChange = (): void => {
+    invalidateMicrophoneStatusCache();
+    void this._refreshMicStatus({ force: true });
+  };
+
+  private async _attachMicPermissionListener(): Promise<void> {
+    try {
+      const status = await globalThis.navigator.permissions?.query({
+        name: 'microphone' as PermissionName,
+      });
+      if (!status) {
+        return;
+      }
+      this._micPermissionStatus = status;
+      status.addEventListener('change', this._onMicPermissionChange);
+    } catch {
+      // Permissions API may not support microphone query in this browser.
+    }
+  }
+
+  private async _refreshMicStatus(options: { force?: boolean } = {}): Promise<void> {
+    const status = await checkMicrophoneStatus(options);
+    if (this._micStatus !== status) {
+      this._micStatus = status;
+    }
+  }
+
+  private _setMode(mode: PracticeType): void {
+    this._mode = mode;
+    if (mode === 'speaking') {
+      void this._refreshMicStatus();
+    }
+  }
 
   private _toggleHotkeysHelp = (): void => {
     this._hotkeysHelpOpen = !this._hotkeysHelpOpen;
@@ -438,17 +514,13 @@ export class SentencePracticePage extends NavigatorElement {
                 <div class="tabs">
                   <ui-button
                     variant="${this._mode === 'listening' ? 'primary' : 'secondary'}"
-                    @click=${() => {
-                      this._mode = 'listening';
-                    }}
+                    @click=${() => this._setMode('listening')}
                   >
                     ${msg('听力')}
                   </ui-button>
                   <ui-button
                     variant="${this._mode === 'speaking' ? 'primary' : 'secondary'}"
-                    @click=${() => {
-                      this._mode = 'speaking';
-                    }}
+                    @click=${() => this._setMode('speaking')}
                   >
                     ${msg('口语')}
                   </ui-button>
@@ -470,8 +542,11 @@ export class SentencePracticePage extends NavigatorElement {
                         .collectSegments=${false}
                         .countdownBeforeStart=${false}
                         .autoPlayOnStart=${false}
+                        .disabled=${!this._recordingSupported || !this._canUseMicrophone}
+                        .disabledTitle=${this._micDisabledTitle}
                         .beforeRecordingStart=${this._pauseMediaBeforeRecording}
                         @recording-state-change=${this._onRecordingStateChange}
+                        @recording-error=${this._onRecordingError}
                       ></audio-recorder>`,
                     )}
                   </div>`

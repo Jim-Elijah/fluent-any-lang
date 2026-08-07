@@ -36,14 +36,28 @@ async function probeMicrophoneAvailability(): Promise<MicrophoneStatus> {
   }
 }
 
+/** User-facing message when recording UI is blocked by mic status. */
+export function getMicrophoneBlockedMessage(status: MicrophoneStatus): string {
+  switch (status) {
+    case 'unsupported':
+      return msg('当前浏览器不支持录音。');
+    case 'denied':
+      return msg('未能开启麦克风，请检查权限。');
+    case 'unavailable':
+      return msg('未检测到可用麦克风。');
+    default:
+      return '';
+  }
+}
+
 /** User-facing message for getUserMedia / recorder init failures. */
 export function getMicrophoneErrorMessage(error: Error): string {
   const name = error.name;
   if (name === 'NotAllowedError' || name === 'SecurityError') {
-    return msg('未能开启麦克风，请检查权限。');
+    return getMicrophoneBlockedMessage('denied');
   }
   if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
-    return msg('未检测到可用麦克风。');
+    return getMicrophoneBlockedMessage('unavailable');
   }
   return msg('录音失败，请重试。');
 }

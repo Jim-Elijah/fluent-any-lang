@@ -3,8 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   canRecordWithMicrophone,
   checkMicrophoneStatus,
+  getMicrophoneBlockedMessage,
   getMicrophoneErrorMessage,
   invalidateMicrophoneStatusCache,
+  isRecordingSupported,
 } from './microphone-access.js';
 
 describe('microphone-access', () => {
@@ -20,6 +22,7 @@ describe('microphone-access', () => {
 
   it('returns unsupported when MediaRecorder is missing', async () => {
     vi.stubGlobal('MediaRecorder', undefined);
+    expect(isRecordingSupported()).toBe(false);
     await expect(checkMicrophoneStatus({ force: true })).resolves.toBe('unsupported');
   });
 
@@ -140,6 +143,14 @@ describe('microphone-access', () => {
   it('maps NotAllowedError to permission message', () => {
     const error = new DOMException('denied', 'NotAllowedError');
     expect(getMicrophoneErrorMessage(error)).toContain('未能开启麦克风');
+  });
+
+  it('maps blocked status to UI messages', () => {
+    expect(getMicrophoneBlockedMessage('unsupported')).toContain('当前浏览器不支持录音');
+    expect(getMicrophoneBlockedMessage('denied')).toContain('未能开启麦克风');
+    expect(getMicrophoneBlockedMessage('unavailable')).toContain('未检测到可用麦克风');
+    expect(getMicrophoneBlockedMessage('prompt')).toBe('');
+    expect(getMicrophoneBlockedMessage('granted')).toBe('');
   });
 
   it('canRecordWithMicrophone allows prompt and granted', () => {

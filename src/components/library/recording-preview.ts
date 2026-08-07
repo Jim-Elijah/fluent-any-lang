@@ -18,6 +18,7 @@ import {
   findSegmentIndex,
   getLongerPracticeAxis,
   getPracticeRecordingSpan,
+  getPracticeSegmentViewRange,
   getPracticeSourceSpan,
   mapPracticeViewRange,
 } from '../../lib/playback-utils.js';
@@ -1015,23 +1016,12 @@ export class RecordingPreview extends LitElement {
   }
 
   private _zoomToPracticeSegment(segmentIndex: number): void {
-    const segment = this.segments[segmentIndex];
-    if (!segment) {
+    const axis = this._usesRecordingTimeline() ? 'recording' : 'source';
+    const range = getPracticeSegmentViewRange(this.segments, segmentIndex, axis);
+    if (!range) {
       return;
     }
-
-    if (this._usesRecordingTimeline()) {
-      this._setPracticeViewRange({
-        start: segment.recordingStartTime,
-        end: segment.recordingEndTime,
-      });
-      return;
-    }
-
-    this._setPracticeViewRange({
-      start: segment.sourceStartTime,
-      end: segment.sourceEndTime,
-    });
+    this._setPracticeViewRange(range);
   }
 
   private async _handlePlaySync(): Promise<void> {

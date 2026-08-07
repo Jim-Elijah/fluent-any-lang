@@ -131,6 +131,7 @@ type RecordingPreviewInternals = HTMLElement & {
   _handlePlayRecording: () => Promise<void>;
   _handlePlaySync: () => Promise<void>;
   _setSyncActiveTrack: (segmentIndex: number) => void;
+  _zoomToPracticeSegment: (segmentIndex: number) => void;
   _resolveTrackViewRange: (
     track: { id: string },
     viewRange: { start: number; end: number } | null,
@@ -271,6 +272,37 @@ describe('recording-preview', () => {
     await flushUpdates();
 
     expect(setViewRangeSpy).toHaveBeenCalledWith({ start: 0, end: 4.5 });
+  });
+
+  it('zooms practice segment view range through the trailing gap to the next segment', async () => {
+    const el = await renderPreview();
+    const gapped: PracticeSegment[] = [
+      {
+        id: 's0',
+        sourceStartTime: 0,
+        sourceEndTime: 4,
+        recordingStartTime: 0,
+        recordingEndTime: 3.5,
+      },
+      {
+        id: 's1',
+        sourceStartTime: 8,
+        sourceEndTime: 12,
+        recordingStartTime: 6,
+        recordingEndTime: 9,
+      },
+    ];
+    el.segments = gapped;
+    el._sourceTrackId = 'source-track';
+    el._recordingTrackId = 'rec-track';
+    el._playMode = 'source';
+    el._controller.setActiveId('source-track');
+    await el.updateComplete;
+
+    const setViewRangeSpy = vi.spyOn(el._controller, 'setViewRange');
+    el._zoomToPracticeSegment(0);
+
+    expect(setViewRangeSpy).toHaveBeenCalledWith({ start: 0, end: 8 });
   });
 
   it('sets view range to full practice span after loading shadowing tracks', async () => {

@@ -184,6 +184,32 @@ export function getLongerPracticeAxis(segment: PracticeSegment): PracticeTimeAxi
   return recordingDuration > sourceDuration ? 'recording' : 'source';
 }
 
+/**
+ * Waveform view range for one practice segment, including the trailing gap until
+ * the next segment starts (last segment ends at its own end time).
+ */
+export function getPracticeSegmentViewRange(
+  segments: PracticeSegment[],
+  segmentIndex: number,
+  axis: PracticeTimeAxis,
+): { start: number; end: number } | null {
+  const segment = segments[segmentIndex];
+  if (!segment) {
+    return null;
+  }
+
+  const startKey = axis === 'source' ? 'sourceStartTime' : 'recordingStartTime';
+  const endKey = axis === 'source' ? 'sourceEndTime' : 'recordingEndTime';
+  const start = segment[startKey];
+  const segmentEnd = segment[endKey];
+  const next = segments[segmentIndex + 1];
+  const end = next ? Math.max(segmentEnd, next[startKey]) : segmentEnd;
+  if (end <= start) {
+    return { start, end: Math.max(start, segmentEnd) };
+  }
+  return { start, end };
+}
+
 /** Map a timestamp from one practice axis to the other via segment alignment. */
 export function mapPracticeTime(
   time: number,

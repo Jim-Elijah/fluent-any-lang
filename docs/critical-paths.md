@@ -28,6 +28,7 @@ Prefer automated tests where they exist; use this list when changing the named a
 | `PracticeTimeTracker` / session flush | Stats dashboard; background/tab hide; short sessions dropped; no side effects on playback |
 | `EchoClipPlayer` / echo listen | Mic route change does not cut clip into recording; main element position stable |
 | `audio-recorder` / `saveRecording` | Shadowing multi-segment + Echo per-segment records; library preview dual-track |
+| `microphone-access` / Speaking mic gate | `practice-view` Shadowing/Echo; sentence-practice Speaking recorder disabled + permission refresh |
 | NoiseMixer / RateLadder / discrimination prefs | Noise ≠ Media; play/pause sync with main; ladder on `ended` |
 | `segment-id` / subtitle import / migrate | Existing Echo records & Sentence Bank still match segments |
 | `db/schema` / `db/index` upgrade | Fresh open + upgrade from previous version; migrations idempotent |

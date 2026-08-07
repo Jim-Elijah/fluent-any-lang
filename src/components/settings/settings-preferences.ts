@@ -99,7 +99,7 @@ export class SettingsPreferences extends LitElement {
               .value=${s.shadowingGapPolicy}
               .options=${[
                 { value: 'compress', label: msg('压缩为约 1 秒（推荐）') },
-                { value: 'preserve', label: msg('保留完整间隙') },
+                { value: 'preserve', label: msg('保留完整空隙') },
               ]}
               @change=${this._onGapPolicyChange}
             ></ui-select>

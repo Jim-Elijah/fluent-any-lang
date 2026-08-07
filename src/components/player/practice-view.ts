@@ -120,7 +120,9 @@ import {
 import {
   canRecordWithMicrophone,
   checkMicrophoneStatus,
+  getMicrophoneBlockedMessage,
   invalidateMicrophoneStatusCache,
+  isRecordingSupported,
   type MicrophoneStatus,
 } from '../../lib/microphone-access.js';
 
@@ -287,11 +289,7 @@ export class PracticeView extends NavigatorElement {
   private get _echoLimitPerSegment() {
     return getAppSettings().maxEchoPerSegment;
   }
-  private readonly _recordingSupported =
-    typeof window !== 'undefined' &&
-    typeof navigator !== 'undefined' &&
-    'mediaDevices' in navigator &&
-    typeof MediaRecorder !== 'undefined';
+  private readonly _recordingSupported = isRecordingSupported();
   private _micPermissionStatus: PermissionStatus | null = null;
 
   private get _canUseMicrophone(): boolean {
@@ -299,16 +297,7 @@ export class PracticeView extends NavigatorElement {
   }
 
   private get _micDisabledTitle(): string {
-    if (!this._recordingSupported) {
-      return msg('当前浏览器不支持录音。');
-    }
-    if (this._micStatus === 'denied') {
-      return msg('未能开启麦克风，请检查权限。');
-    }
-    if (this._micStatus === 'unavailable') {
-      return msg('未检测到可用麦克风。');
-    }
-    return '';
+    return getMicrophoneBlockedMessage(this._recordingSupported ? this._micStatus : 'unsupported');
   }
 
   disconnectedCallback(): void {
@@ -836,7 +825,7 @@ export class PracticeView extends NavigatorElement {
                               )}
                             </p>
                           </div>`
-                      : msg('当前浏览器不支持录音。')}
+                      : getMicrophoneBlockedMessage('unsupported')}
                     ${keyed(
                       this._mediaId,
                       html`<audio-recorder
@@ -881,7 +870,7 @@ export class PracticeView extends NavigatorElement {
                           ${msg('说明')}
                         </ui-button>
                       </div>`
-                    : msg('当前浏览器不支持录音。')}
+                    : getMicrophoneBlockedMessage('unsupported')}
                   ${this._recordingError
                     ? html`<ui-alert type="error">${this._recordingError}</ui-alert>`
                     : null}
@@ -1724,7 +1713,7 @@ export class PracticeView extends NavigatorElement {
 
     await this._refreshMicStatus({ force: true });
     if (!this._canUseMicrophone) {
-      Message.error(this._micDisabledTitle || msg('未能开启麦克风，请检查权限。'));
+      Message.error(this._micDisabledTitle || getMicrophoneBlockedMessage('denied'));
       return;
     }
 

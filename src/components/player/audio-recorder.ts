@@ -5,7 +5,11 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { MediaController } from '../../controllers/media-controller.js';
 import { WaveformController } from '../../controllers/waveform-controller.js';
 import { AudioRecorderController } from '../../lib/audio-recorder.js';
-import { getMicrophoneErrorMessage } from '../../lib/microphone-access.js';
+import {
+  getMicrophoneBlockedMessage,
+  getMicrophoneErrorMessage,
+  isRecordingSupported,
+} from '../../lib/microphone-access.js';
 import { buildLiveDisplayPeaks } from '../../lib/live-waveform-peaks.js';
 import { ExtendedMediaEventType } from '../../lib/playback-utils.js';
 import { throttle } from '../../lib/util.js';
@@ -185,11 +189,7 @@ export class AudioRecorder extends LitElement {
    * chunks until `onStop` returns, so it must not be released in that window.
    */
   private _stopInFlight = false;
-  private readonly _recordingSupported =
-    typeof window !== 'undefined' &&
-    typeof navigator !== 'undefined' &&
-    'mediaDevices' in navigator &&
-    typeof MediaRecorder !== 'undefined';
+  private readonly _recordingSupported = isRecordingSupported();
 
   private readonly _audioRecorder = new AudioRecorderController({
     onStart: () => {
@@ -363,7 +363,7 @@ export class AudioRecorder extends LitElement {
     }
 
     if (!this._recordingSupported) {
-      this._dispatchError(msg('当前浏览器不支持录音。'));
+      this._dispatchError(getMicrophoneBlockedMessage('unsupported'));
       return;
     }
 
