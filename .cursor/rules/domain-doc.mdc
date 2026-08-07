@@ -1,0 +1,33 @@
+---
+description: Follow domain glossary, architecture, and critical-path docs before changing or testing practice/storage code
+alwaysApply: true
+---
+
+# Domain & critical-path docs
+
+Before implementing, refactoring, reviewing, or writing tests that touch practice, playback, storage, import, or stats:
+
+1. Read `CONTEXT.md` — use canonical terms; never prefer `_Avoid_` synonyms in code, tests, commits, or UI copy discussions.
+2. Read `docs/architecture.md` — respect ownership, couplings, and invariants.
+3. Read `docs/critical-paths.md` — if the change hits a "Change X → must verify Y" row, run or update those checks (prefer automated tests).
+
+## Keep docs honest
+
+- Behavior or invariants change → update the matching doc in the same change.
+- Do not put implementation detail into `CONTEXT.md` (glossary only).
+- Do not duplicate long call graphs in docs; link to code and keep checklists short.
+
+## ADRs (`docs/adr/`)
+
+Offer/write an ADR only when all three are true:
+
+1. Hard to reverse
+2. Surprising without recorded context
+3. Real trade-off was made
+
+Use `.agents/skills/domain-modeling/ADR-FORMAT.md`. Skip ADRs for routine or easily reversible choices.
+
+## Quick prompts (human or agent)
+
+- Feature/bugfix: "Follow CONTEXT.md + docs/architecture.md + docs/critical-paths.md; verify the Change X → Y rows you touch."
+- Hard decision: "If it meets the three ADR criteria, add `docs/adr/NNNN-slug.md`."
