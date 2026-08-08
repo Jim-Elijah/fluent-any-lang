@@ -154,24 +154,20 @@ describe('library-page', () => {
         composed: true,
       }),
     );
-    el.shadowRoot
-      ?.querySelector('record-list')
-      ?.dispatchEvent(
-        new CustomEvent('list-metrics', {
-          detail: { naturalHeight: 300 },
-          bubbles: true,
-          composed: true,
-        }),
-      );
-    el.shadowRoot
-      ?.querySelector('noise-list')
-      ?.dispatchEvent(
-        new CustomEvent('list-metrics', {
-          detail: { naturalHeight: 200 },
-          bubbles: true,
-          composed: true,
-        }),
-      );
+    el.shadowRoot?.querySelector('record-list')?.dispatchEvent(
+      new CustomEvent('list-metrics', {
+        detail: { naturalHeight: 300 },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+    el.shadowRoot?.querySelector('noise-list')?.dispatchEvent(
+      new CustomEvent('list-metrics', {
+        detail: { naturalHeight: 200 },
+        bubbles: true,
+        composed: true,
+      }),
+    );
     await el.updateComplete;
 
     expect(mediaList.style.height).not.toBe('');

@@ -2197,6 +2197,14 @@
   <source>按原音完整时间轴跟读（含句间长静音）；对照时为连续双轨，更贴近真实影子节奏。</source>
   <target>原音の完全なタイムラインに沿ってシャドーイングします（文間の長い無音を含む）。対照は連続デュアルトラックで、実際のシャドーイングのリズムに近くなります。</target>
 </trans-unit>
+<trans-unit id="s7f7451081ab5965a">
+  <source>收起</source>
+  <target>閉じる</target>
+</trans-unit>
+<trans-unit id="s8e4442cbbf028a3d">
+  <source>查看更新</source>
+  <target>更新を見る</target>
+</trans-unit>
 </body>
 </file>
 </xliff>

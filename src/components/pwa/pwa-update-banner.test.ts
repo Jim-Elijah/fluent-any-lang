@@ -105,7 +105,7 @@ describe('pwa-update-banner', () => {
     expect(fetchMock).toHaveBeenCalledWith('/release-notes.json', { cache: 'no-store' });
   });
 
-  it('shows version and highlights when release notes load', async () => {
+  it('shows version and expand control when release notes load, highlights stay collapsed', async () => {
     fetchMock.mockResolvedValue(
       Response.json({
         version: '0.4.0',
@@ -119,8 +119,46 @@ describe('pwa-update-banner', () => {
 
     await vi.waitFor(() => {
       expect(el.shadowRoot?.textContent).toContain('0.4.0');
-      expect(el.shadowRoot?.textContent).toContain('要点一');
+      expect(el.shadowRoot?.textContent).toContain('展开');
     });
+    expect(el.shadowRoot?.querySelector('.notes-panel')).toBeNull();
+    expect(el.shadowRoot?.textContent).not.toContain('要点一');
+  });
+
+  it('toggles release notes panel with expand and collapse', async () => {
+    fetchMock.mockResolvedValue(
+      Response.json({
+        version: '0.4.0',
+        highlights: { 'zh-CN': ['要点一'], en: ['Tip one'] },
+      }),
+    );
+
+    const el = await renderBanner();
+    pwaRef.listener?.({ needRefresh: true, offlineReady: false, registered: true });
+    await el.updateComplete;
+
+    await vi.waitFor(() => {
+      expect(el.shadowRoot?.textContent).toContain('展开');
+    });
+
+    const expandBtn = [...(el.shadowRoot?.querySelectorAll('ui-button') ?? [])].find((btn) =>
+      btn.textContent?.includes('展开'),
+    );
+    expandBtn?.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
+    await el.updateComplete;
+
+    expect(el.shadowRoot?.querySelector('.notes-panel')).not.toBeNull();
+    expect(el.shadowRoot?.textContent).toContain('要点一');
+    expect(el.shadowRoot?.textContent).toContain('收起');
+
+    const collapseBtn = [...(el.shadowRoot?.querySelectorAll('ui-button') ?? [])].find((btn) =>
+      btn.textContent?.includes('收起'),
+    );
+    collapseBtn?.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
+    await el.updateComplete;
+
+    expect(el.shadowRoot?.querySelector('.notes-panel')).toBeNull();
+    expect(el.shadowRoot?.textContent).toContain('展开');
   });
 
   it('keeps generic title when release notes fetch fails', async () => {
@@ -139,8 +177,10 @@ describe('pwa-update-banner', () => {
     pwaRef.listener?.({ needRefresh: true, offlineReady: false, registered: true });
     await el.updateComplete;
 
-    const buttons = el.shadowRoot?.querySelectorAll('ui-button');
-    buttons?.[0]?.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
+    const updateBtn = [...(el.shadowRoot?.querySelectorAll('ui-button') ?? [])].find((btn) =>
+      btn.textContent?.includes('立即更新'),
+    );
+    updateBtn?.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
 
     expect(applyPwaUpdate).toHaveBeenCalledOnce();
   });
@@ -150,8 +190,10 @@ describe('pwa-update-banner', () => {
     pwaRef.listener?.({ needRefresh: true, offlineReady: false, registered: true });
     await el.updateComplete;
 
-    const buttons = el.shadowRoot?.querySelectorAll('ui-button');
-    buttons?.[1]?.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
+    const dismissBtn = [...(el.shadowRoot?.querySelectorAll('ui-button') ?? [])].find((btn) =>
+      btn.textContent?.includes('稍后'),
+    );
+    dismissBtn?.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
 
     expect(dismissNeedRefresh).toHaveBeenCalledOnce();
   });

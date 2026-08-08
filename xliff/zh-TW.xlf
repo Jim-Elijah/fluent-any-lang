@@ -2197,6 +2197,14 @@
   <source>按原音完整时间轴跟读（含句间长静音）；对照时为连续双轨，更贴近真实影子节奏。</source>
   <target>按原音完整時間軸跟讀（含句間長靜音）；對照時為連續雙軌，更貼近真實影子節奏。</target>
 </trans-unit>
+<trans-unit id="s7f7451081ab5965a">
+  <source>收起</source>
+  <target>收起</target>
+</trans-unit>
+<trans-unit id="s8e4442cbbf028a3d">
+  <source>查看更新</source>
+  <target>查看更新</target>
+</trans-unit>
 </body>
 </file>
 </xliff>

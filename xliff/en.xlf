@@ -2231,6 +2231,14 @@
   <source>按原音完整时间轴跟读（含句间长静音）；对照时为连续双轨，更贴近真实影子节奏。</source>
   <target>Shadow along the full original timeline (including long gaps between sentences); compare uses continuous dual tracks, closer to real Shadowing rhythm.</target>
 </trans-unit>
+<trans-unit id="s7f7451081ab5965a">
+  <source>收起</source>
+  <target>Collapse</target>
+</trans-unit>
+<trans-unit id="s8e4442cbbf028a3d">
+  <source>查看更新</source>
+  <target>View updates</target>
+</trans-unit>
 </body>
 </file>
 </xliff>

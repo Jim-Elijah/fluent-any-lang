@@ -33,7 +33,7 @@ export class PwaUpdateBanner extends LitElement {
       z-index: ${Z_INDEX.TOAST};
       display: flex;
       flex-wrap: wrap;
-      align-items: flex-start;
+      align-items: center;
       justify-content: center;
       gap: 0.75rem;
       padding: 0.75rem 1rem;
@@ -46,8 +46,9 @@ export class PwaUpdateBanner extends LitElement {
 
     .content {
       display: flex;
-      flex-direction: column;
-      gap: 0.35rem;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem 0.75rem;
       min-width: 0;
       max-width: min(36rem, 100%);
     }
@@ -56,16 +57,56 @@ export class PwaUpdateBanner extends LitElement {
       margin: 0;
     }
 
-    .highlights {
-      margin: 0;
-      padding-left: 1.1rem;
-      max-height: 6.5rem;
+    .notes-panel {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: flex-start;
+      max-height: min(40vh, 16rem);
       overflow: auto;
+      padding: 0.65rem 1rem 0.85rem;
+      background: color-mix(in srgb, var(--color-primary, #1677ff) 92%, #000);
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+    }
+
+    .highlights {
+      box-sizing: border-box;
+      width: 100%;
+      max-width: 36rem;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      line-height: 1.45;
       opacity: 0.95;
     }
 
     .highlights li {
-      margin: 0.15rem 0;
+      position: relative;
+      margin: 0;
+      padding-left: 0.9rem;
+    }
+
+    .highlights li::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0.55em;
+      width: 0.35rem;
+      height: 0.35rem;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.75);
+    }
+
+    @media (min-width: 768px) {
+      .notes-panel {
+        justify-content: center;
+      }
     }
 
     .actions {
@@ -75,8 +116,10 @@ export class PwaUpdateBanner extends LitElement {
       align-items: center;
     }
 
-    .actions ui-button[variant='ghost'] {
-      color: #fff;
+    /* Ghost uses --color-text-secondary / --color-primary inside shadow DOM */
+    .banner ui-button[variant='ghost'] {
+      --color-text-secondary: rgba(255, 255, 255, 0.95);
+      --color-primary: #fff;
     }
   `;
 
@@ -85,6 +128,9 @@ export class PwaUpdateBanner extends LitElement {
 
   @state()
   private _notes: ReleaseNotes | null = null;
+
+  @state()
+  private _notesExpanded = false;
 
   private _unsubscribe: (() => void) | undefined;
   private _offlineToastShown = false;
@@ -99,6 +145,7 @@ export class PwaUpdateBanner extends LitElement {
       } else {
         this._notes = null;
         this._notesFetchAttempted = false;
+        this._notesExpanded = false;
       }
       if (state.offlineReady && !this._offlineToastShown) {
         this._offlineToastShown = true;
@@ -131,6 +178,10 @@ export class PwaUpdateBanner extends LitElement {
     dismissNeedRefresh();
   }
 
+  private _onToggleNotes(): void {
+    this._notesExpanded = !this._notesExpanded;
+  }
+
   render() {
     if (!this._needRefresh) return nothing;
 
@@ -145,9 +196,9 @@ export class PwaUpdateBanner extends LitElement {
           <p class="text">${title}</p>
           ${highlights.length > 0
             ? html`
-                <ul class="highlights">
-                  ${highlights.map((item) => html`<li>${item}</li>`)}
-                </ul>
+                <ui-button variant="ghost" @click=${this._onToggleNotes}>
+                  ${this._notesExpanded ? msg('收起') : msg('查看更新')}
+                </ui-button>
               `
             : nothing}
         </div>
@@ -155,6 +206,15 @@ export class PwaUpdateBanner extends LitElement {
           <ui-button variant="secondary" @click=${this._onUpdate}>${msg('立即更新')}</ui-button>
           <ui-button variant="ghost" @click=${this._onDismiss}>${msg('稍后')}</ui-button>
         </div>
+        ${this._notesExpanded && highlights.length > 0
+          ? html`
+              <div class="notes-panel">
+                <ul class="highlights">
+                  ${highlights.map((item) => html`<li>${item}</li>`)}
+                </ul>
+              </div>
+            `
+          : nothing}
       </div>
     `;
   }
