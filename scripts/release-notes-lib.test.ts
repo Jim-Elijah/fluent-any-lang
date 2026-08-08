@@ -26,10 +26,10 @@ const SAMPLE_CHANGELOG = `## [0.4.0](https://example.com/compare/v0.3.0...v0.4.0
 `;
 
 describe('cleanChangelogBullet', () => {
-  it('strips markdown commit links and bare hashes', () => {
+  it('strips markdown commit links, bare hashes, and bold markers', () => {
     expect(
       cleanChangelogBullet('* **pwa:** show notes ([abc1234](https://example.com/commit/abc1234))'),
-    ).toBe('**pwa:** show notes');
+    ).toBe('pwa: show notes');
     expect(cleanChangelogBullet('* fix locale fallback (aabbccd)')).toBe('fix locale fallback');
   });
 });
@@ -39,8 +39,8 @@ describe('parseLatestChangelogSection', () => {
     const { version, highlights } = parseLatestChangelogSection(SAMPLE_CHANGELOG);
     expect(version).toBe('0.4.0');
     expect(highlights).toEqual([
-      '**pwa:** show release notes on update',
-      '**settings:** add player defaults',
+      'pwa: show release notes on update',
+      'settings: add player defaults',
       'fix locale fallback',
     ]);
     expect(highlights.join('')).not.toContain('old feature');

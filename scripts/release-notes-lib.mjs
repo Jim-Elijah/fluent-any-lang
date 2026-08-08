@@ -50,6 +50,8 @@ export function cleanChangelogBullet(line) {
   // "… ([abc1234](url))" or "… (abc1234)"
   text = text.replace(/\s+\(\[[0-9a-f]{7,40}\]\([^)]+\)\)\s*$/i, '');
   text = text.replace(/\s+\([0-9a-f]{7,40}\)\s*$/i, '');
+  // "**app:** …" → "app: …" (plain text UI, not markdown)
+  text = text.replace(/\*\*(.+?)\*\*/g, '$1');
   return text.trim();
 }
 
