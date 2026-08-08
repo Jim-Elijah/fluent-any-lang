@@ -1,3 +1,10 @@
+## [0.3.3](https://github.com/Jim-Elijah/fluent-any-lang/compare/v0.3.2...v0.3.3) (2026-08-08)
+
+### Features
+
+* **pwa:** enhance update banner with expandable release notes and async script inclusion ([c2d44b5](https://github.com/Jim-Elijah/fluent-any-lang/commit/c2d44b5aaaec9a8c87e60d4ee9b9638478a7488d))
+* **release-notes:** strip bold markers from changelog entries for plain text output ([9a23718](https://github.com/Jim-Elijah/fluent-any-lang/commit/9a23718ab17fb6a7737715c463dfaf8a827f0fd8))
+
 ## [0.3.2](https://github.com/Jim-Elijah/fluent-any-lang/compare/v0.3.1...v0.3.2) (2026-08-07)
 
 ### Features
