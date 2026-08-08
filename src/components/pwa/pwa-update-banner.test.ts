@@ -119,7 +119,7 @@ describe('pwa-update-banner', () => {
 
     await vi.waitFor(() => {
       expect(el.shadowRoot?.textContent).toContain('0.4.0');
-      expect(el.shadowRoot?.textContent).toContain('展开');
+      expect(el.shadowRoot?.textContent).toContain('查看更新');
     });
     expect(el.shadowRoot?.querySelector('.notes-panel')).toBeNull();
     expect(el.shadowRoot?.textContent).not.toContain('要点一');
@@ -138,11 +138,11 @@ describe('pwa-update-banner', () => {
     await el.updateComplete;
 
     await vi.waitFor(() => {
-      expect(el.shadowRoot?.textContent).toContain('展开');
+      expect(el.shadowRoot?.textContent).toContain('查看更新');
     });
 
     const expandBtn = [...(el.shadowRoot?.querySelectorAll('ui-button') ?? [])].find((btn) =>
-      btn.textContent?.includes('展开'),
+      btn.textContent?.includes('查看更新'),
     );
     expandBtn?.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
     await el.updateComplete;
@@ -158,7 +158,7 @@ describe('pwa-update-banner', () => {
     await el.updateComplete;
 
     expect(el.shadowRoot?.querySelector('.notes-panel')).toBeNull();
-    expect(el.shadowRoot?.textContent).toContain('展开');
+    expect(el.shadowRoot?.textContent).toContain('查看更新');
   });
 
   it('keeps generic title when release notes fetch fails', async () => {
