@@ -141,6 +141,10 @@ export type PracticeSegment = {
   sourceEndTime: number; // 原始音频结束时间（秒）
   recordingStartTime: number; // 录音起始时间（秒）
   recordingEndTime: number; // 录音结束时间（秒）
+  /** Subtitle Segment 原文快照；存量录音可能缺失 */
+  text?: string;
+  /** Subtitle Segment 译文快照；存量录音可能缺失 */
+  translation?: string;
 };
 
 // 录音的metadata
@@ -165,6 +169,86 @@ export type PracticeRecord = {
 export type PracticeRecordBlob = {
   recordId: string;
   blob: Blob;
+};
+
+/** Pronunciation Score status for a Practice Record. */
+export type PronunciationScoreStatus = 'pending' | 'success' | 'failed';
+
+/** Word-level score from the pronunciation API. */
+export type PronunciationWordScore = {
+  word: string;
+  start: number;
+  end: number;
+  score: number;
+};
+
+/** Prosody sub-scores from POST /api/v1/pronunciation/score `details.prosody_breakdown`. */
+export type PronunciationProsodyBreakdown = {
+  speed: number;
+  rhythm: number;
+  intonation: number;
+  stress: number;
+};
+
+/** Details payload aligned with POST /api/v1/pronunciation/score `details`. */
+export type PronunciationScoreDetails = {
+  transcript: string;
+  word_scores: PronunciationWordScore[];
+  missing_words: string[];
+  extra_words: string[];
+  speech_rate_wpm?: number;
+  pause_count?: number;
+  duration_sec?: number;
+  reference_transcript?: string | null;
+  prosody_breakdown?: PronunciationProsodyBreakdown;
+};
+
+/** Meta payload aligned with POST /api/v1/pronunciation/score `meta`. */
+export type PronunciationScoreMeta = {
+  model: string;
+  device: string;
+  latency_ms: number;
+  reference_source: string;
+};
+
+/**
+ * Optional evaluation of a Practice Record (one score per record in MVP).
+ * Stored on-device; not a Practice Session.
+ */
+export type PronunciationScore = {
+  id: string;
+  recordId: string;
+  status: PronunciationScoreStatus;
+  referenceText: string;
+  accuracy?: number;
+  fluency?: number;
+  completeness?: number;
+  prosody?: number;
+  overall?: number;
+  details?: PronunciationScoreDetails;
+  meta?: PronunciationScoreMeta;
+  errorCode?: number;
+  errorMessage?: string;
+  createdAt: number;
+  scoredAt?: number;
+};
+
+/** Successful JSON body from POST /api/v1/pronunciation/score. */
+export type PronunciationScoreApiResponse = {
+  accuracy: number;
+  fluency: number;
+  completeness: number;
+  prosody: number;
+  overall: number;
+  details: PronunciationScoreDetails;
+  meta: PronunciationScoreMeta;
+};
+
+/** JSON body from GET /health. */
+export type SpeechScoreHealthResponse = {
+  status: string;
+  device: string;
+  model_loaded: boolean;
 };
 
 export type LoopMode = 'none' | 'single' | 'segment' | 'list' | 'shuffle';
@@ -275,6 +359,12 @@ export type AppSettings = {
   lastPlayedPlaylistId: string;
   /** 辨音训练偏好（噪声选择 + 速听阶梯） */
   discrimination: DiscriminationSettings;
+  /** Pronunciation scoring API base URL (no trailing slash required). */
+  speechScoreApiBaseUrl: string;
+  /** Pronunciation scoring API key (sent as X-API-Key). */
+  speechScoreApiKey: string;
+  /** Default BCP-47 language for scoring; `auto` lets the server detect. */
+  speechScoreLanguage: string;
 };
 
 export const FAVORITES_PLAYLIST_ID =
@@ -355,6 +445,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
   skipDiscriminationTips: false,
   lastPlayedPlaylistId: '',
   discrimination: { ...DEFAULT_DISCRIMINATION_SETTINGS, ladderRates: [1] },
+  speechScoreApiBaseUrl: '',
+  speechScoreApiKey: '',
+  speechScoreLanguage: 'auto',
 };
 
 /** Allowed ranges for persisted storage / quota numeric fields. */

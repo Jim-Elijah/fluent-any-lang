@@ -255,6 +255,11 @@ export class SettingsBackup extends LitElement {
             )}
           </div>
           <div>${msg(str`噪音：导入 ${result.noiseImported}，跳过 ${result.noiseSkipped}`)}</div>
+          <div>
+            ${msg(
+              str`发音评分：导入 ${result.pronunciationScoresImported}，跳过 ${result.pronunciationScoresSkipped}`,
+            )}
+          </div>
           ${result.errors.length
             ? html`<div>${msg(str`错误 ${result.errors.length} 条：${result.errors[0]}`)}</div>`
             : nothing}

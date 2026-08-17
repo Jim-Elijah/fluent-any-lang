@@ -14,6 +14,8 @@ import {
   findAllEchoRecordings,
   saveRecording,
 } from '../../db/service.js';
+import { getScoresByRecordIds } from '../../db/pronunciation-score.js';
+import { aggregateEchoLatestOverall } from '../../lib/pronunciation-score/aggregate.js';
 import { estimateStorage } from '../../lib/export-content.js';
 import { reportError } from '../../lib/error-reporter.js';
 import { getMediaDuration } from '../../lib/file-validation.js';
@@ -65,6 +67,7 @@ import {
   MediaEventType,
   formatStorageUsage,
   getPracticeSourceDuration,
+  practiceScriptFromSubtitle,
 } from '../../lib/playback-utils.js';
 import { Z_INDEX } from '../ui/internal/z-index.js';
 import '../ui/alert.js';
@@ -194,6 +197,9 @@ export class PracticeView extends NavigatorElement {
 
   @state()
   private _echoRecordingsBySegmentId: Record<string, PracticeRecord[]> = {};
+
+  @state()
+  private _echoLatestScoreBySegmentId: Record<string, number | null> = {};
 
   @state()
   private _sentenceBankSegmentIds: string[] = [];
@@ -894,6 +900,7 @@ export class PracticeView extends NavigatorElement {
             showFullscreenIcon="${!this._subtitlePanelFullscreen}"
             .echoMode="${isEcho}"
             .echoRecordingsBySegmentId="${this._echoRecordingsBySegmentId}"
+            .echoLatestScoreBySegmentId="${this._echoLatestScoreBySegmentId}"
             .echoRecordingSegmentIndex="${this._echoSegmentIndex}"
             .echoBusy="${this._sessionPhase === 'preparing' ||
             this._sessionPhase === 'stopping' ||
@@ -1861,6 +1868,7 @@ export class PracticeView extends NavigatorElement {
         sourceEndTime: segment.endTime,
         recordingStartTime: 0,
         recordingEndTime: duration,
+        ...practiceScriptFromSubtitle(segment),
       };
       const record: PracticeRecord = {
         id: crypto.randomUUID(),
@@ -1889,6 +1897,7 @@ export class PracticeView extends NavigatorElement {
     if (!this._mediaId) {
       this._shadowingCount = 0;
       this._echoRecordingsBySegmentId = {};
+      this._echoLatestScoreBySegmentId = {};
       this._storageEstimate = null;
       return;
     }
@@ -1909,6 +1918,12 @@ export class PracticeView extends NavigatorElement {
         grouped[segmentId].sort((a, b) => b.createdAt - a.createdAt);
       }
       this._echoRecordingsBySegmentId = grouped;
+      try {
+        const scores = await getScoresByRecordIds(echoRecords.map((record) => record.id));
+        this._echoLatestScoreBySegmentId = aggregateEchoLatestOverall(grouped, scores);
+      } catch {
+        this._echoLatestScoreBySegmentId = {};
+      }
       this._storageEstimate = await estimateStorage();
     } catch {
       this._storageEstimate = null;

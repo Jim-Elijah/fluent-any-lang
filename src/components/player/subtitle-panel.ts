@@ -9,6 +9,7 @@ import type {
 } from '../../controllers/media-controller.js';
 import { importSubtitleForMedia } from '../../lib/import-content.js';
 import { formatTime } from '../../lib/playback-utils.js';
+import { formatOverallBadge } from '../../lib/pronunciation-score/aggregate.js';
 import { supportsKeyboardShortcuts } from '../../lib/hotkeys/index.js';
 import { getMicrophoneBlockedMessage } from '../../lib/microphone-access.js';
 import type { PracticeRecord, SubtitleSegment, SubtitleTrack } from '../../types/models.js';
@@ -352,6 +353,31 @@ export class SubtitlePanel extends LitElement {
       padding: var(--space-xs) var(--space-sm);
     }
 
+    .echo-score {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 1.375rem;
+      height: 1.25rem;
+      padding: 0 4px;
+      border-radius: 999px;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      line-height: 1;
+      background: rgba(82, 196, 26, 0.16);
+      color: #389e0d;
+    }
+
+    .echo-score.mid {
+      background: rgba(250, 173, 20, 0.2);
+      color: #ad6800;
+    }
+
+    .echo-score.low {
+      background: rgba(255, 77, 79, 0.16);
+      color: #cf1322;
+    }
+
     @media (max-width: 767px) {
       .content {
         align-items: flex-start;
@@ -385,6 +411,10 @@ export class SubtitlePanel extends LitElement {
 
   @property({ attribute: false })
   echoRecordingsBySegmentId: Record<string, PracticeRecord[]> = {};
+
+  /** Latest successful overall Pronunciation Score per Echo Subtitle Segment. */
+  @property({ attribute: false })
+  echoLatestScoreBySegmentId: Record<string, number | null> = {};
 
   @property({ type: Number })
   echoRecordingSegmentIndex = -1;
@@ -645,6 +675,7 @@ export class SubtitlePanel extends LitElement {
               ${this._renderSentenceBankButton(segment)}
               ${this.echoMode
                 ? html`${this._renderEchoRecordButton(index)}
+                  ${this._renderEchoScoreBadge(segment.id)}
                   ${this._renderEchoManageButton(segment.id)}`
                 : nothing}
             </div>
@@ -760,6 +791,21 @@ export class SubtitlePanel extends LitElement {
           <ui-icon name="manage" size="var(--icon-md)"></ui-icon>
         </ui-button>
       </ui-tooltip>
+    `;
+  }
+
+  private _renderEchoScoreBadge(segmentId: string): TemplateResult | typeof nothing {
+    const overall = this.echoLatestScoreBySegmentId[segmentId];
+    if (typeof overall !== 'number') {
+      return nothing;
+    }
+    const band = overall >= 80 ? '' : overall >= 60 ? 'mid' : 'low';
+    return html`
+      <span
+        class="echo-score ${band}"
+        aria-label="${msg(str`发音评分 ${formatOverallBadge(overall)}`)}"
+        >${formatOverallBadge(overall)}</span
+      >
     `;
   }
 

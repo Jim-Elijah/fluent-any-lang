@@ -9,6 +9,7 @@ const CHILD_TAGS = [
   'settings-preferences',
   'settings-player-defaults',
   'settings-limits',
+  'settings-speech-score',
   'settings-backup',
   'settings-pwa',
   'settings-diagnostics',

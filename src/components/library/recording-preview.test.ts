@@ -39,7 +39,13 @@ vi.stubGlobal('AudioContext', MockAudioContext);
 vi.stubGlobal('webkitAudioContext', MockAudioContext);
 
 import { attachMediaElementGain, getMediaElementGain } from '../../lib/media-element-gain.js';
-import type { PracticeSegment, SubtitleSegment } from '../../types/models.js';
+import type {
+  PracticeRecord,
+  PracticeSegment,
+  PronunciationScore,
+  SubtitleSegment,
+} from '../../types/models.js';
+import * as scoreDb from '../../db/pronunciation-score.js';
 import {
   HotkeyManager,
   KEYBOARD_SHORTCUTS_MQ,
@@ -80,6 +86,7 @@ type RecordingPreviewInternals = HTMLElement & {
   segments: PracticeSegment[];
   subtitleSegments: SubtitleSegment[];
   practiceMode: string;
+  record: PracticeRecord | null;
   sourceBlob: Blob | null;
   recordingBlob: Blob | null;
   _controller: {
@@ -201,6 +208,61 @@ describe('resolvePreviewSubtitle', () => {
         recordingTime: 0,
       })?.text,
     ).toBe('two');
+  });
+
+  it('falls back to the Practice Segment snapshot when the Subtitle Track is gone', () => {
+    const practiceSegments: PracticeSegment[] = [
+      {
+        id: 's0',
+        sourceStartTime: 0,
+        sourceEndTime: 5,
+        recordingStartTime: 0,
+        recordingEndTime: 4.5,
+        text: 'one',
+        translation: '一',
+      },
+      {
+        id: 's1',
+        sourceStartTime: 5,
+        sourceEndTime: 10,
+        recordingStartTime: 4.5,
+        recordingEndTime: 9,
+        text: 'two',
+      },
+    ];
+
+    expect(
+      resolvePreviewSubtitle({
+        mode: 'source',
+        subtitleSegments: [],
+        practiceSegments,
+        syncSegmentIndex: 0,
+        sourceTime: 6,
+        recordingTime: 0,
+      }),
+    ).toEqual({
+      id: 's1',
+      startTime: 5,
+      endTime: 10,
+      text: 'two',
+    });
+
+    expect(
+      resolvePreviewSubtitle({
+        mode: 'sync',
+        subtitleSegments: [],
+        practiceSegments,
+        syncSegmentIndex: 0,
+        sourceTime: 0,
+        recordingTime: 0,
+      }),
+    ).toEqual({
+      id: 's0',
+      startTime: 0,
+      endTime: 5,
+      text: 'one',
+      translation: '一',
+    });
   });
 });
 
@@ -1303,5 +1365,61 @@ describe('recording-preview', () => {
     dispatchKey('KeyR');
 
     expect(playback.replaySegment).toHaveBeenCalledWith(0);
+  });
+
+  it('shows prosody with the other score dimensions', async () => {
+    const score: PronunciationScore = {
+      id: 'score-1',
+      recordId: 'rec-1',
+      status: 'success',
+      referenceText: 'hello',
+      accuracy: 82.5,
+      fluency: 92,
+      completeness: 95,
+      prosody: 81,
+      overall: 84.6,
+      details: {
+        transcript: 'hello',
+        word_scores: [],
+        missing_words: [],
+        extra_words: [],
+        prosody_breakdown: {
+          speed: 100,
+          rhythm: 85,
+          intonation: 78,
+          stress: 82,
+        },
+      },
+      createdAt: 1,
+    };
+    vi.spyOn(scoreDb, 'getScoreByRecordId').mockResolvedValue(score);
+
+    const el = await renderPreview();
+    el.record = {
+      id: 'rec-1',
+      mediaId: 'media-1',
+      mediaTitle: 'Lesson',
+      mediaFilename: 'lesson.mp3',
+      mode: 'echo',
+      mimeType: 'audio/webm',
+      createdAt: 1,
+      sourceDuration: 4,
+      recordingDuration: 4,
+      segments: [],
+    };
+    await el.updateComplete;
+    await flushUpdates();
+    await el.updateComplete;
+
+    const metricText = [...(el.shadowRoot?.querySelectorAll('.score-metric') ?? [])]
+      .map((node) => node.textContent?.replace(/\s+/g, ' ').trim())
+      .join(' | ');
+    expect(metricText).toContain('准确度');
+    expect(metricText).toContain('82.5');
+    expect(metricText).toContain('韵律');
+    expect(metricText).toContain('81.0');
+    expect(metricText).toContain('语速');
+    expect(metricText).toContain('100.0');
+    expect(el.shadowRoot?.querySelectorAll('.score-metric--nested')).toHaveLength(4);
   });
 });

@@ -1,5 +1,5 @@
 import { getDB } from './index.js';
-import { STORE_RECORDING_BLOB, STORE_RECORDING } from './schema.js';
+import { STORE_PRONUNCIATION_SCORE, STORE_RECORDING_BLOB, STORE_RECORDING } from './schema.js';
 import type { SpeakingMode, PracticeRecordBlob, PracticeRecord } from '../types/models.js';
 
 function isEchoRecord(record: PracticeRecord): boolean {
@@ -92,10 +92,17 @@ export async function findAllEchoRecordings(mediaId: string): Promise<PracticeRe
 // delete recording and its blob
 export async function deleteRecording(id: string): Promise<void> {
   const db = await getDB();
-  const tx = db.transaction([STORE_RECORDING, STORE_RECORDING_BLOB], 'readwrite');
+  const tx = db.transaction(
+    [STORE_RECORDING, STORE_RECORDING_BLOB, STORE_PRONUNCIATION_SCORE],
+    'readwrite',
+  );
 
+  const score = await tx.objectStore(STORE_PRONUNCIATION_SCORE).index('byRecordId').get(id);
   await tx.objectStore(STORE_RECORDING).delete(id);
   await tx.objectStore(STORE_RECORDING_BLOB).delete(id);
+  if (score) {
+    await tx.objectStore(STORE_PRONUNCIATION_SCORE).delete(score.id);
+  }
 
   await tx.done;
 }

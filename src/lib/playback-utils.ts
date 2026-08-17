@@ -152,6 +152,18 @@ export function computeSegmentPauseMs(
   return (((segment.endTime - segment.startTime) * pausePercent) / 100) * 1000;
 }
 
+/** Copy Subtitle Segment script onto a Practice Segment at save time. */
+export function practiceScriptFromSubtitle(
+  segment: Pick<SubtitleSegment, 'text' | 'translation'>,
+): Pick<PracticeSegment, 'text' | 'translation'> {
+  const text = segment.text.trim();
+  const translation = segment.translation?.trim();
+  return {
+    ...(text ? { text } : {}),
+    ...(translation ? { translation } : {}),
+  };
+}
+
 /** Source time span covered by practice segments (first start → last end). */
 export function getPracticeSourceSpan(
   segments: PracticeSegment[],

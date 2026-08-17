@@ -63,8 +63,12 @@ A measurable stretch of effective practice on one Media (and optional Playlist),
 _Avoid_: Visit, page open, wall-clock duration
 
 **Practice Record**:
-A saved speaking recording produced in Shadowing or Echo, aligned in time to the source for comparison playback.
+A saved speaking recording produced in Shadowing or Echo, aligned in time to the source for comparison playback. It may keep the Subtitle Segment text practiced, so scoring and compare preview still have a script if the Subtitle Track is later removed.
 _Avoid_: Take (in formal language), recording (alone when the saved artifact is meant)
+
+**Pronunciation Score**:
+An optional evaluation of a Practice Record (accuracy, fluency, completeness, prosody, overall). Stored on-device; computed by an external scoring service only when the learner requests it.
+_Avoid_: Practice Session, grade, assessment (as the canonical term)
 
 ### Organization
 

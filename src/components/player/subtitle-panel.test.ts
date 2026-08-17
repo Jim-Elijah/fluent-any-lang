@@ -252,6 +252,17 @@ describe('subtitle-panel', () => {
     expect(manageButton?.hasAttribute('disabled') || manageButton?.disabled).toBe(true);
   });
 
+  it('shows an overall badge next to echo manage when a score is present', async () => {
+    const el = await renderPanel();
+    el.echoMode = true;
+    el.echoLatestScoreBySegmentId = { s1: 84.2 };
+    await el.updateComplete;
+    await flushUpdates();
+
+    const badge = el.shadowRoot?.querySelector('.echo-score');
+    expect(badge?.textContent?.trim()).toBe('84');
+  });
+
   it('requests echo manage recordings when manage button is clicked', async () => {
     const el = await renderPanel();
     el.echoMode = true;

@@ -6,6 +6,7 @@ import { getAppBuildInfo } from '../app-build-info.js';
 import { downloadBlob } from '../export-content.js';
 import {
   getAllPracticeSessions,
+  getAllPronunciationScores,
   getAllSubtitles,
   getMediaBlob,
   getMediaList,
@@ -23,6 +24,7 @@ import type {
   Playlist,
   PracticeRecord,
   PracticeSession,
+  PronunciationScore,
   SentenceBankEntry,
   SubtitleTrack,
 } from '../../types/models.js';
@@ -83,6 +85,7 @@ export async function buildBackupZip(
   let sessions: PracticeSession[] = [];
   let sentenceBank: SentenceBankEntry[] = [];
   let noiseItems: NoiseItem[] = [];
+  let pronunciationScores: PronunciationScore[] = [];
 
   if (opts.includeMedia) {
     mediaItems = await getMediaList();
@@ -105,6 +108,8 @@ export async function buildBackupZip(
       if (!blob) continue;
       files[`recordings/blobs/${record.id}`] = await blobToUint8Array(blob);
     }
+    pronunciationScores = await getAllPronunciationScores();
+    files['pronunciation-scores/metadata.jsonl'] = strToU8(toJsonl(pronunciationScores));
   }
 
   if (opts.includeSessions) {
@@ -144,6 +149,7 @@ export async function buildBackupZip(
       includePlaylists: true,
       includeSentenceBank: opts.includeSentenceBank,
       includeNoise: opts.includeNoise,
+      includePronunciationScores: opts.includeRecordings,
     },
     counts: {
       media: mediaItems.length,
@@ -153,6 +159,7 @@ export async function buildBackupZip(
       playlists: playlists.length,
       sentenceBank: sentenceBank.length,
       noise: noiseItems.length,
+      pronunciationScores: pronunciationScores.length,
     },
   };
   files['manifest.json'] = strToU8(JSON.stringify(manifest, null, 2));

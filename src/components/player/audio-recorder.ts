@@ -11,7 +11,7 @@ import {
   isRecordingSupported,
 } from '../../lib/microphone-access.js';
 import { buildLiveDisplayPeaks } from '../../lib/live-waveform-peaks.js';
-import { ExtendedMediaEventType } from '../../lib/playback-utils.js';
+import { ExtendedMediaEventType, practiceScriptFromSubtitle } from '../../lib/playback-utils.js';
 import { throttle } from '../../lib/util.js';
 import { CountdownCancelledError, runRecordingCountdown } from '../ui/countdown-overlay.js';
 import { Message } from '../ui/message.js';
@@ -173,6 +173,8 @@ export class AudioRecorder extends LitElement {
     sourceStartTime: number;
     sourceEndTime: number;
     recordingStartTime: number;
+    text?: string;
+    translation?: string;
   } | null = null;
   /**
    * Floor for the next open-window start (after head pad). Ensures the first
@@ -575,6 +577,7 @@ export class AudioRecorder extends LitElement {
       sourceStartTime: segment.startTime,
       sourceEndTime: segment.endTime,
       recordingStartTime: Math.max(this._getRecordingElapsedSeconds(), this._nextOpenStartFloor),
+      ...practiceScriptFromSubtitle(segment),
     };
   }
 
@@ -599,6 +602,7 @@ export class AudioRecorder extends LitElement {
         sourceEndTime: segment.endTime,
         recordingStartTime: Math.max(0, recordingEndTime - 0.01),
         recordingEndTime,
+        ...practiceScriptFromSubtitle(segment),
       });
     }
   }
@@ -609,15 +613,14 @@ export class AudioRecorder extends LitElement {
       sourceStartTime: number;
       sourceEndTime: number;
       recordingStartTime: number;
+      text?: string;
+      translation?: string;
     },
     recordingEndTime: number,
   ): void {
     const end = Math.max(open.recordingStartTime, recordingEndTime);
     this._practiceSegments.push({
-      id: open.id,
-      sourceStartTime: open.sourceStartTime,
-      sourceEndTime: open.sourceEndTime,
-      recordingStartTime: open.recordingStartTime,
+      ...open,
       recordingEndTime: end,
     });
   }
@@ -761,6 +764,7 @@ export class AudioRecorder extends LitElement {
       sourceEndTime: this._clipSourceEndToPlayback(resolved.startTime, resolved.endTime),
       recordingStartTime: Math.max(0, recordingEndTime - 0.01),
       recordingEndTime,
+      ...practiceScriptFromSubtitle(resolved),
     });
   }
 

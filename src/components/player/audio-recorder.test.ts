@@ -664,6 +664,7 @@ describe('audio-recorder component', () => {
     const segment = onComplete.mock.calls[0][0].detail.segments[0];
     expect(segment.recordingStartTime).toBeGreaterThanOrEqual(RECORDING_HEAD_PAD_MS / 1000 - 0.02);
     expect(segment.recordingStartTime).toBeLessThan(RECORDING_HEAD_PAD_MS / 1000 + 0.05);
+    expect(segment.text).toBe('one');
     controller.destroy();
   });
 

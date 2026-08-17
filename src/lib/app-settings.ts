@@ -19,6 +19,11 @@ import {
 
 export const APP_SETTINGS_STORAGE_KEY = 'fluent-any-lang:app-settings';
 
+function defaultSpeechScoreApiBaseUrl(): string {
+  const value = import.meta.env.VITE_SPEECH_SCORE_API_BASE_URL;
+  return typeof value === 'string' ? value.trim() : '';
+}
+
 /** Legacy tip-only prefs key; migrated once into APP_SETTINGS_STORAGE_KEY. */
 export const USER_SETTINGS_STORAGE_KEY = 'fluent-any-lang:user-settings';
 
@@ -53,6 +58,10 @@ function parseShadowingGapPolicy(value: unknown, fallback: ShadowingGapPolicy): 
 
 function parseBoolean(value: unknown, fallback: boolean): boolean {
   return typeof value === 'boolean' ? value : fallback;
+}
+
+function parseString(value: unknown, fallback: string): string {
+  return typeof value === 'string' ? value.trim() : fallback;
 }
 
 function clampNumber(
@@ -156,6 +165,8 @@ function parseAppSettings(raw: unknown): AppSettings {
         ladderCount: DEFAULT_DISCRIMINATION_SETTINGS.ladderCount,
         ladderRates: [...DEFAULT_DISCRIMINATION_SETTINGS.ladderRates],
       },
+      speechScoreApiBaseUrl:
+        defaultSpeechScoreApiBaseUrl() || DEFAULT_SETTINGS.speechScoreApiBaseUrl,
     };
   }
 
@@ -248,6 +259,14 @@ function parseAppSettings(raw: unknown): AppSettings {
         ? raw.lastPlayedPlaylistId
         : DEFAULT_SETTINGS.lastPlayedPlaylistId,
     discrimination: normalizeDiscriminationSettings(raw.discrimination, maxPlaybackRate),
+    speechScoreApiBaseUrl: parseString(
+      raw.speechScoreApiBaseUrl,
+      defaultSpeechScoreApiBaseUrl() || DEFAULT_SETTINGS.speechScoreApiBaseUrl,
+    ),
+    speechScoreApiKey: parseString(raw.speechScoreApiKey, DEFAULT_SETTINGS.speechScoreApiKey),
+    speechScoreLanguage:
+      parseString(raw.speechScoreLanguage, DEFAULT_SETTINGS.speechScoreLanguage) ||
+      DEFAULT_SETTINGS.speechScoreLanguage,
   };
 }
 

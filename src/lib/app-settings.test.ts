@@ -129,6 +129,17 @@ describe('app-settings', () => {
     expect(getAppSettings().lastPlayedPlaylistId).toBe('playlist-42');
   });
 
+  it('persists pronunciation scoring API settings', () => {
+    setAppSettings({
+      speechScoreApiBaseUrl: ' https://speech.example.com/ ',
+      speechScoreApiKey: ' secret ',
+      speechScoreLanguage: 'en',
+    });
+    expect(getAppSettings().speechScoreApiBaseUrl).toBe('https://speech.example.com/');
+    expect(getAppSettings().speechScoreApiKey).toBe('secret');
+    expect(getAppSettings().speechScoreLanguage).toBe('en');
+  });
+
   it('exposes max volume boost and playback rate from persisted settings', () => {
     setAppSettings({ maxVolumeBoost: 2.5, maxPlaybackRate: 3 });
     expect(getMaxVolumeBoost()).toBe(2.5);

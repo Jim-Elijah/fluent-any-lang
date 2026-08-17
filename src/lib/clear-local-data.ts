@@ -20,6 +20,7 @@ import {
   STORE_SENTENCE_BANK,
   STORE_SENTENCE_BANK_BLOB,
   STORE_SUBTITLE,
+  STORE_PRONUNCIATION_SCORE,
 } from '../db/schema.js';
 import { FAVORITES_PLAYLIST_ID, type Playlist } from '../types/models.js';
 
@@ -72,6 +73,7 @@ const LEARNING_DATA_STORES = [
   STORE_SENTENCE_BANK_BLOB,
   STORE_NOISE,
   STORE_NOISE_BLOB,
+  STORE_PRONUNCIATION_SCORE,
 ] as const;
 
 async function seedFavoritesPlaylist(): Promise<void> {

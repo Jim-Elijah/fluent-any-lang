@@ -2,11 +2,13 @@ import { describe, expect, it } from 'vitest';
 
 import {
   DB_NAME,
+  DB_VERSION,
   STORE_ERROR_LOG,
   STORE_MEDIA,
   STORE_MEDIA_BLOB,
   STORE_PLAYLIST,
   STORE_PRACTICE_SESSION,
+  STORE_PRONUNCIATION_SCORE,
   STORE_RECORDING,
   STORE_RECORDING_BLOB,
   STORE_SENTENCE_BANK,
@@ -17,6 +19,7 @@ import {
 describe('db schema constants', () => {
   it('defines stable database identity', () => {
     expect(DB_NAME).toBe('fluent-any-lang');
+    expect(DB_VERSION).toBe(14);
   });
 
   it('defines all object store names', () => {
@@ -31,6 +34,7 @@ describe('db schema constants', () => {
       STORE_PLAYLIST,
       STORE_SENTENCE_BANK,
       STORE_SENTENCE_BANK_BLOB,
+      STORE_PRONUNCIATION_SCORE,
     }).toEqual({
       STORE_MEDIA: 'media',
       STORE_MEDIA_BLOB: 'mediaBlob',
@@ -42,6 +46,7 @@ describe('db schema constants', () => {
       STORE_PLAYLIST: 'playlist',
       STORE_SENTENCE_BANK: 'sentenceBank',
       STORE_SENTENCE_BANK_BLOB: 'sentenceBankBlob',
+      STORE_PRONUNCIATION_SCORE: 'pronunciationScore',
     });
   });
 });

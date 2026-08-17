@@ -1,6 +1,6 @@
 import type { AppSettings } from '../../types/models.js';
 
-export const BACKUP_FORMAT_VERSION = 4 as const;
+export const BACKUP_FORMAT_VERSION = 5 as const;
 
 export type BackupExportOptions = {
   /** Include media blobs + matching subtitles. Default false. */
@@ -28,6 +28,8 @@ export type BackupManifest = {
     includePlaylists: true;
     includeSentenceBank: boolean;
     includeNoise: boolean;
+    /** Scores travel with recordings (v5+). */
+    includePronunciationScores: boolean;
   };
   counts: {
     media: number;
@@ -37,6 +39,7 @@ export type BackupManifest = {
     playlists: number;
     sentenceBank: number;
     noise: number;
+    pronunciationScores: number;
   };
 };
 
@@ -48,6 +51,7 @@ export type BackupPreview = {
   hasSessions: boolean;
   hasSentenceBank: boolean;
   hasNoise: boolean;
+  hasPronunciationScores: boolean;
 };
 
 export type BackupImportResult = {
@@ -66,6 +70,8 @@ export type BackupImportResult = {
   sentenceBankSkipped: number;
   noiseImported: number;
   noiseSkipped: number;
+  pronunciationScoresImported: number;
+  pronunciationScoresSkipped: number;
   errors: string[];
 };
 

@@ -53,7 +53,7 @@ async function selectBackupFile(el: SettingsBackup, file: File) {
 
 const preview = {
   manifest: {
-    version: 4 as const,
+    version: 5 as const,
     createdAt: 1,
     appVersion: '1.0.0',
     flags: {
@@ -64,6 +64,7 @@ const preview = {
       includePlaylists: true as const,
       includeSentenceBank: true,
       includeNoise: true,
+      includePronunciationScores: true,
     },
     counts: {
       media: 1,
@@ -73,6 +74,7 @@ const preview = {
       playlists: 1,
       sentenceBank: 0,
       noise: 0,
+      pronunciationScores: 0,
     },
   },
   settings: DEFAULT_SETTINGS,
@@ -81,6 +83,7 @@ const preview = {
   hasSessions: true,
   hasSentenceBank: false,
   hasNoise: false,
+  hasPronunciationScores: false,
 };
 
 describe('settings-backup', () => {
@@ -198,6 +201,8 @@ describe('settings-backup', () => {
       sentenceBankSkipped: 0,
       noiseImported: 0,
       noiseSkipped: 0,
+      pronunciationScoresImported: 0,
+      pronunciationScoresSkipped: 0,
       errors: [],
     });
     const success = vi.spyOn(Message, 'success');
@@ -229,6 +234,8 @@ describe('settings-backup', () => {
       sentenceBankSkipped: 0,
       noiseImported: 0,
       noiseSkipped: 0,
+      pronunciationScoresImported: 0,
+      pronunciationScoresSkipped: 0,
       errors: ['row failed'],
     });
     const warning = vi.spyOn(Message, 'warning');

@@ -10,6 +10,18 @@ import {
   getRecordingBlob,
   getSubtitle,
 } from '../../db/service.js';
+import { getScoresByRecordIds } from '../../db/pronunciation-score.js';
+import {
+  ackSpeechScorePrivacy,
+  formatOverallBadge,
+  hasSpeechScorePrivacyAck,
+  isSpeechScoreConfigured,
+  requestScore,
+  resolveReferenceText,
+  SCORE_MAX_DURATION_SEC,
+  SCORE_TOO_LONG_MESSAGE,
+} from '../../lib/pronunciation-score/index.js';
+import { getAppSettings } from '../../lib/app-settings.js';
 import { exportRecording } from '../../lib/export-content.js';
 import {
   dispatchRecordingPreviewClose,
@@ -29,8 +41,10 @@ import '../ui/virtual-grid.js';
 import type {
   SpeakingMode,
   PracticeRecord,
+  PronunciationScore,
   SortDirection,
   SubtitleSegment,
+  SubtitleTrack,
 } from '../../types/models.js';
 import { formatDate, formatTime } from '../../lib/playback-utils.js';
 import { Message } from '../ui/message.js';
@@ -38,7 +52,7 @@ import { Message } from '../ui/message.js';
 /** Row height including the --space-md (12px) gap below each card. */
 const RECORD_ROW_HEIGHT = 88;
 /** Narrow: meta + actions stacked; includes the same gap below each card. */
-const RECORD_ROW_HEIGHT_NARROW = 100;
+const RECORD_ROW_HEIGHT_NARROW = 112;
 const RECORD_LIST_HEIGHT = 480;
 
 @customElement('record-list')
@@ -165,6 +179,40 @@ export class RecordList extends LitElement {
       color: #d46b08;
     }
 
+    .score-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 1.5rem;
+      padding: 2px 6px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      line-height: 1.2;
+      background: rgba(82, 196, 26, 0.14);
+      color: #389e0d;
+    }
+
+    .score-badge.pending {
+      background: rgba(22, 119, 255, 0.1);
+      color: var(--color-primary, #1677ff);
+    }
+
+    .score-spinner {
+      width: 10px;
+      height: 10px;
+      border: 2px solid rgba(22, 119, 255, 0.25);
+      border-top-color: var(--color-primary, #1677ff);
+      border-radius: 50%;
+      animation: record-list-spin 0.8s linear infinite;
+    }
+
+    @keyframes record-list-spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
     .actions {
       display: flex;
       gap: var(--space-sm);
@@ -267,6 +315,21 @@ export class RecordList extends LitElement {
   @state()
   private _modalSubtitleSegments: SubtitleSegment[] = [];
 
+  @state()
+  private _scores = new Map<string, PronunciationScore>();
+
+  @state()
+  private _scoringId = '';
+
+  @state()
+  private _privacyOpen = false;
+
+  @state()
+  private _privacyRecord: PracticeRecord | null = null;
+
+  @state()
+  private _subtitleByMediaId = new Map<string, SubtitleTrack | undefined>();
+
   private _visibleCount = 0;
 
   private _lastMetricsKey = '';
@@ -333,9 +396,25 @@ export class RecordList extends LitElement {
       }
       // sort newest first
       this._items.sort((a, b) => b.createdAt - a.createdAt);
+      try {
+        this._scores = await getScoresByRecordIds(this._items.map((item) => item.id));
+      } catch {
+        this._scores = new Map();
+      }
+      try {
+        const mediaIds = [...new Set(this._items.map((item) => item.mediaId))];
+        const tracks = await Promise.all(mediaIds.map((mediaId) => getSubtitle(mediaId)));
+        this._subtitleByMediaId = new Map(
+          mediaIds.map((mediaId, index) => [mediaId, tracks[index]]),
+        );
+      } catch {
+        this._subtitleByMediaId = new Map();
+      }
     } catch {
       this._error = msg('无法加载录音');
       this._items = [];
+      this._scores = new Map();
+      this._subtitleByMediaId = new Map();
     } finally {
       this._loading = false;
     }
@@ -426,14 +505,37 @@ export class RecordList extends LitElement {
         >
           ${this._modalOpen && this._modalRecordingBlob
             ? html`<recording-preview
+                .record=${this._modalRecording}
                 .sourceBlob=${this._modalSourceBlob}
                 .recordingBlob=${this._modalRecordingBlob}
                 .segments=${this._modalRecording?.segments ?? []}
                 .subtitleSegments=${this._modalSubtitleSegments}
                 .practiceMode=${this._modalRecording?.mode ?? 'shadowing'}
                 .gapPolicy=${this._modalRecording?.gapPolicy ?? null}
+                @score-updated=${() => this.refresh()}
               ></recording-preview>`
             : null}
+        </ui-modal>
+        <ui-modal
+          title="${msg('上传说明')}"
+          .zIndex=${(this.popupZIndex ?? Z_INDEX.MODAL) + 80}
+          ?open=${this._privacyOpen}
+          ok-text="${msg('同意并评分')}"
+          cancel-text="${msg('取消')}"
+          width="420px"
+          centered
+          @ok=${() => this._confirmPrivacy()}
+          @cancel=${() => this._cancelPrivacy()}
+          @update:open="${(e: CustomEvent<{ open: boolean }>) => {
+            if (e.target !== e.currentTarget) return;
+            if (!e.detail.open) this._cancelPrivacy();
+          }}"
+        >
+          <p>
+            ${msg(
+              '评分需要将录音上传到你配置的服务器。服务端用于计算分数，不会保存音频。是否继续？',
+            )}
+          </p>
         </ui-modal>
       </section>
     `;
@@ -446,6 +548,21 @@ export class RecordList extends LitElement {
   private _renderItem = (item: unknown): unknown => {
     const recording = item as PracticeRecord;
     const showModeBadge = !this.modeFilter;
+    const score = this._scores.get(recording.id);
+    const scoring = this._scoringId === recording.id || score?.status === 'pending';
+    const tooLong = recording.recordingDuration > SCORE_MAX_DURATION_SEC;
+    const noReference = !resolveReferenceText(
+      recording,
+      this._subtitleByMediaId.get(recording.mediaId),
+    );
+    const scoreBlocked = scoring || tooLong || noReference;
+    const scoreLabel =
+      score?.status === 'success' ? msg('重新评分') : scoring ? msg('评分中') : msg('评分');
+    const scoreTip = tooLong
+      ? SCORE_TOO_LONG_MESSAGE
+      : noReference
+        ? msg('需要对照原稿才能评分')
+        : scoreLabel;
     return html`
       <div class="item">
         <div class="meta">
@@ -456,6 +573,7 @@ export class RecordList extends LitElement {
                   >${this._modeLabel(recording.mode)}</span
                 >`
               : null}
+            ${this._renderScoreBadge(score)}
             <span>${formatTime(recording.recordingDuration)}</span>
             <span class="date">${formatDate(recording.createdAt, true)}</span>
           </p>
@@ -479,6 +597,16 @@ export class RecordList extends LitElement {
               <ui-icon name="download"></ui-icon>
             </ui-button>
           </ui-tooltip>
+          <ui-tooltip title="${scoreTip}">
+            <ui-button
+              variant="secondary"
+              aria-label="${scoreLabel}"
+              ?disabled=${scoreBlocked}
+              @click="${() => this._handleScore(recording)}"
+            >
+              ${scoreLabel}
+            </ui-button>
+          </ui-tooltip>
           <ui-popconfirm
             title=${msg('确定删除该录音吗？')}
             placement="bottom"
@@ -498,6 +626,75 @@ export class RecordList extends LitElement {
       </div>
     `;
   };
+
+  private _renderScoreBadge(score: PronunciationScore | undefined) {
+    if (score?.status === 'pending') {
+      return html`<span class="score-badge pending" aria-label="${msg('评分中')}"
+        ><span class="score-spinner"></span
+      ></span>`;
+    }
+    if (score?.status === 'success' && typeof score.overall === 'number') {
+      return html`<span class="score-badge">${formatOverallBadge(score.overall)}</span>`;
+    }
+    return null;
+  }
+
+  private async _handleScore(recording: PracticeRecord): Promise<void> {
+    if (this._scoringId || recording.recordingDuration > SCORE_MAX_DURATION_SEC) {
+      return;
+    }
+    if (!resolveReferenceText(recording, this._subtitleByMediaId.get(recording.mediaId))) {
+      return;
+    }
+    if (!isSpeechScoreConfigured(getAppSettings())) {
+      Message.warning(msg('请先在设置中填写评分服务地址和 API Key'));
+      return;
+    }
+    if (!hasSpeechScorePrivacyAck()) {
+      this._privacyRecord = recording;
+      this._privacyOpen = true;
+      return;
+    }
+    await this._runScore(recording);
+  }
+
+  private _cancelPrivacy(): void {
+    this._privacyOpen = false;
+    this._privacyRecord = null;
+  }
+
+  private async _confirmPrivacy(): Promise<void> {
+    const recording = this._privacyRecord;
+    ackSpeechScorePrivacy();
+    this._privacyOpen = false;
+    this._privacyRecord = null;
+    if (recording) {
+      await this._runScore(recording);
+    }
+  }
+
+  private async _runScore(recording: PracticeRecord): Promise<void> {
+    this._scoringId = recording.id;
+    try {
+      const result = await requestScore(recording, {
+        onStatus: (score) => {
+          const next = new Map(this._scores);
+          next.set(recording.id, score);
+          this._scores = next;
+        },
+      });
+      if (!result.ok && result.reason === 'not_configured') {
+        Message.warning(result.message);
+      } else if (!result.ok) {
+        Message.error(result.message);
+      } else {
+        Message.success(msg('评分完成'));
+      }
+      await this.refresh();
+    } finally {
+      this._scoringId = '';
+    }
+  }
 
   private _handleModalClose(): void {
     this._modalOpen = false;

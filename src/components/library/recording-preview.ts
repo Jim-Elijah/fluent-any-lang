@@ -29,18 +29,34 @@ import {
   type WaveformTrack,
 } from '../../controllers/waveform-controller.js';
 import type {
+  PracticeRecord,
+  PronunciationScore,
   SpeakingMode,
   PracticeSegment,
   ShadowingGapPolicy,
   SubtitleSegment,
 } from '../../types/models.js';
 import { getAppSettings, getMaxVolumeBoost } from '../../lib/app-settings.js';
+import { getLocale } from '../../i18n/localization.js';
+import {
+  ackSpeechScorePrivacy,
+  formatOverallBadge,
+  hasSpeechScorePrivacyAck,
+  isSpeechScoreConfigured,
+  requestScore,
+  resolveReferenceText,
+  SCORE_MAX_DURATION_SEC,
+  SCORE_TOO_LONG_MESSAGE,
+} from '../../lib/pronunciation-score/index.js';
+import { getScoreByRecordId } from '../../db/pronunciation-score.js';
 import { setLogicalVolume } from '../../lib/media-element-gain.js';
 import type { WaveformSeekRequestDetail } from '../player/waveform-player.js';
+import '../ui/alert.js';
 import '../ui/button.js';
 import '../ui/dropdown.js';
 import '../ui/icon.js';
 import '../ui/icon-button.js';
+import '../ui/modal.js';
 import '../ui/slider.js';
 import '../ui/tooltip.js';
 import { Z_INDEX } from '../ui/internal/z-index.js';
@@ -61,23 +77,63 @@ export type PreviewSubtitleLookup = {
   recordingTime: number;
 };
 
+function joinWordList(words: string[]): string {
+  return words.join(getLocale() === 'en' ? ', ' : '、');
+}
+
+function subtitleFromPracticeSegment(segment: PracticeSegment): SubtitleSegment | null {
+  const text = segment.text?.trim();
+  if (!text) {
+    return null;
+  }
+  return {
+    id: segment.id,
+    startTime: segment.sourceStartTime,
+    endTime: segment.sourceEndTime,
+    text,
+    ...(segment.translation ? { translation: segment.translation } : {}),
+  };
+}
+
+function resolveLineForPractice(
+  practice: PracticeSegment | undefined,
+  subtitleSegments: SubtitleSegment[],
+): SubtitleSegment | null {
+  if (!practice) {
+    return null;
+  }
+  return (
+    subtitleSegments.find((segment) => segment.id === practice.id) ??
+    subtitleFromPracticeSegment(practice)
+  );
+}
+
 /** Resolve the focused subtitle line for the current preview playback mode. */
 export function resolvePreviewSubtitle(input: PreviewSubtitleLookup): SubtitleSegment | null {
-  if (input.mode === 'idle' || input.subtitleSegments.length === 0) {
+  if (input.mode === 'idle') {
     return null;
   }
 
   if (input.mode === 'sync') {
-    const practice = input.practiceSegments[input.syncSegmentIndex];
-    if (!practice) {
-      return null;
-    }
-    return input.subtitleSegments.find((segment) => segment.id === practice.id) ?? null;
+    return resolveLineForPractice(
+      input.practiceSegments[input.syncSegmentIndex],
+      input.subtitleSegments,
+    );
   }
 
   if (input.mode === 'continuous' || input.mode === 'source') {
-    const index = findSegmentIndex(input.subtitleSegments, input.sourceTime);
-    return index >= 0 ? input.subtitleSegments[index] : null;
+    if (input.subtitleSegments.length > 0) {
+      const index = findSegmentIndex(input.subtitleSegments, input.sourceTime);
+      return index >= 0 ? input.subtitleSegments[index] : null;
+    }
+    const practiceIndex = findPracticeSegmentIndex(
+      input.practiceSegments,
+      input.sourceTime,
+      'source',
+    );
+    return practiceIndex >= 0
+      ? resolveLineForPractice(input.practiceSegments[practiceIndex], input.subtitleSegments)
+      : null;
   }
 
   if (input.mode === 'recording') {
@@ -89,8 +145,7 @@ export function resolvePreviewSubtitle(input: PreviewSubtitleLookup): SubtitleSe
     if (practiceIndex < 0) {
       return null;
     }
-    const practice = input.practiceSegments[practiceIndex];
-    return input.subtitleSegments.find((segment) => segment.id === practice.id) ?? null;
+    return resolveLineForPractice(input.practiceSegments[practiceIndex], input.subtitleSegments);
   }
 
   return null;
@@ -189,6 +244,134 @@ export class RecordingPreview extends LitElement {
     .volume-trigger--boosted {
       color: var(--color-warning, #fa8c16);
     }
+
+    .score-panel {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-sm);
+      max-height: min(26dvh, 280px);
+      min-height: 0;
+      overflow-y: auto;
+      padding: var(--space-md);
+      border: 1px solid var(--color-border, #d9d9d9);
+      border-radius: var(--radius-md, 8px);
+      background: var(--color-surface, #fff);
+    }
+
+    .score-header {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-sm);
+      padding-bottom: var(--space-xs);
+      background: var(--color-surface, #fff);
+      box-shadow: 0 8px 10px 2px var(--color-surface, #fff);
+    }
+
+    .score-overall {
+      font-size: 1.75rem;
+      font-weight: 700;
+      line-height: 1.1;
+      color: var(--color-text, rgba(0, 0, 0, 0.88));
+    }
+
+    .score-metrics {
+      display: grid;
+      gap: var(--space-xs);
+    }
+
+    .score-metric {
+      display: grid;
+      grid-template-columns: 3.5rem 1fr 2.5rem;
+      align-items: center;
+      gap: var(--space-sm);
+      font-size: 0.8125rem;
+    }
+
+    .score-metric--nested {
+      padding-left: 1rem;
+      opacity: 0.9;
+    }
+
+    .score-bar {
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(22, 119, 255, 0.12);
+      overflow: hidden;
+    }
+
+    .score-bar-fill {
+      height: 100%;
+      border-radius: inherit;
+      background: var(--color-primary, #1677ff);
+    }
+
+    .score-texts {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      font-size: 0.8125rem;
+      color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
+    }
+
+    .score-texts strong {
+      color: var(--color-text, rgba(0, 0, 0, 0.88));
+      font-weight: 600;
+    }
+
+    .word-heatmap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+
+    .word-chip {
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: 0.8125rem;
+      line-height: 1.4;
+    }
+
+    .word-chip.high {
+      background: rgba(82, 196, 26, 0.18);
+      color: #237804;
+    }
+
+    .word-chip.mid {
+      background: rgba(250, 173, 20, 0.2);
+      color: #ad6800;
+    }
+
+    .word-chip.low {
+      background: rgba(255, 77, 79, 0.16);
+      color: #cf1322;
+    }
+
+    .score-skeleton {
+      height: 12px;
+      border-radius: 6px;
+      background: linear-gradient(90deg, #f0f0f0 25%, #e6e6e6 37%, #f0f0f0 63%);
+      background-size: 400% 100%;
+      animation: preview-score-skeleton 1.2s ease infinite;
+    }
+
+    @keyframes preview-score-skeleton {
+      0% {
+        background-position: 100% 50%;
+      }
+      100% {
+        background-position: 0 50%;
+      }
+    }
+
+    .score-pending-label {
+      margin: 0;
+      font-size: 0.8125rem;
+      color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
+    }
   `;
 
   @property({ attribute: false })
@@ -210,6 +393,9 @@ export class RecordingPreview extends LitElement {
   @property({ type: String })
   gapPolicy: ShadowingGapPolicy | null = null;
 
+  @property({ attribute: false })
+  record: PracticeRecord | null = null;
+
   @state()
   private _controller: WaveformController = new WaveformController();
 
@@ -230,6 +416,15 @@ export class RecordingPreview extends LitElement {
 
   @state()
   private _recordingVolume = 1;
+
+  @state()
+  private _score: PronunciationScore | null = null;
+
+  @state()
+  private _scoring = false;
+
+  @state()
+  private _privacyOpen = false;
 
   private _playback: DualTrackPlayback | null = null;
   private _sourceTrackId = '';
@@ -265,6 +460,10 @@ export class RecordingPreview extends LitElement {
 
     if (changed.has('subtitleSegments')) {
       this._refreshActiveSubtitle();
+    }
+
+    if (changed.has('record')) {
+      void this._loadScore();
     }
   }
 
@@ -327,6 +526,7 @@ export class RecordingPreview extends LitElement {
 
     return html`
       <div class="preview">
+        ${this._renderScorePanel()}
         <div class="subtitle-area">${this._renderSubtitle()}</div>
 
         ${this._renderPlaybackNav()}
@@ -376,7 +576,230 @@ export class RecordingPreview extends LitElement {
 
         ${this._playMode !== 'idle' ? html`<p class="status">${this._renderStatus()}</p>` : nothing}
       </div>
+      <ui-modal
+        title="${msg('上传说明')}"
+        .zIndex=${Z_INDEX.MODAL + 80}
+        ?open=${this._privacyOpen}
+        ok-text="${msg('同意并评分')}"
+        cancel-text="${msg('取消')}"
+        width="420px"
+        centered
+        @ok=${() => this._confirmPrivacy()}
+        @cancel=${() => {
+          this._privacyOpen = false;
+        }}
+        @update:open="${(e: CustomEvent<{ open: boolean }>) => {
+          if (e.target !== e.currentTarget) return;
+          if (!e.detail.open) this._privacyOpen = false;
+        }}"
+      >
+        <p>
+          ${msg('评分需要将录音上传到你配置的服务器。服务端用于计算分数，不会保存音频。是否继续？')}
+        </p>
+      </ui-modal>
     `;
+  }
+
+  private async _loadScore(): Promise<void> {
+    const recordId = this.record?.id;
+    if (!recordId) {
+      this._score = null;
+      return;
+    }
+    try {
+      this._score = (await getScoreByRecordId(recordId)) ?? null;
+    } catch {
+      this._score = null;
+    }
+  }
+
+  private _scoreTooLong(): boolean {
+    return (this.record?.recordingDuration ?? 0) > SCORE_MAX_DURATION_SEC;
+  }
+
+  private _hasReferenceText(): boolean {
+    if (!this.record) {
+      return false;
+    }
+    const live = this.subtitleSegments.length > 0 ? { segments: this.subtitleSegments } : undefined;
+    return Boolean(resolveReferenceText(this.record, live));
+  }
+
+  private _renderScorePanel() {
+    if (!this.record) {
+      return nothing;
+    }
+    const score = this._score;
+    const pending = this._scoring || score?.status === 'pending';
+    const tooLong = this._scoreTooLong();
+    const noReference = !this._hasReferenceText();
+    const scoreBlocked = tooLong || noReference;
+    const label = score?.status === 'success' ? msg('重新评分') : msg('评分');
+    const scoreTip = tooLong
+      ? SCORE_TOO_LONG_MESSAGE
+      : noReference
+        ? msg('需要对照原稿才能评分')
+        : label;
+
+    if (pending) {
+      return html`
+        <div class="score-panel" aria-busy="true">
+          <div class="score-skeleton"></div>
+          <p class="score-pending-label">${msg('评分中…')}</p>
+        </div>
+      `;
+    }
+
+    return html`
+      <div class="score-panel">
+        <div class="score-header">
+          ${score?.status === 'success' && typeof score.overall === 'number'
+            ? html`<span class="score-overall">${formatOverallBadge(score.overall)}</span>`
+            : html`<span class="score-overall">—</span>`}
+          <ui-tooltip title=${scoreTip} .zIndex=${Z_INDEX.MODAL + 1}>
+            <ui-button
+              variant="primary"
+              aria-label=${label}
+              ?disabled=${scoreBlocked || this._scoring}
+              @click=${() => this._handleScore()}
+            >
+              ${label}
+            </ui-button>
+          </ui-tooltip>
+        </div>
+        ${score?.status === 'failed' && score.errorMessage
+          ? html`<ui-alert type="error">${score.errorMessage}</ui-alert>`
+          : nothing}
+        ${score?.status === 'success' ? this._renderScoreDetails(score) : nothing}
+      </div>
+    `;
+  }
+
+  private _renderScoreDetails(score: PronunciationScore) {
+    const details = score.details;
+    const breakdown = details?.prosody_breakdown;
+    return html`
+      <div class="score-metrics">
+        ${this._renderMetric(msg('准确度'), score.accuracy)}
+        ${this._renderMetric(msg('流利度'), score.fluency)}
+        ${this._renderMetric(msg('完整度'), score.completeness)}
+        ${this._renderMetric(msg('韵律'), score.prosody)}
+        ${breakdown
+          ? html`
+              ${this._renderMetric(msg('语速'), breakdown.speed, true)}
+              ${this._renderMetric(msg('节奏'), breakdown.rhythm, true)}
+              ${this._renderMetric(msg('语调'), breakdown.intonation, true)}
+              ${this._renderMetric(msg('重音'), breakdown.stress, true)}
+            `
+          : nothing}
+      </div>
+      ${details
+        ? html`
+            <div class="score-texts">
+              <div>
+                <strong>${msg('识别文本')}</strong>
+                ${details.transcript || '—'}
+              </div>
+              <div>
+                <strong>${msg('参考文本')}</strong>
+                ${score.referenceText || '—'}
+              </div>
+              ${details.missing_words.length
+                ? html`<div>
+                    <strong>${msg('漏读')}</strong>
+                    ${joinWordList(details.missing_words)}
+                  </div>`
+                : nothing}
+              ${details.extra_words.length
+                ? html`<div>
+                    <strong>${msg('多读')}</strong>
+                    ${joinWordList(details.extra_words)}
+                  </div>`
+                : nothing}
+            </div>
+            ${details.word_scores.length
+              ? html`<div class="word-heatmap">
+                  ${details.word_scores.map(
+                    (word) =>
+                      html`<span class="word-chip ${this._wordScoreClass(word.score)}"
+                        >${word.word}</span
+                      >`,
+                  )}
+                </div>`
+              : nothing}
+          `
+        : nothing}
+    `;
+  }
+
+  private _renderMetric(label: string, value: number | undefined, nested = false) {
+    const n = typeof value === 'number' ? value : 0;
+    return html`
+      <div class="score-metric${nested ? ' score-metric--nested' : ''}">
+        <span>${label}</span>
+        <div class="score-bar" aria-hidden="true">
+          <div class="score-bar-fill" style="width: ${Math.min(100, Math.max(0, n))}%"></div>
+        </div>
+        <span>${typeof value === 'number' ? value.toFixed(1) : '—'}</span>
+      </div>
+    `;
+  }
+
+  private _wordScoreClass(score: number): string {
+    if (score >= 80) return 'high';
+    if (score >= 60) return 'mid';
+    return 'low';
+  }
+
+  private async _handleScore(): Promise<void> {
+    const record = this.record;
+    if (!record || this._scoring || this._scoreTooLong() || !this._hasReferenceText()) {
+      return;
+    }
+    if (!isSpeechScoreConfigured(getAppSettings())) {
+      Message.warning(msg('请先在设置中填写评分服务地址和 API Key'));
+      return;
+    }
+    if (!hasSpeechScorePrivacyAck()) {
+      this._privacyOpen = true;
+      return;
+    }
+    await this._runScore(record);
+  }
+
+  private async _confirmPrivacy(): Promise<void> {
+    ackSpeechScorePrivacy();
+    this._privacyOpen = false;
+    if (this.record) {
+      await this._runScore(this.record);
+    }
+  }
+
+  private async _runScore(record: PracticeRecord): Promise<void> {
+    this._scoring = true;
+    try {
+      const result = await requestScore(record, {
+        onStatus: (score) => {
+          this._score = score;
+        },
+      });
+      if (!result.ok && result.reason === 'not_configured') {
+        Message.warning(result.message);
+      } else if (!result.ok) {
+        Message.error(result.message);
+      } else {
+        Message.success(msg('评分完成'));
+      }
+      this.dispatchEvent(
+        new CustomEvent('score-updated', {
+          detail: { recordId: record.id, score: result.score },
+          bubbles: true,
+          composed: true,
+        }),
+      );
+    } finally {
+      this._scoring = false;
+    }
   }
 
   stop(): void {

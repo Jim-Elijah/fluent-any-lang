@@ -5,6 +5,7 @@ import { msg, localized } from '@lit/localize';
 import '../../components/settings/settings-preferences.js';
 import '../../components/settings/settings-player-defaults.js';
 import '../../components/settings/settings-limits.js';
+import '../../components/settings/settings-speech-score.js';
 import '../../components/settings/settings-backup.js';
 import '../../components/settings/settings-pwa.js';
 import '../../components/settings/settings-diagnostics.js';
@@ -37,11 +38,14 @@ export class SettingsPage extends LitElement {
     return html`
       <div class="page">
         <p class="intro">
-          ${msg('管理偏好、播放器默认、练习限额、数据备份、应用更新、诊断与清除本地数据。')}
+          ${msg(
+            '管理偏好、播放器默认、练习限额、发音评分、数据备份、应用更新、诊断与清除本地数据。',
+          )}
         </p>
         <settings-preferences></settings-preferences>
         <settings-player-defaults></settings-player-defaults>
         <settings-limits></settings-limits>
+        <settings-speech-score></settings-speech-score>
         <settings-backup></settings-backup>
         <settings-pwa></settings-pwa>
         <settings-diagnostics></settings-diagnostics>

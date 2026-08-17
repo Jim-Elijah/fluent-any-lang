@@ -1823,6 +1823,14 @@ describe('practice-view', () => {
 
       expect(mockSaveRecording).toHaveBeenCalled();
       expect(successSpy).toHaveBeenCalled();
+      expect(
+        mockSaveRecording.mock.calls
+          .map((call) => call[0] as { mode?: string; segments?: unknown[] })
+          .find((record) => record.mode === 'echo'),
+      ).toMatchObject({
+        mode: 'echo',
+        segments: [expect.objectContaining({ id: 's0', text: 'one' })],
+      });
     });
 
     it('blocks echo record when segment limit reached', async () => {

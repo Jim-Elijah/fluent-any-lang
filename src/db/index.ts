@@ -14,6 +14,7 @@ import {
   STORE_SENTENCE_BANK_BLOB,
   STORE_NOISE,
   STORE_NOISE_BLOB,
+  STORE_PRONUNCIATION_SCORE,
   STORE_SUBTITLE,
   type AppDatabase,
   type FluentAnyLangDB,
@@ -168,6 +169,13 @@ export function getDB(): Promise<AppDatabase> {
         }
         if (!db.objectStoreNames.contains(STORE_NOISE_BLOB)) {
           db.createObjectStore(STORE_NOISE_BLOB, { keyPath: 'noiseId' });
+        }
+
+        // Pronunciation Score (1:1 with Practice Record in MVP)
+        if (!db.objectStoreNames.contains(STORE_PRONUNCIATION_SCORE)) {
+          const scoreStore = db.createObjectStore(STORE_PRONUNCIATION_SCORE, { keyPath: 'id' });
+          scoreStore.createIndex('byRecordId', 'recordId', { unique: true });
+          scoreStore.createIndex('byCreatedAt', 'createdAt');
         }
 
         // v3 briefly shipped without byMediaId for some upgrades; re-run through v4.

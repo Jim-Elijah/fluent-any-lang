@@ -12,10 +12,13 @@ import {
   getNoise,
   getPlaylist,
   getPracticeSession,
+  getPronunciationScore,
   getRecording,
+  getScoreByRecordId,
   getSentenceBankEntry,
   getSubtitle,
   getSubtitleById,
+  putPronunciationScore,
   putSentenceBankEntry,
   saveRecording,
 } from '../../db/service.js';
@@ -25,6 +28,7 @@ import type {
   Playlist,
   PracticeRecord,
   PracticeSession,
+  PronunciationScore,
   SentenceBankEntry,
   SubtitleTrack,
 } from '../../types/models.js';
@@ -55,9 +59,9 @@ function parseManifest(raw: unknown): BackupManifest {
     throw new Error(msg('备份文件损坏：manifest 无效'));
   }
 
-  // Accept v1–v4.
+  // Accept v1–v5.
   const version = raw.version as number;
-  if (version !== 1 && version !== 2 && version !== 3 && version !== 4) {
+  if (version !== 1 && version !== 2 && version !== 3 && version !== 4 && version !== 5) {
     throw new Error(msg('不支持的备份格式，请升级应用后再试'));
   }
 
@@ -65,22 +69,26 @@ function parseManifest(raw: unknown): BackupManifest {
     throw new Error(msg('备份文件损坏：manifest 无效'));
   }
 
-  // Normalize older manifests to v4 shape.
+  // Normalize older manifests to v5 shape.
   return {
     ...raw,
-    version: 4,
+    version: 5,
     flags: {
       ...raw.flags,
       includePlaylists: (raw.flags as { includePlaylists?: boolean }).includePlaylists ?? false,
       includeSentenceBank:
         (raw.flags as { includeSentenceBank?: boolean }).includeSentenceBank ?? false,
       includeNoise: (raw.flags as { includeNoise?: boolean }).includeNoise ?? false,
+      includePronunciationScores:
+        (raw.flags as { includePronunciationScores?: boolean }).includePronunciationScores ?? false,
     },
     counts: {
       ...raw.counts,
       playlists: (raw.counts as { playlists?: number }).playlists ?? 0,
       sentenceBank: (raw.counts as { sentenceBank?: number }).sentenceBank ?? 0,
       noise: (raw.counts as { noise?: number }).noise ?? 0,
+      pronunciationScores:
+        (raw.counts as { pronunciationScores?: number }).pronunciationScores ?? 0,
     },
   } as BackupManifest;
 }
@@ -142,6 +150,7 @@ export async function previewBackup(file: File): Promise<BackupPreview> {
     hasSessions: Boolean(files['sessions/metadata.jsonl']),
     hasSentenceBank: Boolean(files['sentence-bank/metadata.jsonl']),
     hasNoise: Boolean(files['noise/metadata.jsonl']),
+    hasPronunciationScores: Boolean(files['pronunciation-scores/metadata.jsonl']),
   };
 }
 
@@ -169,6 +178,8 @@ export async function importBackup(file: File): Promise<BackupImportResult> {
     sentenceBankSkipped: 0,
     noiseImported: 0,
     noiseSkipped: 0,
+    pronunciationScoresImported: 0,
+    pronunciationScoresSkipped: 0,
     errors: [],
   };
 
@@ -344,6 +355,29 @@ export async function importBackup(file: File): Promise<BackupImportResult> {
     } catch (error) {
       result.errors.push(
         error instanceof Error ? error.message : msg(str`导入噪音素材失败：${item.id}`),
+      );
+    }
+  }
+
+  const scores = readJsonl<PronunciationScore>(files, 'pronunciation-scores/metadata.jsonl');
+  for (const score of scores) {
+    try {
+      const existingById = await getPronunciationScore(score.id);
+      const existingByRecord = await getScoreByRecordId(score.recordId);
+      if (existingById || existingByRecord) {
+        result.pronunciationScoresSkipped += 1;
+        continue;
+      }
+      const record = await getRecording(score.recordId);
+      if (!record) {
+        result.pronunciationScoresSkipped += 1;
+        continue;
+      }
+      await putPronunciationScore(score);
+      result.pronunciationScoresImported += 1;
+    } catch (error) {
+      result.errors.push(
+        error instanceof Error ? error.message : msg(str`导入发音评分失败：${score.id}`),
       );
     }
   }

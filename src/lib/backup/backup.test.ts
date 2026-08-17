@@ -11,6 +11,7 @@ import {
   STORE_MEDIA_BLOB,
   STORE_NOISE,
   STORE_NOISE_BLOB,
+  STORE_PRONUNCIATION_SCORE,
   STORE_PRACTICE_SESSION,
   STORE_RECORDING,
   STORE_RECORDING_BLOB,
@@ -28,8 +29,10 @@ import {
   getMedia,
   getNoise,
   getRecording,
+  getScoreByRecordId,
   getSentenceBankEntry,
   putSentenceBankEntry,
+  putPronunciationScore,
   removeMediaFromPlaylist,
   saveRecording,
 } from '../../db/service.js';
@@ -38,6 +41,7 @@ import type {
   Playlist,
   PracticeRecord,
   PracticeSession,
+  PronunciationScore,
   SentenceBankEntry,
   SubtitleTrack,
 } from '../../types/models.js';
@@ -57,6 +61,7 @@ async function clearAllStores() {
     STORE_SENTENCE_BANK_BLOB,
     STORE_NOISE,
     STORE_NOISE_BLOB,
+    STORE_PRONUNCIATION_SCORE,
   ] as const;
   const tx = db.transaction(stores, 'readwrite');
   await Promise.all(stores.map((name) => tx.objectStore(name).clear()));
@@ -102,6 +107,22 @@ function makeRecord(id = 'rec-1', mediaId = 'media-1'): PracticeRecord {
     sourceDuration: 1,
     recordingDuration: 1,
     segments: [],
+  };
+}
+
+function makeScore(recordId = 'rec-1'): PronunciationScore {
+  return {
+    id: `score-${recordId}`,
+    recordId,
+    status: 'success',
+    referenceText: 'hi',
+    accuracy: 80,
+    fluency: 75,
+    completeness: 90,
+    prosody: 81,
+    overall: 82,
+    createdAt: 5,
+    scoredAt: 6,
   };
 }
 
@@ -155,6 +176,7 @@ describe('backup export/import', () => {
     expect(files['settings.json']).toBeTruthy();
     expect(files['recordings/metadata.jsonl']).toBeTruthy();
     expect(files['sessions/metadata.jsonl']).toBeTruthy();
+    expect(files['pronunciation-scores/metadata.jsonl']).toBeTruthy();
     expect(files['media/metadata.jsonl']).toBeUndefined();
 
     const settings = JSON.parse(strFromU8(files['settings.json']));
@@ -193,6 +215,30 @@ describe('backup export/import', () => {
     expect(await getMedia('media-1')).toBeTruthy();
     expect(await getRecording('rec-1')).toBeTruthy();
     expect((await getAllPracticeSessions()).length).toBe(1);
+  });
+
+  it('round-trips pronunciation scores with recordings in v5 backups', async () => {
+    await saveRecording(makeRecord(), new Blob(['rec'], { type: 'audio/webm' }));
+    await putPronunciationScore(makeScore());
+
+    const { blob, manifest } = await buildBackupZip({
+      includeMedia: false,
+      includeRecordings: true,
+      includeSessions: false,
+      includeSentenceBank: false,
+      includeNoise: false,
+    });
+    expect(manifest.version).toBe(5);
+    expect(manifest.flags.includePronunciationScores).toBe(true);
+    expect(manifest.counts.pronunciationScores).toBe(1);
+
+    await clearAllStores();
+    const result = await importBackup(new File([blob], 'backup.zip', { type: 'application/zip' }));
+    expect(result.recordingsImported).toBe(1);
+    expect(result.pronunciationScoresImported).toBe(1);
+    expect(await getRecording('rec-1')).toBeTruthy();
+    expect((await getScoreByRecordId('rec-1'))?.overall).toBe(82);
+    expect((await getScoreByRecordId('rec-1'))?.prosody).toBe(81);
   });
 
   it('rejects unsupported manifest version', async () => {
@@ -340,7 +386,7 @@ describe('backup export/import', () => {
     expect(manifest.counts.noise).toBe(1);
     expect(downloadSpy).toHaveBeenCalled();
     const [, filename] = downloadSpy.mock.calls[0]!;
-    expect(filename).toBe('fluentanylang-backup-v4-20240615-1030.zip');
+    expect(filename).toBe('fluentanylang-backup-v5-20240615-1030.zip');
 
     await clearAllStores();
 
@@ -568,7 +614,7 @@ describe('backup export/import', () => {
       ),
     });
     const preview = await previewBackup(new File([zip], 'v1.zip', { type: 'application/zip' }));
-    expect(preview.manifest.version).toBe(4);
+    expect(preview.manifest.version).toBe(5);
     expect(preview.manifest.flags.includeSentenceBank).toBe(false);
     expect(preview.manifest.counts.noise).toBe(0);
     expect(preview.settings).toBeNull();

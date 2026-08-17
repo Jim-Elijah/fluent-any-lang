@@ -9,6 +9,7 @@ import type {
   Playlist,
   PracticeRecord,
   PracticeSession,
+  PronunciationScore,
   SentenceBankBlob,
   SentenceBankEntry,
   SubtitleTrack,
@@ -16,7 +17,7 @@ import type {
 } from '../types/models.js';
 
 export const DB_NAME = 'fluent-any-lang';
-export const DB_VERSION = 13;
+export const DB_VERSION = 14;
 
 export const STORE_MEDIA = 'media';
 export const STORE_MEDIA_BLOB = 'mediaBlob';
@@ -30,6 +31,7 @@ export const STORE_SENTENCE_BANK = 'sentenceBank';
 export const STORE_SENTENCE_BANK_BLOB = 'sentenceBankBlob';
 export const STORE_NOISE = 'noise';
 export const STORE_NOISE_BLOB = 'noiseBlob';
+export const STORE_PRONUNCIATION_SCORE = 'pronunciationScore';
 
 /** Max retained error log entries (oldest dropped first). */
 export const ERROR_LOG_MAX_ENTRIES = 200;
@@ -99,6 +101,11 @@ export interface FluentAnyLangDB {
   [STORE_NOISE_BLOB]: {
     key: string;
     value: NoiseBlob;
+  };
+  [STORE_PRONUNCIATION_SCORE]: {
+    key: string;
+    value: PronunciationScore;
+    indexes: { byRecordId: string; byCreatedAt: number };
   };
 }
 

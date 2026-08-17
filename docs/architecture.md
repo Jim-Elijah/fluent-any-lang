@@ -4,30 +4,31 @@ On-device listening and speaking practice. Domain terms: [`CONTEXT.md`](../CONTE
 
 ## Layout
 
-| Area | Role |
-|------|------|
-| `src/app/` | Shell, routes, locale |
-| `src/pages/` | Thin route pages |
-| `src/components/player/` | Practice hub (`practice-view`, media/subtitle/recorder UI) |
-| `src/components/{library,import,settings,stats}/` | Feature UI |
-| `src/controllers/` | `MediaController` (playback truth), waveform |
-| `src/db/` | IndexedDB schema + entity CRUD |
-| `src/lib/` | Import, playback helpers, settings, backup |
-| `src/analytics/` | Practice Session timing + stats rollups |
-| `src/types/models.ts` | Domain types |
+| Area                                              | Role                                                       |
+| ------------------------------------------------- | ---------------------------------------------------------- |
+| `src/app/`                                        | Shell, routes, locale                                      |
+| `src/pages/`                                      | Thin route pages                                           |
+| `src/components/player/`                          | Practice hub (`practice-view`, media/subtitle/recorder UI) |
+| `src/components/{library,import,settings,stats}/` | Feature UI                                                 |
+| `src/controllers/`                                | `MediaController` (playback truth), waveform               |
+| `src/db/`                                         | IndexedDB schema + entity CRUD                             |
+| `src/lib/`                                        | Import, playback helpers, settings, backup                 |
+| `src/analytics/`                                  | Practice Session timing + stats rollups                    |
+| `src/types/models.ts`                             | Domain types                                               |
 
 ## Data ownership
 
-| Entity | Module | Store |
-|--------|--------|-------|
-| Media | `db/media.ts` | `media` + `mediaBlob` |
-| Subtitle Track | `db/subtitle.ts` | `subtitle` (1:1 `mediaId`) |
-| Practice Session | `db/practice-session.ts` | `practiceSession` (written by tracker only) |
-| Practice Record | `db/record.ts` | `record` + `recordBlob` |
-| Playlist | `db/playlist.ts` | `playlist` |
-| Sentence Bank Entry | `db/sentence-bank.ts` | `sentenceBank` + `sentenceBankBlob` |
-| Noise | `db/noise.ts` | `noise` + `noiseBlob` |
-| App Settings | `lib/app-settings.ts` | **localStorage** (not IDB) |
+| Entity              | Module                      | Store                                           |
+| ------------------- | --------------------------- | ----------------------------------------------- |
+| Media               | `db/media.ts`               | `media` + `mediaBlob`                           |
+| Subtitle Track      | `db/subtitle.ts`            | `subtitle` (1:1 `mediaId`)                      |
+| Practice Session    | `db/practice-session.ts`    | `practiceSession` (written by tracker only)     |
+| Practice Record     | `db/record.ts`              | `record` + `recordBlob`                         |
+| Pronunciation Score | `db/pronunciation-score.ts` | `pronunciationScore` (1:1 with Practice Record) |
+| Playlist            | `db/playlist.ts`            | `playlist`                                      |
+| Sentence Bank Entry | `db/sentence-bank.ts`       | `sentenceBank` + `sentenceBankBlob`             |
+| Noise               | `db/noise.ts`               | `noise` + `noiseBlob`                           |
+| App Settings        | `lib/app-settings.ts`       | **localStorage** (not IDB)                      |
 
 Runtime playback state is owned by a per-view `MediaController` — not persisted.
 
@@ -45,12 +46,12 @@ IndexedDB: `fluent-any-lang`, version in `db/schema.ts`. Open/upgrade: `db/index
                 └─ audio-recorder → Practice Record
 ```
 
-| Practice Mode | Extra pieces |
-|---------------|--------------|
-| Free Listening | Controller loop / segment nav / pause |
-| Discrimination | `NoiseMixer`, `RateLadder`, `discrimination-panel` |
-| Shadowing | `audio-recorder` synced to source; gap policy on controller |
-| Echo | `EchoClipPlayer` (private media element clip) + per-segment record |
+| Practice Mode  | Extra pieces                                                       |
+| -------------- | ------------------------------------------------------------------ |
+| Free Listening | Controller loop / segment nav / pause                              |
+| Discrimination | `NoiseMixer`, `RateLadder`, `discrimination-panel`                 |
+| Shadowing      | `audio-recorder` synced to source; gap policy on controller        |
+| Echo           | `EchoClipPlayer` (private media element clip) + per-segment record |
 
 Sentence practice (`/sentence-practice`) is a lighter path on clipped Sentence Bank audio — not the full four-mode stack. Speaking still guards the recorder with `microphone-access` (same status/permission refresh pattern as `practice-view`).
 
@@ -60,7 +61,8 @@ Sentence practice (`/sentence-practice`) is a lighter path on clipped Sentence B
 - **`PracticeTimeTracker` ↔ controller + `practice-session`** — observational only; active duration, not wall-clock
 - **`practice-view` ↔ NoiseMixer / RateLadder`** — Discrimination play/pause and ladder on track `ended`
 - **`practice-view` ↔ EchoClipPlayer`** — Echo listen must not seek the main media element
-- **`recording-preview` ↔ DualTrackPlayback / waveform** — compare & single-track preview; segment `viewRange` includes the trailing gap to the next Subtitle Segment (`getPracticeSegmentViewRange`)
+- **`recording-preview` ↔ DualTrackPlayback / waveform** — compare & single-track preview; segment `viewRange` includes the trailing gap to the next Subtitle Segment (`getPracticeSegmentViewRange`); current-line text prefers the live Subtitle Track, then the Practice Segment snapshot
+- **`pronunciation-score` ↔ Practice Record** — on-demand scoring only; `deleteRecording` must cascade; scores export with recordings in backup v5; reference text prefers the Practice Segment snapshot, live Subtitle Track is legacy fallback
 - **`import-content` ↔ media + subtitle`** — import writes both
 - **`deleteMedia` → playlist + sentence-bank`** — soft-delete / unavailable cascade
 
@@ -75,9 +77,10 @@ Sentence practice (`/sentence-practice`) is a lighter path on clipped Sentence B
 7. Playlist entries and Sentence Bank use **soft-delete** (`removed`); omitted from backup export when removed.
 8. Shadowing gap policy (`compress` / `preserve`) is mutually exclusive with normal pause mode during Speaking sessions.
 9. Schema changes require bumping `DB_VERSION` and an upgrade path in `db/index.ts`.
+10. Practice Record may snapshot Subtitle Segment text (and optional translation) onto `PracticeSegment` at save. Scoring and preview current-line use that snapshot when the live Subtitle Track is missing; records without a snapshot fall back to the live track.
 
 ## Settings vs data
 
-- **Preferences / limits / Discrimination defaults** → `app-settings` (localStorage)
-- **Learner content & sessions** → IndexedDB
-- **Backup** → `lib/backup/` (export/import IDB content; respect soft-delete rules)
+- **Preferences / limits / Discrimination defaults / speech score API** → `app-settings` (localStorage)
+- **Learner content, sessions, and Pronunciation Scores** → IndexedDB
+- **Backup** → `lib/backup/` (export/import IDB content; respect soft-delete rules; scores travel with recordings)

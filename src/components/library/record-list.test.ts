@@ -1,15 +1,28 @@
 import { html } from 'lit';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { PracticeRecord } from '../../types/models.js';
+import type { PracticeRecord, PronunciationScore } from '../../types/models.js';
 import * as recordDb from '../../db/record.js';
 import * as mediaDb from '../../db/media.js';
 import * as subtitleDb from '../../db/subtitle.js';
+import * as scoreDb from '../../db/pronunciation-score.js';
 import { NARROW_VIEWPORT_MQ } from '../../lib/layout-compact.js';
 
 vi.mock('../../lib/export-content.js', () => ({
   exportRecording: vi.fn(),
 }));
+
+const requestScoreMock = vi.fn();
+vi.mock('../../lib/pronunciation-score/index.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../lib/pronunciation-score/index.js')>();
+  return {
+    ...actual,
+    requestScore: (...args: unknown[]) => requestScoreMock(...args),
+    isSpeechScoreConfigured: () => true,
+    hasSpeechScorePrivacyAck: () => true,
+    ackSpeechScorePrivacy: vi.fn(),
+  };
+});
 
 import './record-list.js';
 import type { RecordList } from './record-list.js';
@@ -28,7 +41,16 @@ const sampleRecord: PracticeRecord = {
   createdAt: 1,
   sourceDuration: 10,
   recordingDuration: 9,
-  segments: [],
+  segments: [
+    {
+      id: 's0',
+      sourceStartTime: 0,
+      sourceEndTime: 10,
+      recordingStartTime: 0,
+      recordingEndTime: 9,
+      text: 'hello',
+    },
+  ],
 };
 
 describe('record-list', () => {
@@ -41,6 +63,8 @@ describe('record-list', () => {
     vi.spyOn(recordDb, 'getRecordingBlob').mockResolvedValue(null);
     vi.spyOn(mediaDb, 'getMediaBlob').mockResolvedValue(undefined as never);
     vi.spyOn(subtitleDb, 'getSubtitle').mockResolvedValue(undefined as never);
+    vi.spyOn(scoreDb, 'getScoresByRecordIds').mockResolvedValue(new Map());
+    requestScoreMock.mockReset();
   });
 
   afterEach(() => {
@@ -242,7 +266,7 @@ describe('record-list', () => {
       | { itemHeight?: number }
       | null
       | undefined;
-    expect(grid?.itemHeight).toBe(100);
+    expect(grid?.itemHeight).toBe(112);
   });
 
   it('loads recordings for a specific media id', async () => {
@@ -405,5 +429,128 @@ describe('record-list', () => {
     await flushUpdates();
 
     expect(metrics).toHaveBeenCalled();
+  });
+
+  it('shows an overall badge and a rescore action when a score exists', async () => {
+    const score: PronunciationScore = {
+      id: 'score-1',
+      recordId: 'rec-1',
+      status: 'success',
+      referenceText: 'hello',
+      overall: 84.2,
+      createdAt: 1,
+    };
+    vi.mocked(recordDb.getRecordingList).mockResolvedValue([sampleRecord]);
+    vi.mocked(scoreDb.getScoresByRecordIds).mockResolvedValue(new Map([['rec-1', score]]));
+
+    const el = await renderList();
+    await el.refresh();
+    await el.updateComplete;
+
+    expect(el.shadowRoot?.querySelector('.score-badge')?.textContent?.trim()).toBe('84');
+    expect(el.shadowRoot?.querySelector('ui-button[aria-label="重新评分"]')).not.toBeNull();
+  });
+
+  it('requests a score from the row action', async () => {
+    vi.mocked(recordDb.getRecordingList).mockResolvedValue([sampleRecord]);
+    requestScoreMock.mockResolvedValue({
+      ok: true,
+      score: {
+        id: 'score-1',
+        recordId: 'rec-1',
+        status: 'success',
+        referenceText: 'hello',
+        overall: 80,
+        createdAt: 1,
+      },
+    });
+
+    const el = await renderList();
+    await el.refresh();
+    await el.updateComplete;
+
+    el.shadowRoot!.querySelector('ui-button[aria-label="评分"]')!.click();
+    await flushUpdates();
+
+    expect(requestScoreMock).toHaveBeenCalled();
+    expect(requestScoreMock.mock.calls[0]?.[0]).toMatchObject({ id: 'rec-1' });
+  });
+
+  it('disables scoring when the recording has no reference script', async () => {
+    vi.mocked(recordDb.getRecordingList).mockResolvedValue([
+      {
+        ...sampleRecord,
+        segments: [
+          {
+            id: 's0',
+            sourceStartTime: 0,
+            sourceEndTime: 10,
+            recordingStartTime: 0,
+            recordingEndTime: 9,
+          },
+        ],
+      },
+    ]);
+
+    const el = await renderList();
+    await el.refresh();
+    await el.updateComplete;
+
+    const button = el.shadowRoot!.querySelector(
+      'ui-button[aria-label="评分"]',
+    ) as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    button.click();
+    await flushUpdates();
+    expect(requestScoreMock).not.toHaveBeenCalled();
+  });
+
+  it('allows scoring a legacy recording from the live Subtitle Track', async () => {
+    vi.mocked(recordDb.getRecordingList).mockResolvedValue([
+      {
+        ...sampleRecord,
+        segments: [
+          {
+            id: 's0',
+            sourceStartTime: 0,
+            sourceEndTime: 10,
+            recordingStartTime: 0,
+            recordingEndTime: 9,
+          },
+        ],
+      },
+    ]);
+    vi.mocked(subtitleDb.getSubtitle).mockResolvedValue({
+      id: 'sub-1',
+      mediaId: 'media-1',
+      title: 'Lesson',
+      filename: 'lesson.srt',
+      type: 'srt',
+      contentHash: 'hash',
+      segments: [{ id: 's0', startTime: 0, endTime: 10, text: 'hello' }],
+    });
+    requestScoreMock.mockResolvedValue({
+      ok: true,
+      score: {
+        id: 'score-1',
+        recordId: 'rec-1',
+        status: 'success',
+        referenceText: 'hello',
+        overall: 80,
+        createdAt: 1,
+      },
+    });
+
+    const el = await renderList();
+    await el.refresh();
+    await el.updateComplete;
+
+    const button = el.shadowRoot!.querySelector('ui-button[aria-label="评分"]') as HTMLElement & {
+      disabled: boolean;
+    };
+    expect(button.disabled).toBe(false);
+    button.click();
+    await flushUpdates();
+    expect(requestScoreMock).toHaveBeenCalled();
   });
 });
