@@ -3,11 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PronunciationScoreApiResponse } from '../../types/models.js';
 import {
   PronunciationScoreHttpError,
-  checkSpeechScoreHealth,
   mapScoreHttpStatus,
   scorePronunciation,
 } from './client.js';
-import { SCORE_API_PATH, SCORE_HEALTH_PATH } from './constants.js';
+import { SCORE_API_PATH } from './constants.js';
 
 const successBody: PronunciationScoreApiResponse = {
   accuracy: 82.5,
@@ -20,6 +19,7 @@ const successBody: PronunciationScoreApiResponse = {
     word_scores: [{ word: 'hello', start: 0.1, end: 0.4, score: 90 }],
     missing_words: [],
     extra_words: [],
+    misread_words: [],
     prosody_breakdown: {
       speed: 100,
       rhythm: 85,
@@ -57,10 +57,11 @@ describe('pronunciation-score client', () => {
     const audio = new Blob(['abc'], { type: 'audio/webm' });
 
     const result = await scorePronunciation({
-      baseUrl: 'http://localhost:8000/',
+      url: `http://localhost:8000${SCORE_API_PATH}`,
       apiKey: 'test-key',
       audio,
       referenceText: 'hello world',
+      referenceDuration: 3.5,
       language: 'en',
     });
 
@@ -73,6 +74,7 @@ describe('pronunciation-score client', () => {
     expect(init.body).toBeInstanceOf(FormData);
     const form = init.body as FormData;
     expect(form.get('reference_text')).toBe('hello world');
+    expect(form.get('reference_duration')).toBe('3.5');
     expect(form.get('language')).toBe('en');
     const audioPart = form.get('audio');
     expect(audioPart).toBeInstanceOf(Blob);
@@ -89,10 +91,11 @@ describe('pronunciation-score client', () => {
 
     await expect(
       scorePronunciation({
-        baseUrl: 'http://api.example',
+        url: 'http://api.example/api/v1/pronunciation/score',
         apiKey: 'bad',
         audio: new Blob(['x'], { type: 'audio/webm' }),
         referenceText: 'hi',
+        referenceDuration: 1,
         language: 'auto',
       }),
     ).rejects.toMatchObject({
@@ -100,20 +103,5 @@ describe('pronunciation-score client', () => {
       status: 401,
       code: 'unauthorized',
     } satisfies Partial<PronunciationScoreHttpError>);
-  });
-
-  it('calls GET /health without an API key', async () => {
-    fetchMock.mockResolvedValue(
-      new Response(JSON.stringify({ status: 'ok', device: 'cpu', model_loaded: true }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }),
-    );
-
-    const health = await checkSpeechScoreHealth('http://localhost:8000');
-    expect(health.device).toBe('cpu');
-    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe(`http://localhost:8000${SCORE_HEALTH_PATH}`);
-    expect(init?.headers).toBeUndefined();
   });
 });

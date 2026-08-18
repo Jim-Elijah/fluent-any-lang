@@ -1,0 +1,15 @@
+---
+description: Pronunciation scoring client uses the full POST URL from settings; no health probe
+globs: src/lib/pronunciation-score/**,src/components/settings/settings-speech-score.ts,docs/pronunciation-score-api.md
+alwaysApply: false
+---
+
+# Pronunciation scoring HTTP client
+
+Contract: [`docs/pronunciation-score-api.md`](../../docs/pronunciation-score-api.md).
+
+- Settings store the **full** `POST` URL (`speechScoreApiUrl`). Fetch that URL as-is; do not join `/api/v1/pronunciation/score` at request time.
+- Do not add a `/health` client, settings “test connection”, or `SpeechScoreHealthResponse`.
+- Send `audio`, `reference_text`, `reference_duration`, and `language` as `multipart/form-data` with `X-API-Key`. Optional contract field: `reference_audio`.
+- Response `details` may include `speech_span_sec`, `reference_duration_sec`, and `speed_ratio` when duration matching is used. Word-level errors use three disjoint lists: `missing_words`, `misread_words` (`{ expected, actual }`), and `extra_words`.
+- Keep on-demand scoring only; 60 s / 10 MB local rejection; types in `src/types/models.ts` must stay aligned with the contract.

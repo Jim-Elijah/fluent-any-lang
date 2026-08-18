@@ -131,13 +131,28 @@ describe('app-settings', () => {
 
   it('persists pronunciation scoring API settings', () => {
     setAppSettings({
-      speechScoreApiBaseUrl: ' https://speech.example.com/ ',
+      speechScoreApiUrl: ' https://speech.example.com/api/v1/pronunciation/score ',
       speechScoreApiKey: ' secret ',
       speechScoreLanguage: 'en',
     });
-    expect(getAppSettings().speechScoreApiBaseUrl).toBe('https://speech.example.com/');
+    expect(getAppSettings().speechScoreApiUrl).toBe(
+      'https://speech.example.com/api/v1/pronunciation/score',
+    );
     expect(getAppSettings().speechScoreApiKey).toBe('secret');
     expect(getAppSettings().speechScoreLanguage).toBe('en');
+  });
+
+  it('migrates legacy speechScoreApiBaseUrl to the full score path', () => {
+    localStorage.setItem(
+      APP_SETTINGS_STORAGE_KEY,
+      JSON.stringify({
+        ...DEFAULT_SETTINGS,
+        speechScoreApiBaseUrl: 'https://speech.example.com/',
+      }),
+    );
+    expect(getAppSettings().speechScoreApiUrl).toBe(
+      'https://speech.example.com/api/v1/pronunciation/score',
+    );
   });
 
   it('exposes max volume boost and playback rate from persisted settings', () => {

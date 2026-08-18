@@ -3,6 +3,7 @@ import { getRecordingBlob } from '../../db/record.js';
 import { getSubtitle } from '../../db/subtitle.js';
 import { getScoreByRecordId, putPronunciationScore } from '../../db/pronunciation-score.js';
 import type { PracticeRecord, PronunciationScore } from '../../types/models.js';
+import { getPracticeSegmentDuration } from '../playback-utils.js';
 import { PronunciationScoreHttpError, scorePronunciation } from './client.js';
 import {
   isSpeechScoreConfigured,
@@ -32,6 +33,7 @@ export type RequestScoreOptions = {
 };
 
 const NO_REFERENCE_TEXT = '需要对照原稿才能评分';
+const NO_REFERENCE_DURATION = '无法确定参考原声时长，请确认录音片段信息后重试';
 const MISSING_BLOB = '录音文件不存在';
 const NOT_CONFIGURED = '请先在设置中填写评分服务地址和 API Key';
 
@@ -95,6 +97,18 @@ export function resolveReferenceText(
   return joined.length > 0 ? joined : null;
 }
 
+/** Sum of source-axis Practice Segment durations (excludes inter-segment gaps in shadowing). */
+export function resolveReferenceDuration(record: PracticeRecord): number | null {
+  if (record.segments.length === 0) {
+    return null;
+  }
+  let total = 0;
+  for (const segment of record.segments) {
+    total += getPracticeSegmentDuration(segment, 'source');
+  }
+  return total > 0 ? total : null;
+}
+
 async function upsertScore(
   recordId: string,
   patch: Omit<PronunciationScore, 'id' | 'recordId' | 'createdAt'> & {
@@ -154,6 +168,11 @@ export async function requestScore(
     return fail(NO_REFERENCE_TEXT);
   }
 
+  const referenceDuration = resolveReferenceDuration(record);
+  if (referenceDuration === null) {
+    return fail(NO_REFERENCE_DURATION, { referenceText });
+  }
+
   const pending = await upsertScore(record.id, {
     status: 'pending',
     referenceText,
@@ -162,10 +181,11 @@ export async function requestScore(
 
   try {
     const response = await scorePronunciation({
-      baseUrl: settings.speechScoreApiBaseUrl,
+      url: settings.speechScoreApiUrl,
       apiKey: settings.speechScoreApiKey,
       audio: blob,
       referenceText,
+      referenceDuration,
       language: settings.speechScoreLanguage || 'auto',
       signal: options.signal,
     });

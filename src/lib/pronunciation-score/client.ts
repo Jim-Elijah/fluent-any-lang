@@ -1,8 +1,4 @@
-import type {
-  PronunciationScoreApiResponse,
-  SpeechScoreHealthResponse,
-} from '../../types/models.js';
-import { joinApiUrl, SCORE_API_PATH, SCORE_HEALTH_PATH } from './constants.js';
+import type { PronunciationScoreApiResponse } from '../../types/models.js';
 
 export type ScoreHttpErrorCode =
   | 'unauthorized'
@@ -53,10 +49,11 @@ function audioFileName(blob: Blob): string {
 }
 
 export type ScorePronunciationInput = {
-  baseUrl: string;
+  url: string;
   apiKey: string;
   audio: Blob;
   referenceText: string;
+  referenceDuration: number;
   language: string;
   signal?: AbortSignal;
 };
@@ -67,9 +64,10 @@ export async function scorePronunciation(
   const form = new FormData();
   form.append('audio', input.audio, audioFileName(input.audio));
   form.append('reference_text', input.referenceText);
+  form.append('reference_duration', String(input.referenceDuration));
   form.append('language', input.language);
 
-  const response = await fetch(joinApiUrl(input.baseUrl, SCORE_API_PATH), {
+  const response = await fetch(input.url.trim(), {
     method: 'POST',
     headers: { 'X-API-Key': input.apiKey },
     body: form,
@@ -82,19 +80,4 @@ export async function scorePronunciation(
   }
 
   return (await response.json()) as PronunciationScoreApiResponse;
-}
-
-export async function checkSpeechScoreHealth(
-  baseUrl: string,
-  signal?: AbortSignal,
-): Promise<SpeechScoreHealthResponse> {
-  const response = await fetch(joinApiUrl(baseUrl, SCORE_HEALTH_PATH), { signal });
-  if (!response.ok) {
-    throw new PronunciationScoreHttpError(
-      response.status,
-      'unavailable',
-      `无法连接评分服务（${response.status}）`,
-    );
-  }
-  return (await response.json()) as SpeechScoreHealthResponse;
 }

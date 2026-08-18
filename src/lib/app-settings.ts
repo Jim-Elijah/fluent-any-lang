@@ -16,12 +16,23 @@ import {
   type LoopMode,
   type ShadowingGapPolicy,
 } from '../types/models.js';
+import { toScoreApiUrl } from './pronunciation-score/constants.js';
 
 export const APP_SETTINGS_STORAGE_KEY = 'fluent-any-lang:app-settings';
 
-function defaultSpeechScoreApiBaseUrl(): string {
+function defaultSpeechScoreApiUrl(): string {
   const value = import.meta.env.VITE_SPEECH_SCORE_API_BASE_URL;
-  return typeof value === 'string' ? value.trim() : '';
+  return typeof value === 'string' ? toScoreApiUrl(value) : '';
+}
+
+function parseSpeechScoreApiUrl(raw: Record<string, unknown>, fallback: string): string {
+  const next = typeof raw.speechScoreApiUrl === 'string' ? raw.speechScoreApiUrl.trim() : null;
+  if (next) return next;
+  if (typeof raw.speechScoreApiBaseUrl === 'string') {
+    return toScoreApiUrl(raw.speechScoreApiBaseUrl) || fallback;
+  }
+  if (next === '') return '';
+  return fallback;
 }
 
 /** Legacy tip-only prefs key; migrated once into APP_SETTINGS_STORAGE_KEY. */
@@ -165,8 +176,7 @@ function parseAppSettings(raw: unknown): AppSettings {
         ladderCount: DEFAULT_DISCRIMINATION_SETTINGS.ladderCount,
         ladderRates: [...DEFAULT_DISCRIMINATION_SETTINGS.ladderRates],
       },
-      speechScoreApiBaseUrl:
-        defaultSpeechScoreApiBaseUrl() || DEFAULT_SETTINGS.speechScoreApiBaseUrl,
+      speechScoreApiUrl: defaultSpeechScoreApiUrl() || DEFAULT_SETTINGS.speechScoreApiUrl,
     };
   }
 
@@ -259,9 +269,9 @@ function parseAppSettings(raw: unknown): AppSettings {
         ? raw.lastPlayedPlaylistId
         : DEFAULT_SETTINGS.lastPlayedPlaylistId,
     discrimination: normalizeDiscriminationSettings(raw.discrimination, maxPlaybackRate),
-    speechScoreApiBaseUrl: parseString(
-      raw.speechScoreApiBaseUrl,
-      defaultSpeechScoreApiBaseUrl() || DEFAULT_SETTINGS.speechScoreApiBaseUrl,
+    speechScoreApiUrl: parseSpeechScoreApiUrl(
+      raw,
+      defaultSpeechScoreApiUrl() || DEFAULT_SETTINGS.speechScoreApiUrl,
     ),
     speechScoreApiKey: parseString(raw.speechScoreApiKey, DEFAULT_SETTINGS.speechScoreApiKey),
     speechScoreLanguage:

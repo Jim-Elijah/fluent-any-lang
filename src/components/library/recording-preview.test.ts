@@ -1383,6 +1383,7 @@ describe('recording-preview', () => {
         word_scores: [],
         missing_words: [],
         extra_words: [],
+        misread_words: [],
         prosody_breakdown: {
           speed: 100,
           rhythm: 85,
@@ -1421,5 +1422,49 @@ describe('recording-preview', () => {
     expect(metricText).toContain('语速');
     expect(metricText).toContain('100.0');
     expect(el.shadowRoot?.querySelectorAll('.score-metric--nested')).toHaveLength(4);
+  });
+
+  it('shows misread words between missing and extra word lists', async () => {
+    const score: PronunciationScore = {
+      id: 'score-1',
+      recordId: 'rec-1',
+      status: 'success',
+      referenceText: 'hello world',
+      accuracy: 70,
+      fluency: 80,
+      completeness: 85,
+      prosody: 75,
+      overall: 77,
+      details: {
+        transcript: 'hello help',
+        word_scores: [],
+        missing_words: [],
+        extra_words: [],
+        misread_words: [{ expected: 'world', actual: 'help' }],
+      },
+      createdAt: 1,
+    };
+    vi.spyOn(scoreDb, 'getScoreByRecordId').mockResolvedValue(score);
+
+    const el = await renderPreview();
+    el.record = {
+      id: 'rec-1',
+      mediaId: 'media-1',
+      mediaTitle: 'Lesson',
+      mediaFilename: 'lesson.mp3',
+      mode: 'echo',
+      mimeType: 'audio/webm',
+      createdAt: 1,
+      sourceDuration: 4,
+      recordingDuration: 4,
+      segments: [],
+    };
+    await el.updateComplete;
+    await flushUpdates();
+    await el.updateComplete;
+
+    const texts = el.shadowRoot?.querySelector('.score-texts');
+    expect(texts?.textContent).toContain('读错');
+    expect(texts?.textContent).toContain('world → help');
   });
 });

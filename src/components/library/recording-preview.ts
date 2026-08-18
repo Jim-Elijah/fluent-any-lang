@@ -30,6 +30,7 @@ import {
 } from '../../controllers/waveform-controller.js';
 import type {
   PracticeRecord,
+  PronunciationMisreadWord,
   PronunciationScore,
   SpeakingMode,
   PracticeSegment,
@@ -79,6 +80,11 @@ export type PreviewSubtitleLookup = {
 
 function joinWordList(words: string[]): string {
   return words.join(getLocale() === 'en' ? ', ' : '、');
+}
+
+function joinMisreadWordList(words: PronunciationMisreadWord[]): string {
+  const sep = getLocale() === 'en' ? ', ' : '、';
+  return words.map((word) => `${word.expected} → ${word.actual}`).join(sep);
 }
 
 function subtitleFromPracticeSegment(segment: PracticeSegment): SubtitleSegment | null {
@@ -708,6 +714,12 @@ export class RecordingPreview extends LitElement {
                 ? html`<div>
                     <strong>${msg('漏读')}</strong>
                     ${joinWordList(details.missing_words)}
+                  </div>`
+                : nothing}
+              ${(details.misread_words ?? []).length
+                ? html`<div>
+                    <strong>${msg('读错')}</strong>
+                    ${joinMisreadWordList(details.misread_words)}
                   </div>`
                 : nothing}
               ${details.extra_words.length

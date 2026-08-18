@@ -62,7 +62,7 @@ Sentence practice (`/sentence-practice`) is a lighter path on clipped Sentence B
 - **`practice-view` ↔ NoiseMixer / RateLadder`** — Discrimination play/pause and ladder on track `ended`
 - **`practice-view` ↔ EchoClipPlayer`** — Echo listen must not seek the main media element
 - **`recording-preview` ↔ DualTrackPlayback / waveform** — compare & single-track preview; segment `viewRange` includes the trailing gap to the next Subtitle Segment (`getPracticeSegmentViewRange`); current-line text prefers the live Subtitle Track, then the Practice Segment snapshot
-- **`pronunciation-score` ↔ Practice Record** — on-demand scoring only; `deleteRecording` must cascade; scores export with recordings in backup v5; reference text prefers the Practice Segment snapshot, live Subtitle Track is legacy fallback
+- **`pronunciation-score` ↔ Practice Record** — on-demand scoring only; `deleteRecording` must cascade; scores export with recordings in backup v5; reference text prefers the Practice Segment snapshot, live Subtitle Track is legacy fallback; HTTP contract in [`pronunciation-score-api.md`](./pronunciation-score-api.md) (full POST URL in settings, no health probe)
 - **`import-content` ↔ media + subtitle`** — import writes both
 - **`deleteMedia` → playlist + sentence-bank`** — soft-delete / unavailable cascade
 
@@ -81,6 +81,6 @@ Sentence practice (`/sentence-practice`) is a lighter path on clipped Sentence B
 
 ## Settings vs data
 
-- **Preferences / limits / Discrimination defaults / speech score API** → `app-settings` (localStorage)
+- **Preferences / limits / Discrimination defaults / speech score API URL + key** → `app-settings` (localStorage)
 - **Learner content, sessions, and Pronunciation Scores** → IndexedDB
 - **Backup** → `lib/backup/` (export/import IDB content; respect soft-delete rules; scores travel with recordings)

@@ -13,7 +13,6 @@ export const SCORE_TOO_LONG_MESSAGE = `录音超过 ${SCORE_MAX_DURATION_SEC} �
 export const SCORE_TOO_LARGE_MESSAGE = `录音文件超过 ${formatScoreMaxMb(SCORE_MAX_BYTES)} MB，无法评分`;
 
 export const SCORE_API_PATH = '/api/v1/pronunciation/score';
-export const SCORE_HEALTH_PATH = '/health';
 
 export function joinApiUrl(baseUrl: string, path: string): string {
   const trimmed = baseUrl.trim().replace(/\/+$/, '');
@@ -21,11 +20,22 @@ export function joinApiUrl(baseUrl: string, path: string): string {
   return `${trimmed}${suffix}`;
 }
 
+/**
+ * Settings store the full POST URL. Legacy values were a host/base URL and
+ * must still resolve to `SCORE_API_PATH`.
+ */
+export function toScoreApiUrl(value: string): string {
+  const trimmed = value.trim().replace(/\/+$/, '');
+  if (!trimmed) return '';
+  if (trimmed.endsWith(SCORE_API_PATH)) return trimmed;
+  return joinApiUrl(trimmed, SCORE_API_PATH);
+}
+
 export function isSpeechScoreConfigured(settings: {
-  speechScoreApiBaseUrl: string;
+  speechScoreApiUrl: string;
   speechScoreApiKey: string;
 }): boolean {
   return (
-    settings.speechScoreApiBaseUrl.trim().length > 0 && settings.speechScoreApiKey.trim().length > 0
+    settings.speechScoreApiUrl.trim().length > 0 && settings.speechScoreApiKey.trim().length > 0
   );
 }

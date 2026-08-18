@@ -8,7 +8,7 @@ import { getScoreByRecordId } from '../../db/pronunciation-score.js';
 import type { PracticeRecord, SubtitleTrack } from '../../types/models.js';
 import { PronunciationScoreHttpError } from './client.js';
 import { SCORE_MAX_DURATION_SEC, SCORE_TOO_LONG_MESSAGE } from './constants.js';
-import { requestScore, resolveReferenceText } from './service.js';
+import { requestScore, resolveReferenceDuration, resolveReferenceText } from './service.js';
 
 vi.mock('./client.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./client.js')>();
@@ -158,13 +158,47 @@ describe('resolveReferenceText', () => {
   });
 });
 
+describe('resolveReferenceDuration', () => {
+  it('returns single echo segment source duration', () => {
+    expect(resolveReferenceDuration(makeRecord())).toBe(2);
+  });
+
+  it('sums shadowing segment durations excluding inter-segment gaps', () => {
+    const record = makeRecord({
+      mode: 'shadowing',
+      segmentId: undefined,
+      segments: [
+        {
+          id: 'seg-a',
+          sourceStartTime: 0,
+          sourceEndTime: 5,
+          recordingStartTime: 0,
+          recordingEndTime: 5,
+        },
+        {
+          id: 'seg-b',
+          sourceStartTime: 12,
+          sourceEndTime: 15,
+          recordingStartTime: 5,
+          recordingEndTime: 8,
+        },
+      ],
+    });
+    expect(resolveReferenceDuration(record)).toBe(8);
+  });
+
+  it('returns null for empty segments', () => {
+    expect(resolveReferenceDuration(makeRecord({ segments: [] }))).toBeNull();
+  });
+});
+
 describe('requestScore', () => {
   beforeEach(async () => {
     localStorage.clear();
     vi.mocked(scorePronunciation).mockReset();
     await resetDatabase();
     setAppSettings({
-      speechScoreApiBaseUrl: 'http://localhost:8000',
+      speechScoreApiUrl: 'http://localhost:8000/api/v1/pronunciation/score',
       speechScoreApiKey: 'key',
       speechScoreLanguage: 'en',
     });
@@ -209,6 +243,7 @@ describe('requestScore', () => {
           word_scores: [],
           missing_words: [],
           extra_words: [],
+          misread_words: [],
           prosody_breakdown: {
             speed: 100,
             rhythm: 85,
@@ -262,6 +297,7 @@ describe('requestScore', () => {
         word_scores: [],
         missing_words: [],
         extra_words: [],
+        misread_words: [],
       },
       meta: {
         model: 'whisperx-base',
@@ -277,6 +313,7 @@ describe('requestScore', () => {
     expect(scorePronunciation).toHaveBeenCalled();
     const input = vi.mocked(scorePronunciation).mock.calls[0]?.[0];
     expect(input?.referenceText).toBe('Hello there');
+    expect(input?.referenceDuration).toBe(2);
   });
 
   it('stores failed status when the API returns an error', async () => {

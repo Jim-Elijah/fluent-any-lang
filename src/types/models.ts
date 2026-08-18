@@ -182,6 +182,12 @@ export type PronunciationWordScore = {
   score: number;
 };
 
+/** Misread word pair from POST /api/v1/pronunciation/score `details.misread_words`. */
+export type PronunciationMisreadWord = {
+  expected: string;
+  actual: string;
+};
+
 /** Prosody sub-scores from POST /api/v1/pronunciation/score `details.prosody_breakdown`. */
 export type PronunciationProsodyBreakdown = {
   speed: number;
@@ -196,9 +202,13 @@ export type PronunciationScoreDetails = {
   word_scores: PronunciationWordScore[];
   missing_words: string[];
   extra_words: string[];
+  misread_words: PronunciationMisreadWord[];
   speech_rate_wpm?: number;
   pause_count?: number;
   duration_sec?: number;
+  speech_span_sec?: number;
+  reference_duration_sec?: number;
+  speed_ratio?: number;
   reference_transcript?: string | null;
   prosody_breakdown?: PronunciationProsodyBreakdown;
 };
@@ -242,13 +252,6 @@ export type PronunciationScoreApiResponse = {
   overall: number;
   details: PronunciationScoreDetails;
   meta: PronunciationScoreMeta;
-};
-
-/** JSON body from GET /health. */
-export type SpeechScoreHealthResponse = {
-  status: string;
-  device: string;
-  model_loaded: boolean;
 };
 
 export type LoopMode = 'none' | 'single' | 'segment' | 'list' | 'shuffle';
@@ -359,8 +362,8 @@ export type AppSettings = {
   lastPlayedPlaylistId: string;
   /** 辨音训练偏好（噪声选择 + 速听阶梯） */
   discrimination: DiscriminationSettings;
-  /** Pronunciation scoring API base URL (no trailing slash required). */
-  speechScoreApiBaseUrl: string;
+  /** Full POST URL for pronunciation scoring (`…/api/v1/pronunciation/score`). */
+  speechScoreApiUrl: string;
   /** Pronunciation scoring API key (sent as X-API-Key). */
   speechScoreApiKey: string;
   /** Default BCP-47 language for scoring; `auto` lets the server detect. */
@@ -445,7 +448,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   skipDiscriminationTips: false,
   lastPlayedPlaylistId: '',
   discrimination: { ...DEFAULT_DISCRIMINATION_SETTINGS, ladderRates: [1] },
-  speechScoreApiBaseUrl: '',
+  speechScoreApiUrl: '',
   speechScoreApiKey: '',
   speechScoreLanguage: 'auto',
 };
