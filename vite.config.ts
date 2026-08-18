@@ -9,6 +9,8 @@ import { VitePWA } from 'vite-plugin-pwa';
 import basicSsl from '@vitejs/plugin-basic-ssl';
 
 const rootDir = dirname(fileURLToPath(import.meta.url));
+const lanHost = Boolean(process.env.VITE_DEV_HOST);
+const lanSsl = Boolean(process.env.VITE_DEV_SSL);
 
 /**
  * Vitest's vi.mock resolves relative paths with an importer taken from the
@@ -101,9 +103,7 @@ function readCommitHash(): string {
 }
 
 export default defineConfig({
-  server: {
-    host: true,
-  },
+  ...(lanHost ? { server: { host: true } } : {}),
   define: {
     __APP_VERSION__: JSON.stringify(readPackageVersion()),
     __COMMIT_HASH__: JSON.stringify(readCommitHash()),
@@ -158,7 +158,7 @@ export default defineConfig({
         enabled: false,
       },
     }),
-    basicSsl(),
+    ...(lanSsl ? [basicSsl()] : []),
   ],
   test: {
     environment: 'happy-dom',
