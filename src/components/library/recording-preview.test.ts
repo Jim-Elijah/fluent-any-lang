@@ -1467,4 +1467,212 @@ describe('recording-preview', () => {
     expect(texts?.textContent).toContain('读错');
     expect(texts?.textContent).toContain('world → help');
   });
+
+  function scoredRecord(): PracticeRecord {
+    return {
+      id: 'rec-1',
+      mediaId: 'media-1',
+      mediaTitle: 'Lesson',
+      mediaFilename: 'lesson.mp3',
+      mode: 'shadowing',
+      mimeType: 'audio/webm',
+      createdAt: 1,
+      sourceDuration: 10,
+      recordingDuration: 9,
+      segments: samplePracticeSegments,
+    };
+  }
+
+  function scoreWithWords(wordScores: PronunciationScore['details']): PronunciationScore {
+    return {
+      id: 'score-1',
+      recordId: 'rec-1',
+      status: 'success',
+      referenceText: 'hello world foo',
+      accuracy: 80,
+      fluency: 80,
+      completeness: 80,
+      prosody: 80,
+      overall: 80,
+      details: {
+        transcript: 'hello world foo',
+        word_scores: [],
+        missing_words: [],
+        extra_words: [],
+        misread_words: [],
+        ...wordScores,
+      },
+      createdAt: 1,
+    };
+  }
+
+  async function renderScoredPreview(
+    wordScores: PronunciationScore['details'],
+  ): Promise<RecordingPreviewInternals> {
+    vi.spyOn(scoreDb, 'getScoreByRecordId').mockResolvedValue(scoreWithWords(wordScores));
+    const el = await renderPreview();
+    el.segments = samplePracticeSegments;
+    el.record = scoredRecord();
+    await el.updateComplete;
+    await flushUpdates();
+    await el.updateComplete;
+    return el;
+  }
+
+  it('shows Pronunciation Score words for the current Practice Segment on the waveform', async () => {
+    const el = await renderScoredPreview({
+      word_scores: [
+        { word: 'hello', start: 0.12, end: 0.45, score: 90 },
+        { word: 'world', start: 1, end: 1.5, score: 70 },
+        { word: 'foo', start: 5, end: 5.4, score: 40 },
+      ],
+    });
+    el._syncSegmentIndex = 0;
+    el._controller.setViewRange({ start: 0, end: 4.5 });
+    await el.updateComplete;
+
+    const labels = [...(el.shadowRoot?.querySelectorAll('.word-marker') ?? [])].map((node) =>
+      node.textContent?.trim(),
+    );
+    expect(labels).toEqual(['hello', 'world']);
+    const rail = el.shadowRoot?.querySelector('.word-rail');
+    expect(rail?.getAttribute('slot')).toBe('over-canvas');
+    const marker = el.shadowRoot?.querySelector('.word-marker') as HTMLElement | null;
+    expect(marker?.style.width).toBe('');
+    expect(marker?.style.left).toBeTruthy();
+  });
+
+  it('switches waveform words when the current Practice Segment changes', async () => {
+    const el = await renderScoredPreview({
+      word_scores: [
+        { word: 'hello', start: 0.12, end: 0.45, score: 90 },
+        { word: 'foo', start: 5, end: 5.4, score: 40 },
+      ],
+    });
+    el._syncSegmentIndex = 1;
+    el._controller.setViewRange({ start: 4.5, end: 9 });
+    await el.updateComplete;
+
+    const labels = [...(el.shadowRoot?.querySelectorAll('.word-marker') ?? [])].map((node) =>
+      node.textContent?.trim(),
+    );
+    expect(labels).toEqual(['foo']);
+  });
+
+  it('places waveform words on the recording axis when compare view range is in source time', async () => {
+    const el = await renderScoredPreview({
+      word_scores: [{ word: 'mid', start: 2.25, end: 2.7, score: 80 }],
+    });
+    el._playMode = 'sync';
+    el._sourceTrackId = 'source-track';
+    el._recordingTrackId = 'rec-track';
+    el._controller.setActiveId('source-track');
+    el._controller.setViewRange({ start: 0, end: 5 });
+    await el.updateComplete;
+
+    const marker = el.shadowRoot?.querySelector('.word-marker') as HTMLElement | null;
+    expect(marker?.style.left).toBe('50%');
+  });
+
+  it('hides waveform words while playing source', async () => {
+    const el = await renderScoredPreview({
+      word_scores: [{ word: 'hello', start: 0.12, end: 0.45, score: 90 }],
+    });
+    el._playMode = 'source';
+    el._controller.setViewRange({ start: 0, end: 4.5 });
+    await el.updateComplete;
+
+    expect(el.shadowRoot?.querySelector('.word-marker')).toBeNull();
+    expect(el.shadowRoot?.querySelector('.word-chip')?.textContent?.trim()).toBe('hello');
+  });
+
+  it('seeks recording playback to a clicked waveform word', async () => {
+    const el = await renderScoredPreview({
+      word_scores: [{ word: 'hello', start: 0.12, end: 0.45, score: 90 }],
+    });
+    const playback = createPlaybackMock();
+    el._playback = playback;
+    el._playMode = 'recording';
+    el._recordingTrackId = 'rec-track';
+    el._controller.setViewRange({ start: 0, end: 4.5 });
+    await el.updateComplete;
+
+    const marker = el.shadowRoot?.querySelector('.word-marker') as HTMLButtonElement | null;
+    marker?.click();
+    await flushUpdates();
+
+    expect(playback.playRecordingAt).toHaveBeenCalledWith(0.12);
+  });
+
+  it('seeks compare playback to a clicked waveform word on the recording axis', async () => {
+    const el = await renderScoredPreview({
+      word_scores: [{ word: 'hello', start: 0.12, end: 0.45, score: 90 }],
+    });
+    const playback = createPlaybackMock();
+    el._playback = playback;
+    el._playMode = 'sync';
+    el._controller.setViewRange({ start: 0, end: 4.5 });
+    await el.updateComplete;
+
+    const marker = el.shadowRoot?.querySelector('.word-marker') as HTMLButtonElement | null;
+    marker?.click();
+    await flushUpdates();
+
+    expect(playback.playSyncAt).toHaveBeenCalledWith(0.12, 'recording');
+  });
+
+  it('seeks recording playback to a clicked score word chip', async () => {
+    const el = await renderScoredPreview({
+      word_scores: [{ word: 'hello', start: 0.12, end: 0.45, score: 90 }],
+    });
+    const playback = createPlaybackMock();
+    el._playback = playback;
+    el._playMode = 'recording';
+    el._recordingTrackId = 'rec-track';
+    await el.updateComplete;
+
+    const chip = el.shadowRoot?.querySelector('.word-chip') as HTMLButtonElement | null;
+    chip?.click();
+    await flushUpdates();
+
+    expect(playback.playRecordingAt).toHaveBeenCalledWith(0.12);
+  });
+
+  it('switches from source playback to recording when a score word chip is clicked', async () => {
+    const el = await renderScoredPreview({
+      word_scores: [{ word: 'hello', start: 0.12, end: 0.45, score: 90 }],
+    });
+    const playback = createPlaybackMock();
+    el._playback = playback;
+    el._playMode = 'source';
+    el._recordingTrackId = 'rec-track';
+    await el.updateComplete;
+
+    const chip = el.shadowRoot?.querySelector('.word-chip') as HTMLButtonElement | null;
+    chip?.click();
+    await flushUpdates();
+
+    expect(playback.playRecordingAt).toHaveBeenCalledWith(0.12);
+  });
+
+  it('does not play a score word listed as missing', async () => {
+    const infoSpy = vi.spyOn(Message, 'info');
+    const el = await renderScoredPreview({
+      word_scores: [{ word: 'the', start: 0.12, end: 0.3, score: 0 }],
+      missing_words: ['the'],
+    });
+    const playback = createPlaybackMock();
+    el._playback = playback;
+    el._playMode = 'recording';
+    el._recordingTrackId = 'rec-track';
+    await el.updateComplete;
+
+    const chip = el.shadowRoot?.querySelector('.word-chip') as HTMLButtonElement | null;
+    expect(chip?.getAttribute('aria-disabled')).toBe('true');
+    chip?.click();
+    await flushUpdates();
+
+    expect(infoSpy).toHaveBeenCalled();
+    expect(playback.playRecordingAt).not.toHaveBeenCalled();
+  });
 });

@@ -1,6 +1,7 @@
 import { msg, localized } from '@lit/localize';
 import { css, html, LitElement, nothing, type TemplateResult } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import { styleMap } from 'lit/directives/style-map.js';
 
 import {
   DualTrackPlayback,
@@ -32,6 +33,7 @@ import type {
   PracticeRecord,
   PronunciationMisreadWord,
   PronunciationScore,
+  PronunciationWordScore,
   SpeakingMode,
   PracticeSegment,
   ShadowingGapPolicy,
@@ -51,6 +53,11 @@ import {
 } from '../../lib/pronunciation-score/index.js';
 import { getScoreByRecordId } from '../../db/pronunciation-score.js';
 import { setLogicalVolume } from '../../lib/media-element-gain.js';
+import {
+  wordMarkersForPreview,
+  WORD_RAIL_LANE_PX,
+  type WordWaveformMarker,
+} from '../../lib/word-waveform.js';
 import type { WaveformSeekRequestDetail } from '../player/waveform-player.js';
 import '../ui/alert.js';
 import '../ui/button.js';
@@ -68,6 +75,8 @@ import { Message } from '../ui/message.js';
 const stopOverlayOpenEvent = (event: Event): void => {
   event.stopPropagation();
 };
+
+const WAVEFORM_CANVAS_HEIGHT = 120;
 
 export type PreviewSubtitleLookup = {
   mode: DualTrackMode;
@@ -336,9 +345,12 @@ export class RecordingPreview extends LitElement {
 
     .word-chip {
       padding: 1px 6px;
+      border: none;
       border-radius: 4px;
+      font: inherit;
       font-size: 0.8125rem;
       line-height: 1.4;
+      cursor: pointer;
     }
 
     .word-chip.high {
@@ -352,6 +364,51 @@ export class RecordingPreview extends LitElement {
     }
 
     .word-chip.low {
+      background: rgba(255, 77, 79, 0.16);
+      color: #cf1322;
+    }
+
+    .word-chip.is-missing {
+      cursor: default;
+      opacity: 0.7;
+    }
+
+    .word-rail {
+      position: relative;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    .word-marker {
+      position: absolute;
+      top: 0;
+      height: 100%;
+      width: auto;
+      padding: 0 4px;
+      border: none;
+      border-radius: 3px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font: inherit;
+      font-size: 0.6875rem;
+      line-height: ${WORD_RAIL_LANE_PX}px;
+      text-align: center;
+      cursor: pointer;
+      pointer-events: auto;
+    }
+
+    .word-marker.high {
+      background: rgba(82, 196, 26, 0.18);
+      color: #237804;
+    }
+
+    .word-marker.mid {
+      background: rgba(250, 173, 20, 0.2);
+      color: #ad6800;
+    }
+
+    .word-marker.low {
       background: rgba(255, 77, 79, 0.16);
       color: #cf1322;
     }
@@ -496,6 +553,8 @@ export class RecordingPreview extends LitElement {
     const canPlayRecording = Boolean(this.recordingBlob);
     const canPlaySync = canPlaySource && canPlayRecording && this.segments.length > 0;
     const compareActive = isComparePlayMode(this._playMode);
+    const wordMarkers = this._wordRailVisible() ? this._wordMarkers() : [];
+    const wordLanePx = wordMarkers.length > 0 ? WORD_RAIL_LANE_PX : 0;
     const showSourceVolume = this._playMode === 'source' || compareActive;
     const showRecordingVolume = this._playMode === 'recording' || compareActive;
     const keyboardShortcuts = supportsKeyboardShortcuts();
@@ -539,10 +598,13 @@ export class RecordingPreview extends LitElement {
 
         <waveform-player
           .controller=${this._controller}
-          .canvasHeight=${120}
+          .canvasHeight=${WAVEFORM_CANVAS_HEIGHT + wordLanePx}
+          .topInset=${wordLanePx}
           .resolveTrackViewRange=${this._resolveTrackViewRange}
           @seek-request=${this._handleWaveformSeekRequest}
-        ></waveform-player>
+        >
+          ${this._renderWordRail(wordMarkers)}
+        </waveform-player>
 
         <div class="controls">
           <div class="control-group">
@@ -731,12 +793,7 @@ export class RecordingPreview extends LitElement {
             </div>
             ${details.word_scores.length
               ? html`<div class="word-heatmap">
-                  ${details.word_scores.map(
-                    (word) =>
-                      html`<span class="word-chip ${this._wordScoreClass(word.score)}"
-                        >${word.word}</span
-                      >`,
-                  )}
+                  ${details.word_scores.map((word) => this._renderWordChip(word))}
                 </div>`
               : nothing}
           `
@@ -761,6 +818,113 @@ export class RecordingPreview extends LitElement {
     if (score >= 80) return 'high';
     if (score >= 60) return 'mid';
     return 'low';
+  }
+
+  private _missingWords(): string[] {
+    return this._score?.status === 'success' ? (this._score.details?.missing_words ?? []) : [];
+  }
+
+  private _wordIsMissing(word: string): boolean {
+    return this._missingWords().includes(word);
+  }
+
+  private _renderWordChip(word: PronunciationWordScore) {
+    const missing = this._wordIsMissing(word.word);
+    return html`<button
+      type="button"
+      class="word-chip ${this._wordScoreClass(word.score)}${missing ? ' is-missing' : ''}"
+      aria-disabled=${missing ? 'true' : 'false'}
+      title=${missing ? msg('漏读，录音中没有对应位置') : `${word.word} ${word.score.toFixed(0)}`}
+      @click=${() => this._playScoredWord(word)}
+    >
+      ${word.word}
+    </button>`;
+  }
+
+  private _renderWordRail(markers: WordWaveformMarker[]) {
+    if (markers.length === 0) {
+      return nothing;
+    }
+    return html`
+      <div class="word-rail" slot="over-canvas">
+        ${markers.map(
+          (marker) =>
+            html`<button
+              type="button"
+              class="word-marker ${this._wordScoreClass(marker.score)}"
+              style=${styleMap({
+                left: `${marker.leftPct}%`,
+              })}
+              title=${`${marker.word} ${marker.score.toFixed(0)}`}
+              @click=${() => this._playScoredWord(marker)}
+            >
+              ${marker.word}
+            </button>`,
+        )}
+      </div>
+    `;
+  }
+
+  private _wordRailVisible(): boolean {
+    return this._playMode !== 'source' && this._playMode !== 'idle';
+  }
+
+  private _wordMarkers() {
+    const words = this._score?.status === 'success' ? (this._score.details?.word_scores ?? []) : [];
+    if (words.length === 0 || this.segments.length === 0) {
+      return [];
+    }
+    return wordMarkersForPreview({
+      words,
+      segments: this.segments,
+      segmentIndex: this._syncSegmentIndex,
+      recordingViewRange: this._recordingViewRange(),
+    });
+  }
+
+  private _recordingViewRange(): ViewRange | null {
+    const viewRange = this._controller.viewRange;
+    if (!viewRange || this.segments.length === 0 || this._usesRecordingTimeline()) {
+      return viewRange;
+    }
+    if (this._playMode === 'idle') {
+      return viewRange;
+    }
+    return mapPracticeViewRange(viewRange, 'source', 'recording', this.segments);
+  }
+
+  private _playScoredWord(word: Pick<PronunciationWordScore, 'word' | 'start'>): void {
+    if (this._wordIsMissing(word.word) || !Number.isFinite(word.start)) {
+      Message.info(msg('漏读，录音中没有对应位置'));
+      return;
+    }
+    void this._playWordAt(word.start);
+  }
+
+  private async _playWordAt(start: number): Promise<void> {
+    if (!(await this._ensurePlayback()) || !this._playback) {
+      return;
+    }
+
+    this._requestAudioFocus();
+    if (this._playMode === 'continuous') {
+      void this._playback.playContinuousAt(start, 'recording').catch(() => {
+        this._playback?.stop();
+      });
+      return;
+    }
+    if (this._playMode === 'sync') {
+      void this._playback.playSyncAt(start, 'recording').catch(() => {
+        this._playback?.stop();
+      });
+      return;
+    }
+    if (this._recordingTrackId) {
+      this._controller.setActiveId(this._recordingTrackId);
+    }
+    void this._playback.playRecordingAt(start).catch(() => {
+      this._playback?.stop();
+    });
   }
 
   private async _handleScore(): Promise<void> {
@@ -1411,6 +1575,7 @@ export class RecordingPreview extends LitElement {
 
   private _handleViewRangeChange = (): void => {
     this._enforceViewRangeBounds();
+    this.requestUpdate();
   };
 
   private _handleTrackChange = (): void => {

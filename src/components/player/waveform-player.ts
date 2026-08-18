@@ -1,5 +1,6 @@
 import { css, html, LitElement } from 'lit';
 import { customElement, property, query, state } from 'lit/decorators.js';
+import { styleMap } from 'lit/directives/style-map.js';
 
 import { WaveformControllerHost } from '../../controllers/waveform-controller-host.js';
 import type { WaveformController, WaveformLayout } from '../../controllers/waveform-controller.js';
@@ -36,6 +37,10 @@ export class WaveformPlayer extends LitElement {
       display: block;
     }
 
+    .canvas-frame {
+      position: relative;
+    }
+
     canvas {
       width: 100%;
       display: block;
@@ -46,12 +51,26 @@ export class WaveformPlayer extends LitElement {
       touch-action: none;
     }
 
+    .over-canvas {
+      position: absolute;
+      top: 1px;
+      left: 1px;
+      right: 1px;
+      overflow: hidden;
+      pointer-events: none;
+      border-radius: var(--radius-md, 8px) var(--radius-md, 8px) 0 0;
+    }
+
     canvas.interactive {
       cursor: crosshair;
     }
 
     canvas.non-interactive {
       cursor: default;
+    }
+
+    slot[name='below-canvas'] {
+      display: block;
     }
 
     .track-legend {
@@ -95,6 +114,10 @@ export class WaveformPlayer extends LitElement {
 
   @property({ type: Number })
   canvasHeight = 320;
+
+  /** Reserved top band (CSS px) so slotted labels do not sit on waveform peaks. */
+  @property({ type: Number })
+  topInset = 0;
 
   @property({ type: Boolean })
   interactive = true;
@@ -178,13 +201,19 @@ export class WaveformPlayer extends LitElement {
     const hiddenSet = new Set(this._hiddenTrackIds);
 
     return html`
-      <canvas
-        class=${canvasClass}
-        @mousedown=${this._handleMouseDown}
-        @mousemove=${this._handleMouseMove}
-        @dblclick=${this._handleDoubleClick}
-        @click=${this._handleClick}
-      ></canvas>
+      <div class="canvas-frame">
+        <canvas
+          class=${canvasClass}
+          @mousedown=${this._handleMouseDown}
+          @mousemove=${this._handleMouseMove}
+          @dblclick=${this._handleDoubleClick}
+          @click=${this._handleClick}
+        ></canvas>
+        <div class="over-canvas" style=${styleMap({ height: `${Math.max(0, this.topInset)}px` })}>
+          <slot name="over-canvas"></slot>
+        </div>
+      </div>
+      <slot name="below-canvas"></slot>
       ${tracks.length > 1
         ? html`<div class="track-legend">
             ${tracks.map(
@@ -252,6 +281,7 @@ export class WaveformPlayer extends LitElement {
       viewRange: snapshot.viewRange,
       hiddenTrackIds: new Set(this._hiddenTrackIds),
       resolveTrackViewRange: this.resolveTrackViewRange,
+      topInset: Math.max(0, this.topInset),
     });
 
     this._drawPlayhead(canvas, snapshot);
@@ -287,6 +317,7 @@ export class WaveformPlayer extends LitElement {
     viewRange,
     hiddenTrackIds,
     resolveTrackViewRange,
+    topInset,
   }: {
     canvas: HTMLCanvasElement;
     tracks: WaveformTrack[];
@@ -295,6 +326,7 @@ export class WaveformPlayer extends LitElement {
     viewRange: ViewRange | null;
     hiddenTrackIds: Set<string>;
     resolveTrackViewRange: WaveformPlayer['resolveTrackViewRange'];
+    topInset: number;
   }): TrackRect[] {
     const ctx = canvas.getContext('2d');
     if (!ctx) {
@@ -325,7 +357,7 @@ export class WaveformPlayer extends LitElement {
     /** overlay, 多个track叠在同一条基线上；trackRects为空数组 */
     if (layout === 'overlay') {
       const midY = cssH - edgePad;
-      const maxH = cssH - edgePad * 2;
+      const maxH = Math.max(1, cssH - topInset - edgePad * 2);
 
       ctx.strokeStyle = 'rgba(17,24,39,0.08)';
       ctx.lineWidth = 1;
@@ -376,7 +408,7 @@ export class WaveformPlayer extends LitElement {
 
     /** stack, 多个track分层排列，每个track各占一条水平基线；trackRects为非空数组*/
     const laneGap = 6;
-    const topPad = edgePad;
+    const topPad = edgePad + topInset;
     const bottomPad = edgePad;
     const trackCount = visibleTracks.length;
     if (trackCount === 0) {
@@ -467,6 +499,8 @@ export class WaveformPlayer extends LitElement {
     ratio = Math.min(1, Math.max(0, ratio));
     const x = ratio * cssW;
 
+    const capY = Math.max(0, this.topInset) + 8;
+
     ctx.save();
     ctx.strokeStyle = 'rgba(239,68,68,0.95)';
     ctx.lineWidth = 1.5;
@@ -477,7 +511,7 @@ export class WaveformPlayer extends LitElement {
 
     ctx.fillStyle = 'rgba(239,68,68,0.95)';
     ctx.beginPath();
-    ctx.arc(x, 8, 4, 0, Math.PI * 2);
+    ctx.arc(x, capY, 4, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
   }

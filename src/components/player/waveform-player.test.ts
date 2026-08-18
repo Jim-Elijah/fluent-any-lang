@@ -122,9 +122,16 @@ describe('waveform-player', () => {
     }
   }
 
-  it('renders canvas for waveform drawing', async () => {
+  it('sizes the over-canvas lane from topInset', async () => {
     const { el } = await renderPlayer();
-    expect(el.shadowRoot?.querySelector('canvas')).not.toBeNull();
+    const overlay = el.shadowRoot!.querySelector('.over-canvas') as HTMLElement;
+    expect(overlay).not.toBeNull();
+    expect(overlay.style.height).toBe('0px');
+    expect(el.shadowRoot!.querySelector('slot[name="over-canvas"]')).not.toBeNull();
+
+    el.topInset = 22;
+    await el.updateComplete;
+    expect(overlay.style.height).toBe('22px');
   });
 
   it('keeps view range on simple click so seek uses the zoomed timeline', async () => {
