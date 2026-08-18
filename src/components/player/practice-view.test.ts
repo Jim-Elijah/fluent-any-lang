@@ -85,6 +85,11 @@ vi.mock('../../lib/file-validation.js', () => ({
   getMediaDuration: vi.fn().mockResolvedValue(3),
 }));
 
+const mockImportSubtitleForMedia = vi.fn();
+vi.mock('../../lib/import-content.js', () => ({
+  importSubtitleForMedia: (...args: unknown[]) => mockImportSubtitleForMedia(...args),
+}));
+
 const mockNoiseMixer = {
   setPlaying: vi.fn(),
   setTracks: vi.fn(),
@@ -141,7 +146,7 @@ vi.mock('../../lib/microphone-access.js', async (importOriginal) => {
 
 import './practice-view.js';
 import type { PracticeView } from './practice-view.js';
-import { mount } from '../ui/test-utils.js';
+import { flushUpdates, mount } from '../ui/test-utils.js';
 import { Message } from '../ui/message.js';
 import {
   AUDIO_FOCUS_REQUEST_EVENT,
@@ -324,6 +329,7 @@ describe('practice-view', () => {
       remainingPercent: 100,
     });
     mockCheckMicrophoneStatus.mockResolvedValue('granted');
+    mockImportSubtitleForMedia.mockReset();
     mockReportError.mockResolvedValue(undefined);
     mockLoadingClose.mockClear();
     mockNoiseMixer.setPlaying.mockClear();
@@ -451,6 +457,52 @@ describe('practice-view', () => {
       button.textContent?.trim(),
     );
     expect(labels).toEqual(['影子跟读']);
+  });
+
+  it('shows echo after importing a subtitle track during shadowing', async () => {
+    mockLoadMedia.mockResolvedValue(makeLoadedMedia('media-1', { hasSubtitles: false }));
+    mockImportSubtitleForMedia.mockResolvedValue({
+      imported: [
+        {
+          id: 'sub-1',
+          mediaId: 'media-1',
+          title: 'Lesson media-1',
+          filename: 'media-1.srt',
+          type: 'srt',
+          contentHash: 'hash',
+          segments: sampleSegments,
+        },
+      ],
+      errors: [],
+      warnings: [],
+      skipped: [],
+      conflicts: [],
+    });
+    const el = await renderView();
+    await settleView(el);
+
+    findButton(el, '口语')?.click();
+    await el.updateComplete;
+    await settleView(el);
+
+    expect(findButton(el, '回声跟读')).toBeUndefined();
+
+    const panel = el.shadowRoot!.querySelector('subtitle-panel') as HTMLElement;
+    const input = panel.shadowRoot!.querySelector('input[type="file"]') as HTMLInputElement;
+    Object.defineProperty(input, 'files', {
+      value: [new File(['1'], 'media-1.srt', { type: 'application/x-subrip' })],
+      configurable: true,
+    });
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    await el.updateComplete;
+    await flushUpdates();
+    await settleView(el);
+
+    const modeTabs = el.shadowRoot!.querySelector('.speaking-mode-tabs');
+    const labels = Array.from(modeTabs?.querySelectorAll('ui-button') ?? []).map((button) =>
+      button.textContent?.trim(),
+    );
+    expect(labels).toEqual(['回声跟读', '影子跟读']);
   });
 
   it('falls back from echo to shadowing when track change removes subtitles', async () => {

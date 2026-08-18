@@ -653,6 +653,10 @@ export class PracticeView extends NavigatorElement {
     this._timeTracker.setMedia('', '', 'audio', '', this._activePlaylistId);
   }
 
+  private _onSubtitleImported = (): void => {
+    this.requestUpdate();
+  };
+
   private _onTrackChange = (): void => {
     this._recordingError = '';
     this._lastRecordingId = null;
@@ -916,6 +920,7 @@ export class PracticeView extends NavigatorElement {
             @update:fullscreen="${(e: CustomEvent<SubtitlePanelFullscreenChangeDetail>) => {
               this._subtitlePanelFullscreen = e.detail.fullscreen;
             }}"
+            @subtitle-imported="${this._onSubtitleImported}"
             @echo-record-request="${this._onEchoRecordRequest}"
             @echo-record-stop="${this._onEchoRecordStop}"
             @echo-manage-recordings="${this._onEchoManageRecordings}"

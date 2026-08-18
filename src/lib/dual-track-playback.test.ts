@@ -370,6 +370,60 @@ describe('DualTrackPlayback', () => {
     expect(recording.play).toHaveBeenCalled();
   });
 
+  /**
+   * While playing, a stale timeupdate can arrive during seek and map back to the
+   * previous segment if index is updated before currentTime lands.
+   */
+  it('goToSegment keeps recording segment index when stale timeupdate fires during seek', async () => {
+    await controller.playRecording();
+    recording.currentTime = 2;
+    expect(controller.getState().syncSegmentIndex).toBe(0);
+
+    const nativeSet = Object.getOwnPropertyDescriptor(
+      HTMLMediaElement.prototype,
+      'currentTime',
+    )!.set!;
+    let seekAssignments = 0;
+    vi.spyOn(recording, 'currentTime', 'set').mockImplementation((value: number) => {
+      seekAssignments += 1;
+      if (seekAssignments === 1) {
+        recording.dispatchEvent(new Event('timeupdate'));
+      }
+      nativeSet.call(recording, value);
+    });
+
+    await controller.goToSegment(1);
+
+    expect(controller.getState().syncSegmentIndex).toBe(1);
+    expect(recording.currentTime).toBe(segments[1].recordingStartTime);
+    expect(recording.pause).toHaveBeenCalled();
+  });
+
+  it('goToSegment keeps source segment index when stale timeupdate fires during seek', async () => {
+    await controller.playSource();
+    source.currentTime = 2;
+    expect(controller.getState().syncSegmentIndex).toBe(0);
+
+    const nativeSet = Object.getOwnPropertyDescriptor(
+      HTMLMediaElement.prototype,
+      'currentTime',
+    )!.set!;
+    let seekAssignments = 0;
+    vi.spyOn(source, 'currentTime', 'set').mockImplementation((value: number) => {
+      seekAssignments += 1;
+      if (seekAssignments === 1) {
+        source.dispatchEvent(new Event('timeupdate'));
+      }
+      nativeSet.call(source, value);
+    });
+
+    await controller.goToSegment(1);
+
+    expect(controller.getState().syncSegmentIndex).toBe(1);
+    expect(source.currentTime).toBe(segments[1].sourceStartTime);
+    expect(source.pause).toHaveBeenCalled();
+  });
+
   it('ignores pause and resume when idle or already in target state', async () => {
     controller.pause();
     expect(controller.getState().paused).toBe(false);

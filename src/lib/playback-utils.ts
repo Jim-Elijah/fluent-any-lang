@@ -304,6 +304,9 @@ export function getPracticeSourceDuration(segments: PracticeSegment[]): number {
   return span ? span.end - span.start : 0;
 }
 
+/** HTMLMediaElement currentTime can land just before a shared segment start. */
+const PRACTICE_SEGMENT_BOUNDARY_EPSILON = 0.001;
+
 export function findPracticeSegmentIndex(
   segments: PracticeSegment[],
   time: number,
@@ -333,6 +336,14 @@ export function findPracticeSegmentIndex(
 
   if (candidate < 0) {
     return -1;
+  }
+
+  const next = candidate + 1 < len ? segments[candidate + 1] : undefined;
+  if (next) {
+    const untilNext = next[startKey] - time;
+    if (untilNext > 0 && untilNext <= PRACTICE_SEGMENT_BOUNDARY_EPSILON) {
+      return candidate + 1;
+    }
   }
 
   const seg = segments[candidate];

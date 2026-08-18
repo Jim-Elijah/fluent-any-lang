@@ -95,6 +95,27 @@ describe('findPracticeSegmentIndex', () => {
     expect(findPracticeSegmentIndex(samplePracticeSegments, 11, 'source')).toBe(1);
   });
 
+  it('snaps to the next recording segment when currentTime lands just before its start', () => {
+    const contiguous: PracticeSegment[] = [
+      {
+        id: 'p0',
+        sourceStartTime: 0,
+        sourceEndTime: 6.344,
+        recordingStartTime: 0.6603999999985098,
+        recordingEndTime: 1.7240000000000002,
+      },
+      {
+        id: 'p1',
+        sourceStartTime: 6.344,
+        sourceEndTime: 7.48,
+        recordingStartTime: 1.7240000000000002,
+        recordingEndTime: 2.791699999999255,
+      },
+    ];
+    expect(findPracticeSegmentIndex(contiguous, 1.724, 'recording')).toBe(1);
+    expect(findPracticeSegmentIndex(contiguous, 1.72, 'recording')).toBe(0);
+  });
+
   it('returns -1 for empty segments and times after the last segment', () => {
     expect(findPracticeSegmentIndex([], 1, 'source')).toBe(-1);
     expect(findPracticeSegmentIndex(samplePracticeSegments, -1, 'source')).toBe(-1);

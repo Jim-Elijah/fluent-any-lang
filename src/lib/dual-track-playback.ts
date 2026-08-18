@@ -233,8 +233,9 @@ export class DualTrackPlayback {
     }
 
     if (this.mode === 'source') {
+      this.sourceAudio.pause();
+      this.sourceAudio.currentTime = this._clampAudioTime(this.sourceAudio, segment.sourceStartTime);
       this.syncSegmentIndex = index;
-      this.sourceAudio.currentTime = segment.sourceStartTime;
       this.paused = wasPaused;
       this._emitState();
       if (!wasPaused) {
@@ -244,8 +245,12 @@ export class DualTrackPlayback {
     }
 
     if (this.mode === 'recording') {
+      this.recordingAudio.pause();
+      this.recordingAudio.currentTime = this._clampAudioTime(
+        this.recordingAudio,
+        segment.recordingStartTime,
+      );
       this.syncSegmentIndex = index;
-      this.recordingAudio.currentTime = segment.recordingStartTime;
       this.paused = wasPaused;
       this._emitState();
       if (!wasPaused) {
