@@ -234,7 +234,10 @@ export class DualTrackPlayback {
 
     if (this.mode === 'source') {
       this.sourceAudio.pause();
-      this.sourceAudio.currentTime = this._clampAudioTime(this.sourceAudio, segment.sourceStartTime);
+      this.sourceAudio.currentTime = this._clampAudioTime(
+        this.sourceAudio,
+        segment.sourceStartTime,
+      );
       this.syncSegmentIndex = index;
       this.paused = wasPaused;
       this._emitState();

@@ -7,7 +7,7 @@ import { addSubtitle } from '../../db/subtitle.js';
 import { getScoreByRecordId } from '../../db/pronunciation-score.js';
 import type { PracticeRecord, SubtitleTrack } from '../../types/models.js';
 import { PronunciationScoreHttpError } from './client.js';
-import { SCORE_MAX_DURATION_SEC, SCORE_TOO_LONG_MESSAGE } from './constants.js';
+import { SCORE_MAX_DURATION_SEC, scoreTooLongMessage } from './constants.js';
 import { requestScore, resolveReferenceDuration, resolveReferenceText } from './service.js';
 
 vi.mock('./client.js', async (importOriginal) => {
@@ -218,7 +218,7 @@ describe('requestScore', () => {
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.reason).toBe('validation');
-    expect(result.message).toBe(SCORE_TOO_LONG_MESSAGE);
+    expect(result.message).toBe(scoreTooLongMessage());
     expect(scorePronunciation).not.toHaveBeenCalled();
     expect((await getScoreByRecordId(record.id))?.status).toBe('failed');
   });

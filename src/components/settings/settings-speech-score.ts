@@ -17,8 +17,6 @@ const LANGUAGE_OPTIONS = [
   { value: 'auto', label: 'auto' },
   { value: 'en', label: 'en' },
   { value: 'zh', label: 'zh' },
-  { value: 'ja', label: 'ja' },
-  { value: 'ko', label: 'ko' },
 ] as const;
 
 const SCORE_API_URL_PLACEHOLDER = `https://speech.example.com${SCORE_API_PATH}`;

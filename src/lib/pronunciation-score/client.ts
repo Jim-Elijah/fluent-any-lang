@@ -1,3 +1,4 @@
+import { msg, str } from '@lit/localize';
 import type { PronunciationScoreApiResponse } from '../../types/models.js';
 
 export type ScoreHttpErrorCode =
@@ -20,24 +21,39 @@ export class PronunciationScoreHttpError extends Error {
   }
 }
 
-const STATUS_MAP: Record<number, { code: ScoreHttpErrorCode; message: string }> = {
-  401: { code: 'unauthorized', message: 'API Key 无效或已过期，请检查设置' },
-  413: { code: 'too_large', message: '音频过大或过长，无法评分' },
-  422: { code: 'invalid', message: '评分参数无效，请确认参考文本后重试' },
-  429: { code: 'quota', message: '评分次数已达上限，请稍后再试' },
-  503: { code: 'unavailable', message: '评分服务未就绪，请稍后再试' },
+const STATUS_CODE_MAP: Record<number, ScoreHttpErrorCode> = {
+  401: 'unauthorized',
+  413: 'too_large',
+  422: 'invalid',
+  429: 'quota',
+  503: 'unavailable',
 };
+
+function statusMessage(status: number): string {
+  switch (status) {
+    case 401:
+      return msg('API Key 无效或已过期，请检查设置');
+    case 413:
+      return msg('音频过大或过长，无法评分');
+    case 422:
+      return msg('评分参数无效，请确认参考文本后重试');
+    case 429:
+      return msg('评分次数已达上限，请稍后再试');
+    case 503:
+      return msg('评分服务未就绪，请稍后再试');
+    default:
+      return msg(str`评分失败（${status}）`);
+  }
+}
 
 export function mapScoreHttpStatus(status: number): {
   code: ScoreHttpErrorCode;
   message: string;
 } {
-  return (
-    STATUS_MAP[status] ?? {
-      code: 'unknown',
-      message: `评分失败（${status}）`,
-    }
-  );
+  return {
+    code: STATUS_CODE_MAP[status] ?? 'unknown',
+    message: statusMessage(status),
+  };
 }
 
 function audioFileName(blob: Blob): string {

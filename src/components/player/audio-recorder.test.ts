@@ -207,8 +207,20 @@ describe('dropIncompleteTrailingSegment', () => {
 
   it('keeps all segments when the last one is fully played', () => {
     const segments: PracticeSegment[] = [
-      { id: 's1', sourceStartTime: 0, sourceEndTime: 5, recordingStartTime: 0, recordingEndTime: 5 },
-      { id: 's2', sourceStartTime: 5, sourceEndTime: 10, recordingStartTime: 5, recordingEndTime: 10 },
+      {
+        id: 's1',
+        sourceStartTime: 0,
+        sourceEndTime: 5,
+        recordingStartTime: 0,
+        recordingEndTime: 5,
+      },
+      {
+        id: 's2',
+        sourceStartTime: 5,
+        sourceEndTime: 10,
+        recordingStartTime: 5,
+        recordingEndTime: 10,
+      },
     ];
     const result = dropIncompleteTrailingSegment(segments, subtitles);
     expect(result).toHaveLength(2);
@@ -217,8 +229,20 @@ describe('dropIncompleteTrailingSegment', () => {
   it('keeps the last segment when source coverage >= threshold', () => {
     const played = 5 + 5 * INCOMPLETE_SOURCE_THRESHOLD;
     const segments: PracticeSegment[] = [
-      { id: 's1', sourceStartTime: 0, sourceEndTime: 5, recordingStartTime: 0, recordingEndTime: 5 },
-      { id: 's2', sourceStartTime: 5, sourceEndTime: played, recordingStartTime: 5, recordingEndTime: played },
+      {
+        id: 's1',
+        sourceStartTime: 0,
+        sourceEndTime: 5,
+        recordingStartTime: 0,
+        recordingEndTime: 5,
+      },
+      {
+        id: 's2',
+        sourceStartTime: 5,
+        sourceEndTime: played,
+        recordingStartTime: 5,
+        recordingEndTime: played,
+      },
     ];
     const result = dropIncompleteTrailingSegment(segments, subtitles);
     expect(result).toHaveLength(2);
@@ -226,8 +250,20 @@ describe('dropIncompleteTrailingSegment', () => {
 
   it('drops the last segment when source coverage < threshold', () => {
     const segments: PracticeSegment[] = [
-      { id: 's1', sourceStartTime: 0, sourceEndTime: 5, recordingStartTime: 0, recordingEndTime: 5 },
-      { id: 's2', sourceStartTime: 5, sourceEndTime: 6, recordingStartTime: 5, recordingEndTime: 6 },
+      {
+        id: 's1',
+        sourceStartTime: 0,
+        sourceEndTime: 5,
+        recordingStartTime: 0,
+        recordingEndTime: 5,
+      },
+      {
+        id: 's2',
+        sourceStartTime: 5,
+        sourceEndTime: 6,
+        recordingStartTime: 5,
+        recordingEndTime: 6,
+      },
     ];
     const result = dropIncompleteTrailingSegment(segments, subtitles);
     expect(result).toHaveLength(1);
@@ -236,7 +272,13 @@ describe('dropIncompleteTrailingSegment', () => {
 
   it('returns empty array when single segment is incomplete', () => {
     const segments: PracticeSegment[] = [
-      { id: 's1', sourceStartTime: 0, sourceEndTime: 0.5, recordingStartTime: 0, recordingEndTime: 0.5 },
+      {
+        id: 's1',
+        sourceStartTime: 0,
+        sourceEndTime: 0.5,
+        recordingStartTime: 0,
+        recordingEndTime: 0.5,
+      },
     ];
     const result = dropIncompleteTrailingSegment(segments, subtitles);
     expect(result).toHaveLength(0);
@@ -248,7 +290,13 @@ describe('dropIncompleteTrailingSegment', () => {
 
   it('keeps segment when subtitle is not found (no subtitle track)', () => {
     const segments: PracticeSegment[] = [
-      { id: 'unknown', sourceStartTime: 0, sourceEndTime: 1, recordingStartTime: 0, recordingEndTime: 1 },
+      {
+        id: 'unknown',
+        sourceStartTime: 0,
+        sourceEndTime: 1,
+        recordingStartTime: 0,
+        recordingEndTime: 1,
+      },
     ];
     const result = dropIncompleteTrailingSegment(segments, subtitles);
     expect(result).toHaveLength(1);

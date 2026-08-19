@@ -160,6 +160,25 @@ export class NoiseList extends LitElement {
       margin-bottom: var(--space-block);
     }
 
+    .batch-controls {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+    }
+
+    .batch-checkbox {
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+      cursor: pointer;
+      accent-color: var(--color-primary, #1677ff);
+    }
+
+    :host([selection-mode]) .item {
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      cursor: pointer;
+    }
+
     .hidden-input {
       display: none;
     }
@@ -189,6 +208,15 @@ export class NoiseList extends LitElement {
   @property({ type: Boolean, reflect: true, attribute: 'fill-height' })
   fillHeight = false;
 
+  @property({ type: Boolean, reflect: true, attribute: 'selection-mode' })
+  selectionMode = false;
+
+  @state()
+  private _selected = new Set<string>();
+
+  @state()
+  private _batchDeleting = false;
+
   @query('#noise-file-input')
   private _fileInput?: HTMLInputElement;
 
@@ -206,6 +234,10 @@ export class NoiseList extends LitElement {
 
   @state()
   private _deletingId = '';
+
+  private _visibleIds: string[] = [];
+
+  private _visibleSelected = new Set<string>();
 
   private _visibleCount = 0;
 
@@ -293,9 +325,63 @@ export class NoiseList extends LitElement {
     }
   };
 
+  private _toggleSelection(id: string): void {
+    const next = new Set(this._selected);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    this._selected = next;
+  }
+
+  private _selectAll(visibleIds: string[]): void {
+    this._selected = new Set(visibleIds);
+  }
+
+  private _invertSelection(visibleIds: string[]): void {
+    const next = new Set<string>();
+    for (const id of visibleIds) {
+      if (!this._selected.has(id)) next.add(id);
+    }
+    this._selected = next;
+  }
+
+  exitSelectionMode(): void {
+    this.selectionMode = false;
+    this._selected = new Set();
+  }
+
+  private async _handleBatchDelete(): Promise<void> {
+    const visibleSet = new Set(this._visibleIds);
+    const toDelete = [...this._selected].filter((id) => visibleSet.has(id));
+    if (toDelete.length === 0) return;
+    this._batchDeleting = true;
+    try {
+      const results = await Promise.allSettled(toDelete.map((id) => deleteNoise(id)));
+      const failed = results.filter((r) => r.status === 'rejected').length;
+      if (failed > 0) {
+        Message.error(msg('部分噪音素材删除失败'));
+      } else {
+        Message.success(msg('批量删除完成'));
+      }
+      const deleted = new Set(toDelete);
+      this._selected = new Set([...this._selected].filter((id) => !deleted.has(id)));
+      await this.refresh();
+    } finally {
+      this._batchDeleting = false;
+    }
+  }
+
   private _renderItem(item: NoiseItem) {
     return html`
-      <div class="item">
+      <div class="item" @click=${this.selectionMode ? () => this._toggleSelection(item.id) : null}>
+        ${this.selectionMode
+          ? html`<input
+              type="checkbox"
+              class="batch-checkbox"
+              .checked=${this._visibleSelected.has(item.id)}
+              @change=${() => this._toggleSelection(item.id)}
+              @click=${(e: Event) => e.stopPropagation()}
+            />`
+          : null}
         <div class="meta">
           <p class="title">${item.title}</p>
           <p class="details">
@@ -303,7 +389,7 @@ export class NoiseList extends LitElement {
             <span class="date">${formatDate(item.createdAt, true)}</span>
           </p>
         </div>
-        <div class="actions">
+        <div class="actions" @click=${(e: Event) => e.stopPropagation()}>
           <ui-popconfirm
             .title=${msg('删除此噪音素材？')}
             @confirm=${() => void this._onDelete(item)}
@@ -355,21 +441,74 @@ export class NoiseList extends LitElement {
           NOISE_LIST_MAX_HEIGHT,
         )}px`;
 
+    const visibleIds = renderedItems.map((item) => item.id);
+
+    this._visibleIds = visibleIds;
+    const visibleSet = new Set(visibleIds);
+    this._visibleSelected = new Set([...this._selected].filter((id) => visibleSet.has(id)));
+
     return html`
       <section>
         <div class="header">
           <div class="header-start">
             <h2 id="noise-list-title">${msg('噪音素材')}</h2>
-            <ui-button
-              variant="secondary"
-              ?disabled=${this._importing}
-              @click=${this._openFilePicker}
-            >
-              ${this._importing ? msg('导入中…') : msg('导入')}
-            </ui-button>
+            ${this.selectionMode
+              ? null
+              : html`<ui-button
+                  variant="secondary"
+                  ?disabled=${this._importing}
+                  @click=${this._openFilePicker}
+                >
+                  ${this._importing ? msg('导入中…') : msg('导入')}
+                </ui-button>`}
           </div>
           <div class="header-end">
-            <span class="count">${renderedItems.length} ${msg('项')}</span>
+            ${this.selectionMode
+              ? html`<div class="batch-controls">
+                  <ui-button
+                    variant="secondary"
+                    size="small"
+                    @click=${() => this._selectAll(visibleIds)}
+                    >${msg('全选')}</ui-button
+                  >
+                  <ui-button
+                    variant="secondary"
+                    size="small"
+                    @click=${() => this._invertSelection(visibleIds)}
+                    >${msg('反选')}</ui-button
+                  >
+                  <ui-popconfirm
+                    title=${msg('确定删除选中的噪音素材吗？')}
+                    @confirm=${() => this._handleBatchDelete()}
+                  >
+                    <ui-button
+                      variant="danger"
+                      size="small"
+                      ?disabled=${this._visibleSelected.size === 0 || this._batchDeleting}
+                    >
+                      ${msg('删除')} (${this._visibleSelected.size})
+                    </ui-button>
+                  </ui-popconfirm>
+                  <ui-button
+                    variant="secondary"
+                    size="small"
+                    @click=${() => this.exitSelectionMode()}
+                    >${msg('取消')}</ui-button
+                  >
+                </div>`
+              : html`<div class="batch-controls">
+                  <span class="count">${renderedItems.length} ${msg('项')}</span>
+                  ${renderedItems.length > 0
+                    ? html`<ui-button
+                        variant="secondary"
+                        size="small"
+                        @click=${() => {
+                          this.selectionMode = true;
+                        }}
+                        >${msg('管理')}</ui-button
+                      >`
+                    : null}
+                </div>`}
           </div>
         </div>
         <input

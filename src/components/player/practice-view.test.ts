@@ -1816,7 +1816,13 @@ describe('practice-view', () => {
       await switchToShadowingMode(el);
 
       const nonEmptySegments = [
-        { id: 'seg-0', sourceStartTime: 0, sourceEndTime: 3, recordingStartTime: 0, recordingEndTime: 3 },
+        {
+          id: 'seg-0',
+          sourceStartTime: 0,
+          sourceEndTime: 3,
+          recordingStartTime: 0,
+          recordingEndTime: 3,
+        },
       ];
       el.shadowRoot!.querySelector('audio-recorder#shadowing-recorder')!.dispatchEvent(
         new CustomEvent('recording-complete', {
@@ -1841,7 +1847,13 @@ describe('practice-view', () => {
       await switchToShadowingMode(el);
 
       const nonEmptySegments = [
-        { id: 'seg-0', sourceStartTime: 0, sourceEndTime: 3, recordingStartTime: 0, recordingEndTime: 3 },
+        {
+          id: 'seg-0',
+          sourceStartTime: 0,
+          sourceEndTime: 3,
+          recordingStartTime: 0,
+          recordingEndTime: 3,
+        },
       ];
       el.shadowRoot!.querySelector('audio-recorder#shadowing-recorder')!.dispatchEvent(
         new CustomEvent('recording-complete', {
@@ -2161,7 +2173,13 @@ describe('practice-view', () => {
       vi.spyOn(recorder, 'clearWaveform').mockImplementation(clearSpy);
 
       const nonEmptySegments = [
-        { id: 'seg-0', sourceStartTime: 0, sourceEndTime: 3, recordingStartTime: 0, recordingEndTime: 3 },
+        {
+          id: 'seg-0',
+          sourceStartTime: 0,
+          sourceEndTime: 3,
+          recordingStartTime: 0,
+          recordingEndTime: 3,
+        },
       ];
       el.shadowRoot!.querySelector('audio-recorder#shadowing-recorder')!.dispatchEvent(
         new CustomEvent('recording-complete', {

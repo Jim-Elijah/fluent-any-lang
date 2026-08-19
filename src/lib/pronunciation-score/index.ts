@@ -1,18 +1,14 @@
 export {
   SCORE_MAX_BYTES,
   SCORE_MAX_DURATION_SEC,
-  SCORE_TOO_LONG_MESSAGE,
-  SCORE_TOO_LARGE_MESSAGE,
+  scoreTooLongMessage,
+  scoreTooLargeMessage,
   SCORE_API_PATH,
   joinApiUrl,
   toScoreApiUrl,
   isSpeechScoreConfigured,
 } from './constants.js';
-export {
-  PronunciationScoreHttpError,
-  mapScoreHttpStatus,
-  scorePronunciation,
-} from './client.js';
+export { PronunciationScoreHttpError, mapScoreHttpStatus, scorePronunciation } from './client.js';
 export {
   resolveReferenceText,
   resolveReferenceDuration,

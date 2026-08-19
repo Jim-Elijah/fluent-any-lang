@@ -19,7 +19,7 @@ import {
   requestScore,
   resolveReferenceText,
   SCORE_MAX_DURATION_SEC,
-  SCORE_TOO_LONG_MESSAGE,
+  scoreTooLongMessage,
 } from '../../lib/pronunciation-score/index.js';
 import { getAppSettings } from '../../lib/app-settings.js';
 import { exportRecording } from '../../lib/export-content.js';
@@ -228,6 +228,25 @@ export class RecordList extends LitElement {
       border-radius: var(--radius-md, 8px);
     }
 
+    .batch-controls {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+    }
+
+    .batch-checkbox {
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+      cursor: pointer;
+      accent-color: var(--color-primary, #1677ff);
+    }
+
+    :host([selection-mode]) .item {
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      cursor: pointer;
+    }
+
     @media (max-width: 767px) {
       .item {
         grid-template-columns: 1fr;
@@ -288,6 +307,15 @@ export class RecordList extends LitElement {
   @property({ type: Boolean })
   previewDisabled = false;
 
+  @property({ type: Boolean, reflect: true, attribute: 'selection-mode' })
+  selectionMode = false;
+
+  @state()
+  private _selected = new Set<string>();
+
+  @state()
+  private _batchDeleting = false;
+
   @state()
   private _items: PracticeRecord[] = [];
 
@@ -331,6 +359,10 @@ export class RecordList extends LitElement {
   private _subtitleByMediaId = new Map<string, SubtitleTrack | undefined>();
 
   private _visibleCount = 0;
+
+  private _visibleIds: string[] = [];
+
+  private _visibleSelected = new Set<string>();
 
   private _lastMetricsKey = '';
 
@@ -460,12 +492,65 @@ export class RecordList extends LitElement {
 
     const emptyMessage = this.keyword ? msg('无匹配录音') : msg('暂无录音');
 
+    const visibleIds = renderedItems.map((item) => item.id);
+    this._visibleIds = visibleIds;
+
+    const visibleSet = new Set(visibleIds);
+    this._visibleSelected = new Set([...this._selected].filter((id) => visibleSet.has(id)));
+
     return html`
       <section>
         ${this.showHeader
           ? html`<div class="header">
               <h2>${msg('录音库')}</h2>
-              <span class="count">${renderedItems.length} ${msg('项')}</span>
+              ${this.selectionMode
+                ? html`<div class="batch-controls">
+                    <ui-button
+                      variant="secondary"
+                      size="small"
+                      @click=${() => this._selectAll(visibleIds)}
+                      >${msg('全选')}</ui-button
+                    >
+                    <ui-button
+                      variant="secondary"
+                      size="small"
+                      @click=${() => this._invertSelection(visibleIds)}
+                      >${msg('反选')}</ui-button
+                    >
+                    <ui-popconfirm
+                      title=${msg('确定删除选中的录音吗？')}
+                      placement="bottom"
+                      ?confirm-loading=${this._batchDeleting}
+                      @confirm=${() => this._handleBatchDelete()}
+                    >
+                      <ui-button
+                        variant="danger"
+                        size="small"
+                        ?disabled=${this._visibleSelected.size === 0 || this._batchDeleting}
+                      >
+                        ${msg('删除')} (${this._visibleSelected.size})
+                      </ui-button>
+                    </ui-popconfirm>
+                    <ui-button
+                      variant="secondary"
+                      size="small"
+                      @click=${() => this.exitSelectionMode()}
+                      >${msg('取消')}</ui-button
+                    >
+                  </div>`
+                : html`<div class="batch-controls">
+                    <span class="count">${renderedItems.length} ${msg('项')}</span>
+                    ${renderedItems.length > 0
+                      ? html`<ui-button
+                          variant="secondary"
+                          size="small"
+                          @click=${() => {
+                            this.selectionMode = true;
+                          }}
+                          >${msg('管理')}</ui-button
+                        >`
+                      : null}
+                  </div>`}
             </div>`
           : null}
         ${this._error ? html`<ui-alert type="error">${this._error}</ui-alert>` : null}
@@ -559,12 +644,24 @@ export class RecordList extends LitElement {
     const scoreLabel =
       score?.status === 'success' ? msg('重新评分') : scoring ? msg('评分中') : msg('评分');
     const scoreTip = tooLong
-      ? SCORE_TOO_LONG_MESSAGE
+      ? scoreTooLongMessage()
       : noReference
         ? msg('需要对照原稿才能评分')
         : scoreLabel;
     return html`
-      <div class="item">
+      <div
+        class="item"
+        @click=${this.selectionMode ? () => this._toggleSelection(recording.id) : null}
+      >
+        ${this.selectionMode
+          ? html`<input
+              type="checkbox"
+              class="batch-checkbox"
+              .checked=${this._visibleSelected.has(recording.id)}
+              @change=${() => this._toggleSelection(recording.id)}
+              @click=${(e: Event) => e.stopPropagation()}
+            />`
+          : null}
         <div class="meta">
           <p class="title">${recording.mediaTitle}</p>
           <p class="details">
@@ -578,7 +675,7 @@ export class RecordList extends LitElement {
             <span class="date">${formatDate(recording.createdAt, true)}</span>
           </p>
         </div>
-        <div class="actions">
+        <div class="actions" @click=${(e: Event) => e.stopPropagation()}>
           <ui-tooltip title="${msg('查看')}">
             <ui-button
               variant="primary"
@@ -754,6 +851,51 @@ export class RecordList extends LitElement {
       this._error = msg('删除失败，请重试。');
     } finally {
       this._deletingId = '';
+    }
+  }
+
+  private _toggleSelection(id: string): void {
+    const next = new Set(this._selected);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    this._selected = next;
+  }
+
+  private _selectAll(visibleIds: string[]): void {
+    this._selected = new Set(visibleIds);
+  }
+
+  private _invertSelection(visibleIds: string[]): void {
+    const next = new Set<string>();
+    for (const id of visibleIds) {
+      if (!this._selected.has(id)) next.add(id);
+    }
+    this._selected = next;
+  }
+
+  exitSelectionMode(): void {
+    this.selectionMode = false;
+    this._selected = new Set();
+  }
+
+  private async _handleBatchDelete(): Promise<void> {
+    const visibleSet = new Set(this._visibleIds);
+    const toDelete = [...this._selected].filter((id) => visibleSet.has(id));
+    if (toDelete.length === 0) return;
+    this._batchDeleting = true;
+    try {
+      const results = await Promise.allSettled(toDelete.map((id) => deleteRecording(id)));
+      const failed = results.filter((r) => r.status === 'rejected').length;
+      if (failed > 0) {
+        Message.error(msg('部分录音删除失败'));
+      } else {
+        Message.success(msg('批量删除完成'));
+      }
+      const deleted = new Set(toDelete);
+      this._selected = new Set([...this._selected].filter((id) => !deleted.has(id)));
+      await this.refresh();
+    } finally {
+      this._batchDeleting = false;
     }
   }
 }

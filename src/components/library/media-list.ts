@@ -188,6 +188,25 @@ export class MediaList extends LitElement {
       margin-bottom: var(--space-block);
     }
 
+    .batch-controls {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+    }
+
+    .batch-checkbox {
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+      cursor: pointer;
+      accent-color: var(--color-primary, #1677ff);
+    }
+
+    :host([selection-mode]) .item {
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      cursor: pointer;
+    }
+
     input[type='file'] {
       display: none;
     }
@@ -230,6 +249,18 @@ export class MediaList extends LitElement {
   @property({ type: Boolean, reflect: true, attribute: 'fill-height' })
   fillHeight = false;
 
+  @property({ type: Boolean, reflect: true, attribute: 'selection-mode' })
+  selectionMode = false;
+
+  @property({ type: Boolean, attribute: 'hide-manage' })
+  hideManage = false;
+
+  @state()
+  private _selected = new Set<string>();
+
+  @state()
+  private _batchDeleting = false;
+
   @state()
   private _items: MediaItem[] = [];
 
@@ -267,6 +298,10 @@ export class MediaList extends LitElement {
   private _pendingSubtitleMediaId = '';
 
   private _createPlaylistMediaId = '';
+
+  private _visibleIds: string[] = [];
+
+  private _visibleSelected = new Set<string>();
 
   private _visibleCount = 0;
 
@@ -399,14 +434,64 @@ export class MediaList extends LitElement {
       ? '100%'
       : Math.min(Math.max(renderedItems.length, 1) * rowHeight, MEDIA_LIST_HEIGHT);
 
+    const visibleIds = renderedItems.map((item) => item.id);
+
+    this._visibleIds = visibleIds;
+    const visibleSet = new Set(visibleIds);
+    this._visibleSelected = new Set([...this._selected].filter((id) => visibleSet.has(id)));
+
     return html`
       <section>
         <div class="header">
           <h2>${msg('媒体库')}</h2>
-          <span class="count"
-            >${this.limit && this.limit > 0 ? msg('最近') : ''} ${renderedItems.length}
-            ${msg('项')}</span
-          >
+          ${this.selectionMode
+            ? html`<div class="batch-controls">
+                <ui-button
+                  variant="secondary"
+                  size="small"
+                  @click=${() => this._selectAll(visibleIds)}
+                  >${msg('全选')}</ui-button
+                >
+                <ui-button
+                  variant="secondary"
+                  size="small"
+                  @click=${() => this._invertSelection(visibleIds)}
+                  >${msg('反选')}</ui-button
+                >
+                <ui-popconfirm
+                  title=${msg('确定删除选中的媒体吗？')}
+                  placement="bottom"
+                  ?confirm-loading=${this._batchDeleting}
+                  @confirm=${() => this._handleBatchDelete()}
+                >
+                  <ui-button
+                    variant="danger"
+                    size="small"
+                    ?disabled=${this._visibleSelected.size === 0 || this._batchDeleting}
+                  >
+                    ${msg('删除')} (${this._visibleSelected.size})
+                  </ui-button>
+                </ui-popconfirm>
+                <ui-button variant="secondary" size="small" @click=${() => this.exitSelectionMode()}
+                  >${msg('取消')}</ui-button
+                >
+              </div>`
+            : html`<div class="batch-controls">
+                <span class="count"
+                  >${this.limit && this.limit > 0 ? msg('最近') : ''} ${renderedItems.length}
+                  ${msg('项')}</span
+                >
+                ${renderedItems.length > 0 && !this.hideManage
+                  ? html`<ui-button
+                      variant="secondary"
+                      size="small"
+                      @click=${() => {
+                        this.selectionMode = true;
+                      }}
+                      >${msg('管理')}</ui-button
+                    >`
+                  : null}
+              </div>`}
         </div>
 
         ${this._error ? html`<ui-alert class="error" type="error">${this._error}</ui-alert>` : null}
@@ -464,7 +549,16 @@ export class MediaList extends LitElement {
     const isFavorite = this._favoriteStates.get(media.id) || false;
 
     return html`
-      <div class="item">
+      <div class="item" @click=${this.selectionMode ? () => this._toggleSelection(media.id) : null}>
+        ${this.selectionMode
+          ? html`<input
+              type="checkbox"
+              class="batch-checkbox"
+              .checked=${this._visibleSelected.has(media.id)}
+              @change=${() => this._toggleSelection(media.id)}
+              @click=${(e: Event) => e.stopPropagation()}
+            />`
+          : null}
         <div class="meta">
           <p class="title">${media.title}</p>
           <p class="details">
@@ -489,7 +583,7 @@ export class MediaList extends LitElement {
               : nothing}
           </p>
         </div>
-        <div class="actions">
+        <div class="actions" @click=${(e: Event) => e.stopPropagation()}>
           <ui-tooltip title="${isFavorite ? msg('取消喜欢') : msg('喜欢')}">
             <ui-button
               variant="ghost"
@@ -744,6 +838,53 @@ export class MediaList extends LitElement {
         composed: true,
       }),
     );
+  }
+
+  private _toggleSelection(id: string): void {
+    const next = new Set(this._selected);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    this._selected = next;
+  }
+
+  private _selectAll(visibleIds: string[]): void {
+    this._selected = new Set(visibleIds);
+  }
+
+  private _invertSelection(visibleIds: string[]): void {
+    const next = new Set<string>();
+    for (const id of visibleIds) {
+      if (!this._selected.has(id)) next.add(id);
+    }
+    this._selected = next;
+  }
+
+  exitSelectionMode(): void {
+    this.selectionMode = false;
+    this._selected = new Set();
+  }
+
+  private async _handleBatchDelete(): Promise<void> {
+    const visibleSet = new Set(this._visibleIds);
+    const toDelete = [...this._selected].filter((id) => visibleSet.has(id));
+    if (toDelete.length === 0) return;
+    this._batchDeleting = true;
+    try {
+      const results = await Promise.allSettled(
+        toDelete.map((id) => Promise.all([deleteMedia(id), deleteSubtitle(id)])),
+      );
+      const failed = results.filter((r) => r.status === 'rejected').length;
+      if (failed > 0) {
+        Message.error(msg('部分媒体删除失败'));
+      } else {
+        Message.success(msg('批量删除完成'));
+      }
+      const deleted = new Set(toDelete);
+      this._selected = new Set([...this._selected].filter((id) => !deleted.has(id)));
+      await this.refresh();
+    } finally {
+      this._batchDeleting = false;
+    }
   }
 
   private async _handleDelete(item: MediaItem): Promise<void> {

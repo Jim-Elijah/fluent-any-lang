@@ -185,6 +185,7 @@ export class HomePage extends NavigatorElement {
             ?fill-height=${!this.compact}
             .limit=${10}
             @media-selected="${this._handleMediaSelected}"
+            hide-manage
           ></media-list>
         </div>
       </div>

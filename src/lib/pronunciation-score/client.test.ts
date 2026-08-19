@@ -1,11 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { PronunciationScoreApiResponse } from '../../types/models.js';
-import {
-  PronunciationScoreHttpError,
-  mapScoreHttpStatus,
-  scorePronunciation,
-} from './client.js';
+import { PronunciationScoreHttpError, mapScoreHttpStatus, scorePronunciation } from './client.js';
 import { SCORE_API_PATH } from './constants.js';
 
 const successBody: PronunciationScoreApiResponse = {

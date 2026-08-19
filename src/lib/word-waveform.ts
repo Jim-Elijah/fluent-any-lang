@@ -37,9 +37,7 @@ export function layoutWordMarkers(
     return [];
   }
 
-  const visible = words.filter(
-    (w) => w.end > viewRange.start && w.start < viewRange.end,
-  );
+  const visible = words.filter((w) => w.end > viewRange.start && w.start < viewRange.end);
 
   const markers: WordWaveformMarker[] = visible.map((word) => {
     const left = ((word.start - viewRange.start) / duration) * 100;

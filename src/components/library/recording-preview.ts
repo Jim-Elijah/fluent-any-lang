@@ -49,7 +49,7 @@ import {
   requestScore,
   resolveReferenceText,
   SCORE_MAX_DURATION_SEC,
-  SCORE_TOO_LONG_MESSAGE,
+  scoreTooLongMessage,
 } from '../../lib/pronunciation-score/index.js';
 import { getScoreByRecordId } from '../../db/pronunciation-score.js';
 import { setLogicalVolume } from '../../lib/media-element-gain.js';
@@ -709,7 +709,7 @@ export class RecordingPreview extends LitElement {
     const scoreBlocked = tooLong || noReference;
     const label = score?.status === 'success' ? msg('重新评分') : msg('评分');
     const scoreTip = tooLong
-      ? SCORE_TOO_LONG_MESSAGE
+      ? scoreTooLongMessage()
       : noReference
         ? msg('需要对照原稿才能评分')
         : label;
@@ -839,7 +839,7 @@ export class RecordingPreview extends LitElement {
       type="button"
       class="word-chip ${this._wordScoreClass(word.score)}${missing ? ' is-missing' : ''}"
       aria-disabled=${missing ? 'true' : 'false'}
-      title=${missing ? msg('漏读，录音中没有对应位置') : `${word.word} ${word.score.toFixed(0)}`}
+      title=${missing ? msg('漏读，录音中没有对应位置') : `${word.word}`}
       @click=${() => this._playScoredWord(word)}
     >
       ${word.word}
@@ -861,7 +861,7 @@ export class RecordingPreview extends LitElement {
               left: `${marker.leftPct}%`,
               'max-width': `calc(${marker.maxWidthPct}% - 4px)`,
             })}
-            title=${missing ? msg('漏读，录音中没有对应位置') : `${marker.word} ${marker.score.toFixed(0)}`}
+            title=${missing ? msg('漏读，录音中没有对应位置') : `${marker.word}`}
             @click=${() => this._playScoredWord(marker)}
           >
             ${marker.word}

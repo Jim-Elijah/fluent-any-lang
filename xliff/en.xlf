@@ -1955,10 +1955,6 @@
   <source>将删除本机全部 <x id="0" equiv-text="${this._logCount}"/> 条异常日志，此操作不可恢复。</source>
   <target>This will delete all <x id="0" equiv-text="${this._logCount}"/> error log(s) on this device. This cannot be undone.</target>
 </trans-unit>
-<trans-unit id="s476368fb89c05148">
-  <source>管理偏好、播放器默认、练习限额、数据备份、应用更新、诊断与清除本地数据。</source>
-  <target>Manage preferences, player defaults, practice limits, data backup, app updates, diagnostics, and clearing local data.</target>
-</trans-unit>
 <trans-unit id="s52c334ecad404034">
   <source>重播本句</source>
   <target>Replay sentence</target>
@@ -2238,6 +2234,150 @@
 <trans-unit id="s8e4442cbbf028a3d">
   <source>查看更新</source>
   <target>View updates</target>
+</trans-unit>
+<trans-unit id="s2c3b07a7a15b2626">
+  <source>评分中</source>
+</trans-unit>
+<trans-unit id="s12227f0939a455a5">
+  <source>上传说明</source>
+</trans-unit>
+<trans-unit id="s3599fbe98a5edf08">
+  <source>同意并评分</source>
+</trans-unit>
+<trans-unit id="s925b94d66095615e">
+  <source>评分需要将录音上传到你配置的服务器。服务端用于计算分数，不会保存音频。是否继续？</source>
+</trans-unit>
+<trans-unit id="s2962b0f1026d9ed6">
+  <source>重新评分</source>
+</trans-unit>
+<trans-unit id="sce5d720936833c6f">
+  <source>评分</source>
+</trans-unit>
+<trans-unit id="s835401d72dab3200">
+  <source>评分中…</source>
+</trans-unit>
+<trans-unit id="se64bef9fedf638e9">
+  <source>准确度</source>
+</trans-unit>
+<trans-unit id="s0ed827ed1decf77b">
+  <source>流利度</source>
+</trans-unit>
+<trans-unit id="scccc95bd031ef3f1">
+  <source>完整度</source>
+</trans-unit>
+<trans-unit id="sf763350959c33081">
+  <source>韵律</source>
+</trans-unit>
+<trans-unit id="scdea69093607f325">
+  <source>语速</source>
+</trans-unit>
+<trans-unit id="sb669190922ac9f7e">
+  <source>节奏</source>
+</trans-unit>
+<trans-unit id="scdd67d0935e61921">
+  <source>语调</source>
+</trans-unit>
+<trans-unit id="sf15acd095503edf1">
+  <source>重音</source>
+</trans-unit>
+<trans-unit id="sa0fca8fb34554d3d">
+  <source>识别文本</source>
+</trans-unit>
+<trans-unit id="sfc6c154a14171479">
+  <source>参考文本</source>
+</trans-unit>
+<trans-unit id="s940ecd082c22b85f">
+  <source>漏读</source>
+</trans-unit>
+<trans-unit id="sce18270936162779">
+  <source>读错</source>
+</trans-unit>
+<trans-unit id="s2faecd08af859802">
+  <source>多读</source>
+</trans-unit>
+<trans-unit id="s4a888818b3ccd874">
+  <source>漏读，录音中没有对应位置</source>
+</trans-unit>
+<trans-unit id="s60933dd7108f8b2b">
+  <source>评分完成</source>
+</trans-unit>
+<trans-unit id="s254ee2a510886c78">
+  <source>7. 手动停止录音时，没播完的最后一句会自动丢弃，不参与评分和预览。</source>
+</trans-unit>
+<trans-unit id="s1d94ea2f4abb5103">
+  <source>录音时长不足，已丢弃</source>
+</trans-unit>
+<trans-unit id="sfcbde79ab48e8201">
+  <source>发音评分 <x id="0" equiv-text="${formatOverallBadge(overall)}"/></source>
+</trans-unit>
+<trans-unit id="se527c2a5b2c4f3c2">
+  <source>发音评分：导入 <x id="0" equiv-text="${result.pronunciationScoresImported}"/>，跳过 <x id="1" equiv-text="${result.pronunciationScoresSkipped}"/></source>
+</trans-unit>
+<trans-unit id="sf62cd95c28dcfea2">
+  <source>自动检测</source>
+</trans-unit>
+<trans-unit id="sd6785bee17b842a7">
+  <source>发音评分</source>
+</trans-unit>
+<trans-unit id="s6a98da6d57838d8d">
+  <source>按需将口语录音发送到评分服务，结果保存在本设备。</source>
+</trans-unit>
+<trans-unit id="sd409c11833f6b38f">
+  <source>评分接口地址</source>
+</trans-unit>
+<trans-unit id="s15d0c0657c1ee08c">
+  <source>API Key</source>
+</trans-unit>
+<trans-unit id="s3e191521f4547354">
+  <source>默认语言</source>
+</trans-unit>
+<trans-unit id="sfd48c523eee00f0c">
+  <source>评分时录音会上传到上述服务器用于计算分数；服务端不保存音频。结果只存在本设备的 IndexedDB。</source>
+</trans-unit>
+<trans-unit id="s7a81ff20eadcd292">
+  <source>导入发音评分失败：<x id="0" equiv-text="${score.id}"/></source>
+</trans-unit>
+<trans-unit id="s956426855b65053c">
+  <source>API Key 无效或已过期，请检查设置</source>
+</trans-unit>
+<trans-unit id="s6d5f5ba5a962ced6">
+  <source>音频过大或过长，无法评分</source>
+</trans-unit>
+<trans-unit id="scd0f9b6da252fc16">
+  <source>评分参数无效，请确认参考文本后重试</source>
+</trans-unit>
+<trans-unit id="s4e78ee5c9197c4a0">
+  <source>评分次数已达上限，请稍后再试</source>
+</trans-unit>
+<trans-unit id="s4098449d5cb66c1e">
+  <source>评分服务未就绪，请稍后再试</source>
+</trans-unit>
+<trans-unit id="s5bfbc8e66169cace">
+  <source>评分失败（<x id="0" equiv-text="${status}"/>）</source>
+</trans-unit>
+<trans-unit id="s5acb086594083252">
+  <source>录音超过 <x id="0" equiv-text="${SCORE_MAX_DURATION_SEC}"/> 秒，无法评分</source>
+</trans-unit>
+<trans-unit id="sa5f9de2beef8daca">
+  <source>录音文件超过 <x id="0" equiv-text="${formatScoreMaxMb(SCORE_MAX_BYTES)}"/> MB，无法评分</source>
+</trans-unit>
+<trans-unit id="sd7b63a085241ed78">
+  <source>需要对照原稿才能评分</source>
+</trans-unit>
+<trans-unit id="sb26714065c54bdf6">
+  <source>无法确定参考原声时长，请确认录音片段信息后重试</source>
+</trans-unit>
+<trans-unit id="s2e3c38dbf4b8acac">
+  <source>请先在设置中填写评分服务地址和 API Key</source>
+</trans-unit>
+<trans-unit id="sf3b85c0468af47f2">
+  <source>评分失败，请重试</source>
+</trans-unit>
+<trans-unit id="s04060150668466d1">
+  <source>评分已取消</source>
+</trans-unit>
+<trans-unit id="s09f44bf675f320ed">
+  <source>管理偏好、播放器默认、练习限额、发音评分、数据备份、应用更新、诊断与清除本地数据。</source>
 </trans-unit>
 </body>
 </file>

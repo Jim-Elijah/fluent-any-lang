@@ -1,3 +1,4 @@
+import { msg } from '@lit/localize';
 import { getAppSettings } from '../app-settings.js';
 import { getRecordingBlob } from '../../db/record.js';
 import { getSubtitle } from '../../db/subtitle.js';
@@ -9,16 +10,16 @@ import {
   isSpeechScoreConfigured,
   SCORE_MAX_BYTES,
   SCORE_MAX_DURATION_SEC,
-  SCORE_TOO_LARGE_MESSAGE,
-  SCORE_TOO_LONG_MESSAGE,
+  scoreTooLargeMessage,
+  scoreTooLongMessage,
 } from './constants.js';
 
 export {
   isSpeechScoreConfigured,
   SCORE_MAX_BYTES,
   SCORE_MAX_DURATION_SEC,
-  SCORE_TOO_LARGE_MESSAGE,
-  SCORE_TOO_LONG_MESSAGE,
+  scoreTooLargeMessage,
+  scoreTooLongMessage,
 } from './constants.js';
 
 export type RequestScoreReason = 'not_configured' | 'validation' | 'api';
@@ -32,10 +33,18 @@ export type RequestScoreOptions = {
   onStatus?: (score: PronunciationScore) => void;
 };
 
-const NO_REFERENCE_TEXT = '需要对照原稿才能评分';
-const NO_REFERENCE_DURATION = '无法确定参考原声时长，请确认录音片段信息后重试';
-const MISSING_BLOB = '录音文件不存在';
-const NOT_CONFIGURED = '请先在设置中填写评分服务地址和 API Key';
+function noReferenceText() {
+  return msg('需要对照原稿才能评分');
+}
+function noReferenceDuration() {
+  return msg('无法确定参考原声时长，请确认录音片段信息后重试');
+}
+function missingBlob() {
+  return msg('录音文件不存在');
+}
+function notConfigured() {
+  return msg('请先在设置中填写评分服务地址和 API Key');
+}
 
 function joinReferenceTexts(texts: string[]): string {
   return texts
@@ -132,7 +141,7 @@ export async function requestScore(
 ): Promise<RequestScoreOutcome> {
   const settings = getAppSettings();
   if (!isSpeechScoreConfigured(settings)) {
-    return { ok: false, reason: 'not_configured', message: NOT_CONFIGURED };
+    return { ok: false, reason: 'not_configured', message: notConfigured() };
   }
 
   const fail = async (
@@ -151,26 +160,26 @@ export async function requestScore(
   };
 
   if (record.recordingDuration > SCORE_MAX_DURATION_SEC) {
-    return fail(SCORE_TOO_LONG_MESSAGE);
+    return fail(scoreTooLongMessage());
   }
 
   const blob = await getRecordingBlob(record.id);
   if (!blob) {
-    return fail(MISSING_BLOB);
+    return fail(missingBlob());
   }
   if (blob.size > SCORE_MAX_BYTES) {
-    return fail(SCORE_TOO_LARGE_MESSAGE);
+    return fail(scoreTooLargeMessage());
   }
 
   const subtitleTrack = await getSubtitle(record.mediaId);
   const referenceText = resolveReferenceText(record, subtitleTrack);
   if (!referenceText) {
-    return fail(NO_REFERENCE_TEXT);
+    return fail(noReferenceText());
   }
 
   const referenceDuration = resolveReferenceDuration(record);
   if (referenceDuration === null) {
-    return fail(NO_REFERENCE_DURATION, { referenceText });
+    return fail(noReferenceDuration(), { referenceText });
   }
 
   const pending = await upsertScore(record.id, {
@@ -216,12 +225,12 @@ export async function requestScore(
       options.onStatus?.(score);
       return { ok: false, reason: 'api', message: error.message, score };
     }
-    const message = error instanceof Error ? error.message : '评分失败，请重试';
+    const message = error instanceof Error ? error.message : msg('评分失败，请重试');
     const aborted = error instanceof DOMException && error.name === 'AbortError';
     const score = await upsertScore(record.id, {
       status: 'failed',
       referenceText,
-      errorMessage: aborted ? '评分已取消' : message,
+      errorMessage: aborted ? msg('评分已取消') : message,
       scoredAt: Date.now(),
     });
     options.onStatus?.(score);
