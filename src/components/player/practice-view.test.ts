@@ -1815,11 +1815,14 @@ describe('practice-view', () => {
       const el = await renderView();
       await switchToShadowingMode(el);
 
+      const nonEmptySegments = [
+        { id: 'seg-0', sourceStartTime: 0, sourceEndTime: 3, recordingStartTime: 0, recordingEndTime: 3 },
+      ];
       el.shadowRoot!.querySelector('audio-recorder#shadowing-recorder')!.dispatchEvent(
         new CustomEvent('recording-complete', {
           detail: {
             blob: new Blob(['rec'], { type: 'audio/webm' }),
-            segments: [],
+            segments: nonEmptySegments,
             reason: 'manual',
           },
           bubbles: true,
@@ -1837,11 +1840,14 @@ describe('practice-view', () => {
       const el = await renderView();
       await switchToShadowingMode(el);
 
+      const nonEmptySegments = [
+        { id: 'seg-0', sourceStartTime: 0, sourceEndTime: 3, recordingStartTime: 0, recordingEndTime: 3 },
+      ];
       el.shadowRoot!.querySelector('audio-recorder#shadowing-recorder')!.dispatchEvent(
         new CustomEvent('recording-complete', {
           detail: {
             blob: new Blob(['rec'], { type: 'audio/webm' }),
-            segments: [],
+            segments: nonEmptySegments,
             reason: 'manual',
           },
           bubbles: true,
@@ -2154,11 +2160,14 @@ describe('practice-view', () => {
       };
       vi.spyOn(recorder, 'clearWaveform').mockImplementation(clearSpy);
 
+      const nonEmptySegments = [
+        { id: 'seg-0', sourceStartTime: 0, sourceEndTime: 3, recordingStartTime: 0, recordingEndTime: 3 },
+      ];
       el.shadowRoot!.querySelector('audio-recorder#shadowing-recorder')!.dispatchEvent(
         new CustomEvent('recording-complete', {
           detail: {
             blob: new Blob(['rec'], { type: 'audio/webm' }),
-            segments: [],
+            segments: nonEmptySegments,
             reason: 'manual',
           },
           bubbles: true,

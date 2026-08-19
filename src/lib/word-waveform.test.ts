@@ -50,7 +50,7 @@ describe('wordsInPracticeSegment', () => {
 describe('layoutWordMarkers', () => {
   it('places a word at its start as a percentage of the recording view range', () => {
     expect(layoutWordMarkers([world], { start: 0, end: 4 })).toEqual([
-      { word: 'world', start: 1, end: 1.5, score: 70, leftPct: 25 },
+      { word: 'world', start: 1, end: 1.5, score: 70, leftPct: 25, maxWidthPct: 100 },
     ]);
   });
 
@@ -58,7 +58,7 @@ describe('layoutWordMarkers', () => {
     const early: PronunciationWordScore = { word: 'a', start: 0.5, end: 1.5, score: 80 };
     const late: PronunciationWordScore = { word: 'z', start: 8, end: 9, score: 80 };
     expect(layoutWordMarkers([early, late], { start: 1, end: 3 })).toEqual([
-      { word: 'a', start: 0.5, end: 1.5, score: 80, leftPct: 0 },
+      { word: 'a', start: 0.5, end: 1.5, score: 80, leftPct: 0, maxWidthPct: 100 },
     ]);
   });
 
@@ -77,8 +77,8 @@ describe('wordMarkersForPreview', () => {
         recordingViewRange: { start: 0, end: 4 },
       }),
     ).toEqual([
-      { word: 'hello', start: 0.12, end: 0.45, score: 90, leftPct: 3 },
-      { word: 'world', start: 1, end: 1.5, score: 70, leftPct: 25 },
+      { word: 'hello', start: 0.12, end: 0.45, score: 90, leftPct: 3, maxWidthPct: 22 },
+      { word: 'world', start: 1, end: 1.5, score: 70, leftPct: 25, maxWidthPct: 100 },
     ]);
   });
 

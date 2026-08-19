@@ -60,6 +60,42 @@ export const RECORDING_TAIL_PAD_MS = 250;
 export const MIN_PRACTICE_SEGMENT_RECORDING_S = 0.05;
 
 /**
+ * When shadowing is stopped manually, drop the trailing segment whose source
+ * was played less than this fraction (0–1) of its full duration.
+ * Avoids penalizing scoring with "missing words" from an unfinished sentence.
+ */
+export const INCOMPLETE_SOURCE_THRESHOLD = 0.9;
+
+/**
+ * Drop the trailing practice segment when it was cut short by a manual stop
+ * and the source audio played less than {@link INCOMPLETE_SOURCE_THRESHOLD}
+ * of the full subtitle segment duration. The caller must supply the original
+ * subtitle segments so full durations can be looked up.
+ */
+export function dropIncompleteTrailingSegment(
+  segments: PracticeSegment[],
+  subtitleSegments: readonly SubtitleSegment[],
+): PracticeSegment[] {
+  if (segments.length === 0) {
+    return segments;
+  }
+  const last = segments[segments.length - 1];
+  const subtitle = subtitleSegments.find((s) => s.id === last.id);
+  if (!subtitle) {
+    return segments;
+  }
+  const fullDuration = subtitle.endTime - subtitle.startTime;
+  if (fullDuration <= 0) {
+    return segments;
+  }
+  const playedDuration = last.sourceEndTime - last.sourceStartTime;
+  if (playedDuration / fullDuration < INCOMPLETE_SOURCE_THRESHOLD) {
+    return segments.slice(0, -1);
+  }
+  return segments;
+}
+
+/**
  * Shift recording windows by shadowing latency and clamp into [0, totalElapsed].
  * Drops near-zero windows (e.g. offset pushed a mid-stop cue past the blob end).
  */
@@ -229,11 +265,17 @@ export class AudioRecorder extends LitElement {
       }
 
       const totalElapsed = this._getRecordingElapsedSeconds();
-      const segments = applyRecordingLatencyOffset(
+      let segments = applyRecordingLatencyOffset(
         this._practiceSegments,
         this.shadowingLatencyOffset,
         totalElapsed,
       );
+
+      if (this._stopReason === 'manual' && this.controller) {
+        const { segments: subtitleSegments } = this.controller.getSnapshot();
+        segments = dropIncompleteTrailingSegment(segments, subtitleSegments);
+      }
+
       this._isCollectingSegments = false;
       this._recordingStartedAt = 0;
       this._openSegment = null;

@@ -1502,6 +1502,10 @@ export class PracticeView extends NavigatorElement {
     if (!currentItem) {
       return;
     }
+    if (segments.length === 0) {
+      Message.warning(msg('录音时长不足，已丢弃'));
+      return;
+    }
     void this._saveShadowingRecording(blob, currentItem, segments);
   };
 

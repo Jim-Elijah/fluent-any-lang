@@ -12,6 +12,8 @@ import {
   RECORDING_HEAD_PAD_MS,
   RECORDING_TAIL_PAD_MS,
   applyRecordingLatencyOffset,
+  dropIncompleteTrailingSegment,
+  INCOMPLETE_SOURCE_THRESHOLD,
   type AudioRecorder,
 } from './audio-recorder.js';
 
@@ -194,6 +196,62 @@ describe('applyRecordingLatencyOffset', () => {
     const result = applyRecordingLatencyOffset(base, 0.35, 2.3);
     expect(result.map((s) => s.id)).toEqual(['a']);
     expect(result[0].recordingEndTime).toBeGreaterThanOrEqual(result[0].recordingStartTime);
+  });
+});
+
+describe('dropIncompleteTrailingSegment', () => {
+  const subtitles: SubtitleSegment[] = [
+    { id: 's1', startTime: 0, endTime: 5, text: 'Hello world' },
+    { id: 's2', startTime: 5, endTime: 10, text: 'Good morning' },
+  ];
+
+  it('keeps all segments when the last one is fully played', () => {
+    const segments: PracticeSegment[] = [
+      { id: 's1', sourceStartTime: 0, sourceEndTime: 5, recordingStartTime: 0, recordingEndTime: 5 },
+      { id: 's2', sourceStartTime: 5, sourceEndTime: 10, recordingStartTime: 5, recordingEndTime: 10 },
+    ];
+    const result = dropIncompleteTrailingSegment(segments, subtitles);
+    expect(result).toHaveLength(2);
+  });
+
+  it('keeps the last segment when source coverage >= threshold', () => {
+    const played = 5 + 5 * INCOMPLETE_SOURCE_THRESHOLD;
+    const segments: PracticeSegment[] = [
+      { id: 's1', sourceStartTime: 0, sourceEndTime: 5, recordingStartTime: 0, recordingEndTime: 5 },
+      { id: 's2', sourceStartTime: 5, sourceEndTime: played, recordingStartTime: 5, recordingEndTime: played },
+    ];
+    const result = dropIncompleteTrailingSegment(segments, subtitles);
+    expect(result).toHaveLength(2);
+  });
+
+  it('drops the last segment when source coverage < threshold', () => {
+    const segments: PracticeSegment[] = [
+      { id: 's1', sourceStartTime: 0, sourceEndTime: 5, recordingStartTime: 0, recordingEndTime: 5 },
+      { id: 's2', sourceStartTime: 5, sourceEndTime: 6, recordingStartTime: 5, recordingEndTime: 6 },
+    ];
+    const result = dropIncompleteTrailingSegment(segments, subtitles);
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe('s1');
+  });
+
+  it('returns empty array when single segment is incomplete', () => {
+    const segments: PracticeSegment[] = [
+      { id: 's1', sourceStartTime: 0, sourceEndTime: 0.5, recordingStartTime: 0, recordingEndTime: 0.5 },
+    ];
+    const result = dropIncompleteTrailingSegment(segments, subtitles);
+    expect(result).toHaveLength(0);
+  });
+
+  it('returns segments unchanged when empty', () => {
+    expect(dropIncompleteTrailingSegment([], subtitles)).toHaveLength(0);
+  });
+
+  it('keeps segment when subtitle is not found (no subtitle track)', () => {
+    const segments: PracticeSegment[] = [
+      { id: 'unknown', sourceStartTime: 0, sourceEndTime: 1, recordingStartTime: 0, recordingEndTime: 1 },
+    ];
+    const result = dropIncompleteTrailingSegment(segments, subtitles);
+    expect(result).toHaveLength(1);
   });
 });
 
@@ -992,7 +1050,8 @@ describe('audio-recorder component', () => {
       }),
     );
 
-    // Stop mid-cue on s1 (subtitle 5–10s); keep a meaningful partial take.
+    // Stop mid-cue on s1 (subtitle 5–10s, currentTime 7.2 → 44% coverage).
+    // The incomplete trailing segment is dropped (< INCOMPLETE_SOURCE_THRESHOLD).
     nowMs = 4_100;
     const stopPromise = el.stopRecording();
     nowMs = 4_100 + RECORDING_TAIL_PAD_MS;
@@ -1001,11 +1060,8 @@ describe('audio-recorder component', () => {
     await el.updateComplete;
 
     const practice = onComplete.mock.calls[0][0].detail.segments as PracticeSegment[];
-    expect(practice).toHaveLength(2);
-    expect(practice[1].id).toBe('s1');
-    expect(practice[1].sourceStartTime).toBe(5);
-    expect(practice[1].sourceEndTime).toBe(7.2);
-    expect(practice[1].recordingEndTime).toBeGreaterThan(practice[1].recordingStartTime);
+    expect(practice).toHaveLength(1);
+    expect(practice[0].id).toBe('s0');
     controller.destroy();
   });
 

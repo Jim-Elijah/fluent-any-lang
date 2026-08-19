@@ -413,6 +413,11 @@ export class RecordingPreview extends LitElement {
       color: #cf1322;
     }
 
+    .word-marker.is-missing {
+      cursor: default;
+      opacity: 0.7;
+    }
+
     .score-skeleton {
       height: 12px;
       border-radius: 6px;
@@ -847,20 +852,21 @@ export class RecordingPreview extends LitElement {
     }
     return html`
       <div class="word-rail" slot="over-canvas">
-        ${markers.map(
-          (marker) =>
-            html`<button
-              type="button"
-              class="word-marker ${this._wordScoreClass(marker.score)}"
-              style=${styleMap({
-                left: `${marker.leftPct}%`,
-              })}
-              title=${`${marker.word} ${marker.score.toFixed(0)}`}
-              @click=${() => this._playScoredWord(marker)}
-            >
-              ${marker.word}
-            </button>`,
-        )}
+        ${markers.map((marker) => {
+          const missing = this._wordIsMissing(marker.word);
+          return html`<button
+            type="button"
+            class="word-marker ${this._wordScoreClass(marker.score)}${missing ? ' is-missing' : ''}"
+            style=${styleMap({
+              left: `${marker.leftPct}%`,
+              'max-width': `calc(${marker.maxWidthPct}% - 4px)`,
+            })}
+            title=${missing ? msg('漏读，录音中没有对应位置') : `${marker.word} ${marker.score.toFixed(0)}`}
+            @click=${() => this._playScoredWord(marker)}
+          >
+            ${marker.word}
+          </button>`;
+        })}
       </div>
     `;
   }

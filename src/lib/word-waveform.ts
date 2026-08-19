@@ -8,6 +8,8 @@ export const WORD_RAIL_LANE_PX = 22;
 
 export type WordWaveformMarker = PronunciationWordScore & {
   leftPct: number;
+  /** Maximum width as a percentage of the rail, preventing overlap with the next marker. */
+  maxWidthPct: number;
 };
 
 /** Words whose midpoint falls on this Practice Segment's recording axis. */
@@ -35,20 +37,29 @@ export function layoutWordMarkers(
     return [];
   }
 
-  const markers: WordWaveformMarker[] = [];
-  for (const word of words) {
-    if (word.end <= viewRange.start || word.start >= viewRange.end) {
-      continue;
-    }
+  const visible = words.filter(
+    (w) => w.end > viewRange.start && w.start < viewRange.end,
+  );
+
+  const markers: WordWaveformMarker[] = visible.map((word) => {
     const left = ((word.start - viewRange.start) / duration) * 100;
-    markers.push({
+    return {
       word: word.word,
       start: word.start,
       end: word.end,
       score: word.score,
       leftPct: Math.max(0, left),
-    });
+      maxWidthPct: 100,
+    };
+  });
+
+  for (let i = 0; i < markers.length - 1; i++) {
+    const gap = markers[i + 1].leftPct - markers[i].leftPct;
+    if (gap > 0) {
+      markers[i].maxWidthPct = gap;
+    }
   }
+
   return markers;
 }
 
