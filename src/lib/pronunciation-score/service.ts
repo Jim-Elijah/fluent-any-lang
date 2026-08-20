@@ -1,9 +1,21 @@
 import { msg } from '@lit/localize';
 import { getAppSettings } from '../app-settings.js';
+import { clipAudioBlob } from '../audio-clip.js';
+import { getMediaBlob } from '../../db/media.js';
+import {
+  deleteReferenceProsodyProfile,
+  getReferenceProsodyProfile,
+  putReferenceProsodyProfile,
+} from '../../db/reference-prosody-profile.js';
 import { getRecordingBlob } from '../../db/record.js';
 import { getSubtitle } from '../../db/subtitle.js';
 import { getScoreByRecordId, putPronunciationScore } from '../../db/pronunciation-score.js';
-import type { PracticeRecord, PronunciationScore } from '../../types/models.js';
+import type {
+  PracticeRecord,
+  PronunciationScore,
+  ReferenceProsodyProfile,
+  SpeechScoreProsodyBasis,
+} from '../../types/models.js';
 import { getPracticeSegmentDuration } from '../playback-utils.js';
 import { PronunciationScoreHttpError, scorePronunciation } from './client.js';
 import {
@@ -22,6 +34,9 @@ export {
   scoreTooLongMessage,
 } from './constants.js';
 
+/** Max |profile.reference_duration_sec − referenceDuration| for cache reuse (seconds). */
+export const PROFILE_DURATION_TOLERANCE_SEC = 0.05;
+
 export type RequestScoreReason = 'not_configured' | 'validation' | 'api';
 
 export type RequestScoreOutcome =
@@ -31,6 +46,14 @@ export type RequestScoreOutcome =
 export type RequestScoreOptions = {
   signal?: AbortSignal;
   onStatus?: (score: PronunciationScore) => void;
+};
+
+type EchoReferenceExtras = {
+  referenceAudio?: Blob;
+  referenceAudioRoles?: string;
+  referenceProsodyProfile?: ReferenceProsodyProfile;
+  /** When set, a 422 response should drop this cached profile. */
+  cachedProfileSegmentId?: string;
 };
 
 function noReferenceText() {
@@ -118,6 +141,73 @@ export function resolveReferenceDuration(record: PracticeRecord): number | null 
   return total > 0 ? total : null;
 }
 
+export function isCachedProfileValid(
+  profile: ReferenceProsodyProfile,
+  referenceText: string,
+  referenceDuration: number,
+): boolean {
+  if (profile.reference_text !== referenceText) {
+    return false;
+  }
+  return Math.abs(profile.reference_duration_sec - referenceDuration) <= PROFILE_DURATION_TOLERANCE_SEC;
+}
+
+function echoSegmentId(record: PracticeRecord): string | undefined {
+  return record.segmentId ?? record.segments[0]?.id;
+}
+
+/**
+ * Echo-only when prosody basis is `match`: prefer a valid cached profile, else clip source Media,
+ * else degrade to text-only. `naturalness` and Shadowing never attach audio/profile.
+ */
+export async function resolveEchoReferenceExtras(
+  record: PracticeRecord,
+  referenceText: string,
+  referenceDuration: number,
+  prosodyBasis: SpeechScoreProsodyBasis = 'naturalness',
+): Promise<EchoReferenceExtras> {
+  if (record.mode !== 'echo' || prosodyBasis !== 'match') {
+    return {};
+  }
+
+  const segmentId = echoSegmentId(record);
+  if (!segmentId) {
+    return {};
+  }
+
+  const cached = await getReferenceProsodyProfile(record.mediaId, segmentId);
+  if (cached && isCachedProfileValid(cached.profile, referenceText, referenceDuration)) {
+    return {
+      referenceProsodyProfile: cached.profile,
+      cachedProfileSegmentId: segmentId,
+    };
+  }
+
+  try {
+    const mediaBlob = await getMediaBlob(record.mediaId);
+    if (!mediaBlob) {
+      return {};
+    }
+    const segment =
+      record.segments.find((entry) => entry.id === segmentId) ?? record.segments[0];
+    if (!segment) {
+      return {};
+    }
+    const clipped = await clipAudioBlob(
+      mediaBlob,
+      segment.sourceStartTime,
+      segment.sourceEndTime,
+    );
+    return {
+      referenceAudio: clipped.blob,
+      referenceAudioRoles: 'prosody',
+    };
+  } catch {
+    // Silent degrade: score with text + duration only.
+    return {};
+  }
+}
+
 async function upsertScore(
   recordId: string,
   patch: Omit<PronunciationScore, 'id' | 'recordId' | 'createdAt'> & {
@@ -188,6 +278,13 @@ export async function requestScore(
   });
   options.onStatus?.(pending);
 
+  const extras = await resolveEchoReferenceExtras(
+    record,
+    referenceText,
+    referenceDuration,
+    settings.speechScoreProsodyBasis,
+  );
+
   try {
     const response = await scorePronunciation({
       url: settings.speechScoreApiUrl,
@@ -196,6 +293,9 @@ export async function requestScore(
       referenceText,
       referenceDuration,
       language: settings.speechScoreLanguage || 'auto',
+      referenceAudio: extras.referenceAudio,
+      referenceAudioRoles: extras.referenceAudioRoles,
+      referenceProsodyProfile: extras.referenceProsodyProfile,
       signal: options.signal,
     });
 
@@ -206,14 +306,32 @@ export async function requestScore(
       fluency: response.fluency,
       completeness: response.completeness,
       prosody: response.prosody,
+      prosody_naturalness:
+        response.prosody_naturalness == null ? undefined : response.prosody_naturalness,
+      prosody_match: response.prosody_match == null ? undefined : response.prosody_match,
       overall: response.overall,
       details: response.details,
       meta: response.meta,
       scoredAt: Date.now(),
     });
+
+    const newProfile = response.details?.reference_prosody_profile;
+    const segmentId = echoSegmentId(record);
+    if (record.mode === 'echo' && segmentId && newProfile) {
+      await putReferenceProsodyProfile(record.mediaId, segmentId, newProfile);
+    }
+
     options.onStatus?.(score);
     return { ok: true, score };
   } catch (error) {
+    if (
+      error instanceof PronunciationScoreHttpError &&
+      error.status === 422 &&
+      extras.cachedProfileSegmentId
+    ) {
+      await deleteReferenceProsodyProfile(record.mediaId, extras.cachedProfileSegmentId);
+    }
+
     if (error instanceof PronunciationScoreHttpError) {
       const score = await upsertScore(record.id, {
         status: 'failed',

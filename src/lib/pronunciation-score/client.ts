@@ -1,5 +1,8 @@
 import { msg, str } from '@lit/localize';
-import type { PronunciationScoreApiResponse } from '../../types/models.js';
+import type {
+  PronunciationScoreApiResponse,
+  ReferenceProsodyProfile,
+} from '../../types/models.js';
 
 export type ScoreHttpErrorCode =
   | 'unauthorized'
@@ -71,6 +74,12 @@ export type ScorePronunciationInput = {
   referenceText: string;
   referenceDuration: number;
   language: string;
+  /** Echo match: clipped source segment (mutually exclusive with profile). */
+  referenceAudio?: Blob;
+  /** Echo match roles, typically `prosody`. */
+  referenceAudioRoles?: string;
+  /** Echo match: cached profile JSON (mutually exclusive with reference audio + prosody). */
+  referenceProsodyProfile?: ReferenceProsodyProfile;
   signal?: AbortSignal;
 };
 
@@ -82,6 +91,16 @@ export async function scorePronunciation(
   form.append('reference_text', input.referenceText);
   form.append('reference_duration', String(input.referenceDuration));
   form.append('language', input.language);
+
+  // Never send both a profile and reference audio with a prosody role.
+  if (input.referenceProsodyProfile) {
+    form.append('reference_prosody_profile', JSON.stringify(input.referenceProsodyProfile));
+  } else if (input.referenceAudio) {
+    form.append('reference_audio', input.referenceAudio, audioFileName(input.referenceAudio));
+    if (input.referenceAudioRoles) {
+      form.append('reference_audio_roles', input.referenceAudioRoles);
+    }
+  }
 
   const response = await fetch(input.url.trim(), {
     method: 'POST',

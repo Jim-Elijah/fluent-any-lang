@@ -12,6 +12,7 @@ import {
   STORE_PRONUNCIATION_SCORE,
   STORE_RECORDING,
   STORE_RECORDING_BLOB,
+  STORE_REFERENCE_PROSODY_PROFILE,
   STORE_SUBTITLE,
 } from './schema.js';
 
@@ -60,6 +61,7 @@ describe('getDB', () => {
         STORE_PRACTICE_SESSION,
         STORE_ERROR_LOG,
         STORE_PRONUNCIATION_SCORE,
+        STORE_REFERENCE_PROSODY_PROFILE,
       ]),
     );
 
@@ -217,5 +219,34 @@ describe('errorLog store migration', () => {
     expect([...db.transaction(STORE_ERROR_LOG).objectStore(STORE_ERROR_LOG).indexNames]).toContain(
       'byCreatedAt',
     );
+  });
+});
+
+describe('referenceProsodyProfile store migration', () => {
+  beforeEach(async () => {
+    await resetDatabase();
+  });
+
+  it('adds referenceProsodyProfile store when upgrading from v14', async () => {
+    const v14 = await openDB(DB_NAME, 14, {
+      upgrade(db) {
+        createLegacyStores(db, { withByMediaId: true });
+        const scoreStore = db.createObjectStore(STORE_PRONUNCIATION_SCORE, { keyPath: 'id' });
+        scoreStore.createIndex('byRecordId', 'recordId', { unique: true });
+        scoreStore.createIndex('byCreatedAt', 'createdAt');
+      },
+    });
+    expect([...v14.objectStoreNames]).not.toContain(STORE_REFERENCE_PROSODY_PROFILE);
+    v14.close();
+
+    const { getDB } = await import('./index.js');
+    const db = await getDB();
+
+    expect(db.version).toBe(DB_VERSION);
+    expect([...db.objectStoreNames]).toContain(STORE_REFERENCE_PROSODY_PROFILE);
+    expect([
+      ...db.transaction(STORE_REFERENCE_PROSODY_PROFILE).objectStore(STORE_REFERENCE_PROSODY_PROFILE)
+        .indexNames,
+    ]).toContain('byMediaId');
   });
 });

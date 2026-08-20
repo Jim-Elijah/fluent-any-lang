@@ -15,6 +15,7 @@ import {
   STORE_NOISE,
   STORE_NOISE_BLOB,
   STORE_PRONUNCIATION_SCORE,
+  STORE_REFERENCE_PROSODY_PROFILE,
   STORE_SUBTITLE,
   type AppDatabase,
   type FluentAnyLangDB,
@@ -176,6 +177,14 @@ export function getDB(): Promise<AppDatabase> {
           const scoreStore = db.createObjectStore(STORE_PRONUNCIATION_SCORE, { keyPath: 'id' });
           scoreStore.createIndex('byRecordId', 'recordId', { unique: true });
           scoreStore.createIndex('byCreatedAt', 'createdAt');
+        }
+
+        // Echo reference prosody profile cache (not included in backup)
+        if (!db.objectStoreNames.contains(STORE_REFERENCE_PROSODY_PROFILE)) {
+          const profileStore = db.createObjectStore(STORE_REFERENCE_PROSODY_PROFILE, {
+            keyPath: 'id',
+          });
+          profileStore.createIndex('byMediaId', 'mediaId');
         }
 
         // v3 briefly shipped without byMediaId for some upgrades; re-run through v4.

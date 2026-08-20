@@ -25,6 +25,7 @@ On-device listening and speaking practice. Domain terms: [`CONTEXT.md`](../CONTE
 | Practice Session    | `db/practice-session.ts`    | `practiceSession` (written by tracker only)     |
 | Practice Record     | `db/record.ts`              | `record` + `recordBlob`                         |
 | Pronunciation Score | `db/pronunciation-score.ts` | `pronunciationScore` (1:1 with Practice Record) |
+| Reference Prosody Profile | `db/reference-prosody-profile.ts` | `referenceProsodyProfile` (Echo cache by mediaId+segmentId; **not** in backup) |
 | Playlist            | `db/playlist.ts`            | `playlist`                                      |
 | Sentence Bank Entry | `db/sentence-bank.ts`       | `sentenceBank` + `sentenceBankBlob`             |
 | Noise               | `db/noise.ts`               | `noise` + `noiseBlob`                           |
@@ -62,9 +63,9 @@ Sentence practice (`/sentence-practice`) is a lighter path on clipped Sentence B
 - **`practice-view` ↔ NoiseMixer / RateLadder`** — Discrimination play/pause and ladder on track `ended`
 - **`practice-view` ↔ EchoClipPlayer`** — Echo listen must not seek the main media element
 - **`recording-preview` ↔ DualTrackPlayback / waveform** — compare & single-track preview; segment `viewRange` includes the trailing gap to the next Subtitle Segment (`getPracticeSegmentViewRange`); current-line text prefers the live Subtitle Track, then the Practice Segment snapshot; Pronunciation Score `word_scores` overlay the current Practice Segment on the recording waveform (HTML lane above the canvas; click seeks/plays that word; hidden while playing source). Score heatmap chips stay visible in every play mode and jump to the same recording time; words also listed as missing are not playable.
-- **`pronunciation-score` ↔ Practice Record** — on-demand scoring only; `deleteRecording` must cascade; scores export with recordings in backup v5; reference text prefers the Practice Segment snapshot, live Subtitle Track is legacy fallback; HTTP contract in [`pronunciation-score-api.md`](./pronunciation-score-api.md) (full POST URL in settings, no health probe)
+- **`pronunciation-score` ↔ Practice Record** — on-demand scoring only; `deleteRecording` must cascade; scores export with recordings in backup v5; reference text prefers the Practice Segment snapshot, live Subtitle Track is legacy fallback; HTTP contract in [`pronunciation-score-api.md`](./pronunciation-score-api.md) (full POST URL in settings, no health probe). Echo match scoring (`speechScoreProsodyBasis=match`) may send clipped reference audio or a cached prosody profile; default `naturalness` and Shadowing stay text+duration; profiles are not backed up
 - **`import-content` ↔ media + subtitle`** — import writes both
-- **`deleteMedia` → playlist + sentence-bank`** — soft-delete / unavailable cascade
+- **`deleteMedia` → playlist + sentence-bank + reference prosody profiles`** — soft-delete / unavailable cascade; clear profile cache for that Media
 
 ## Invariants
 
@@ -81,6 +82,6 @@ Sentence practice (`/sentence-practice`) is a lighter path on clipped Sentence B
 
 ## Settings vs data
 
-- **Preferences / limits / Discrimination defaults / speech score API URL + key** → `app-settings` (localStorage)
+- **Preferences / limits / Discrimination defaults / speech score API URL + key + Echo prosody basis** → `app-settings` (localStorage)
 - **Learner content, sessions, and Pronunciation Scores** → IndexedDB
-- **Backup** → `lib/backup/` (export/import IDB content; respect soft-delete rules; scores travel with recordings)
+- **Backup** → `lib/backup/` (export/import IDB content; respect soft-delete rules; scores travel with recordings; reference prosody profiles are omitted)

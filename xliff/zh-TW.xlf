@@ -2297,9 +2297,6 @@
 <trans-unit id="s3e191521f4547354">
   <source>默认语言</source>
 </trans-unit>
-<trans-unit id="sfd48c523eee00f0c">
-  <source>评分时录音会上传到上述服务器用于计算分数；服务端不保存音频。结果只存在本设备的 IndexedDB。</source>
-</trans-unit>
 <trans-unit id="s7a81ff20eadcd292">
   <source>导入发音评分失败：<x id="0" equiv-text="${score.id}"/></source>
 </trans-unit>
@@ -2342,8 +2339,96 @@
 <trans-unit id="s04060150668466d1">
   <source>评分已取消</source>
 </trans-unit>
-<trans-unit id="s09f44bf675f320ed">
-  <source>管理偏好、播放器默认、练习限额、发音评分、数据备份、应用更新、诊断与清除本地数据。</source>
+<trans-unit id="s15a47f089a36f13a">
+  <source>全选</source>
+</trans-unit>
+<trans-unit id="s0fe73308947d1143">
+  <source>反选</source>
+</trans-unit>
+<trans-unit id="s75335155cedd2188">
+  <source>确定删除选中的媒体吗？</source>
+</trans-unit>
+<trans-unit id="s0606d49ecd8e3c66">
+  <source>字幕文件名不一致</source>
+</trans-unit>
+<trans-unit id="s9d52057642f9c4e0">
+  <source>仍要导入</source>
+</trans-unit>
+<trans-unit id="s2af0ce2f4f8b9700">
+  <source>所选字幕文件名与媒体不一致，仍要导入到当前媒体吗？</source>
+</trans-unit>
+<trans-unit id="se1188b44ca04fedd">
+  <source>更新字幕</source>
+</trans-unit>
+<trans-unit id="s413822c9e049f976">
+  <source>部分媒体删除失败</source>
+</trans-unit>
+<trans-unit id="sc5cbb44579782b51">
+  <source>批量删除完成</source>
+</trans-unit>
+<trans-unit id="saf0cc418b50e8c7e">
+  <source>部分噪音素材删除失败</source>
+</trans-unit>
+<trans-unit id="s8da85c90cd422ae0">
+  <source>确定删除选中的噪音素材吗？</source>
+</trans-unit>
+<trans-unit id="s88a2fd98dd3d6e97">
+  <source>确定删除选中的录音吗？</source>
+</trans-unit>
+<trans-unit id="sfba769742b1a7745">
+  <source>部分录音删除失败</source>
+</trans-unit>
+<trans-unit id="s1eb07e7148fbaff6">
+  <source>语速贴近</source>
+  <target>語速貼近</target>
+</trans-unit>
+<trans-unit id="s60ca8e8d4742d09d">
+  <source>节奏贴近</source>
+  <target>節奏貼近</target>
+</trans-unit>
+<trans-unit id="sbcfbca123e73061a">
+  <source>语调贴近</source>
+  <target>語調貼近</target>
+</trans-unit>
+<trans-unit id="s40bcf3e75ea60dea">
+  <source>重音贴近</source>
+  <target>重音貼近</target>
+</trans-unit>
+<trans-unit id="sa93c9cd505d31edc">
+  <source>所选字幕文件名与当前媒体不一致，仍要导入到当前媒体吗？</source>
+</trans-unit>
+<trans-unit id="s9a67bd7ae8898c5f">
+  <source>Echo 评分时比对示范音频的节奏与语调。可能上传原声片段（已有缓存时更轻）；取不到原声时仍按自然度评。Shadowing 不受影响。</source>
+  <target>Echo 評分時比對示範音訊的節奏與語調。可能上傳原聲片段（已有快取時更輕）；取不到原聲時仍按自然度評。Shadowing 不受影響。</target>
+</trans-unit>
+<trans-unit id="sb52bab237270d5cf">
+  <source>只根据你的录音评语速、节奏等是否自然。Echo 也不上传原声，更省流量与服务器资源。</source>
+  <target>只根據你的錄音評語速、節奏等是否自然。Echo 也不上傳原聲，更省流量與伺服器資源。</target>
+</trans-unit>
+<trans-unit id="s4d3c3c8b4d1e8295">
+  <source>自然度</source>
+  <target>自然度</target>
+</trans-unit>
+<trans-unit id="s64a4bca3c64199d9">
+  <source>像原声</source>
+  <target>像原聲</target>
+</trans-unit>
+<trans-unit id="s8cdbbc504f126631">
+  <source>Echo 评分依据</source>
+  <target>Echo 評分依據</target>
+</trans-unit>
+<trans-unit id="se5a81731a4668b1f">
+  <source>评分时录音会上传到上述服务器用于计算分数；选择「像原声」时 Echo 还可能上传原声片段。服务端不保存音频。结果只存在本设备的 IndexedDB。</source>
+  <target>評分時錄音會上傳到上述伺服器用於計算分數；選擇「像原聲」時 Echo 還可能上傳原聲片段。服務端不保存音訊。結果只存在本裝置的 IndexedDB。</target>
+</trans-unit>
+<trans-unit id="s80263a081b2554b3">
+  <source>数据</source>
+</trans-unit>
+<trans-unit id="s3c3d7808bae96151">
+  <source>应用</source>
+</trans-unit>
+<trans-unit id="s3c8889be0f597f69">
+  <source>实验室</source>
 </trans-unit>
 </body>
 </file>

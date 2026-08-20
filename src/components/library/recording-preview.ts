@@ -751,6 +751,7 @@ export class RecordingPreview extends LitElement {
   private _renderScoreDetails(score: PronunciationScore) {
     const details = score.details;
     const breakdown = details?.prosody_breakdown;
+    const matchProsody = typeof score.prosody_match === 'number';
     return html`
       <div class="score-metrics">
         ${this._renderMetric(msg('准确度'), score.accuracy)}
@@ -759,10 +760,19 @@ export class RecordingPreview extends LitElement {
         ${this._renderMetric(msg('韵律'), score.prosody)}
         ${breakdown
           ? html`
-              ${this._renderMetric(msg('语速'), breakdown.speed, true)}
-              ${this._renderMetric(msg('节奏'), breakdown.rhythm, true)}
-              ${this._renderMetric(msg('语调'), breakdown.intonation, true)}
-              ${this._renderMetric(msg('重音'), breakdown.stress, true)}
+              ${matchProsody
+                ? html`
+                    ${this._renderMetric(msg('语速贴近'), breakdown.speed, true)}
+                    ${this._renderMetric(msg('节奏贴近'), breakdown.rhythm, true)}
+                    ${this._renderMetric(msg('语调贴近'), breakdown.intonation, true)}
+                    ${this._renderMetric(msg('重音贴近'), breakdown.stress, true)}
+                  `
+                : html`
+                    ${this._renderMetric(msg('语速'), breakdown.speed, true)}
+                    ${this._renderMetric(msg('节奏'), breakdown.rhythm, true)}
+                    ${this._renderMetric(msg('语调'), breakdown.intonation, true)}
+                    ${this._renderMetric(msg('重音'), breakdown.stress, true)}
+                  `}
             `
           : nothing}
       </div>

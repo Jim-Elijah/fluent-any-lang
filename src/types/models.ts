@@ -65,6 +65,18 @@ export const SHADOWING_GAP_POLICY_VALUES: readonly ShadowingGapPolicy[] = [
   'preserve',
 ] as const;
 
+/**
+ * Echo Pronunciation Score prosody basis (settings).
+ * - naturalness: score how natural the learner sounds (no reference audio/profile).
+ * - match: compare Echo takes to the source clip / cached prosody profile ("像原声").
+ */
+export type SpeechScoreProsodyBasis = 'naturalness' | 'match';
+
+export const SPEECH_SCORE_PROSODY_BASIS_VALUES: readonly SpeechScoreProsodyBasis[] = [
+  'naturalness',
+  'match',
+] as const;
+
 /** compress 策略下句间固定等待（毫秒） */
 export const SHADOWING_COMPRESS_GAP_MS = 1000;
 
@@ -182,21 +194,68 @@ export type PronunciationWordScore = {
   score: number;
 };
 
-/** Misread word pair from POST /api/v1/pronunciation/score `details.misread_words`. */
+/** Misread word pair from POST /api/v2/pronunciation/score `details.misread_words`. */
 export type PronunciationMisreadWord = {
   expected: string;
   actual: string;
 };
 
-/** Prosody sub-scores from POST /api/v1/pronunciation/score `details.prosody_breakdown`. */
+/** Match sub-scores from v2 `details.prosody_breakdown.match_breakdown`. */
+export type PronunciationProsodyMatchBreakdown = {
+  duration: number;
+  f0: number;
+  energy: number;
+};
+
+/** Prosody sub-scores from POST /api/v2/pronunciation/score `details.prosody_breakdown`. */
 export type PronunciationProsodyBreakdown = {
   speed: number;
   rhythm: number;
   intonation: number;
   stress: number;
+  /** v2: naturalness component (not shown in this app's UI). */
+  naturalness?: number;
+  /** v2: match component (not shown in this app's UI). */
+  match?: number;
+  match_breakdown?: PronunciationProsodyMatchBreakdown;
 };
 
-/** Details payload aligned with POST /api/v1/pronunciation/score `details`. */
+/** Word timing entry inside a cached reference prosody profile. */
+export type ReferenceProsodyProfileWord = {
+  word: string;
+  start: number;
+  end: number;
+  duration_ratio: number;
+};
+
+/**
+ * Cached reference prosody profile from v2 scoring (`details.reference_prosody_profile`).
+ * Used to skip re-sending reference audio on later Echo scores.
+ */
+export type ReferenceProsodyProfile = {
+  version: string;
+  profile_hash: string;
+  reference_duration_sec: number;
+  language: string;
+  reference_text: string;
+  speech_span_sec: number;
+  words: ReferenceProsodyProfileWord[];
+  f0_contour: number[];
+  energy_contour: number[];
+};
+
+/** IndexedDB row for a cached Echo reference prosody profile (not exported in backup). */
+export type StoredReferenceProsodyProfile = {
+  /** `${mediaId}:${segmentId}` */
+  id: string;
+  mediaId: string;
+  segmentId: string;
+  profile: ReferenceProsodyProfile;
+  createdAt: number;
+  updatedAt: number;
+};
+
+/** Details payload aligned with POST /api/v2/pronunciation/score `details`. */
 export type PronunciationScoreDetails = {
   transcript: string;
   word_scores: PronunciationWordScore[];
@@ -211,14 +270,20 @@ export type PronunciationScoreDetails = {
   speed_ratio?: number;
   reference_transcript?: string | null;
   prosody_breakdown?: PronunciationProsodyBreakdown;
+  /** v2 echo of top-level naturalness (optional; not shown in UI). */
+  prosody_naturalness?: number | null;
+  /** v2 echo of top-level match (optional; not shown in UI). */
+  prosody_match?: number | null;
+  /** Present when the server built a new profile from reference_audio; null when reusing cache. */
+  reference_prosody_profile?: ReferenceProsodyProfile | null;
 };
 
-/** Meta payload aligned with POST /api/v1/pronunciation/score `meta`. */
+/** Meta payload aligned with POST /api/v2/pronunciation/score `meta`. */
 export type PronunciationScoreMeta = {
   model: string;
   device: string;
   latency_ms: number;
-  reference_source: string;
+  reference_source: 'text' | 'audio' | 'profile' | string;
 };
 
 /**
@@ -234,6 +299,10 @@ export type PronunciationScore = {
   fluency?: number;
   completeness?: number;
   prosody?: number;
+  /** v2 naturalness component (stored; not shown in this app's UI). */
+  prosody_naturalness?: number;
+  /** v2 match vs reference prosody (stored; not shown in this app's UI). */
+  prosody_match?: number;
   overall?: number;
   details?: PronunciationScoreDetails;
   meta?: PronunciationScoreMeta;
@@ -243,12 +312,14 @@ export type PronunciationScore = {
   scoredAt?: number;
 };
 
-/** Successful JSON body from POST /api/v1/pronunciation/score. */
+/** Successful JSON body from POST /api/v2/pronunciation/score. */
 export type PronunciationScoreApiResponse = {
   accuracy: number;
   fluency: number;
   completeness: number;
   prosody: number;
+  prosody_naturalness?: number | null;
+  prosody_match?: number | null;
   overall: number;
   details: PronunciationScoreDetails;
   meta: PronunciationScoreMeta;
@@ -362,12 +433,18 @@ export type AppSettings = {
   lastPlayedPlaylistId: string;
   /** 辨音训练偏好（噪声选择 + 速听阶梯） */
   discrimination: DiscriminationSettings;
-  /** Full POST URL for pronunciation scoring (`…/api/v1/pronunciation/score`). */
+  /** Full POST URL for pronunciation scoring (`…/api/v2/pronunciation/score`). */
   speechScoreApiUrl: string;
   /** Pronunciation scoring API key (sent as X-API-Key). */
   speechScoreApiKey: string;
   /** Default BCP-47 language for scoring; `auto` lets the server detect. */
   speechScoreLanguage: string;
+  /**
+   * Echo Pronunciation Score prosody basis.
+   * - `naturalness` (default): text + duration only; no reference audio/profile upload.
+   * - `match`: Echo may send clipped reference audio or a cached prosody profile.
+   */
+  speechScoreProsodyBasis: SpeechScoreProsodyBasis;
 };
 
 export const FAVORITES_PLAYLIST_ID =
@@ -451,6 +528,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   speechScoreApiUrl: '',
   speechScoreApiKey: '',
   speechScoreLanguage: 'auto',
+  speechScoreProsodyBasis: 'naturalness',
 };
 
 /** Allowed ranges for persisted storage / quota numeric fields. */

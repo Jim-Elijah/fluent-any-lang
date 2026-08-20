@@ -134,20 +134,47 @@ describe('app-settings', () => {
       speechScoreApiUrl: ' https://speech.example.com/api/v1/pronunciation/score ',
       speechScoreApiKey: ' secret ',
       speechScoreLanguage: 'en',
+      speechScoreProsodyBasis: 'match',
     });
     expect(getAppSettings().speechScoreApiUrl).toBe(
       'https://speech.example.com/api/v1/pronunciation/score',
     );
     expect(getAppSettings().speechScoreApiKey).toBe('secret');
     expect(getAppSettings().speechScoreLanguage).toBe('en');
+    expect(getAppSettings().speechScoreProsodyBasis).toBe('match');
   });
 
-  it('migrates legacy speechScoreApiBaseUrl to the full score path', () => {
+  it('defaults speechScoreProsodyBasis to naturalness and rejects unknown values', () => {
+    expect(getAppSettings().speechScoreProsodyBasis).toBe('naturalness');
+    localStorage.setItem(
+      APP_SETTINGS_STORAGE_KEY,
+      JSON.stringify({
+        ...DEFAULT_SETTINGS,
+        speechScoreProsodyBasis: 'not-a-basis',
+      }),
+    );
+    expect(getAppSettings().speechScoreProsodyBasis).toBe('naturalness');
+  });
+
+  it('migrates legacy speechScoreApiBaseUrl to the full v2 score path', () => {
     localStorage.setItem(
       APP_SETTINGS_STORAGE_KEY,
       JSON.stringify({
         ...DEFAULT_SETTINGS,
         speechScoreApiBaseUrl: 'https://speech.example.com/',
+      }),
+    );
+    expect(getAppSettings().speechScoreApiUrl).toBe(
+      'https://speech.example.com/api/v2/pronunciation/score',
+    );
+  });
+
+  it('keeps an already-saved v1 score URL unchanged', () => {
+    localStorage.setItem(
+      APP_SETTINGS_STORAGE_KEY,
+      JSON.stringify({
+        ...DEFAULT_SETTINGS,
+        speechScoreApiUrl: 'https://speech.example.com/api/v1/pronunciation/score',
       }),
     );
     expect(getAppSettings().speechScoreApiUrl).toBe(

@@ -1424,6 +1424,61 @@ describe('recording-preview', () => {
     expect(el.shadowRoot?.querySelectorAll('.score-metric--nested')).toHaveLength(4);
   });
 
+  it('uses match-oriented prosody labels when prosody_match is present', async () => {
+    const score: PronunciationScore = {
+      id: 'score-1',
+      recordId: 'rec-1',
+      status: 'success',
+      referenceText: 'hello',
+      accuracy: 82.5,
+      fluency: 92,
+      completeness: 95,
+      prosody: 84,
+      prosody_match: 87,
+      overall: 85,
+      details: {
+        transcript: 'hello',
+        word_scores: [],
+        missing_words: [],
+        extra_words: [],
+        misread_words: [],
+        prosody_breakdown: {
+          speed: 100,
+          rhythm: 85,
+          intonation: 78,
+          stress: 82,
+        },
+      },
+      createdAt: 1,
+    };
+    vi.spyOn(scoreDb, 'getScoreByRecordId').mockResolvedValue(score);
+
+    const el = await renderPreview();
+    el.record = {
+      id: 'rec-1',
+      mediaId: 'media-1',
+      mediaTitle: 'Lesson',
+      mediaFilename: 'lesson.mp3',
+      mode: 'echo',
+      mimeType: 'audio/webm',
+      createdAt: 1,
+      sourceDuration: 4,
+      recordingDuration: 4,
+      segments: [],
+    };
+    await el.updateComplete;
+    await flushUpdates();
+    await el.updateComplete;
+
+    const metricText = [...(el.shadowRoot?.querySelectorAll('.score-metric') ?? [])]
+      .map((node) => node.textContent?.replace(/\s+/g, ' ').trim())
+      .join(' | ');
+    expect(metricText).toContain('语速贴近');
+    expect(metricText).toContain('节奏贴近');
+    expect(metricText).not.toContain('原声匹配');
+    expect(el.shadowRoot?.querySelectorAll('.score-metric--nested')).toHaveLength(4);
+  });
+
   it('shows misread words between missing and extra word lists', async () => {
     const score: PronunciationScore = {
       id: 'score-1',

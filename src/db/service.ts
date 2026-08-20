@@ -7,3 +7,4 @@ export * from './playlist';
 export * from './sentence-bank';
 export * from './noise';
 export * from './pronunciation-score';
+export * from './reference-prosody-profile';

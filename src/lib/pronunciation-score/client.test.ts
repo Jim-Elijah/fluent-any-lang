@@ -1,8 +1,23 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { PronunciationScoreApiResponse } from '../../types/models.js';
+import type {
+  PronunciationScoreApiResponse,
+  ReferenceProsodyProfile,
+} from '../../types/models.js';
 import { PronunciationScoreHttpError, mapScoreHttpStatus, scorePronunciation } from './client.js';
 import { SCORE_API_PATH } from './constants.js';
+
+const sampleProfile: ReferenceProsodyProfile = {
+  version: '1',
+  profile_hash: 'abc123',
+  reference_duration_sec: 2,
+  language: 'en',
+  reference_text: 'hello world',
+  speech_span_sec: 1.8,
+  words: [{ word: 'hello', start: 0, end: 0.5, duration_ratio: 0.5 }],
+  f0_contour: [0.5, 1],
+  energy_contour: [0.4, 0.9],
+};
 
 const successBody: PronunciationScoreApiResponse = {
   accuracy: 82.5,
@@ -72,8 +87,62 @@ describe('pronunciation-score client', () => {
     expect(form.get('reference_text')).toBe('hello world');
     expect(form.get('reference_duration')).toBe('3.5');
     expect(form.get('language')).toBe('en');
+    expect(form.get('reference_audio')).toBeNull();
+    expect(form.get('reference_prosody_profile')).toBeNull();
     const audioPart = form.get('audio');
     expect(audioPart).toBeInstanceOf(Blob);
+  });
+
+  it('sends reference_prosody_profile and omits reference_audio', async () => {
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify(successBody), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+
+    await scorePronunciation({
+      url: `http://localhost:8000${SCORE_API_PATH}`,
+      apiKey: 'key',
+      audio: new Blob(['x'], { type: 'audio/webm' }),
+      referenceText: 'hello world',
+      referenceDuration: 2,
+      language: 'en',
+      referenceProsodyProfile: sampleProfile,
+      referenceAudio: new Blob(['ref'], { type: 'audio/wav' }),
+      referenceAudioRoles: 'prosody',
+    });
+
+    const form = (fetchMock.mock.calls[0] as [string, RequestInit])[1].body as FormData;
+    expect(form.get('reference_prosody_profile')).toBe(JSON.stringify(sampleProfile));
+    expect(form.get('reference_audio')).toBeNull();
+    expect(form.get('reference_audio_roles')).toBeNull();
+  });
+
+  it('sends reference_audio with roles when no profile is provided', async () => {
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify(successBody), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+    const refAudio = new Blob(['ref'], { type: 'audio/wav' });
+
+    await scorePronunciation({
+      url: `http://localhost:8000${SCORE_API_PATH}`,
+      apiKey: 'key',
+      audio: new Blob(['x'], { type: 'audio/webm' }),
+      referenceText: 'hello world',
+      referenceDuration: 2,
+      language: 'en',
+      referenceAudio: refAudio,
+      referenceAudioRoles: 'prosody',
+    });
+
+    const form = (fetchMock.mock.calls[0] as [string, RequestInit])[1].body as FormData;
+    expect(form.get('reference_audio')).toBeInstanceOf(Blob);
+    expect(form.get('reference_audio_roles')).toBe('prosody');
+    expect(form.get('reference_prosody_profile')).toBeNull();
   });
 
   it('maps HTTP error codes to user-facing messages', async () => {

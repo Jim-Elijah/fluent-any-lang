@@ -19,7 +19,10 @@ export function scoreTooLargeMessage(): string {
   return msg(str`录音文件超过 ${formatScoreMaxMb(SCORE_MAX_BYTES)} MB，无法评分`);
 }
 
-export const SCORE_API_PATH = '/api/v1/pronunciation/score';
+export const SCORE_API_PATH = '/api/v2/pronunciation/score';
+
+/** Legacy path still accepted as a complete URL (not rewritten to v2). */
+const LEGACY_SCORE_API_PATH = '/api/v1/pronunciation/score';
 
 export function joinApiUrl(baseUrl: string, path: string): string {
   const trimmed = baseUrl.trim().replace(/\/+$/, '');
@@ -29,12 +32,15 @@ export function joinApiUrl(baseUrl: string, path: string): string {
 
 /**
  * Settings store the full POST URL. Legacy values were a host/base URL and
- * must still resolve to `SCORE_API_PATH`.
+ * must still resolve to `SCORE_API_PATH`. Already-complete v1 or v2 paths are
+ * left unchanged.
  */
 export function toScoreApiUrl(value: string): string {
   const trimmed = value.trim().replace(/\/+$/, '');
   if (!trimmed) return '';
-  if (trimmed.endsWith(SCORE_API_PATH)) return trimmed;
+  if (trimmed.endsWith(SCORE_API_PATH) || trimmed.endsWith(LEGACY_SCORE_API_PATH)) {
+    return trimmed;
+  }
   return joinApiUrl(trimmed, SCORE_API_PATH);
 }
 

@@ -4,7 +4,7 @@ import { msg, localized } from '@lit/localize';
 
 import { getAppSettings, setAppSettings } from '../../lib/app-settings.js';
 import { SCORE_API_PATH } from '../../lib/pronunciation-score/constants.js';
-import type { AppSettings } from '../../types/models.js';
+import type { AppSettings, SpeechScoreProsodyBasis } from '../../types/models.js';
 import { settingsCardStyles } from './settings-styles.js';
 import '../ui/input.js';
 import type { InputChangeDetail } from '../ui/input.js';
@@ -44,6 +44,13 @@ export class SettingsSpeechScore extends LitElement {
         color: var(--color-text, rgba(0, 0, 0, 0.88));
       }
 
+      .field-hint {
+        margin: 0;
+        font-size: 0.8125rem;
+        color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
+        line-height: 1.5;
+      }
+
       .privacy {
         margin: 0;
         font-size: 0.8125rem;
@@ -79,6 +86,21 @@ export class SettingsSpeechScore extends LitElement {
     this._commit({ speechScoreLanguage: next });
   }
 
+  private _onProsodyBasisChange(event: CustomEvent<SelectChangeDetail>): void {
+    const next = String(event.detail.value) as SpeechScoreProsodyBasis;
+    if (next === this._settings.speechScoreProsodyBasis) return;
+    this._commit({ speechScoreProsodyBasis: next });
+  }
+
+  private _prosodyBasisHint(basis: SpeechScoreProsodyBasis): string {
+    if (basis === 'match') {
+      return msg(
+        'Echo 评分时比对示范音频的节奏与语调。可能上传原声片段（已有缓存时更轻）；取不到原声时仍按自然度评。Shadowing 不受影响。',
+      );
+    }
+    return msg('只根据你的录音评语速、节奏等是否自然。Echo 也不上传原声，更省流量与服务器资源。');
+  }
+
   render() {
     const s = this._settings;
     const languageOptions: Array<{ value: string; label: string }> = LANGUAGE_OPTIONS.map(
@@ -90,6 +112,11 @@ export class SettingsSpeechScore extends LitElement {
     if (!languageOptions.some((option) => option.value === s.speechScoreLanguage)) {
       languageOptions.push({ value: s.speechScoreLanguage, label: s.speechScoreLanguage });
     }
+
+    const prosodyBasisOptions = [
+      { value: 'naturalness', label: msg('自然度') },
+      { value: 'match', label: msg('像原声') },
+    ];
 
     return html`
       <section class="card" aria-labelledby="speech-score-heading">
@@ -121,9 +148,18 @@ export class SettingsSpeechScore extends LitElement {
               @change=${this._onLanguageChange}
             ></ui-select>
           </div>
+          <div class="field">
+            <span class="field-label">${msg('Echo 评分依据')}</span>
+            <ui-select
+              .value=${s.speechScoreProsodyBasis}
+              .options=${prosodyBasisOptions}
+              @change=${this._onProsodyBasisChange}
+            ></ui-select>
+            <p class="field-hint">${this._prosodyBasisHint(s.speechScoreProsodyBasis)}</p>
+          </div>
           <p class="privacy">
             ${msg(
-              '评分时录音会上传到上述服务器用于计算分数；服务端不保存音频。结果只存在本设备的 IndexedDB。',
+              '评分时录音会上传到上述服务器用于计算分数；选择「像原声」时 Echo 还可能上传原声片段。服务端不保存音频。结果只存在本设备的 IndexedDB。',
             )}
           </p>
         </div>

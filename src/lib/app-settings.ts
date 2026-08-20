@@ -10,11 +10,13 @@ import {
   LOOP_MODE_VALUES,
   PLAYBACK_RATE_LIMITS,
   SHADOWING_GAP_POLICY_VALUES,
+  SPEECH_SCORE_PROSODY_BASIS_VALUES,
   type AppSettings,
   type DiscriminationNoiseSelection,
   type DiscriminationSettings,
   type LoopMode,
   type ShadowingGapPolicy,
+  type SpeechScoreProsodyBasis,
 } from '../types/models.js';
 import { toScoreApiUrl } from './pronunciation-score/constants.js';
 
@@ -64,6 +66,16 @@ function parseShadowingGapPolicy(value: unknown, fallback: ShadowingGapPolicy): 
   return typeof value === 'string' &&
     (SHADOWING_GAP_POLICY_VALUES as readonly string[]).includes(value)
     ? (value as ShadowingGapPolicy)
+    : fallback;
+}
+
+function parseSpeechScoreProsodyBasis(
+  value: unknown,
+  fallback: SpeechScoreProsodyBasis,
+): SpeechScoreProsodyBasis {
+  return typeof value === 'string' &&
+    (SPEECH_SCORE_PROSODY_BASIS_VALUES as readonly string[]).includes(value)
+    ? (value as SpeechScoreProsodyBasis)
     : fallback;
 }
 
@@ -277,6 +289,10 @@ function parseAppSettings(raw: unknown): AppSettings {
     speechScoreLanguage:
       parseString(raw.speechScoreLanguage, DEFAULT_SETTINGS.speechScoreLanguage) ||
       DEFAULT_SETTINGS.speechScoreLanguage,
+    speechScoreProsodyBasis: parseSpeechScoreProsodyBasis(
+      raw.speechScoreProsodyBasis,
+      DEFAULT_SETTINGS.speechScoreProsodyBasis,
+    ),
   };
 }
 

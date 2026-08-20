@@ -8,8 +8,11 @@ alwaysApply: false
 
 Contract: [`docs/pronunciation-score-api.md`](../../docs/pronunciation-score-api.md).
 
-- Settings store the **full** `POST` URL (`speechScoreApiUrl`). Fetch that URL as-is; do not join `/api/v1/pronunciation/score` at request time.
+- Settings store the **full** `POST` URL (`speechScoreApiUrl`). Fetch that URL as-is; do not join `/api/v2/pronunciation/score` at request time. Do not rewrite already-saved `/api/v1/...` URLs.
 - Do not add a `/health` client, settings “test connection”, or `SpeechScoreHealthResponse`.
-- Send `audio`, `reference_text`, `reference_duration`, and `language` as `multipart/form-data` with `X-API-Key`. Optional contract field: `reference_audio`.
-- Response `details` may include `speech_span_sec`, `reference_duration_sec`, and `speed_ratio` when duration matching is used. Word-level errors use three disjoint lists: `missing_words`, `misread_words` (`{ expected, actual }`), and `extra_words`.
+- Send `audio`, `reference_text`, `reference_duration`, and `language` as `multipart/form-data` with `X-API-Key`.
+- `speechScoreProsodyBasis` defaults to `naturalness` (Echo text + duration only). Only when set to `match` may Echo send `reference_audio` + `reference_audio_roles=prosody` or `reference_prosody_profile` (JSON string) — never both. Shadowing stays text + duration. Missing media/clip → silent degrade (omit both).
+- Cache profiles in IndexedDB (`referenceProsodyProfile`); exclude from backup; clear on `deleteMedia`. On 422 after a cached profile, delete that key and do not retry in the same call.
+- Response may include `prosody_naturalness`, `prosody_match`, and `details.reference_prosody_profile`. Persist them on `PronunciationScore`. UI shows `prosody` + four breakdown dims; when `prosody_match` is present, use match-oriented labels (贴近). Do **not** show top-level `prosody_match`, naturalness, match_breakdown, or profile.
+- Word-level errors use three disjoint lists: `missing_words`, `misread_words` (`{ expected, actual }`), and `extra_words`.
 - Keep on-demand scoring only; 60 s / 10 MB local rejection; types in `src/types/models.ts` must stay aligned with the contract.
