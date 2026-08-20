@@ -91,15 +91,16 @@ describe('subtitle-panel', () => {
     expect(el.shadowRoot?.querySelector('.surface')).not.toBeNull();
   });
 
-  function clickShadowButton(el: SubtitlePanel, index: number): void {
-    const button = el.shadowRoot?.querySelectorAll('ui-button')[index];
+  function clickShadowButtonByLabel(el: SubtitlePanel, keyword: string): void {
+    const buttons = [...(el.shadowRoot?.querySelectorAll('ui-button') ?? [])];
+    const button = buttons.find((item) => (item.getAttribute('aria-label') ?? '').includes(keyword));
     button?.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
   }
 
   it('opens fullscreen portal in uncontrolled mode', async () => {
     const el = await renderPanel();
     expect(el.shadowRoot?.querySelectorAll('ui-button').length).toBeGreaterThan(1);
-    clickShadowButton(el, 1);
+    clickShadowButtonByLabel(el, '全屏');
     await el.updateComplete;
     await flushUpdates();
 
@@ -147,7 +148,7 @@ describe('subtitle-panel', () => {
     const handler = vi.fn();
     el.addEventListener('update:fullscreen', handler);
 
-    clickShadowButton(el, 1);
+    clickShadowButtonByLabel(el, '全屏');
     await el.updateComplete;
     await flushUpdates();
 
@@ -180,8 +181,7 @@ describe('subtitle-panel', () => {
       getPortalShadow('[data-subtitle-fullscreen-portal]')?.querySelector('.fullscreen-panel'),
     ).not.toBeNull();
 
-    // Header: [hide subtitles], [fullscreen] — click hide.
-    clickShadowButton(el, 0);
+    clickShadowButtonByLabel(el, '隐藏字幕');
     await el.updateComplete;
     await flushUpdates();
 
@@ -417,7 +417,7 @@ describe('subtitle-panel', () => {
 
   it('shows hidden note when subtitles are toggled off', async () => {
     const el = await renderPanel();
-    clickShadowButton(el, 0);
+    clickShadowButtonByLabel(el, '隐藏字幕');
     await el.updateComplete;
     await flushUpdates();
 
@@ -515,6 +515,99 @@ describe('subtitle-panel', () => {
     expect(successSpy).toHaveBeenCalled();
     expect(imported).toHaveBeenCalled();
     expect(controller.getSnapshot().hasSubtitles).toBe(true);
+  });
+
+  it('shows update subtitle action only when media has subtitles', async () => {
+    const el = await renderPanel();
+    expect(el.shadowRoot?.querySelector('ui-button[aria-label="更新字幕"]')).not.toBeNull();
+
+    controller = new MediaController();
+    await controller.loadTracks([makeTrack('a', 'Track A', [])]);
+    const result = mount(html`<subtitle-panel .controller=${controller}></subtitle-panel>`);
+    cleanup = result.cleanup;
+    const emptyEl = result.container.querySelector('subtitle-panel') as SubtitlePanel;
+    await emptyEl.updateComplete;
+    await flushUpdates();
+    expect(emptyEl.shadowRoot?.querySelector('ui-button[aria-label="更新字幕"]')).toBeNull();
+  });
+
+  it('updates subtitle with overwrite when update action is used', async () => {
+    const track: SubtitleTrack = {
+      id: 'sub-1',
+      mediaId: 'a',
+      title: 'Track A',
+      filename: 'Track A.srt',
+      type: 'srt',
+      contentHash: 'hash',
+      segments: [{ id: 's1', startTime: 0, endTime: 2, text: 'hello updated' }],
+    };
+    importSubtitleForMedia.mockResolvedValue({
+      imported: [track],
+      errors: [],
+      warnings: [],
+      skipped: [],
+      conflicts: [],
+    });
+    const el = await renderPanel();
+    clickShadowButtonByLabel(el, '更新字幕');
+    const input = el.shadowRoot!.querySelector('input[type="file"]') as HTMLInputElement;
+    const file = new File(['1'], 'Track A.srt', { type: 'application/x-subrip' });
+    Object.defineProperty(input, 'files', { value: [file], configurable: true });
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    await el.updateComplete;
+    await flushUpdates();
+
+    expect(importSubtitleForMedia).toHaveBeenCalledWith('a', file, { overwrite: true });
+  });
+
+  it('prompts before importing mismatched subtitle filename', async () => {
+    const el = await renderPanel();
+    const input = el.shadowRoot!.querySelector('input[type="file"]') as HTMLInputElement;
+    Object.defineProperty(input, 'files', {
+      value: [new File(['1'], 'NotTrack.srt', { type: 'application/x-subrip' })],
+      configurable: true,
+    });
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    await el.updateComplete;
+    await flushUpdates();
+
+    expect(importSubtitleForMedia).not.toHaveBeenCalled();
+    const modal = el.shadowRoot?.querySelector('ui-modal') as HTMLElement & { open?: boolean };
+    expect(modal?.open).toBe(true);
+  });
+
+  it('imports mismatched subtitle after confirmation', async () => {
+    const track: SubtitleTrack = {
+      id: 'sub-1',
+      mediaId: 'a',
+      title: 'NotTrack',
+      filename: 'NotTrack.srt',
+      type: 'srt',
+      contentHash: 'hash',
+      segments: [{ id: 's1', startTime: 0, endTime: 2, text: 'hello' }],
+    };
+    importSubtitleForMedia.mockResolvedValue({
+      imported: [track],
+      errors: [],
+      warnings: [],
+      skipped: [],
+      conflicts: [],
+    });
+
+    const el = await renderPanel();
+    const input = el.shadowRoot!.querySelector('input[type="file"]') as HTMLInputElement;
+    const file = new File(['1'], 'NotTrack.srt', { type: 'application/x-subrip' });
+    Object.defineProperty(input, 'files', { value: [file], configurable: true });
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    await el.updateComplete;
+    await flushUpdates();
+
+    const modal = el.shadowRoot?.querySelector('ui-modal') as HTMLElement & { open?: boolean };
+    modal?.dispatchEvent(new CustomEvent('ok', { bubbles: true, composed: true }));
+    await el.updateComplete;
+    await flushUpdates();
+
+    expect(importSubtitleForMedia).toHaveBeenCalledWith('a', file, {});
   });
 
   it('shows subtitle import error when import throws', async () => {

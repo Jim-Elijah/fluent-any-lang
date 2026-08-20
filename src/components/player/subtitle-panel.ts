@@ -7,14 +7,21 @@ import type {
   MediaController,
   MediaControllerSnapshot,
 } from '../../controllers/media-controller.js';
-import { importSubtitleForMedia } from '../../lib/import-content.js';
+import { reportSubtitleImportResult } from '../import/subtitle-import-feedback.js';
 import { formatTime } from '../../lib/playback-utils.js';
 import { formatOverallBadge } from '../../lib/pronunciation-score/aggregate.js';
 import { supportsKeyboardShortcuts } from '../../lib/hotkeys/index.js';
 import { getMicrophoneBlockedMessage } from '../../lib/microphone-access.js';
+import {
+  findImportedSubtitleTrack,
+  runSubtitleImport,
+  subtitleBasenameMatchesMedia,
+  type PendingSubtitleImport,
+} from '../../lib/subtitle-import-helpers.js';
 import type { PracticeRecord, SubtitleSegment, SubtitleTrack } from '../../types/models.js';
 import '../ui/button.js';
 import '../ui/icon.js';
+import '../ui/modal.js';
 import '../ui/tooltip.js';
 import { Message } from '../ui/message.js';
 import { isControlledOpen } from '../ui/internal/controlled-state.js';
@@ -475,6 +482,14 @@ export class SubtitlePanel extends LitElement {
   @state()
   private _importingSubtitle = false;
 
+  @state()
+  private _overwriteSubtitleOnImport = false;
+
+  @state()
+  private _mismatchConfirmOpen = false;
+
+  private _pendingMismatchImport: PendingSubtitleImport | null = null;
+
   private _boundController: MediaController | null = null;
   private _overlay: OverlayController | null = null;
   private _globalBound = false;
@@ -863,7 +878,8 @@ export class SubtitlePanel extends LitElement {
     this.controller?.setSubtitlesVisible(nextVisible);
   }
 
-  private _openSubtitlePicker(): void {
+  private _openSubtitlePicker(overwrite = false): void {
+    this._overwriteSubtitleOnImport = overwrite;
     const input = this.renderRoot.querySelector('input[type="file"]') as HTMLInputElement | null;
     input?.click();
   }
@@ -873,39 +889,63 @@ export class SubtitlePanel extends LitElement {
     const file = input.files?.[0];
     input.value = '';
 
-    const mediaId = this._controllerHost?.snapshot?.currentItem?.id;
-    if (!file || !mediaId) {
+    const currentItem = this._controllerHost?.snapshot?.currentItem;
+    const overwrite = this._overwriteSubtitleOnImport;
+    this._overwriteSubtitleOnImport = false;
+
+    if (!file || !currentItem) {
       return;
     }
 
+    const pending: PendingSubtitleImport = {
+      mediaId: currentItem.id,
+      file,
+      overwrite,
+    };
+
+    if (!subtitleBasenameMatchesMedia(file, currentItem.filename)) {
+      this._pendingMismatchImport = pending;
+      this._mismatchConfirmOpen = true;
+      return;
+    }
+
+    await this._runSubtitleImport(pending);
+  }
+
+  private _clearMismatchConfirm(): void {
+    this._mismatchConfirmOpen = false;
+    this._pendingMismatchImport = null;
+  }
+
+  private _cancelMismatchImport(): void {
+    this._clearMismatchConfirm();
+  }
+
+  private async _confirmMismatchImport(): Promise<void> {
+    const pending = this._pendingMismatchImport;
+    if (!pending) {
+      this._clearMismatchConfirm();
+      return;
+    }
+    this._clearMismatchConfirm();
+    await this._runSubtitleImport(pending);
+  }
+
+  private async _runSubtitleImport(pending: PendingSubtitleImport): Promise<void> {
     this._importingSubtitle = true;
     try {
-      const result = await importSubtitleForMedia(mediaId, file);
+      const result = await runSubtitleImport(pending.mediaId, pending.file, {
+        overwrite: pending.overwrite,
+      });
+      reportSubtitleImportResult(result);
 
-      for (const error of result.errors) {
-        Message.error({ message: `${error.filename}: ${error.message}` });
-      }
-      for (const warning of result.warnings) {
-        Message.warning({ message: `${warning.filename}: ${warning.message}` });
-      }
-      for (const skipped of result.skipped) {
-        Message.info({ message: `${skipped.filename}: ${skipped.message}` });
-      }
-      if (result.conflicts.length > 0) {
-        Message.info({
-          message: result.conflicts[0]?.message ?? msg('该媒体已有不同内容的字幕'),
-        });
-      }
-
-      const track = result.imported.find(
-        (item): item is SubtitleTrack => 'segments' in item && item.mediaId === mediaId,
-      );
+      const track = findImportedSubtitleTrack(result, pending.mediaId);
       if (track) {
         Message.success({ message: msg('字幕已导入') });
         this.controller?.updateCurrentTrackSubtitles(track.segments, { hasSubtitles: true });
         this.dispatchEvent(
           new CustomEvent('subtitle-imported', {
-            detail: { mediaId, track } satisfies SubtitleImportedDetail,
+            detail: { mediaId: pending.mediaId, track } satisfies SubtitleImportedDetail,
             bubbles: true,
             composed: true,
           }),
@@ -916,6 +956,32 @@ export class SubtitlePanel extends LitElement {
     } finally {
       this._importingSubtitle = false;
     }
+  }
+
+  private _renderMismatchConfirmModal(): TemplateResult {
+    const pending = this._pendingMismatchImport;
+    return html`
+      <ui-modal
+        title="${msg('字幕文件名不一致')}"
+        ?open=${this._mismatchConfirmOpen}
+        width="420px"
+        centered
+        ok-text="${msg('仍要导入')}"
+        cancel-text="${msg('取消')}"
+        ?confirm-loading=${this._importingSubtitle}
+        @ok=${() => void this._confirmMismatchImport()}
+        @cancel=${this._cancelMismatchImport}
+      >
+        <p style="margin:0;line-height:1.6">
+          ${msg('所选字幕文件名与当前媒体不一致，仍要导入到当前媒体吗？')}
+        </p>
+        ${pending
+          ? html`<p style="margin:var(--space-sm) 0 0;color:var(--color-text-secondary,rgba(0,0,0,0.65));font-size:0.875rem;line-height:1.5">
+              ${pending.file.name}
+            </p>`
+          : nothing}
+      </ui-modal>
+    `;
   }
 
   render() {
@@ -934,7 +1000,7 @@ export class SubtitlePanel extends LitElement {
               <ui-button
                 variant="primary"
                 ?disabled="${this._importingSubtitle || !snapshot.currentItem}"
-                @click="${this._openSubtitlePicker}"
+                @click="${() => this._openSubtitlePicker(false)}"
               >
                 <ui-icon name="upload" size="var(--icon-lg)"></ui-icon>
                 ${msg('导入字幕')}
@@ -942,6 +1008,7 @@ export class SubtitlePanel extends LitElement {
             </div>
           </div>
           <input type="file" accept=".srt,.lrc" @change="${this._handleSubtitleFile}" />
+          ${this._renderMismatchConfirmModal()}
         </div>
       `;
     }
@@ -974,6 +1041,19 @@ export class SubtitlePanel extends LitElement {
       <div class="surface">
         <div class="header title-row">
           <h3 class="title">${msg('字幕')}</h3>
+          ${snapshot.hasSubtitles
+            ? html`<ui-tooltip title="${msg('更新字幕')}">
+                <ui-button
+                  variant="ghost"
+                  size="small"
+                  aria-label="${msg('更新字幕')}"
+                  ?disabled="${this._importingSubtitle || !snapshot.currentItem}"
+                  @click="${() => this._openSubtitlePicker(true)}"
+                >
+                  <ui-icon size="var(--icon-md)" name="subtitle"></ui-icon>
+                </ui-button>
+              </ui-tooltip>`
+            : ''}
           ${snapshot.hasSubtitles
             ? html`<ui-tooltip title="${subtitlesTitle}">
                 <ui-button
@@ -1017,6 +1097,8 @@ export class SubtitlePanel extends LitElement {
         ${!snapshot.subtitlesVisible
           ? html`<div class="hidden-note">${msg('字幕已隐藏')}</div>`
           : this._renderSegmentsList(snapshot)}
+        <input type="file" accept=".srt,.lrc" @change="${this._handleSubtitleFile}" />
+        ${this._renderMismatchConfirmModal()}
       </div>
     `;
   }

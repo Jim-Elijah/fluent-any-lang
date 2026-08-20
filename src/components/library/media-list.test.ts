@@ -7,6 +7,7 @@ import * as playlistDb from '../../db/playlist.js';
 import { PlaylistNameConflictError } from '../../db/playlist.js';
 import * as importContent from '../../lib/import-content.js';
 import { NARROW_VIEWPORT_MQ } from '../../lib/layout-compact.js';
+import type { PendingSubtitleImport } from '../../lib/subtitle-import-helpers.js';
 import { FAVORITES_PLAYLIST_ID, type MediaItem, type SubtitleTrack } from '../../types/models.js';
 import { flushUpdates, mount } from '../ui/test-utils.js';
 import { Message } from '../ui/message.js';
@@ -23,6 +24,10 @@ type MediaListHarness = MediaList & {
   _submitCreatePlaylistAndAdd(): Promise<void>;
   _handleSubtitleFile(event: Event): Promise<void>;
   _pendingSubtitleMediaId: string;
+  _pendingSubtitleOverwrite: boolean;
+  _pendingMismatchImport: PendingSubtitleImport | null;
+  _confirmMismatchImport(): Promise<void>;
+  _mismatchConfirmOpen: boolean;
   _narrow: boolean;
   _onNarrowMqChange: (event: MediaQueryListEvent) => void;
 };
@@ -622,8 +627,10 @@ describe('media-list', () => {
     el: MediaListHarness,
     file: File,
     mediaId = 'media-1',
+    overwrite = false,
   ): Promise<void> {
     el._pendingSubtitleMediaId = mediaId;
+    el._pendingSubtitleOverwrite = overwrite;
     const input = el.shadowRoot!.querySelector('input[type="file"]') as HTMLInputElement;
     Object.defineProperty(input, 'files', { value: [file], configurable: true });
     await el._handleSubtitleFile({ target: input } as unknown as Event);
@@ -649,7 +656,11 @@ describe('media-list', () => {
 
     await dispatchSubtitleFile(el, new File(['1'], 'lesson.srt', { type: 'application/x-subrip' }));
 
-    expect(importContent.importSubtitleForMedia).toHaveBeenCalledWith('media-1', expect.any(File));
+    expect(importContent.importSubtitleForMedia).toHaveBeenCalledWith(
+      'media-1',
+      expect.any(File),
+      {},
+    );
     expect(successSpy).toHaveBeenCalled();
     expect(imported).toHaveBeenCalled();
     expect(el.shadowRoot?.querySelector('ui-icon[name="subtitle-on"]')).not.toBeNull();
@@ -671,11 +682,95 @@ describe('media-list', () => {
     await el.refresh();
     await el.updateComplete;
 
-    await dispatchSubtitleFile(el, new File(['1'], 'bad.srt', { type: 'application/x-subrip' }));
+    await dispatchSubtitleFile(el, new File(['1'], 'lesson.srt', { type: 'application/x-subrip' }));
 
     expect(errorSpy).toHaveBeenCalled();
     expect(warningSpy).toHaveBeenCalled();
     expect(infoSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it('updates subtitle with overwrite when media already has subtitles', async () => {
+    vi.mocked(mediaDb.getMediaList).mockResolvedValue([makeMedia({ hasSubtitles: true })]);
+    vi.spyOn(importContent, 'importSubtitleForMedia').mockResolvedValue({
+      imported: [makeSubtitleTrack()],
+      errors: [],
+      warnings: [],
+      skipped: [],
+      conflicts: [],
+    });
+    const el = (await renderList()) as MediaListHarness;
+    await el.refresh();
+    await el.updateComplete;
+
+    const button = el.shadowRoot?.querySelector('ui-button[aria-label="更新字幕"]');
+    expect(button).not.toBeNull();
+    await dispatchSubtitleFile(
+      el,
+      new File(['1'], 'lesson.srt', { type: 'application/x-subrip' }),
+      'media-1',
+      true,
+    );
+
+    expect(importContent.importSubtitleForMedia).toHaveBeenCalledWith(
+      'media-1',
+      expect.any(File),
+      { overwrite: true },
+    );
+  });
+
+  it('prompts before importing mismatched subtitle filename', async () => {
+    vi.mocked(mediaDb.getMediaList).mockResolvedValue([makeMedia({ hasSubtitles: false })]);
+    vi.spyOn(importContent, 'importSubtitleForMedia').mockResolvedValue({
+      imported: [],
+      errors: [],
+      warnings: [],
+      skipped: [],
+      conflicts: [],
+    });
+    const el = (await renderList()) as MediaListHarness;
+    await el.refresh();
+    await el.updateComplete;
+
+    await dispatchSubtitleFile(
+      el,
+      new File(['1'], 'different.srt', { type: 'application/x-subrip' }),
+      'media-1',
+    );
+
+    expect(importContent.importSubtitleForMedia).not.toHaveBeenCalled();
+    const modal = el.shadowRoot?.querySelectorAll('ui-modal')[1] as HTMLElement & {
+      open?: boolean;
+    };
+    expect(modal?.open).toBe(true);
+  });
+
+  it('imports mismatched subtitle after confirmation', async () => {
+    vi.mocked(mediaDb.getMediaList).mockResolvedValue([makeMedia({ hasSubtitles: false })]);
+    vi.spyOn(importContent, 'importSubtitleForMedia').mockResolvedValue({
+      imported: [makeSubtitleTrack()],
+      errors: [],
+      warnings: [],
+      skipped: [],
+      conflicts: [],
+    });
+    const el = (await renderList()) as MediaListHarness;
+    await el.refresh();
+    await el.updateComplete;
+
+    await dispatchSubtitleFile(
+      el,
+      new File(['1'], 'different.srt', { type: 'application/x-subrip' }),
+      'media-1',
+    );
+    await el._confirmMismatchImport();
+    await el.updateComplete;
+    await flushUpdates();
+
+    expect(importContent.importSubtitleForMedia).toHaveBeenCalledWith(
+      'media-1',
+      expect.any(File),
+      {},
+    );
   });
 
   it('shows subtitle import error when import throws', async () => {
