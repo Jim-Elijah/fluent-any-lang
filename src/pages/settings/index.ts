@@ -1,5 +1,5 @@
 import { css, html, LitElement } from 'lit';
-import { customElement, state } from 'lit/decorators.js';
+import { customElement, query, queryAll, state } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
 import { msg, localized } from '@lit/localize';
 
@@ -11,9 +11,13 @@ import '../../components/settings/settings-backup.js';
 import '../../components/settings/settings-pwa.js';
 import '../../components/settings/settings-diagnostics.js';
 import '../../components/settings/settings-clear-data.js';
+import { throttle } from '../../lib/util.js';
 
 const GROUP_IDS = ['practice', 'data', 'app', 'lab'] as const;
 type GroupId = (typeof GROUP_IDS)[number];
+
+/** Extra px below sticky nav when scrolling a group title into view. */
+const SCROLL_TITLE_SLACK_PX = 8;
 
 @customElement('settings-page')
 @localized()
@@ -81,6 +85,7 @@ export class SettingsPage extends LitElement {
       display: flex;
       flex-direction: column;
       gap: var(--space-stack);
+      scroll-margin-top: var(--settings-nav-height, 2.5rem);
     }
 
     .group-title {
@@ -94,44 +99,152 @@ export class SettingsPage extends LitElement {
 
   @state() private _activeGroup: GroupId = 'practice';
 
-  private _observer?: IntersectionObserver;
+  @query('.nav')
+  private _navEl?: HTMLElement;
 
-  override connectedCallback() {
-    super.connectedCallback();
-  }
+  @queryAll('.group')
+  private _groupEls?: NodeListOf<HTMLElement>;
+
+  private _scroller?: HTMLElement;
+  /** Click intent: while set, position sync must not override active. */
+  private _pinnedId?: GroupId;
+  private _programmaticScrolling = false;
+  /** True when click target could not scroll to the sticky line (clamped). */
+  private _keepPinAfterScroll = false;
+  private _pinFallbackTimer?: ReturnType<typeof setTimeout>;
+
+  /**
+   * Active = section that currently contains the sticky-nav marker line.
+   * Tall sections stay active while browsing their body; short trailing
+   * sections only activate once the marker enters them.
+   */
+  private _applyActiveFromPosition = () => {
+    if (this._pinnedId) return;
+
+    const scroller = this._scroller;
+    const groups = this._groupEls;
+    if (!scroller || !groups?.length) return;
+
+    const markerY = scroller.getBoundingClientRect().top + (this._navEl?.offsetHeight ?? 0);
+
+    let fallback: GroupId = GROUP_IDS[0];
+    for (let i = 0; i < GROUP_IDS.length; i++) {
+      const id = GROUP_IDS[i];
+      const el = groups[i];
+      if (!el) continue;
+
+      const rect = el.getBoundingClientRect();
+      if (rect.top <= markerY) fallback = id;
+      if (rect.top <= markerY && rect.bottom > markerY) {
+        this._activeGroup = id;
+        return;
+      }
+    }
+
+    this._activeGroup = fallback;
+  };
+
+  private readonly _throttledApplyActiveFromPosition = throttle(
+    this._applyActiveFromPosition,
+    100,
+  );
 
   override firstUpdated() {
-    const sections = GROUP_IDS.map((id) =>
-      this.renderRoot.querySelector(`#group-${id}`),
-    ).filter(Boolean) as Element[];
-
-    this._observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            this._activeGroup = entry.target.id.replace(
-              'group-',
-              '',
-            ) as GroupId;
-            break;
-          }
-        }
-      },
-      { root: null, rootMargin: '-40% 0px -50% 0px', threshold: 0 },
-    );
-
-    for (const el of sections) this._observer.observe(el);
+    this._scroller = this._getScrollContainer() ?? undefined;
+    this._scroller?.addEventListener('scroll', this._onScrollerScroll, { passive: true });
+    this._syncNavHeight();
+    this._applyActiveFromPosition();
   }
 
   override disconnectedCallback() {
     super.disconnectedCallback();
-    this._observer?.disconnect();
+    this._scroller?.removeEventListener('scroll', this._onScrollerScroll);
+    this._scroller?.removeEventListener('scrollend', this._onProgrammaticScrollEnd);
+    this._throttledApplyActiveFromPosition.cancel();
+    if (this._pinFallbackTimer !== undefined) clearTimeout(this._pinFallbackTimer);
+  }
+
+  private _onScrollerScroll = () => {
+    if (this._pinnedId) {
+      // User scrolled after a click pin → release intent (must stay synchronous).
+      if (this._programmaticScrolling) return;
+      this._clearPinListeners();
+      this._pinnedId = undefined;
+    }
+    this._throttledApplyActiveFromPosition();
+  };
+
+  private _syncNavHeight() {
+    if (this._navEl) {
+      this.style.setProperty('--settings-nav-height', `${this._navEl.offsetHeight}px`);
+    }
+  }
+
+  private _clearPinListeners() {
+    this._scroller?.removeEventListener('scrollend', this._onProgrammaticScrollEnd);
+    if (this._pinFallbackTimer !== undefined) {
+      clearTimeout(this._pinFallbackTimer);
+      this._pinFallbackTimer = undefined;
+    }
+  }
+
+  private _onProgrammaticScrollEnd = () => {
+    if (!this._programmaticScrolling) return;
+    this._programmaticScrolling = false;
+    this._clearPinListeners();
+
+    // Keep pin when the click target could not reach the sticky line (clamped).
+    if (this._keepPinAfterScroll) {
+      this._keepPinAfterScroll = false;
+      return;
+    }
+
+    this._pinnedId = undefined;
+    this._throttledApplyActiveFromPosition.cancel();
+    this._applyActiveFromPosition();
+  };
+
+  private _getScrollContainer(): HTMLElement | null {
+    let el: Element | null = this;
+    while (el) {
+      if (el instanceof HTMLElement) {
+        const { overflowY } = getComputedStyle(el);
+        if (overflowY === 'auto' || overflowY === 'scroll' || overflowY === 'overlay') {
+          return el;
+        }
+      }
+      el = el.parentElement;
+    }
+    return null;
   }
 
   private _scrollTo(id: GroupId) {
-    this.renderRoot
-      .querySelector(`#group-${id}`)
-      ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    this._pinnedId = id;
+    this._activeGroup = id;
+
+    const index = GROUP_IDS.indexOf(id);
+    const title = this._groupEls?.[index]?.querySelector('.group-title');
+    const scroller = this._scroller ?? this._getScrollContainer();
+    if (!title || !scroller) {
+      this._pinnedId = undefined;
+      return;
+    }
+
+    const scrollerTop = scroller.getBoundingClientRect().top;
+    const titleTop = title.getBoundingClientRect().top;
+    const offset = (this._navEl?.offsetHeight ?? 0) + SCROLL_TITLE_SLACK_PX;
+
+    const rawTop = scroller.scrollTop + (titleTop - scrollerTop) - offset;
+    const maxTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
+    const top = Math.min(Math.max(0, rawTop), maxTop);
+    this._keepPinAfterScroll = Math.abs(top - rawTop) > 1;
+
+    this._clearPinListeners();
+    this._programmaticScrolling = true;
+    scroller.addEventListener('scrollend', this._onProgrammaticScrollEnd);
+    this._pinFallbackTimer = setTimeout(this._onProgrammaticScrollEnd, 600);
+
+    scroller.scrollTo({ top, behavior: 'smooth' });
   }
 
   render() {
