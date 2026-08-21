@@ -2,7 +2,7 @@
 
 **English** | [中文](./README.zh-CN.md)
 
-Bring your own audio or video — any language, any material — and practice listening and speaking **sentence by sentence**. Everything stays on your device: no account, no cloud upload.
+Bring your own audio or video — any language, any material — and practice listening and speaking **sentence by sentence**. Everything stays on your device by default: no account, no cloud upload (unless you opt into experimental pronunciation scoring).
 
 **[Live Demo](https://fal.jimelijah.com/)** · [GitHub](https://github.com/Jim-Elijah/fluent-any-lang)
 
@@ -12,7 +12,7 @@ Most language apps lock you into their curriculum. FluentAnyLang is built for **
 
 - **Your materials, any language** — Import audio/video with `.srt` / `.lrc` subtitles (add later if needed). Bilingual lines are supported.
 - **Sentence-driven practice** — Jump, loop, or pause by subtitle line; speaking modes tie every take to the exact sentence.
-- **Local-first & private** — Media, recordings, and stats live in IndexedDB. Export a ZIP backup to migrate devices; nothing is uploaded to a server.
+- **Local-first & private** — Media, recordings, and stats live in IndexedDB. Export a ZIP backup to migrate devices; nothing is uploaded unless you opt into experimental pronunciation scoring.
 - **Installable PWA** — Add to home screen or desktop; app shell works offline after the first visit. Updates are prompted so practice is not interrupted mid-session.
 
 ## Features
@@ -30,6 +30,7 @@ Most language apps lock you into their curriculum. FluentAnyLang is built for **
 - **Shadowing** — Record in sync with the original, with countdown cues and a live waveform; choose inter-sentence gaps as “compress to ~1s” or “preserve full gaps” in Settings.
 - **Echo** — Hear the line first, then record; keep multiple takes per sentence and pick the best.
 - **Compare takes** — Play source only, recording only, or compare (sentence-aligned **sync** when gaps were compressed; **continuous compare** when full gaps were preserved); click the waveform to seek and play.
+- **Pronunciation score (optional, experimental)** — On-demand scoring after a take. Requires an API URL and API key in Settings. The scoring service is **not publicly available**; contact the developer if you want to try it. Enabling scoring uploads your recording (and, for Echo "Match reference", may also send a reference clip) to the configured server; the server uses a self-hosted scoring model, does not keep audio, and scores stay on your device.
 
 ### Library & progress
 
@@ -48,6 +49,8 @@ Most language apps lock you into their curriculum. FluentAnyLang is built for **
 
 ![home-page](./docs/screenshots/home.png)
 ![library-page](./docs/screenshots/library.png)
+![echo-score-match](./docs/screenshots/echo-score-match.png)
+![shadowing-score-natural](./docs/screenshots/shadowing-score-natural.png)
 ![playlist-page](./docs/screenshots/playlist.png)
 ![sentence-bank-page](./docs/screenshots/sentence-bank.png)
 ![statistics-page](./docs/screenshots/statistics.png)
@@ -75,6 +78,8 @@ No install required for everyday use. Prefer headphones for speaking practice, a
 ## Privacy
 
 FluentAnyLang is a client-side app. Practice content and recordings are stored locally in IndexedDB. Clearing site data in the browser removes them — use the built-in ZIP backup if you need to migrate or keep a copy.
+
+**Exception:** Optional pronunciation scoring uploads audio to the server you configure (only when you explicitly score). Audio is not retained on the server; results are stored locally. Without an API key from the developer, this path stays unused.
 
 ## Tech stack
 
