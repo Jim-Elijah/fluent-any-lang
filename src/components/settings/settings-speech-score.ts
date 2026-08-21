@@ -95,10 +95,12 @@ export class SettingsSpeechScore extends LitElement {
   private _prosodyBasisHint(basis: SpeechScoreProsodyBasis): string {
     if (basis === 'match') {
       return msg(
-        'Echo 评分时比对示范音频的节奏与语调。可能上传原声片段（已有缓存时更轻）；取不到原声时仍按自然度评。Shadowing 不受影响。',
+        'Echo 会对照示范音频的节奏与语调打分，可能额外上传原声片段（已有缓存时流量更少）；取不到原声时改按自然度评。Shadowing 始终只评自然度，不受此选项影响。',
       );
     }
-    return msg('只根据你的录音评语速、节奏等是否自然。Echo 也不上传原声，更省流量与服务器资源。');
+    return msg(
+      '只根据你的录音评语速、节奏是否自然。Echo 与 Shadowing 都只上传录音，不上传原声，更省流量。',
+    );
   }
 
   render() {
@@ -159,7 +161,7 @@ export class SettingsSpeechScore extends LitElement {
           </div>
           <p class="privacy">
             ${msg(
-              '评分时录音会上传到上述服务器用于计算分数；选择「像原声」时 Echo 还可能上传原声片段。服务端不保存音频。结果只存在本设备的 IndexedDB。',
+              '评分时会把录音上传到你配置的服务器以计算分数；选「像原声」时 Echo 还可能上传原声片段。服务端不保存音频；分数只保存在本设备。',
             )}
           </p>
         </div>

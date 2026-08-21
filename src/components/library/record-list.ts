@@ -616,11 +616,7 @@ export class RecordList extends LitElement {
             if (!e.detail.open) this._cancelPrivacy();
           }}"
         >
-          <p>
-            ${msg(
-              '评分需要将录音上传到你配置的服务器。服务端用于计算分数，不会保存音频。是否继续？',
-            )}
-          </p>
+          <p>${msg('评分会将录音上传到你配置的服务器以计算分数。服务端不保存音频。是否继续？')}</p>
         </ui-modal>
       </section>
     `;

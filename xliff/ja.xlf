@@ -2203,180 +2203,235 @@
 </trans-unit>
 <trans-unit id="s2c3b07a7a15b2626">
   <source>评分中</source>
+  <target>採点中</target>
 </trans-unit>
 <trans-unit id="s12227f0939a455a5">
   <source>上传说明</source>
+  <target>アップロードについて</target>
 </trans-unit>
 <trans-unit id="s3599fbe98a5edf08">
   <source>同意并评分</source>
-</trans-unit>
-<trans-unit id="s925b94d66095615e">
-  <source>评分需要将录音上传到你配置的服务器。服务端用于计算分数，不会保存音频。是否继续？</source>
+  <target>同意して採点</target>
 </trans-unit>
 <trans-unit id="s2962b0f1026d9ed6">
   <source>重新评分</source>
+  <target>再採点</target>
 </trans-unit>
 <trans-unit id="sce5d720936833c6f">
   <source>评分</source>
+  <target>採点</target>
 </trans-unit>
 <trans-unit id="s835401d72dab3200">
   <source>评分中…</source>
+  <target>採点中…</target>
 </trans-unit>
 <trans-unit id="se64bef9fedf638e9">
   <source>准确度</source>
+  <target>正確さ</target>
 </trans-unit>
 <trans-unit id="s0ed827ed1decf77b">
   <source>流利度</source>
+  <target>流暢さ</target>
 </trans-unit>
 <trans-unit id="scccc95bd031ef3f1">
   <source>完整度</source>
+  <target>完全さ</target>
 </trans-unit>
 <trans-unit id="sf763350959c33081">
   <source>韵律</source>
+  <target>韻律</target>
 </trans-unit>
 <trans-unit id="scdea69093607f325">
   <source>语速</source>
+  <target>速度</target>
 </trans-unit>
 <trans-unit id="sb669190922ac9f7e">
   <source>节奏</source>
+  <target>リズム</target>
 </trans-unit>
 <trans-unit id="scdd67d0935e61921">
   <source>语调</source>
+  <target>イントネーション</target>
 </trans-unit>
 <trans-unit id="sf15acd095503edf1">
   <source>重音</source>
+  <target>強勢</target>
 </trans-unit>
 <trans-unit id="sa0fca8fb34554d3d">
   <source>识别文本</source>
+  <target>認識テキスト</target>
 </trans-unit>
 <trans-unit id="sfc6c154a14171479">
   <source>参考文本</source>
+  <target>参照テキスト</target>
 </trans-unit>
 <trans-unit id="s940ecd082c22b85f">
   <source>漏读</source>
+  <target>読み飛ばし</target>
 </trans-unit>
 <trans-unit id="sce18270936162779">
   <source>读错</source>
+  <target>読み誤り</target>
 </trans-unit>
 <trans-unit id="s2faecd08af859802">
   <source>多读</source>
+  <target>余分な読み</target>
 </trans-unit>
 <trans-unit id="s4a888818b3ccd874">
   <source>漏读，录音中没有对应位置</source>
+  <target>読み飛ばし — 録音に該当箇所がありません</target>
 </trans-unit>
 <trans-unit id="s60933dd7108f8b2b">
   <source>评分完成</source>
+  <target>採点完了</target>
 </trans-unit>
 <trans-unit id="s254ee2a510886c78">
   <source>7. 手动停止录音时，没播完的最后一句会自动丢弃，不参与评分和预览。</source>
+  <target>7. 手動で録音を止めた場合、再生し終えていない最後の文は破棄され、採点・プレビューの対象になりません。</target>
 </trans-unit>
 <trans-unit id="s1d94ea2f4abb5103">
   <source>录音时长不足，已丢弃</source>
+  <target>録音が短すぎるため破棄しました</target>
 </trans-unit>
 <trans-unit id="sfcbde79ab48e8201">
   <source>发音评分 <x id="0" equiv-text="${formatOverallBadge(overall)}"/></source>
+  <target>発音スコア <x id="0" equiv-text="${formatOverallBadge(overall)}"/></target>
 </trans-unit>
 <trans-unit id="se527c2a5b2c4f3c2">
   <source>发音评分：导入 <x id="0" equiv-text="${result.pronunciationScoresImported}"/>，跳过 <x id="1" equiv-text="${result.pronunciationScoresSkipped}"/></source>
+  <target>発音スコア：取り込み <x id="0" equiv-text="${result.pronunciationScoresImported}"/>、スキップ <x id="1" equiv-text="${result.pronunciationScoresSkipped}"/></target>
 </trans-unit>
 <trans-unit id="sf62cd95c28dcfea2">
   <source>自动检测</source>
+  <target>自動検出</target>
 </trans-unit>
 <trans-unit id="sd6785bee17b842a7">
   <source>发音评分</source>
+  <target>発音採点</target>
 </trans-unit>
 <trans-unit id="s6a98da6d57838d8d">
   <source>按需将口语录音发送到评分服务，结果保存在本设备。</source>
+  <target>必要に応じて発話録音を採点サービスへ送ります。結果はこの端末に保存されます。</target>
 </trans-unit>
 <trans-unit id="sd409c11833f6b38f">
   <source>评分接口地址</source>
+  <target>採点 API URL</target>
 </trans-unit>
 <trans-unit id="s15d0c0657c1ee08c">
   <source>API Key</source>
+  <target>API Key</target>
 </trans-unit>
 <trans-unit id="s3e191521f4547354">
   <source>默认语言</source>
+  <target>デフォルト言語</target>
 </trans-unit>
 <trans-unit id="s7a81ff20eadcd292">
   <source>导入发音评分失败：<x id="0" equiv-text="${score.id}"/></source>
+  <target>発音スコアの取り込みに失敗：<x id="0" equiv-text="${score.id}"/></target>
 </trans-unit>
 <trans-unit id="s956426855b65053c">
   <source>API Key 无效或已过期，请检查设置</source>
+  <target>API Key が無効または期限切れです。設定を確認してください。</target>
 </trans-unit>
 <trans-unit id="s6d5f5ba5a962ced6">
   <source>音频过大或过长，无法评分</source>
+  <target>音声が大きすぎるか長すぎるため採点できません</target>
 </trans-unit>
 <trans-unit id="scd0f9b6da252fc16">
   <source>评分参数无效，请确认参考文本后重试</source>
+  <target>採点パラメータが無効です。参照テキストを確認して再試行してください。</target>
 </trans-unit>
 <trans-unit id="s4e78ee5c9197c4a0">
   <source>评分次数已达上限，请稍后再试</source>
+  <target>採点回数の上限に達しました。しばらくしてから再試行してください。</target>
 </trans-unit>
 <trans-unit id="s4098449d5cb66c1e">
   <source>评分服务未就绪，请稍后再试</source>
+  <target>採点サービスが準備できていません。しばらくしてから再試行してください。</target>
 </trans-unit>
 <trans-unit id="s5bfbc8e66169cace">
   <source>评分失败（<x id="0" equiv-text="${status}"/>）</source>
+  <target>採点に失敗（<x id="0" equiv-text="${status}"/>）</target>
 </trans-unit>
 <trans-unit id="s5acb086594083252">
   <source>录音超过 <x id="0" equiv-text="${SCORE_MAX_DURATION_SEC}"/> 秒，无法评分</source>
+  <target>録音が <x id="0" equiv-text="${SCORE_MAX_DURATION_SEC}"/> 秒を超えているため採点できません</target>
 </trans-unit>
 <trans-unit id="sa5f9de2beef8daca">
   <source>录音文件超过 <x id="0" equiv-text="${formatScoreMaxMb(SCORE_MAX_BYTES)}"/> MB，无法评分</source>
+  <target>録音ファイルが <x id="0" equiv-text="${formatScoreMaxMb(SCORE_MAX_BYTES)}"/> MB を超えているため採点できません</target>
 </trans-unit>
 <trans-unit id="sd7b63a085241ed78">
   <source>需要对照原稿才能评分</source>
+  <target>採点には参照原稿が必要です</target>
 </trans-unit>
 <trans-unit id="sb26714065c54bdf6">
   <source>无法确定参考原声时长，请确认录音片段信息后重试</source>
+  <target>お手本音声の長さを特定できません。録音セグメントを確認して再試行してください。</target>
 </trans-unit>
 <trans-unit id="s2e3c38dbf4b8acac">
   <source>请先在设置中填写评分服务地址和 API Key</source>
+  <target>先に設定で採点サービスの URL と API Key を入力してください</target>
 </trans-unit>
 <trans-unit id="sf3b85c0468af47f2">
   <source>评分失败，请重试</source>
+  <target>採点に失敗しました。再試行してください。</target>
 </trans-unit>
 <trans-unit id="s04060150668466d1">
   <source>评分已取消</source>
+  <target>採点をキャンセルしました</target>
 </trans-unit>
 <trans-unit id="s15a47f089a36f13a">
   <source>全选</source>
+  <target>すべて選択</target>
 </trans-unit>
 <trans-unit id="s0fe73308947d1143">
   <source>反选</source>
+  <target>選択を反転</target>
 </trans-unit>
 <trans-unit id="s75335155cedd2188">
   <source>确定删除选中的媒体吗？</source>
+  <target>選択したメディアを削除しますか？</target>
 </trans-unit>
 <trans-unit id="s0606d49ecd8e3c66">
   <source>字幕文件名不一致</source>
+  <target>字幕ファイル名が一致しません</target>
 </trans-unit>
 <trans-unit id="s9d52057642f9c4e0">
   <source>仍要导入</source>
+  <target>それでも取り込む</target>
 </trans-unit>
 <trans-unit id="s2af0ce2f4f8b9700">
   <source>所选字幕文件名与媒体不一致，仍要导入到当前媒体吗？</source>
+  <target>選択した字幕ファイル名がメディアと一致しません。現在のメディアに取り込みますか？</target>
 </trans-unit>
 <trans-unit id="se1188b44ca04fedd">
   <source>更新字幕</source>
+  <target>字幕を更新</target>
 </trans-unit>
 <trans-unit id="s413822c9e049f976">
   <source>部分媒体删除失败</source>
+  <target>一部のメディアの削除に失敗しました</target>
 </trans-unit>
 <trans-unit id="sc5cbb44579782b51">
   <source>批量删除完成</source>
+  <target>一括削除が完了しました</target>
 </trans-unit>
 <trans-unit id="saf0cc418b50e8c7e">
   <source>部分噪音素材删除失败</source>
+  <target>一部のノイズ素材の削除に失敗しました</target>
 </trans-unit>
 <trans-unit id="s8da85c90cd422ae0">
   <source>确定删除选中的噪音素材吗？</source>
+  <target>選択したノイズ素材を削除しますか？</target>
 </trans-unit>
 <trans-unit id="s88a2fd98dd3d6e97">
   <source>确定删除选中的录音吗？</source>
+  <target>選択した録音を削除しますか？</target>
 </trans-unit>
 <trans-unit id="sfba769742b1a7745">
   <source>部分录音删除失败</source>
+  <target>一部の録音の削除に失敗しました</target>
 </trans-unit>
 <trans-unit id="s1eb07e7148fbaff6">
   <source>语速贴近</source>
@@ -2396,14 +2451,7 @@
 </trans-unit>
 <trans-unit id="sa93c9cd505d31edc">
   <source>所选字幕文件名与当前媒体不一致，仍要导入到当前媒体吗？</source>
-</trans-unit>
-<trans-unit id="s9a67bd7ae8898c5f">
-  <source>Echo 评分时比对示范音频的节奏与语调。可能上传原声片段（已有缓存时更轻）；取不到原声时仍按自然度评。Shadowing 不受影响。</source>
-  <target>Echo 採点ではお手本音声のリズム・抑揚と比較します。お手本断片をアップロードする場合があります（キャッシュがあれば軽い）。取れないときは自然さ評価に戻ります。Shadowing には影響しません。</target>
-</trans-unit>
-<trans-unit id="sb52bab237270d5cf">
-  <source>只根据你的录音评语速、节奏等是否自然。Echo 也不上传原声，更省流量与服务器资源。</source>
-  <target>録音の速度・リズムなどが自然かどうかを評価します。Echo でもお手本は送らず、通信量とサーバー負荷を抑えられます。</target>
+  <target>選択した字幕ファイル名が現在のメディアと一致しません。現在のメディアに取り込みますか？</target>
 </trans-unit>
 <trans-unit id="s4d3c3c8b4d1e8295">
   <source>自然度</source>
@@ -2417,21 +2465,37 @@
   <source>Echo 评分依据</source>
   <target>Echo 採点の基準</target>
 </trans-unit>
-<trans-unit id="se5a81731a4668b1f">
-  <source>评分时录音会上传到上述服务器用于计算分数；选择「像原声」时 Echo 还可能上传原声片段。服务端不保存音频。结果只存在本设备的 IndexedDB。</source>
-  <target>採点時は録音を上記サーバーへ送ります。「お手本に近い」を選ぶと Echo ではお手本断片も送る場合があります。サーバーは音声を保存しません。結果はこの端末の IndexedDB のみです。</target>
-</trans-unit>
 <trans-unit id="s80263a081b2554b3">
   <source>数据</source>
+  <target>データ</target>
 </trans-unit>
 <trans-unit id="s3c3d7808bae96151">
   <source>应用</source>
+  <target>アプリ</target>
 </trans-unit>
 <trans-unit id="s3c8889be0f597f69">
   <source>实验室</source>
+  <target>ラボ</target>
 </trans-unit>
 <trans-unit id="s6c27785bb989278a">
   <source>评分失败，已保留上次成功结果</source>
+  <target>採点に失敗しました。前回の成功結果を保持しています。</target>
+</trans-unit>
+<trans-unit id="s1979ca282a2e1502">
+  <source>评分会将录音上传到你配置的服务器以计算分数。服务端不保存音频。是否继续？</source>
+  <target>採点では設定したサーバーへ録音を送り、スコアを計算します。サーバーは音声を保存しません。続行しますか？</target>
+</trans-unit>
+<trans-unit id="s4036f99291b6ebad">
+  <source>Echo 会对照示范音频的节奏与语调打分，可能额外上传原声片段（已有缓存时流量更少）；取不到原声时改按自然度评。Shadowing 始终只评自然度，不受此选项影响。</source>
+  <target>Echo ではお手本のリズム・抑揚と比較して採点し、お手本断片も送る場合があります（キャッシュがあれば通信量は少なくなります）。取れないときは自然さ評価に戻ります。Shadowing は常に自然さのみで、この設定の影響を受けません。</target>
+</trans-unit>
+<trans-unit id="se4067cfc3b0b5cf8">
+  <source>只根据你的录音评语速、节奏是否自然。Echo 与 Shadowing 都只上传录音，不上传原声，更省流量。</source>
+  <target>録音の速度・リズムが自然かどうかを評価します。Echo も Shadowing も録音のみを送り、お手本は送らないため通信量を抑えられます。</target>
+</trans-unit>
+<trans-unit id="s4c924d1ceea537ee">
+  <source>评分时会把录音上传到你配置的服务器以计算分数；选「像原声」时 Echo 还可能上传原声片段。服务端不保存音频；分数只保存在本设备。</source>
+  <target>採点時は設定したサーバーへ録音を送ります。「お手本に近い」を選ぶと Echo ではお手本断片も送る場合があります。サーバーは音声を保存しません。スコアはこの端末のみに保存されます。</target>
 </trans-unit>
 </body>
 </file>
