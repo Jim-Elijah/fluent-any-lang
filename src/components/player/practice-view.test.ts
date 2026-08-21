@@ -81,9 +81,13 @@ vi.mock('../../components/ui/loading.js', () => ({
   },
 }));
 
-vi.mock('../../lib/file-validation.js', () => ({
-  getMediaDuration: vi.fn().mockResolvedValue(3),
-}));
+vi.mock('../../lib/file-validation.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../lib/file-validation.js')>();
+  return {
+    ...actual,
+    getMediaDuration: vi.fn().mockResolvedValue(3),
+  };
+});
 
 const mockImportSubtitleForMedia = vi.fn();
 vi.mock('../../lib/import-content.js', () => ({

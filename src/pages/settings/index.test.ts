@@ -40,12 +40,11 @@ describe('settings-page', () => {
     return el;
   }
 
-  it('renders intro and all settings child sections', async () => {
+  it('renders sticky nav groups and all settings child sections', async () => {
     const el = await renderPage();
 
-    const intro = el.shadowRoot?.querySelector('.intro');
-    expect(intro).not.toBeNull();
-    expect(intro?.textContent?.trim().length).toBeGreaterThan(0);
+    expect(el.shadowRoot?.querySelector('.nav')).not.toBeNull();
+    expect(el.shadowRoot?.querySelectorAll('.group').length).toBe(4);
 
     for (const tag of CHILD_TAGS) {
       expect(el.shadowRoot?.querySelector(tag)).not.toBeNull();

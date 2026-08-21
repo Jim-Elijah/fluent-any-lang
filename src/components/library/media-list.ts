@@ -24,12 +24,7 @@ import {
 import { formatTime, formatDate } from '../../lib/playback-utils.js';
 import { estimateListNaturalHeight, type ListMetricsDetail } from '../../lib/split-list-heights.js';
 import { NARROW_VIEWPORT_MQ } from '../../lib/layout-compact.js';
-import {
-  FAVORITES_PLAYLIST_ID,
-  type MediaItem,
-  type SortDirection,
-  type SubtitleTrack,
-} from '../../types/models.js';
+import { FAVORITES_PLAYLIST_ID, type MediaItem, type SortDirection } from '../../types/models.js';
 import '../ui/alert.js';
 import '../ui/button.js';
 import '../ui/popconfirm.js';

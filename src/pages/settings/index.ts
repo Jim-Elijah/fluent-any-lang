@@ -57,7 +57,9 @@ export class SettingsPage extends LitElement {
       white-space: nowrap;
       color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
       background: var(--color-surface, #fff);
-      transition: background 0.15s, color 0.15s;
+      transition:
+        background 0.15s,
+        color 0.15s;
     }
 
     .nav-item:hover {
@@ -144,10 +146,7 @@ export class SettingsPage extends LitElement {
     this._activeGroup = fallback;
   };
 
-  private readonly _throttledApplyActiveFromPosition = throttle(
-    this._applyActiveFromPosition,
-    100,
-  );
+  private readonly _throttledApplyActiveFromPosition = throttle(this._applyActiveFromPosition, 100);
 
   override firstUpdated() {
     this._scroller = this._getScrollContainer() ?? undefined;
@@ -205,6 +204,7 @@ export class SettingsPage extends LitElement {
   };
 
   private _getScrollContainer(): HTMLElement | null {
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
     let el: Element | null = this;
     while (el) {
       if (el instanceof HTMLElement) {
@@ -260,14 +260,8 @@ export class SettingsPage extends LitElement {
     return html`
       <div class="page">
         <nav class="nav">
-          ${nav('practice', msg('练习'))}
-          ${nav('data', msg('数据'))}
-          ${nav('app', msg('应用'))}
-          ${nav(
-            'lab',
-            msg('实验室'),
-            html`<span class="badge">Beta</span>`,
-          )}
+          ${nav('practice', msg('练习'))} ${nav('data', msg('数据'))} ${nav('app', msg('应用'))}
+          ${nav('lab', msg('实验室'), html`<span class="badge">Beta</span>`)}
         </nav>
 
         <section id="group-practice" class="group">

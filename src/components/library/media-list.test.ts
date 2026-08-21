@@ -711,11 +711,9 @@ describe('media-list', () => {
       true,
     );
 
-    expect(importContent.importSubtitleForMedia).toHaveBeenCalledWith(
-      'media-1',
-      expect.any(File),
-      { overwrite: true },
-    );
+    expect(importContent.importSubtitleForMedia).toHaveBeenCalledWith('media-1', expect.any(File), {
+      overwrite: true,
+    });
   });
 
   it('prompts before importing mismatched subtitle filename', async () => {

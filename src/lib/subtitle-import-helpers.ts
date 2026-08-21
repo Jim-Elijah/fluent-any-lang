@@ -13,10 +13,7 @@ export type PendingSubtitleImport = {
 };
 
 /** Whether subtitle basename matches the target media filename (case-insensitive). */
-export function subtitleBasenameMatchesMedia(
-  subtitleFile: File,
-  mediaFilename: string,
-): boolean {
+export function subtitleBasenameMatchesMedia(subtitleFile: File, mediaFilename: string): boolean {
   return (
     titleFromFileName(subtitleFile.name).toLocaleLowerCase() ===
     titleFromFileName(mediaFilename).toLocaleLowerCase()

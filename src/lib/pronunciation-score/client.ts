@@ -1,8 +1,5 @@
 import { msg, str } from '@lit/localize';
-import type {
-  PronunciationScoreApiResponse,
-  ReferenceProsodyProfile,
-} from '../../types/models.js';
+import type { PronunciationScoreApiResponse, ReferenceProsodyProfile } from '../../types/models.js';
 
 export type ScoreHttpErrorCode =
   | 'unauthorized'

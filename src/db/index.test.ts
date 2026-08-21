@@ -245,8 +245,9 @@ describe('referenceProsodyProfile store migration', () => {
     expect(db.version).toBe(DB_VERSION);
     expect([...db.objectStoreNames]).toContain(STORE_REFERENCE_PROSODY_PROFILE);
     expect([
-      ...db.transaction(STORE_REFERENCE_PROSODY_PROFILE).objectStore(STORE_REFERENCE_PROSODY_PROFILE)
-        .indexNames,
+      ...db
+        .transaction(STORE_REFERENCE_PROSODY_PROFILE)
+        .objectStore(STORE_REFERENCE_PROSODY_PROFILE).indexNames,
     ]).toContain('byMediaId');
   });
 });
