@@ -104,6 +104,11 @@ function readCommitHash(): string {
 
 export default defineConfig({
   ...(lanHost ? { server: { host: true } } : {}),
+  // Vite 8 uses Oxc (not esbuild). Legacy TS decorators must be lowered explicitly
+  // or production bundles keep `@customElement` / `@property` and fail to parse.
+  oxc: {
+    decorator: { legacy: true },
+  },
   define: {
     __APP_VERSION__: JSON.stringify(readPackageVersion()),
     __COMMIT_HASH__: JSON.stringify(readCommitHash()),
