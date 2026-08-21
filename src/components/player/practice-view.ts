@@ -684,6 +684,9 @@ export class PracticeView extends NavigatorElement {
       this._lastRecordingId = null;
       this._shadowingRecorderEl?.clearWaveform();
     }
+  };
+
+  private _onRecordingsChanged = (): void => {
     void this._refreshRecordings();
   };
 
@@ -1112,6 +1115,7 @@ export class PracticeView extends NavigatorElement {
             .previewDisabled=${this._sessionPhase !== 'idle'}
             @recording-deleted=${(event: CustomEvent<{ id: string }>) =>
               this._onRecordingDeleted(event.detail.id)}
+            @recordings-changed=${this._onRecordingsChanged}
           ></record-list>
         </div>
         <div slot="footer" class="tips-modal-footer">

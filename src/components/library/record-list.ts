@@ -597,7 +597,7 @@ export class RecordList extends LitElement {
                 .subtitleSegments=${this._modalSubtitleSegments}
                 .practiceMode=${this._modalRecording?.mode ?? 'shadowing'}
                 .gapPolicy=${this._modalRecording?.gapPolicy ?? null}
-                @score-updated=${() => this.refresh()}
+                @score-updated=${() => void this._onScoreUpdated()}
               ></recording-preview>`
             : null}
         </ui-modal>
@@ -701,7 +701,7 @@ export class RecordList extends LitElement {
               ?disabled=${scoreBlocked}
               @click="${() => this._handleScore(recording)}"
             >
-              ${scoreLabel}
+              <ui-icon name="score"></ui-icon>
             </ui-button>
           </ui-tooltip>
           <ui-popconfirm
@@ -782,15 +782,33 @@ export class RecordList extends LitElement {
       });
       if (!result.ok && result.reason === 'not_configured') {
         Message.warning(result.message);
+      } else if (!result.ok && result.score?.status === 'success') {
+        Message.warning(result.message);
       } else if (!result.ok) {
         Message.error(result.message);
       } else {
         Message.success(msg('评分完成'));
       }
       await this.refresh();
+      this._emitRecordingsChanged('scored');
     } finally {
       this._scoringId = '';
     }
+  }
+
+  private async _onScoreUpdated(): Promise<void> {
+    await this.refresh();
+    this._emitRecordingsChanged('scored');
+  }
+
+  private _emitRecordingsChanged(reason: 'scored' | 'deleted' | 'batch-deleted'): void {
+    this.dispatchEvent(
+      new CustomEvent('recordings-changed', {
+        detail: { reason },
+        bubbles: true,
+        composed: true,
+      }),
+    );
   }
 
   private _handleModalClose(): void {
@@ -847,6 +865,7 @@ export class RecordList extends LitElement {
           composed: true,
         }),
       );
+      this._emitRecordingsChanged('deleted');
     } catch {
       this._error = msg('删除失败，请重试。');
     } finally {
@@ -894,6 +913,7 @@ export class RecordList extends LitElement {
       const deleted = new Set(toDelete);
       this._selected = new Set([...this._selected].filter((id) => !deleted.has(id)));
       await this.refresh();
+      this._emitRecordingsChanged('batch-deleted');
     } finally {
       this._batchDeleting = false;
     }

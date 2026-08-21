@@ -389,7 +389,9 @@ describe('record-list', () => {
     await el.updateComplete;
     await flushUpdates();
     const deleted = vi.fn();
+    const changed = vi.fn();
     el.addEventListener('recording-deleted', deleted);
+    el.addEventListener('recordings-changed', changed);
 
     el.shadowRoot
       ?.querySelector('ui-popconfirm')
@@ -399,6 +401,11 @@ describe('record-list', () => {
 
     expect(recordDb.deleteRecording).toHaveBeenCalledWith('rec-1');
     expect(deleted).toHaveBeenCalled();
+    expect(changed).toHaveBeenCalledWith(
+      expect.objectContaining({
+        detail: { reason: 'deleted' },
+      }),
+    );
     expect(recordDb.getRecordingList).toHaveBeenCalledTimes(2);
   });
 
@@ -468,12 +475,48 @@ describe('record-list', () => {
     const el = await renderList();
     await el.refresh();
     await el.updateComplete;
+    const changed = vi.fn();
+    el.addEventListener('recordings-changed', changed);
 
     el.shadowRoot!.querySelector('ui-button[aria-label="评分"]')!.click();
     await flushUpdates();
 
     expect(requestScoreMock).toHaveBeenCalled();
     expect(requestScoreMock.mock.calls[0]?.[0]).toMatchObject({ id: 'rec-1' });
+    expect(changed).toHaveBeenCalledWith(
+      expect.objectContaining({
+        detail: { reason: 'scored' },
+      }),
+    );
+  });
+
+  it('dispatches recordings-changed after batch delete', async () => {
+    vi.mocked(recordDb.getRecordingList)
+      .mockResolvedValueOnce([sampleRecord])
+      .mockResolvedValue([]);
+    const el = await renderList();
+    await el.refresh();
+    await el.updateComplete;
+
+    const changed = vi.fn();
+    el.addEventListener('recordings-changed', changed);
+
+    const list = el as unknown as {
+      _selected: Set<string>;
+      _visibleIds: string[];
+      _handleBatchDelete: () => Promise<void>;
+    };
+    list._visibleIds = ['rec-1'];
+    list._selected = new Set(['rec-1']);
+    await list._handleBatchDelete();
+    await flushUpdates();
+
+    expect(recordDb.deleteRecording).toHaveBeenCalledWith('rec-1');
+    expect(changed).toHaveBeenCalledWith(
+      expect.objectContaining({
+        detail: { reason: 'batch-deleted' },
+      }),
+    );
   });
 
   it('disables scoring when the recording has no reference script', async () => {
