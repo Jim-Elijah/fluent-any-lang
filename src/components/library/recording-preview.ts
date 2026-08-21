@@ -977,6 +977,8 @@ export class RecordingPreview extends LitElement {
       });
       if (!result.ok && result.reason === 'not_configured') {
         Message.warning(result.message);
+      } else if (!result.ok && result.score?.status === 'success') {
+        Message.warning(result.message);
       } else if (!result.ok) {
         Message.error(result.message);
       } else {

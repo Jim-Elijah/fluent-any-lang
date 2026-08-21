@@ -10,11 +10,7 @@ import {
 import { saveRecording } from '../../db/record.js';
 import { addSubtitle } from '../../db/subtitle.js';
 import { getScoreByRecordId } from '../../db/pronunciation-score.js';
-import type {
-  PracticeRecord,
-  ReferenceProsodyProfile,
-  SubtitleTrack,
-} from '../../types/models.js';
+import type { PracticeRecord, ReferenceProsodyProfile, SubtitleTrack } from '../../types/models.js';
 import { PronunciationScoreHttpError } from './client.js';
 import { SCORE_MAX_DURATION_SEC, scoreTooLongMessage } from './constants.js';
 import {
@@ -534,5 +530,39 @@ describe('requestScore', () => {
     const stored = await getScoreByRecordId(record.id);
     expect(stored?.status).toBe('failed');
     expect(stored?.errorCode).toBe(429);
+  });
+
+  it('keeps a prior success score when re-score API fails', async () => {
+    const record = makeRecord();
+    await saveRecording(record, new Blob(['audio'], { type: 'audio/webm' }));
+    await addSubtitle(subtitleTrack);
+    vi.mocked(scorePronunciation).mockResolvedValueOnce(successResponse());
+    await requestScore(record);
+
+    const before = await getScoreByRecordId(record.id);
+    expect(before?.status).toBe('success');
+    expect(before?.overall).toBe(81);
+
+    vi.mocked(scorePronunciation).mockRejectedValueOnce(
+      new PronunciationScoreHttpError(502, 'upstream', '评分服务暂时不可用，请稍后再试'),
+    );
+
+    const statuses: string[] = [];
+    const result = await requestScore(record, {
+      onStatus: (score) => statuses.push(score.status),
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe('api');
+    expect(result.message).toBe('评分失败，已保留上次成功结果');
+    expect(result.score?.status).toBe('success');
+    expect(result.score?.overall).toBe(81);
+    expect(statuses).toEqual(['pending', 'success']);
+
+    const stored = await getScoreByRecordId(record.id);
+    expect(stored?.status).toBe('success');
+    expect(stored?.overall).toBe(81);
+    expect(stored?.errorMessage).toBeUndefined();
   });
 });

@@ -149,7 +149,9 @@ export function isCachedProfileValid(
   if (profile.reference_text !== referenceText) {
     return false;
   }
-  return Math.abs(profile.reference_duration_sec - referenceDuration) <= PROFILE_DURATION_TOLERANCE_SEC;
+  return (
+    Math.abs(profile.reference_duration_sec - referenceDuration) <= PROFILE_DURATION_TOLERANCE_SEC
+  );
 }
 
 function echoSegmentId(record: PracticeRecord): string | undefined {
@@ -188,16 +190,11 @@ export async function resolveEchoReferenceExtras(
     if (!mediaBlob) {
       return {};
     }
-    const segment =
-      record.segments.find((entry) => entry.id === segmentId) ?? record.segments[0];
+    const segment = record.segments.find((entry) => entry.id === segmentId) ?? record.segments[0];
     if (!segment) {
       return {};
     }
-    const clipped = await clipAudioBlob(
-      mediaBlob,
-      segment.sourceStartTime,
-      segment.sourceEndTime,
-    );
+    const clipped = await clipAudioBlob(mediaBlob, segment.sourceStartTime, segment.sourceEndTime);
     return {
       referenceAudio: clipped.blob,
       referenceAudioRoles: 'prosody',
@@ -272,6 +269,11 @@ export async function requestScore(
     return fail(noReferenceDuration(), { referenceText });
   }
 
+  // Keep a prior success so API errors on re-score do not wipe metrics in IDB.
+  const existingBeforeRequest = await getScoreByRecordId(record.id);
+  const previousSuccess =
+    existingBeforeRequest?.status === 'success' ? existingBeforeRequest : undefined;
+
   const pending = await upsertScore(record.id, {
     status: 'pending',
     referenceText,
@@ -284,6 +286,28 @@ export async function requestScore(
     referenceDuration,
     settings.speechScoreProsodyBasis,
   );
+
+  const failApi = async (message: string, errorCode?: number): Promise<RequestScoreOutcome> => {
+    if (previousSuccess) {
+      await putPronunciationScore(previousSuccess);
+      options.onStatus?.(previousSuccess);
+      return {
+        ok: false,
+        reason: 'api',
+        message: msg('评分失败，已保留上次成功结果'),
+        score: previousSuccess,
+      };
+    }
+    const score = await upsertScore(record.id, {
+      status: 'failed',
+      referenceText,
+      errorCode,
+      errorMessage: message,
+      scoredAt: Date.now(),
+    });
+    options.onStatus?.(score);
+    return { ok: false, reason: 'api', message, score };
+  };
 
   try {
     const response = await scorePronunciation({
@@ -333,25 +357,10 @@ export async function requestScore(
     }
 
     if (error instanceof PronunciationScoreHttpError) {
-      const score = await upsertScore(record.id, {
-        status: 'failed',
-        referenceText,
-        errorCode: error.status,
-        errorMessage: error.message,
-        scoredAt: Date.now(),
-      });
-      options.onStatus?.(score);
-      return { ok: false, reason: 'api', message: error.message, score };
+      return failApi(error.message, error.status);
     }
     const message = error instanceof Error ? error.message : msg('评分失败，请重试');
     const aborted = error instanceof DOMException && error.name === 'AbortError';
-    const score = await upsertScore(record.id, {
-      status: 'failed',
-      referenceText,
-      errorMessage: aborted ? msg('评分已取消') : message,
-      scoredAt: Date.now(),
-    });
-    options.onStatus?.(score);
-    return { ok: false, reason: 'api', message: score.errorMessage ?? message, score };
+    return failApi(aborted ? msg('评分已取消') : message);
   }
 }
