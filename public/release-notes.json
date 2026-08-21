@@ -1,9 +1,41 @@
 {
-  "version": "0.3.3",
+  "version": "0.4.0",
   "highlights": {
-    "zh-CN": ["pwa: 更新提示可展开查看本版更新说明"],
-    "en": ["pwa: Expand the update banner to read what's new"],
-    "ja": ["pwa: アップデートバナーを展開して今回の更新内容を確認できます"],
-    "zh-TW": ["pwa: 更新提示可展開查看本版更新說明"]
+    "zh-CN": [
+      "practice: 手动停止跟读时丢弃未完成的尾段",
+      "practice: 空闲时隐藏评分词标记，并整理音量相关控件",
+      "practice: 导入字幕、评分或删除后刷新回声跟读标记；双轨定位更稳定",
+      "library: 资料库列表支持批量选择与删除",
+      "pronunciation-score: 练习记录可按需发音评分；回声跟读支持匹配韵律评分；重新评分失败时保留上次成功结果",
+      "subtitle: 导入字幕时文件名不一致会确认，并支持覆盖已有字幕",
+      "settings: 设置按分区导航，侧栏可吸顶"
+    ],
+    "en": [
+      "practice: drop incomplete trailing segment on manual shadowing stop",
+      "practice: hide score word markers while idle and regroup volumes",
+      "practice: refresh Echo after subtitle import, score, and delete; stabilize dual-track seeks",
+      "library: batch selection and delete to library lists",
+      "pronunciation-score: add on-demand Pronunciation Score for Practice Records, support Echo match prosody scoring on v2 API, keep prior success when re-score fails",
+      "subtitle: add filename mismatch confirmation and overwrite support for subtitle import",
+      "settings: group settings into navigable sections with sticky nav"
+    ],
+    "ja": [
+      "practice: 手動でシャドーイングを停止すると、未完了の末尾セグメントを破棄します",
+      "practice: 待機中はスコア単語マーカーを非表示にし、音量まわりのUIを整理しました",
+      "practice: 字幕インポート・採点・削除後にエコー表示を更新；デュアルトラックのシークをより安定化",
+      "library: ライブラリ一覧で一括選択と削除が可能に",
+      "pronunciation-score: 練習記録をオンデマンドで発音採点；エコー一致の韻律採点に対応；再採点失敗時は前回の成功結果を保持",
+      "subtitle: 字幕インポート時にファイル名不一致を確認でき、上書きにも対応",
+      "settings: 設定をセクション分けし、スティッキーなナビで移動しやすく"
+    ],
+    "zh-TW": [
+      "practice: 手動停止跟讀時丟棄未完成的尾段",
+      "practice: 閒置時隱藏評分詞標記，並整理音量相關控制項",
+      "practice: 匯入字幕、評分或刪除後重新整理回聲跟讀標記；雙軌定位更穩定",
+      "library: 資料庫列表支援批次選擇與刪除",
+      "pronunciation-score: 練習記錄可按需發音評分；回聲跟讀支援匹配韻律評分；重新評分失敗時保留上次成功結果",
+      "subtitle: 匯入字幕時檔名不一致會確認，並支援覆寫既有字幕",
+      "settings: 設定按分區導覽，側欄可置頂"
+    ]
   }
 }

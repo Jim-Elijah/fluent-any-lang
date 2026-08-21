@@ -1,3 +1,25 @@
+## [0.4.0](https://github.com/Jim-Elijah/fluent-any-lang/compare/v0.3.3...v0.4.0) (2026-08-21)
+
+### Features
+
+* add batch selection and delete to library lists, and make scoring strings localizable ([23d2580](https://github.com/Jim-Elijah/fluent-any-lang/commit/23d2580d67c8c80f7beb53d6806101ef3fb0b337))
+* **practice:** add on-demand Pronunciation Score for Practice Records ([3bd02e5](https://github.com/Jim-Elijah/fluent-any-lang/commit/3bd02e51908fd79f77d037b0ae5cd5b0fe95f1b4))
+* **practice:** align Pronunciation Score client with full-URL API contract ([086c1f0](https://github.com/Jim-Elijah/fluent-any-lang/commit/086c1f0fc3209d850b650ba87608b07f33ea41ed))
+* **practice:** overlay Pronunciation Score words on the recording waveform ([04c8f17](https://github.com/Jim-Elijah/fluent-any-lang/commit/04c8f176fefad722df4654d4721621533db89ee1))
+* **practice:** support Echo match prosody scoring on v2 API ([095bf2c](https://github.com/Jim-Elijah/fluent-any-lang/commit/095bf2c6b232d7aef075724a7870c0bcda14085b))
+* **settings:** group settings into navigable sections with sticky nav ([3133631](https://github.com/Jim-Elijah/fluent-any-lang/commit/31336319378effad6803c72d4e72c357ec1e9986))
+* **subtitle:** add filename mismatch confirmation and overwrite support for subtitle import ([b1e81ba](https://github.com/Jim-Elijah/fluent-any-lang/commit/b1e81badecc2ba14ec12cee81c370ab934b3457f))
+
+### Bug Fixes
+
+* **build:** enable Oxc legacy decorators for Vite production ([4ffc89a](https://github.com/Jim-Elijah/fluent-any-lang/commit/4ffc89acf8ef9674d9d294ab16c9d32d6ab46a7f))
+* **practice:** drop incomplete trailing segment on manual shadowing stop ([3262218](https://github.com/Jim-Elijah/fluent-any-lang/commit/3262218984f27d33913a1771d3d485b7e0eaeeea))
+* **practice:** hide score word markers while idle and regroup volumes ([c931f51](https://github.com/Jim-Elijah/fluent-any-lang/commit/c931f51fc8d4fb9c08406d1e79e1c3ae61564c5e))
+* **practice:** refresh Echo after subtitle import and stabilize dual-track seeks ([fdd72c7](https://github.com/Jim-Elijah/fluent-any-lang/commit/fdd72c734e0b359b7a70a70f5b125fcba8a68c9a))
+* **practice:** refresh Echo badges after score and delete ([486a9fb](https://github.com/Jim-Elijah/fluent-any-lang/commit/486a9fbfc72d9533d39db22d943508d310b7bd5d))
+* **pronunciation-score:** keep prior success when re-score fails ([d5f3db5](https://github.com/Jim-Elijah/fluent-any-lang/commit/d5f3db59d8099c1df9a3188db6271b14976149a9))
+* **settings:** sync sticky nav active section from scroll position ([797d337](https://github.com/Jim-Elijah/fluent-any-lang/commit/797d3379d0f64ea94b368d3d847ddcf5415ddf61))
+
 ## [0.3.3](https://github.com/Jim-Elijah/fluent-any-lang/compare/v0.3.2...v0.3.3) (2026-08-08)
 
 ### Features
