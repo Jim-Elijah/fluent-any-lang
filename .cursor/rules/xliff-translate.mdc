@@ -1,0 +1,33 @@
+---
+description: Translate lit-localize XLIFF files — only fill missing targets
+globs: xliff/**/*.xlf
+alwaysApply: false
+---
+
+# XLIFF translation (lit-localize)
+
+When asked to translate or fill XLIFF under `xliff/`:
+
+1. Read each file’s `<file>` attributes: `source-language` is the source, `target-language` is the locale to translate into.
+2. Only add `<target>` for `<trans-unit>` entries that have a `<source>` but **no** `<target>`. Do not change, rephrase, or remove existing targets.
+3. Preserve XLIFF structure, IDs, placeholders, and whitespace inside messages.
+4. Match tone and terminology already used in that file’s existing targets when present.
+
+## Example — needs translation
+
+```xml
+<trans-unit id="s80263a081b2554b3">
+  <source>数据</source>
+</trans-unit>
+```
+
+→ add `<target>…</target>` for that file’s `target-language`.
+
+## Example — leave alone
+
+```xml
+<trans-unit id="…">
+  <source>数据</source>
+  <target>Data</target>
+</trans-unit>
+```

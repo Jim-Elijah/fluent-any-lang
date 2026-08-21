@@ -1,0 +1,36 @@
+---
+description: Conventional Commits message format, splitting mixed types, no Cursor attribution
+alwaysApply: false
+---
+
+# Conventional Commits
+
+When asked to generate a commit message or create a commit, follow `commitlint.config.js` (`@commitlint/config-conventional`).
+
+## Format
+
+```
+type(scope): imperative subject
+
+- User-facing detail.
+- Another concrete detail.
+```
+
+Example:
+
+```
+feat(practice): overlay Pronunciation Score words on the recording waveform
+
+- Show current Practice Segment word_scores as clickable markers above the canvas (hidden during source playback).
+- Score chips stay available in every play mode and seek the same recording time; words listed as missing stay unplayable.
+```
+
+## Rules
+
+1. **Types** (only): `build`, `chore`, `ci`, `docs`, `feat`, `fix`, `perf`, `refactor`, `revert`, `style`, `test`.
+2. **Subject**: English, imperative, lowercase start, no trailing period. Header ≤ 200 chars. Describe the user-visible change, not file churn.
+3. **Scope**: optional; use the area (e.g. `practice`, `pwa`, `ui`, `settings`, `subtitle`). Omit when the change is repo-wide.
+4. **Body**: optional bullets after a blank line; each line ≤ 200 chars. What the user gains or what broke/fixed—not implementation dump.
+5. **Split**: if the diff spans multiple types, make one commit per type (logical groups). Do not squash `feat` + `test` + `chore` into one message.
+6. **Source of truth**: the actual diff. Do not invent features.
+7. **Trailers**: never add `Co-authored-by: Cursor <cursoragent@cursor.com>` or other agent/Cursor attribution.

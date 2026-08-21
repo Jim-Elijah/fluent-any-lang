@@ -1,0 +1,26 @@
+---
+description: Translate release-notes.json highlights into zh-CN, ja, zh-TW
+globs: public/release-notes.json
+alwaysApply: false
+---
+
+# Release notes translation
+
+When asked to translate `public/release-notes.json`:
+
+1. Source of truth is `highlights.en`. Translate into `zh-CN`, `ja`, and `zh-TW`.
+2. Keep the same structure: **`module:`** + one user-facing sentence (e.g. `pwa: …`, `practice: …`, `ui: …`).
+3. Keep module tags as-is (`practice` / `pwa` / `ui`); translate only the sentence after `:`.
+4. Write what the user gains, not what code changed.
+5. Keep 3–7 bullets; merge related items if needed.
+6. Match tone to a product update dialog: clear, concise, no jargon.
+7. Do not invent features not present in the English source.
+8. Fill empty locale arrays; leave `en` unchanged unless merging for consistency.
+
+## Example
+
+```json
+"en": ["pwa: Expand the update banner to read what's new"]
+```
+
+→ fill the other locales, e.g. `"zh-CN": ["pwa: 更新提示可展开查看本版更新说明"]`.
