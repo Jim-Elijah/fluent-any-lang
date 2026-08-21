@@ -257,6 +257,15 @@ export class RecordList extends LitElement {
         padding: var(--space-sm) var(--space-md);
       }
 
+      /* Override desktop 3-col selection layout so actions stay on their own row. */
+      :host([selection-mode]) .item {
+        grid-template-columns: auto minmax(0, 1fr);
+      }
+
+      :host([selection-mode]) .actions {
+        grid-column: 1 / -1;
+      }
+
       .details {
         gap: var(--space-xs);
       }
