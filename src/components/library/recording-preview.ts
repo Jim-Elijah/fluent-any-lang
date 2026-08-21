@@ -210,15 +210,35 @@ export class RecordingPreview extends LitElement {
 
     .controls {
       display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: var(--space-sm);
+    }
+
+    .mode-row {
+      display: flex;
       flex-wrap: wrap;
       align-items: center;
       gap: var(--space-sm);
     }
 
-    .control-group {
+    .volume-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--space-md);
+    }
+
+    .volume-item {
       display: inline-flex;
       align-items: center;
       gap: var(--space-xs);
+    }
+
+    .volume-item-label {
+      font-size: 0.8125rem;
+      color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
+      white-space: nowrap;
     }
 
     .status {
@@ -300,7 +320,7 @@ export class RecordingPreview extends LitElement {
 
     .score-metric {
       display: grid;
-      grid-template-columns: 3.5rem 1fr 2.5rem;
+      grid-template-columns: minmax(3.5rem, max-content) 1fr 2.5rem;
       align-items: center;
       gap: var(--space-sm);
       font-size: 0.8125rem;
@@ -612,7 +632,7 @@ export class RecordingPreview extends LitElement {
         </waveform-player>
 
         <div class="controls">
-          <div class="control-group">
+          <div class="mode-row">
             <ui-tooltip title=${sourceTitle} .zIndex=${Z_INDEX.MODAL + 1}>
               <ui-button
                 variant="${this._playMode === 'source' ? 'primary' : 'secondary'}"
@@ -622,9 +642,6 @@ export class RecordingPreview extends LitElement {
                 ${msg('播放原音')}
               </ui-button>
             </ui-tooltip>
-            ${showSourceVolume ? this._renderVolumeControl('source') : nothing}
-          </div>
-          <div class="control-group">
             <ui-tooltip title=${recordingTitle} .zIndex=${Z_INDEX.MODAL + 1}>
               <ui-button
                 variant="${this._playMode === 'recording' ? 'primary' : 'secondary'}"
@@ -634,17 +651,24 @@ export class RecordingPreview extends LitElement {
                 ${msg('播放录音')}
               </ui-button>
             </ui-tooltip>
-            ${showRecordingVolume ? this._renderVolumeControl('recording') : nothing}
+            <ui-tooltip title=${syncTitle} .zIndex=${Z_INDEX.MODAL + 1}>
+              <ui-button
+                variant="${compareActive ? 'primary' : 'secondary'}"
+                ?disabled=${!canPlaySync}
+                @click=${() => this._handlePlaySync()}
+              >
+                ${compareLabel}
+              </ui-button>
+            </ui-tooltip>
           </div>
-          <ui-tooltip title=${syncTitle} .zIndex=${Z_INDEX.MODAL + 1}>
-            <ui-button
-              variant="${compareActive ? 'primary' : 'secondary'}"
-              ?disabled=${!canPlaySync}
-              @click=${() => this._handlePlaySync()}
-            >
-              ${compareLabel}
-            </ui-button>
-          </ui-tooltip>
+          ${showSourceVolume || showRecordingVolume
+            ? html`
+                <div class="volume-row">
+                  ${showSourceVolume ? this._renderVolumeControl('source') : nothing}
+                  ${showRecordingVolume ? this._renderVolumeControl('recording') : nothing}
+                </div>
+              `
+            : nothing}
         </div>
 
         ${this._playMode !== 'idle' ? html`<p class="status">${this._renderStatus()}</p>` : nothing}
@@ -666,9 +690,7 @@ export class RecordingPreview extends LitElement {
           if (!e.detail.open) this._privacyOpen = false;
         }}"
       >
-        <p>
-          ${msg('评分需要将录音上传到你配置的服务器。服务端用于计算分数，不会保存音频。是否继续？')}
-        </p>
+        <p>${msg('评分会将录音上传到你配置的服务器以计算分数。服务端不保存音频。是否继续？')}</p>
       </ui-modal>
     `;
   }
@@ -1120,53 +1142,60 @@ export class RecordingPreview extends LitElement {
     const volume = track === 'source' ? this._sourceVolume : this._recordingVolume;
     const maxVolume = getMaxVolumeBoost();
     const percent = Math.round(volume * 100);
+    const shortLabel = track === 'source' ? msg('原音') : msg('录音');
     const label = track === 'source' ? msg('原音音量') : msg('录音音量');
     const title = `${label} ${percent}%`;
     const boosted = volume > 1;
 
     return html`
-      <ui-dropdown
-        trigger="click"
-        placement="top"
-        .arrow=${true}
-        .zIndex=${Z_INDEX.MODAL + 1}
-        style="--dropdown-overlay-min-width: 160px; --dropdown-overlay-padding-block: var(--space-sm); --dropdown-overlay-padding-inline: var(--space-sm);"
-        @open=${stopOverlayOpenEvent}
-        @close=${stopOverlayOpenEvent}
-        @open-change=${stopOverlayOpenEvent}
-        @update:open=${stopOverlayOpenEvent}
-        .overlay=${html`
-          <span
-            class="overlay-panel-label"
-            style=${boosted ? 'color: var(--color-warning, #fa8c16);' : ''}
-            >${label} ${percent}%</span
-          >
-          <ui-slider
-            .value=${volume}
-            style="--slider-mark-edge-padding: var(--space-sm);"
-            orientation="horizontal"
-            min="0"
-            max=${maxVolume}
-            step="0.01"
-            .tooltip=${{
-              formatter: (v: number) => `${Math.round(v * 100)}%`,
-              placement: 'top',
-            }}
-            @change=${(e: CustomEvent<{ value: number }>) =>
-              this._handleVolumeChange(track, e.detail.value)}
-          ></ui-slider>
-        `}
-      >
-        <button
-          type="button"
-          class="volume-trigger${boosted ? ' volume-trigger--boosted' : ''}"
-          title=${title}
-          aria-label=${title}
-          data-volume-track=${track}
+      <div class="volume-item">
+        <span class="volume-item-label">${shortLabel}</span>
+        <ui-dropdown
+          trigger="click"
+          placement="right"
+          .arrow=${true}
+          .zIndex=${Z_INDEX.MODAL + 1}
+          style="--dropdown-overlay-min-width: 160px; --dropdown-overlay-padding-block: var(--space-sm); --dropdown-overlay-padding-inline: var(--space-sm);"
+          @open=${stopOverlayOpenEvent}
+          @close=${stopOverlayOpenEvent}
+          @open-change=${stopOverlayOpenEvent}
+          @update:open=${stopOverlayOpenEvent}
+          .overlay=${html`
+            <span
+              class="overlay-panel-label"
+              style=${boosted ? 'color: var(--color-warning, #fa8c16);' : ''}
+              >${label} ${percent}%</span
+            >
+            <ui-slider
+              .value=${volume}
+              style="--slider-mark-edge-padding: var(--space-sm);"
+              orientation="horizontal"
+              min="0"
+              max=${maxVolume}
+              step="0.01"
+              .tooltip=${{
+                formatter: (v: number) => `${Math.round(v * 100)}%`,
+                placement: 'top',
+              }}
+              @change=${(e: CustomEvent<{ value: number }>) =>
+                this._handleVolumeChange(track, e.detail.value)}
+            ></ui-slider>
+          `}
         >
-          <ui-icon name=${volume === 0 ? 'volume-close' : 'volume'} size="var(--icon-lg)"></ui-icon>
-        </button>
-      </ui-dropdown>
+          <button
+            type="button"
+            class="volume-trigger${boosted ? ' volume-trigger--boosted' : ''}"
+            title=${title}
+            aria-label=${title}
+            data-volume-track=${track}
+          >
+            <ui-icon
+              name=${volume === 0 ? 'volume-close' : 'volume'}
+              size="var(--icon-lg)"
+            ></ui-icon>
+          </button>
+        </ui-dropdown>
+      </div>
     `;
   }
 

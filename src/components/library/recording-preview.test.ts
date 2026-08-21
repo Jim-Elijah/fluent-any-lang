@@ -1582,6 +1582,7 @@ describe('recording-preview', () => {
         { word: 'foo', start: 5, end: 5.4, score: 40 },
       ],
     });
+    el._playMode = 'recording';
     el._syncSegmentIndex = 0;
     el._controller.setViewRange({ start: 0, end: 4.5 });
     await el.updateComplete;
@@ -1604,6 +1605,7 @@ describe('recording-preview', () => {
         { word: 'foo', start: 5, end: 5.4, score: 40 },
       ],
     });
+    el._playMode = 'recording';
     el._syncSegmentIndex = 1;
     el._controller.setViewRange({ start: 4.5, end: 9 });
     await el.updateComplete;
@@ -1627,6 +1629,18 @@ describe('recording-preview', () => {
 
     const marker = el.shadowRoot?.querySelector('.word-marker') as HTMLElement | null;
     expect(marker?.style.left).toBe('50%');
+  });
+
+  it('hides waveform words while idle', async () => {
+    const el = await renderScoredPreview({
+      word_scores: [{ word: 'hello', start: 0.12, end: 0.45, score: 90 }],
+    });
+    el._controller.setViewRange({ start: 0, end: 4.5 });
+    await el.updateComplete;
+
+    expect(el._playMode).toBe('idle');
+    expect(el.shadowRoot?.querySelector('.word-marker')).toBeNull();
+    expect(el.shadowRoot?.querySelector('.word-chip')?.textContent?.trim()).toBe('hello');
   });
 
   it('hides waveform words while playing source', async () => {
