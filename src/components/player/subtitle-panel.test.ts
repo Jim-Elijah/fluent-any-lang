@@ -93,7 +93,9 @@ describe('subtitle-panel', () => {
 
   function clickShadowButtonByLabel(el: SubtitlePanel, keyword: string): void {
     const buttons = [...(el.shadowRoot?.querySelectorAll('ui-button') ?? [])];
-    const button = buttons.find((item) => (item.getAttribute('aria-label') ?? '').includes(keyword));
+    const button = buttons.find((item) =>
+      (item.getAttribute('aria-label') ?? '').includes(keyword),
+    );
     button?.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
   }
 
@@ -252,15 +254,16 @@ describe('subtitle-panel', () => {
     expect(manageButton?.hasAttribute('disabled') || manageButton?.disabled).toBe(true);
   });
 
-  it('shows an overall badge next to echo manage when a score is present', async () => {
+  it('shows an overall badge inside segment text when a score is present', async () => {
     const el = await renderPanel();
     el.echoMode = true;
     el.echoLatestScoreBySegmentId = { s1: 84.2 };
     await el.updateComplete;
     await flushUpdates();
 
-    const badge = el.shadowRoot?.querySelector('.echo-score');
+    const badge = el.shadowRoot?.querySelector('p.text:not(.translation) .echo-score');
     expect(badge?.textContent?.trim()).toBe('84');
+    expect(el.shadowRoot?.querySelector('.row-actions .echo-score')).toBeNull();
   });
 
   it('requests echo manage recordings when manage button is clicked', async () => {

@@ -364,6 +364,8 @@ export class SubtitlePanel extends LitElement {
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      vertical-align: middle;
+      margin-left: var(--space-xs);
       min-width: 1.375rem;
       height: 1.25rem;
       padding: 0 4px;
@@ -371,6 +373,7 @@ export class SubtitlePanel extends LitElement {
       font-size: 0.6875rem;
       font-weight: 600;
       line-height: 1;
+      text-decoration: none;
       background: rgba(82, 196, 26, 0.16);
       color: #389e0d;
     }
@@ -679,7 +682,9 @@ export class SubtitlePanel extends LitElement {
           >
             <div class="content">
               <span class="time">${formatTime(segment.startTime)}</span>
-              <p class="text">${segment.text}</p>
+              <p class="text">
+                ${segment.text}${this.echoMode ? this._renderEchoScoreBadge(segment.id) : nothing}
+              </p>
               ${segment.translation
                 ? html`<p class="text translation ${!this._translationVisible ? 'hidden' : ''}">
                     ${segment.translation}
@@ -690,7 +695,6 @@ export class SubtitlePanel extends LitElement {
               ${this._renderSentenceBankButton(segment)}
               ${this.echoMode
                 ? html`${this._renderEchoRecordButton(index)}
-                  ${this._renderEchoScoreBadge(segment.id)}
                   ${this._renderEchoManageButton(segment.id)}`
                 : nothing}
             </div>
@@ -976,7 +980,9 @@ export class SubtitlePanel extends LitElement {
           ${msg('所选字幕文件名与当前媒体不一致，仍要导入到当前媒体吗？')}
         </p>
         ${pending
-          ? html`<p style="margin:var(--space-sm) 0 0;color:var(--color-text-secondary,rgba(0,0,0,0.65));font-size:0.875rem;line-height:1.5">
+          ? html`<p
+              style="margin:var(--space-sm) 0 0;color:var(--color-text-secondary,rgba(0,0,0,0.65));font-size:0.875rem;line-height:1.5"
+            >
               ${pending.file.name}
             </p>`
           : nothing}

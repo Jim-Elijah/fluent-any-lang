@@ -395,11 +395,11 @@ export class NoiseList extends LitElement {
             @confirm=${() => void this._onDelete(item)}
           >
             <ui-button
-              variant="secondary"
+              variant="danger"
               ?disabled=${this._deletingId === item.id}
               aria-label=${msg('删除')}
             >
-              <ui-icon name="delete" size="var(--icon-md)"></ui-icon>
+              <ui-icon name="delete"></ui-icon>
             </ui-button>
           </ui-popconfirm>
         </div>

@@ -3,6 +3,8 @@ import { css, html, LitElement, nothing, type PropertyValues, type TemplateResul
 import { customElement, property, state } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
 
+import './icon.js';
+
 export type InputSize = 'small' | 'middle' | 'large';
 export type InputStatus = '' | 'error' | 'warning';
 
@@ -408,7 +410,7 @@ abstract class InputBase extends LitElement {
         ?disabled="${this.disabled}"
         @click="${this._handleClearClick}"
       >
-        ×
+        <ui-icon name="close"></ui-icon>
       </button>
     `;
   }
