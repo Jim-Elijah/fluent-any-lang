@@ -838,6 +838,56 @@ describe('MediaController', () => {
     expect(controller.getSnapshot().segmentPausePending).toBe(false);
   });
 
+  it('resumes playback when turning pauseMode off during segment pause', async () => {
+    vi.useFakeTimers();
+    const segments: SubtitleSegment[] = [
+      { id: 's1', startTime: 0, endTime: 5, text: 'one' },
+      { id: 's2', startTime: 5, endTime: 10, text: 'two' },
+    ];
+    await controller.loadTracks([makeTrack('a', 'Track A', { segments })]);
+    controller.setPauseMode('seconds');
+    controller.setPauseSeconds(2);
+    Object.defineProperty(audio, 'paused', { configurable: true, value: false });
+    Object.defineProperty(audio, 'currentTime', { configurable: true, value: 5.1, writable: true });
+    audio.dispatchEvent(new Event('timeupdate'));
+
+    expect(controller.getSnapshot().segmentPausePending).toBe(true);
+    Object.defineProperty(audio, 'paused', { configurable: true, value: true });
+
+    audio.play.mockClear();
+    controller.setPauseMode('off');
+
+    expect(controller.getSnapshot().pauseMode).toBe('off');
+    expect(controller.getSnapshot().segmentPausePending).toBe(false);
+    expect(audio.play).toHaveBeenCalledTimes(1);
+
+    audio.play.mockClear();
+    vi.advanceTimersByTime(2100);
+    expect(audio.play).not.toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+
+  it('does not auto-play when turning pauseMode off after a user pause', async () => {
+    const segments: SubtitleSegment[] = [
+      { id: 's1', startTime: 0, endTime: 5, text: 'one' },
+      { id: 's2', startTime: 5, endTime: 10, text: 'two' },
+    ];
+    await controller.loadTracks([makeTrack('a', 'Track A', { segments })]);
+    controller.setPauseMode('seconds');
+    controller.setPauseSeconds(2);
+    Object.defineProperty(audio, 'paused', { configurable: true, value: false });
+    await controller.play();
+    controller.pause();
+    Object.defineProperty(audio, 'paused', { configurable: true, value: true });
+
+    audio.play.mockClear();
+    controller.setPauseMode('off');
+
+    expect(controller.getSnapshot().pauseMode).toBe('off');
+    expect(controller.getSnapshot().segmentPausePending).toBe(false);
+    expect(audio.play).not.toHaveBeenCalled();
+  });
+
   it('resumes playback when seeking to another segment during segment pause', async () => {
     vi.useFakeTimers();
     const segments: SubtitleSegment[] = [

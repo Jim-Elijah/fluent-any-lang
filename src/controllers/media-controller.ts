@@ -615,10 +615,18 @@ export class MediaController extends EventTarget {
       return;
     }
 
+    const resumeAfterSegmentPause =
+      mode === 'off' && this._segmentPauseScheduler.isActive && !this.shadowingGapCompress;
+
     this.pauseMode = mode;
 
     if (mode === 'off') {
       this._clearSegmentPauseTimer();
+    }
+
+    if (resumeAfterSegmentPause) {
+      // Inter-segment wait is a study gap, not a user stop — dropping the wait continues playback.
+      void this.play();
     }
 
     this._emitChange();
