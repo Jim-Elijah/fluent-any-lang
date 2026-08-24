@@ -927,7 +927,9 @@ describe('backup export/import', () => {
   it('restores soft-deleted playlist entries on import if they are active in the backup', async () => {
     const localPlaylist = await createPlaylist('Restore Test');
     const db = await getDB();
-    localPlaylist.entries = [{ mediaId: 'media-deleted', removed: true, titleSnapshot: 'Old Title' }];
+    localPlaylist.entries = [
+      { mediaId: 'media-deleted', removed: true, titleSnapshot: 'Old Title' },
+    ];
     await db.put(STORE_PLAYLIST, localPlaylist);
 
     const importedPlaylist: Playlist = {
@@ -935,9 +937,7 @@ describe('backup export/import', () => {
       name: 'Restore Test',
       kind: 'user',
       sortOrder: 1,
-      entries: [
-        { mediaId: 'media-deleted', removed: false, titleSnapshot: 'New Title' },
-      ],
+      entries: [{ mediaId: 'media-deleted', removed: false, titleSnapshot: 'New Title' }],
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };

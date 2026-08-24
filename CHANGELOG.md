@@ -1,3 +1,11 @@
+## [0.4.1](https://github.com/Jim-Elijah/fluent-any-lang/compare/v0.4.0...v0.4.1) (2026-08-24)
+
+### Features
+
+* **backup:** enhance playlist import functionality ([3a71961](https://github.com/Jim-Elijah/fluent-any-lang/commit/3a71961093c8e01bb6b9db3abd9eb36e5f29dfca))
+* **media-controller:** enhance pause mode functionality with playback resume logic ([e01a4f3](https://github.com/Jim-Elijah/fluent-any-lang/commit/e01a4f3c4f17a2149afa34a3e51cb3eb144802b6))
+* **media-controller:** implement native loop behavior for single mode with sleep handling ([07affc3](https://github.com/Jim-Elijah/fluent-any-lang/commit/07affc3948888a7fbd2bc6e92c39ce381518e348))
+
 ## [0.4.0](https://github.com/Jim-Elijah/fluent-any-lang/compare/v0.3.3...v0.4.0) (2026-08-21)
 
 ### Features
