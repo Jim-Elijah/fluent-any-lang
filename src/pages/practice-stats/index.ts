@@ -133,14 +133,13 @@ export class PracticeStatsPage extends NavigatorElement {
 
     .bars {
       display: grid;
-      gap: var(--space-sm);
-    }
-
-    .bar-row {
-      display: grid;
       grid-template-columns: 44px 1fr max-content;
       gap: var(--space-sm);
       align-items: center;
+    }
+
+    .bar-row {
+      display: contents;
       font-size: 0.75rem;
       color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
     }
@@ -337,7 +336,7 @@ export class PracticeStatsPage extends NavigatorElement {
         grid-template-columns: 1fr;
       }
 
-      .bar-row {
+      .bars {
         grid-template-columns: 36px 1fr max-content;
       }
     }

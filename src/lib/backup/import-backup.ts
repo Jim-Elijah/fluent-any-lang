@@ -11,6 +11,7 @@ import {
   getMedia,
   getNoise,
   getPlaylist,
+  getPlaylistList,
   getPracticeSession,
   getPronunciationScore,
   getRecording,
@@ -21,6 +22,7 @@ import {
   putPronunciationScore,
   putSentenceBankEntry,
   saveRecording,
+  normalizePlaylistName,
 } from '../../db/service.js';
 import type {
   MediaItem,
@@ -286,12 +288,41 @@ export async function importBackup(file: File): Promise<BackupImportResult> {
 
   // Import playlists (v2 backups only; v1 backups have no playlists).
   const playlistsRaw = readJsonl<Playlist>(files, 'playlists/metadata.jsonl');
+  const allPlaylists = await getPlaylistList();
   for (const playlist of playlistsRaw) {
     try {
-      const existing = await getPlaylist(playlist.id);
+      let existing = await getPlaylist(playlist.id);
+      // id of playlist is uuid, so if it doesn't exist, try to find it by name.
+      if (!existing) {
+        existing = allPlaylists.find(
+          (p: Playlist) => normalizePlaylistName(p.name) === normalizePlaylistName(playlist.name),
+        );
+      }
       if (existing) {
-        // Skip: playlists are user-curated; don't overwrite.
-        result.playlistsSkipped += 1;
+        let modified = false;
+        for (const importedEntry of playlist.entries || []) {
+          const localEntry = existing.entries.find((e) => e.mediaId === importedEntry.mediaId);
+          if (localEntry) {
+            if (localEntry.removed) {
+              localEntry.removed = false;
+              if (importedEntry.titleSnapshot) {
+                localEntry.titleSnapshot = importedEntry.titleSnapshot;
+              }
+              modified = true;
+            }
+          } else {
+            existing.entries.push(importedEntry);
+            modified = true;
+          }
+        }
+        if (modified) {
+          existing.updatedAt = Date.now();
+          const db = await getDB();
+          await db.put(STORE_PLAYLIST, existing);
+          result.playlistsImported += 1;
+        } else {
+          result.playlistsSkipped += 1;
+        }
         continue;
       }
       const db = await getDB();

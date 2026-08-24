@@ -42,7 +42,7 @@ export function isPlaylistNameConflictError(error: unknown): error is PlaylistNa
   );
 }
 
-function normalizePlaylistName(name: string): string {
+export function normalizePlaylistName(name: string): string {
   return name.trim();
 }
 

@@ -861,4 +861,124 @@ describe('backup export/import', () => {
     recordingSpy.mockRestore();
     sessionSpy.mockRestore();
   });
+
+  it('merges playlist entries incrementally on import when playlist already exists (matched by name)', async () => {
+    const localPlaylist = await createPlaylist('Sync List');
+    const db = await getDB();
+    localPlaylist.entries = [{ mediaId: 'media-local', removed: false }];
+    await db.put(STORE_PLAYLIST, localPlaylist);
+
+    const importedPlaylist: Playlist = {
+      id: 'different-uuid-but-same-name',
+      name: 'Sync List',
+      kind: 'user',
+      sortOrder: 1,
+      entries: [
+        { mediaId: 'media-local', removed: false },
+        { mediaId: 'media-imported', removed: false },
+      ],
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+
+    const zip = zipSync({
+      'manifest.json': strToU8(
+        JSON.stringify({
+          version: 2,
+          createdAt: 1,
+          appVersion: '1.0.0',
+          flags: {
+            includeMedia: false,
+            includeRecordings: false,
+            includeSessions: false,
+            includeSettings: false,
+            includePlaylists: true,
+            includeSentenceBank: false,
+            includeNoise: false,
+          },
+          counts: {
+            media: 0,
+            subtitles: 0,
+            recordings: 0,
+            sessions: 0,
+            playlists: 1,
+            sentenceBank: 0,
+            noise: 0,
+          },
+        }),
+      ),
+      'playlists/metadata.jsonl': strToU8(JSON.stringify(importedPlaylist)),
+    });
+
+    const result = await importBackup(new File([zip], 'merge.zip', { type: 'application/zip' }));
+    expect(result.errors).toEqual([]);
+    expect(result.playlistsImported).toBe(1);
+    expect(result.playlistsSkipped).toBe(0);
+
+    const mergedPlaylist = (await db.get(STORE_PLAYLIST, localPlaylist.id)) as Playlist;
+    expect(mergedPlaylist.entries).toHaveLength(2);
+    expect(mergedPlaylist.entries.map((e) => e.mediaId)).toEqual(['media-local', 'media-imported']);
+
+    // Ensure no duplicate playlist with the new ID was created
+    const extraPlaylist = await db.get(STORE_PLAYLIST, 'different-uuid-but-same-name');
+    expect(extraPlaylist).toBeUndefined();
+  });
+
+  it('restores soft-deleted playlist entries on import if they are active in the backup', async () => {
+    const localPlaylist = await createPlaylist('Restore Test');
+    const db = await getDB();
+    localPlaylist.entries = [{ mediaId: 'media-deleted', removed: true, titleSnapshot: 'Old Title' }];
+    await db.put(STORE_PLAYLIST, localPlaylist);
+
+    const importedPlaylist: Playlist = {
+      id: 'different-uuid-restore',
+      name: 'Restore Test',
+      kind: 'user',
+      sortOrder: 1,
+      entries: [
+        { mediaId: 'media-deleted', removed: false, titleSnapshot: 'New Title' },
+      ],
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+
+    const zip = zipSync({
+      'manifest.json': strToU8(
+        JSON.stringify({
+          version: 2,
+          createdAt: 1,
+          appVersion: '1.0.0',
+          flags: {
+            includeMedia: false,
+            includeRecordings: false,
+            includeSessions: false,
+            includeSettings: false,
+            includePlaylists: true,
+            includeSentenceBank: false,
+            includeNoise: false,
+          },
+          counts: {
+            media: 0,
+            subtitles: 0,
+            recordings: 0,
+            sessions: 0,
+            playlists: 1,
+            sentenceBank: 0,
+            noise: 0,
+          },
+        }),
+      ),
+      'playlists/metadata.jsonl': strToU8(JSON.stringify(importedPlaylist)),
+    });
+
+    const result = await importBackup(new File([zip], 'restore.zip', { type: 'application/zip' }));
+    expect(result.errors).toEqual([]);
+    expect(result.playlistsImported).toBe(1);
+    expect(result.playlistsSkipped).toBe(0);
+
+    const mergedPlaylist = (await db.get(STORE_PLAYLIST, localPlaylist.id)) as Playlist;
+    expect(mergedPlaylist.entries).toHaveLength(1);
+    expect(mergedPlaylist.entries[0].removed).toBe(false);
+    expect(mergedPlaylist.entries[0].titleSnapshot).toBe('New Title');
+  });
 });
