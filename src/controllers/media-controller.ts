@@ -167,6 +167,8 @@ export class MediaController extends EventTarget {
         void element.play();
       }
     }
+
+    this._syncNativeLoop();
   }
 
   detachMediaElement(): void {
@@ -246,6 +248,7 @@ export class MediaController extends EventTarget {
       this.mediaElement.load();
       this.mediaElement.playbackRate = this.playbackRate;
       setLogicalVolume(this.mediaElement, this.volume);
+      this._syncNativeLoop();
 
       await new Promise<void>((resolve) => {
         const element = this.mediaElement;
@@ -574,6 +577,7 @@ export class MediaController extends EventTarget {
     } else if (mode === 'shuffle') {
       this._resetShuffleOrder(this.currentIndex);
     }
+    this._syncNativeLoop();
     this._emitChange();
   }
 
@@ -587,6 +591,7 @@ export class MediaController extends EventTarget {
       this.sleepRemainingSeconds = 0;
     }
 
+    this._syncNativeLoop();
     this._emitChange();
   }
 
@@ -665,6 +670,7 @@ export class MediaController extends EventTarget {
       setLogicalVolume(this.mediaElement, this.volume);
     }
 
+    this._syncNativeLoop();
     this._emitChange();
   }
 
@@ -855,6 +861,14 @@ export class MediaController extends EventTarget {
     }
     this.duration = endTime;
     this.currentTime = endTime;
+  }
+
+  /** Native wrap for Free Listening single when sleep is not until-end (lock-screen replay). */
+  private _syncNativeLoop(): void {
+    if (!this.mediaElement) {
+      return;
+    }
+    this.mediaElement.loop = this.loopMode === 'single' && this.sleepMode !== 'until-end';
   }
 
   private _handleEnded = (): void => {
@@ -1093,6 +1107,7 @@ export class MediaController extends EventTarget {
       this.sleepMode = 'off';
       this._clearSegmentPauseTimer();
       this.pause();
+      this._syncNativeLoop();
       this._emitChange();
       return;
     }
@@ -1109,6 +1124,7 @@ export class MediaController extends EventTarget {
         this.sleepMode = 'off';
         this._clearSegmentPauseTimer();
         this.pause();
+        this._syncNativeLoop();
         this._emitChange();
       },
     });

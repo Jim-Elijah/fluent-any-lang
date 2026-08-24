@@ -66,6 +66,7 @@ function createAudioMock(paused = true): HTMLAudioElement {
   audio.play = vi.fn().mockResolvedValue(undefined);
   audio.pause = vi.fn();
   audio.load = vi.fn(() => {
+    audio.loop = false;
     queueMicrotask(() => audio.dispatchEvent(new Event('loadedmetadata')));
   });
   Object.defineProperty(audio, 'duration', { configurable: true, value: 30 });
@@ -79,6 +80,7 @@ function createVideoMock(paused = true): HTMLVideoElement {
   video.play = vi.fn().mockResolvedValue(undefined);
   video.pause = vi.fn();
   video.load = vi.fn(() => {
+    video.loop = false;
     queueMicrotask(() => video.dispatchEvent(new Event('loadedmetadata')));
   });
   Object.defineProperty(video, 'duration', { configurable: true, value: 30 });
@@ -514,6 +516,44 @@ describe('MediaController', () => {
     expect(audio.play).toHaveBeenCalledTimes(1);
   });
 
+  it('sets native loop for single except when sleep is until-end', async () => {
+    await controller.loadTracks([makeTrack('a', 'Track A')]);
+    controller.setLoopMode('single');
+    expect(audio.loop).toBe(true);
+
+    controller.setSleepMode('until-end');
+    expect(audio.loop).toBe(false);
+
+    controller.setSleepMode('off');
+    expect(audio.loop).toBe(true);
+
+    controller.setSleepMode('until-end');
+    controller.setSleepMode('minutes');
+    expect(audio.loop).toBe(true);
+
+    controller.setLoopMode('list');
+    expect(audio.loop).toBe(false);
+    controller.setLoopMode('single');
+    controller.setLoopMode('none');
+    expect(audio.loop).toBe(false);
+  });
+
+  it('restores the default native loop flag after resetSettings', async () => {
+    await controller.loadTracks([makeTrack('a', 'Track A')]);
+    controller.setLoopMode('single');
+    expect(audio.loop).toBe(true);
+    controller.resetSettings();
+    expect(audio.loop).toBe(false);
+  });
+
+  it('re-applies native loop after load() when staying on single', async () => {
+    await controller.loadTracks([makeTrack('a', 'Track A'), makeTrack('b', 'Track B')]);
+    controller.setLoopMode('single');
+    expect(audio.loop).toBe(true);
+    await controller.loadTrack(1);
+    expect(audio.loop).toBe(true);
+  });
+
   it('navigates via shuffle order on next track', async () => {
     vi.spyOn(playbackUtils, 'shuffleIndices').mockReturnValue([1, 2, 0]);
     await controller.loadTracks([makeTrack('a', 'A'), makeTrack('b', 'B'), makeTrack('c', 'C')]);
@@ -851,22 +891,28 @@ describe('MediaController', () => {
   it('expires the sleep timer and pauses playback', async () => {
     vi.useFakeTimers();
     await controller.loadTracks([makeTrack('a', 'Track A')]);
+    controller.setLoopMode('single');
     controller.setSleepMinutes(1);
     controller.setSleepMode('minutes');
     expect(controller.getSnapshot().sleepRemainingSeconds).toBe(60);
+    expect(audio.loop).toBe(true);
 
     vi.advanceTimersByTime(61_000);
     expect(controller.getSnapshot().sleepMode).toBe('off');
     expect(audio.pause).toHaveBeenCalled();
+    expect(audio.loop).toBe(true);
     vi.useRealTimers();
   });
 
   it('clears sleep-until-end when the track ends', async () => {
     await controller.loadTracks([makeTrack('a', 'Track A')]);
+    controller.setLoopMode('single');
     controller.setSleepMode('until-end');
+    expect(audio.loop).toBe(false);
     audio.dispatchEvent(new Event('ended'));
     expect(controller.getSnapshot().sleepMode).toBe('off');
     expect(audio.pause).toHaveBeenCalled();
+    expect(audio.loop).toBe(true);
   });
 
   it('cancelSleep turns off sleep mode', async () => {
@@ -936,11 +982,13 @@ describe('MediaController', () => {
 
   it('pauses immediately when sleep minutes is zero', async () => {
     await controller.loadTracks([makeTrack('a', 'Track A')]);
+    controller.setLoopMode('single');
     audio.pause.mockClear();
     controller.setSleepMinutes(0);
     controller.setSleepMode('minutes');
     expect(controller.getSnapshot().sleepMode).toBe('off');
     expect(audio.pause).toHaveBeenCalled();
+    expect(audio.loop).toBe(true);
   });
 
   it('resumes into segment loop after percent-based segment pause', async () => {
