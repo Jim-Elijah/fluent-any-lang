@@ -131,6 +131,8 @@ type RecordingPreviewInternals = HTMLElement & {
   _sourceVolume: number;
   _recordingVolume: number;
   _activeSubtitle: SubtitleSegment | null;
+  _score: PronunciationScore | null;
+  _pairedMisreadIndex: number | null;
   _refreshActiveSubtitle: () => void;
   _handleVolumeChange: (track: 'source' | 'recording', value: number) => void;
   _applyVolumes: () => void;
@@ -1495,7 +1497,20 @@ describe('recording-preview', () => {
         word_scores: [],
         missing_words: [],
         extra_words: [],
-        misread_words: [{ expected: 'world', actual: 'help' }],
+        misread_words: [
+          {
+            expected: 'world',
+            actual: 'help',
+            ref_index: 1,
+            hyp_index: 1,
+            ref_char_start: 6,
+            ref_char_end: 11,
+            hyp_char_start: 6,
+            hyp_char_end: 10,
+            start: 0.5,
+            end: 0.8,
+          },
+        ],
       },
       createdAt: 1,
     };
@@ -1520,7 +1535,59 @@ describe('recording-preview', () => {
 
     const texts = el.shadowRoot?.querySelector('.score-texts');
     expect(texts?.textContent).toContain('读错');
-    expect(texts?.textContent).toContain('world → help');
+    expect(texts?.textContent).toMatch(/world\s*→\s*help/);
+    expect(texts?.querySelectorAll('button.score-hl--misread')).toHaveLength(2);
+    expect(texts?.querySelector('.score-hl--misread')?.textContent).toBe('help');
+    // In-text (2) + summary list expected/actual (2)
+    expect(texts?.querySelectorAll('.score-hl--misread')).toHaveLength(4);
+  });
+
+  it('highlights missing on reference and extra on transcript without making them clickable', async () => {
+    const score: PronunciationScore = {
+      id: 'score-1',
+      recordId: 'rec-1',
+      status: 'success',
+      referenceText: 'hello the world',
+      accuracy: 70,
+      fluency: 80,
+      completeness: 85,
+      prosody: 75,
+      overall: 77,
+      details: {
+        transcript: 'hello my world',
+        word_scores: [],
+        missing_words: [{ word: 'the', ref_index: 1, char_start: 6, char_end: 9 }],
+        extra_words: [{ word: 'my', hyp_index: 1, char_start: 6, char_end: 8 }],
+        misread_words: [],
+      },
+      createdAt: 1,
+    };
+    vi.spyOn(scoreDb, 'getScoreByRecordId').mockResolvedValue(score);
+
+    const el = await renderPreview();
+    el.record = {
+      id: 'rec-1',
+      mediaId: 'media-1',
+      mediaTitle: 'Lesson',
+      mediaFilename: 'lesson.mp3',
+      mode: 'echo',
+      mimeType: 'audio/webm',
+      createdAt: 1,
+      sourceDuration: 4,
+      recordingDuration: 4,
+      segments: [],
+    };
+    await el.updateComplete;
+    await flushUpdates();
+    await el.updateComplete;
+
+    const texts = el.shadowRoot?.querySelector('.score-texts');
+    expect(texts?.querySelector('.score-hl--missing')?.textContent).toBe('the');
+    expect(texts?.querySelector('.score-hl--extra')?.textContent).toBe('my');
+    // In-text + summary list each use the same error-type classes
+    expect(texts?.querySelectorAll('.score-hl--missing')).toHaveLength(2);
+    expect(texts?.querySelectorAll('.score-hl--extra')).toHaveLength(2);
+    expect(texts?.querySelectorAll('button.score-hl')).toHaveLength(0);
   });
 
   function scoredRecord(): PracticeRecord {
@@ -1538,19 +1605,22 @@ describe('recording-preview', () => {
     };
   }
 
-  function scoreWithWords(wordScores: PronunciationScore['details']): PronunciationScore {
+  function scoreWithWords(
+    wordScores: PronunciationScore['details'],
+    referenceText = 'hello world foo',
+  ): PronunciationScore {
     return {
       id: 'score-1',
       recordId: 'rec-1',
       status: 'success',
-      referenceText: 'hello world foo',
+      referenceText,
       accuracy: 80,
       fluency: 80,
       completeness: 80,
       prosody: 80,
       overall: 80,
       details: {
-        transcript: 'hello world foo',
+        transcript: referenceText,
         word_scores: [],
         missing_words: [],
         extra_words: [],
@@ -1563,8 +1633,11 @@ describe('recording-preview', () => {
 
   async function renderScoredPreview(
     wordScores: PronunciationScore['details'],
+    referenceText?: string,
   ): Promise<RecordingPreviewInternals> {
-    vi.spyOn(scoreDb, 'getScoreByRecordId').mockResolvedValue(scoreWithWords(wordScores));
+    vi.spyOn(scoreDb, 'getScoreByRecordId').mockResolvedValue(
+      scoreWithWords(wordScores, referenceText),
+    );
     const el = await renderPreview();
     el.segments = samplePracticeSegments;
     el.record = scoredRecord();
@@ -1724,24 +1797,48 @@ describe('recording-preview', () => {
     expect(playback.playRecordingAt).toHaveBeenCalledWith(0.12);
   });
 
-  it('does not play a score word listed as missing', async () => {
-    const infoSpy = vi.spyOn(Message, 'info');
-    const el = await renderScoredPreview({
-      word_scores: [{ word: 'the', start: 0.12, end: 0.3, score: 0 }],
-      missing_words: ['the'],
-    });
+  it('plays recording from a clickable misread highlight and pairs expected with actual', async () => {
+    const el = await renderScoredPreview(
+      {
+        transcript: 'hello help',
+        word_scores: [],
+        missing_words: [],
+        extra_words: [],
+        misread_words: [
+          {
+            expected: 'world',
+            actual: 'help',
+            ref_index: 1,
+            hyp_index: 1,
+            ref_char_start: 6,
+            ref_char_end: 11,
+            hyp_char_start: 6,
+            hyp_char_end: 10,
+            start: 0.42,
+            end: 0.7,
+          },
+        ],
+      },
+      'hello world',
+    );
+
     const playback = createPlaybackMock();
     el._playback = playback;
     el._playMode = 'recording';
     el._recordingTrackId = 'rec-track';
     await el.updateComplete;
 
-    const chip = el.shadowRoot?.querySelector('.word-chip') as HTMLButtonElement | null;
-    expect(chip?.getAttribute('aria-disabled')).toBe('true');
-    chip?.click();
+    const button = el.shadowRoot?.querySelector(
+      'button.score-hl--misread',
+    ) as HTMLButtonElement | null;
+    button?.click();
     await flushUpdates();
 
-    expect(infoSpy).toHaveBeenCalled();
-    expect(playback.playRecordingAt).not.toHaveBeenCalled();
+    expect(playback.playRecordingAt).toHaveBeenCalledWith(0.42);
+    expect(el.shadowRoot?.querySelectorAll('.score-hl--paired')).toHaveLength(2);
+
+    el._pairedMisreadIndex = null;
+    await el.updateComplete;
+    expect(el.shadowRoot?.querySelectorAll('.score-hl--paired')).toHaveLength(0);
   });
 });

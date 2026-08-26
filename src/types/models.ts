@@ -194,10 +194,43 @@ export type PronunciationWordScore = {
   score: number;
 };
 
-/** Misread word pair from POST /api/v2/pronunciation/score `details.misread_words`. */
+/** Missing (deleted) token from POST /api/v2/pronunciation/score `details.missing_words`. */
+export type PronunciationMissingWord = {
+  word: string;
+  /** 0-based index into tokenize(reference_text). */
+  ref_index: number;
+  /** Half-open `[char_start, char_end)` into reference_text. */
+  char_start: number;
+  char_end: number;
+};
+
+/** Extra (inserted) token from POST /api/v2/pronunciation/score `details.extra_words`. */
+export type PronunciationExtraWord = {
+  word: string;
+  /** 0-based index into tokenize(details.transcript). */
+  hyp_index: number;
+  /** Half-open `[char_start, char_end)` into details.transcript. */
+  char_start: number;
+  char_end: number;
+};
+
+/** Misread (replaced) token from POST /api/v2/pronunciation/score `details.misread_words`. */
 export type PronunciationMisreadWord = {
   expected: string;
   actual: string;
+  /** 0-based index into tokenize(reference_text). */
+  ref_index: number;
+  /** 0-based index into tokenize(details.transcript). */
+  hyp_index: number;
+  /** Half-open span into reference_text. */
+  ref_char_start: number;
+  ref_char_end: number;
+  /** Half-open span into details.transcript. */
+  hyp_char_start: number;
+  hyp_char_end: number;
+  /** Learner-recording seconds when word_scores align 1:1 with reference; else null. */
+  start?: number | null;
+  end?: number | null;
 };
 
 /** Match sub-scores from v2 `details.prosody_breakdown.match_breakdown`. */
@@ -259,8 +292,8 @@ export type StoredReferenceProsodyProfile = {
 export type PronunciationScoreDetails = {
   transcript: string;
   word_scores: PronunciationWordScore[];
-  missing_words: string[];
-  extra_words: string[];
+  missing_words: PronunciationMissingWord[];
+  extra_words: PronunciationExtraWord[];
   misread_words: PronunciationMisreadWord[];
   speech_rate_wpm?: number;
   pause_count?: number;

@@ -22,3 +22,10 @@ export {
   hasSpeechScorePrivacyAck,
   ackSpeechScorePrivacy,
 } from './privacy.js';
+export {
+  buildReferenceHighlightSpans,
+  buildTranscriptHighlightSpans,
+  misreadHasPlayableStart,
+  type ScoreTextHighlightKind,
+  type ScoreTextHighlightSpan,
+} from './text-highlight.js';

@@ -100,11 +100,41 @@ When `reference_duration` is provided, the server compares the learner's aligned
 }
 ```
 
+Example with positioned error buckets (same response shape; fields shown for frontend highlighting / seek):
+
+```json
+{
+  "missing_words": [
+    { "word": "were", "ref_index": 42, "char_start": 210, "char_end": 214 }
+  ],
+  "extra_words": [
+    { "word": "her", "hyp_index": 88, "char_start": 401, "char_end": 404 }
+  ],
+  "misread_words": [
+    {
+      "expected": "was",
+      "actual": "is",
+      "ref_index": 41,
+      "hyp_index": 41,
+      "ref_char_start": 206,
+      "ref_char_end": 209,
+      "hyp_char_start": 198,
+      "hyp_char_end": 200,
+      "start": 12.4,
+      "end": 12.7
+    }
+  ]
+}
+```
+
 - Top-level `prosody` is the main prosody score used in UI and in `overall`. With match: ≈ `0.5·naturalness + 0.5·match`; without match: equals naturalness.
 - `prosody_naturalness` / `prosody_match` may be null when match was not computed.
 - `details.reference_prosody_profile` is returned only when the server **newly built** a profile from `reference_audio`; when the client reused a cache, it is `null`. The client stores new profiles in IndexedDB for later Echo match requests.
 - `meta.reference_source`: `text` | `audio` | `profile`.
-- `details.missing_words`, `details.misread_words`, and `details.extra_words` are mutually exclusive word-level error buckets.
+- `details.missing_words`, `details.misread_words`, and `details.extra_words` are mutually exclusive word-level error buckets (delete / replace / insert from token alignment).
+- **Positions:** `ref_index` / `hyp_index` are 0-based indices into the same tokenization used for scoring (`tokenize` of `reference_text` / `details.transcript`). `char_start` / `char_end` (and `ref_char_*` / `hyp_char_*` on misreads) are half-open character spans `[start, end)` into those original strings (case/punctuation preserved). Use them for in-text highlighting; do not re-search by word string.
+- **Misread timing:** `misread_words[].start` / `end` are audio seconds on the learner recording when `word_scores` align 1:1 with reference tokens (same axis as `word_scores[].start` / `end`); otherwise `null`. `extra_words` do not include timing (timestamps come from reference forced-align, not transcript inserts).
+- **UI hint:** highlight missing + misread `expected` on reference text; highlight misread `actual` + extra on transcript; reuse the same error-type styles on the 漏读 / 读错 / 多读 summary lists (missing = gray strikethrough, extra = purple wavy underline, misread = red tint — independent of `word_scores` chip bands); seek playback from misread `start` when present.
 
 ### Display rules (this app)
 

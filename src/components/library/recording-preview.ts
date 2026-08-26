@@ -43,13 +43,17 @@ import { getAppSettings, getMaxVolumeBoost } from '../../lib/app-settings.js';
 import { getLocale } from '../../i18n/localization.js';
 import {
   ackSpeechScorePrivacy,
+  buildReferenceHighlightSpans,
+  buildTranscriptHighlightSpans,
   formatOverallBadge,
   hasSpeechScorePrivacyAck,
   isSpeechScoreConfigured,
+  misreadHasPlayableStart,
   requestScore,
   resolveReferenceText,
   SCORE_MAX_DURATION_SEC,
   scoreTooLongMessage,
+  type ScoreTextHighlightSpan,
 } from '../../lib/pronunciation-score/index.js';
 import { getScoreByRecordId } from '../../db/pronunciation-score.js';
 import { setLogicalVolume } from '../../lib/media-element-gain.js';
@@ -87,14 +91,34 @@ export type PreviewSubtitleLookup = {
   recordingTime: number;
 };
 
-function joinWordList(words: string[]): string {
-  return words.join(getLocale() === 'en' ? ', ' : '、');
+function wordListSeparator(): string {
+  return getLocale() === 'en' ? ', ' : '、';
 }
 
-function joinMisreadWordList(words: PronunciationMisreadWord[]): string {
-  const sep = getLocale() === 'en' ? ', ' : '、';
-  return words.map((word) => `${word.expected} → ${word.actual}`).join(sep);
+/** Error-type highlight for summary lists (same classes as in-text spans; not word-chips). */
+function renderErrorWordList(
+  words: Array<{ word: string }>,
+  kind: 'missing' | 'extra',
+): TemplateResult {
+  const sep = wordListSeparator();
+  return html`${words.map(
+    (item, i) =>
+      html`${i > 0 ? sep : nothing}<span class="score-hl score-hl--${kind}">${item.word}</span>`,
+  )}`;
 }
+
+function renderMisreadWordList(words: PronunciationMisreadWord[]): TemplateResult {
+  const sep = wordListSeparator();
+  return html`${words.map((word, i) => {
+    const pair = html`<span class="score-hl score-hl--misread">${word.expected}</span>${' → '}<span
+      class="score-hl score-hl--misread"
+      >${word.actual}</span
+    >`;
+    return i > 0 ? html`${sep}${pair}` : pair;
+  })}`;
+}
+
+const PAIRED_MISREAD_MS = 1000;
 
 function subtitleFromPracticeSegment(segment: PracticeSegment): SubtitleSegment | null {
   const text = segment.text?.trim();
@@ -357,6 +381,56 @@ export class RecordingPreview extends LitElement {
       font-weight: 600;
     }
 
+    .score-text-body {
+      display: inline;
+      line-height: 1.55;
+      word-break: break-word;
+    }
+
+    .score-hl {
+      border-radius: 2px;
+      padding: 0 1px;
+    }
+
+    /* Error-type legend (independent of word-chip score bands):
+       missing = omitted → gray strikethrough; extra = inserted → purple wavy;
+       misread = substituted → red tint. Same classes on in-text + summary lists. */
+    .score-hl--missing {
+      background: rgba(0, 0, 0, 0.06);
+      color: #8c8c8c;
+      text-decoration: line-through;
+    }
+
+    .score-hl--extra {
+      background: rgba(114, 46, 209, 0.14);
+      color: #531dab;
+      text-decoration: underline;
+      text-decoration-style: wavy;
+      text-underline-offset: 2px;
+    }
+
+    .score-hl--misread {
+      background: rgba(255, 77, 79, 0.18);
+      color: #cf1322;
+    }
+
+    button.score-hl--misread {
+      margin: 0;
+      border: none;
+      font: inherit;
+      cursor: pointer;
+      vertical-align: baseline;
+    }
+
+    button.score-hl--misread:focus-visible {
+      outline: 2px solid var(--color-primary, #1677ff);
+      outline-offset: 1px;
+    }
+
+    .score-hl--paired {
+      box-shadow: 0 0 0 2px rgba(255, 77, 79, 0.45);
+    }
+
     .word-heatmap {
       display: flex;
       flex-wrap: wrap;
@@ -386,11 +460,6 @@ export class RecordingPreview extends LitElement {
     .word-chip.low {
       background: rgba(255, 77, 79, 0.16);
       color: #cf1322;
-    }
-
-    .word-chip.is-missing {
-      cursor: default;
-      opacity: 0.7;
     }
 
     .word-rail {
@@ -431,11 +500,6 @@ export class RecordingPreview extends LitElement {
     .word-marker.low {
       background: rgba(255, 77, 79, 0.16);
       color: #cf1322;
-    }
-
-    .word-marker.is-missing {
-      cursor: default;
-      opacity: 0.7;
     }
 
     .score-skeleton {
@@ -514,6 +578,11 @@ export class RecordingPreview extends LitElement {
   @state()
   private _privacyOpen = false;
 
+  /** Index into `details.misread_words` while expected↔actual are paired-emphasized. */
+  @state()
+  private _pairedMisreadIndex: number | null = null;
+
+  private _pairClearTimer: ReturnType<typeof setTimeout> | null = null;
   private _playback: DualTrackPlayback | null = null;
   private _sourceTrackId = '';
   private _recordingTrackId = '';
@@ -559,6 +628,7 @@ export class RecordingPreview extends LitElement {
     if (supportsKeyboardShortcuts()) {
       getHotkeyManager().unregisterScope('recording-preview');
     }
+    this._clearPairedMisread(true);
     this._controller.removeEventListener(
       WaveformEventType.VIEW_RANGE_CHANGE,
       this._handleViewRangeChange,
@@ -803,28 +873,42 @@ export class RecordingPreview extends LitElement {
             <div class="score-texts">
               <div>
                 <strong>${msg('识别文本')}</strong>
-                ${details.transcript || '—'}
+                ${this._renderScoreTextBody(
+                  buildTranscriptHighlightSpans(
+                    details.transcript,
+                    details.extra_words,
+                    details.misread_words ?? [],
+                  ),
+                  details.misread_words ?? [],
+                )}
               </div>
               <div>
                 <strong>${msg('参考文本')}</strong>
-                ${score.referenceText || '—'}
+                ${this._renderScoreTextBody(
+                  buildReferenceHighlightSpans(
+                    score.referenceText,
+                    details.missing_words,
+                    details.misread_words ?? [],
+                  ),
+                  details.misread_words ?? [],
+                )}
               </div>
               ${details.missing_words.length
                 ? html`<div>
                     <strong>${msg('漏读')}</strong>
-                    ${joinWordList(details.missing_words)}
+                    ${renderErrorWordList(details.missing_words, 'missing')}
                   </div>`
                 : nothing}
               ${(details.misread_words ?? []).length
                 ? html`<div>
                     <strong>${msg('读错')}</strong>
-                    ${joinMisreadWordList(details.misread_words)}
+                    ${renderMisreadWordList(details.misread_words ?? [])}
                   </div>`
                 : nothing}
               ${details.extra_words.length
                 ? html`<div>
                     <strong>${msg('多读')}</strong>
-                    ${joinWordList(details.extra_words)}
+                    ${renderErrorWordList(details.extra_words, 'extra')}
                   </div>`
                 : nothing}
             </div>
@@ -836,6 +920,76 @@ export class RecordingPreview extends LitElement {
           `
         : nothing}
     `;
+  }
+
+  private _renderScoreTextBody(
+    spans: ScoreTextHighlightSpan[],
+    misreads: PronunciationMisreadWord[],
+  ): TemplateResult | string {
+    if (spans.length === 0) {
+      return '—';
+    }
+    return html`<span class="score-text-body"
+      >${spans.map((span) => this._renderScoreTextSpan(span, misreads))}</span
+    >`;
+  }
+
+  private _renderScoreTextSpan(
+    span: ScoreTextHighlightSpan,
+    misreads: PronunciationMisreadWord[],
+  ): TemplateResult | string {
+    if (span.kind === 'plain') {
+      return span.text;
+    }
+
+    const paired =
+      span.kind === 'misread' &&
+      span.misreadIndex !== undefined &&
+      span.misreadIndex === this._pairedMisreadIndex;
+    const classes = `score-hl score-hl--${span.kind}${paired ? ' score-hl--paired' : ''}`;
+
+    if (span.kind === 'misread' && span.misreadIndex !== undefined) {
+      const misread = misreads[span.misreadIndex];
+      if (misread && misreadHasPlayableStart(misread)) {
+        return html`<button
+          type="button"
+          class=${classes}
+          title=${msg('从该处播放录音')}
+          @click=${() => this._onMisreadHighlightClick(misread, span.misreadIndex!)}
+        >${span.text}</button>`;
+      }
+    }
+
+    return html`<span class=${classes}>${span.text}</span>`;
+  }
+
+  private _onMisreadHighlightClick(misread: PronunciationMisreadWord, index: number): void {
+    if (!misreadHasPlayableStart(misread)) {
+      return;
+    }
+    this._pairedMisreadIndex = index;
+    if (this._pairClearTimer !== null) {
+      clearTimeout(this._pairClearTimer);
+    }
+    this._pairClearTimer = setTimeout(() => {
+      this._pairClearTimer = null;
+      this._pairedMisreadIndex = null;
+    }, PAIRED_MISREAD_MS);
+    void this._playWordAt(misread.start as number);
+  }
+
+  private _clearPairedMisread(silent = false): void {
+    if (this._pairClearTimer !== null) {
+      clearTimeout(this._pairClearTimer);
+      this._pairClearTimer = null;
+    }
+    if (silent) {
+      this._pairedMisreadIndex = null;
+      return;
+    }
+    if (this._pairedMisreadIndex !== null) {
+      this._pairedMisreadIndex = null;
+    }
   }
 
   private _renderMetric(label: string, value: number | undefined, nested = false) {
@@ -857,21 +1011,11 @@ export class RecordingPreview extends LitElement {
     return 'low';
   }
 
-  private _missingWords(): string[] {
-    return this._score?.status === 'success' ? (this._score.details?.missing_words ?? []) : [];
-  }
-
-  private _wordIsMissing(word: string): boolean {
-    return this._missingWords().includes(word);
-  }
-
   private _renderWordChip(word: PronunciationWordScore) {
-    const missing = this._wordIsMissing(word.word);
     return html`<button
       type="button"
-      class="word-chip ${this._wordScoreClass(word.score)}${missing ? ' is-missing' : ''}"
-      aria-disabled=${missing ? 'true' : 'false'}
-      title=${missing ? msg('漏读，录音中没有对应位置') : `${word.word}`}
+      class="word-chip ${this._wordScoreClass(word.score)}"
+      title=${word.word}
       @click=${() => this._playScoredWord(word)}
     >
       ${word.word}
@@ -885,15 +1029,14 @@ export class RecordingPreview extends LitElement {
     return html`
       <div class="word-rail" slot="over-canvas">
         ${markers.map((marker) => {
-          const missing = this._wordIsMissing(marker.word);
           return html`<button
             type="button"
-            class="word-marker ${this._wordScoreClass(marker.score)}${missing ? ' is-missing' : ''}"
+            class="word-marker ${this._wordScoreClass(marker.score)}"
             style=${styleMap({
               left: `${marker.leftPct}%`,
               'max-width': `calc(${marker.maxWidthPct}% - 4px)`,
             })}
-            title=${missing ? msg('漏读，录音中没有对应位置') : `${marker.word}`}
+            title=${marker.word}
             @click=${() => this._playScoredWord(marker)}
           >
             ${marker.word}
@@ -932,8 +1075,7 @@ export class RecordingPreview extends LitElement {
   }
 
   private _playScoredWord(word: Pick<PronunciationWordScore, 'word' | 'start'>): void {
-    if (this._wordIsMissing(word.word) || !Number.isFinite(word.start)) {
-      Message.info(msg('漏读，录音中没有对应位置'));
+    if (!Number.isFinite(word.start)) {
       return;
     }
     void this._playWordAt(word.start);
