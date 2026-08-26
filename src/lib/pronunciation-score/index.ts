@@ -8,7 +8,12 @@ export {
   toScoreApiUrl,
   isSpeechScoreConfigured,
 } from './constants.js';
-export { PronunciationScoreHttpError, mapScoreHttpStatus, scorePronunciation } from './client.js';
+export {
+  PronunciationScoreHttpError,
+  mapScoreFetchFailure,
+  mapScoreHttpStatus,
+  scorePronunciation,
+} from './client.js';
 export {
   resolveReferenceText,
   resolveReferenceDuration,

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { PronunciationScoreApiResponse, ReferenceProsodyProfile } from '../../types/models.js';
-import { PronunciationScoreHttpError, mapScoreHttpStatus, scorePronunciation } from './client.js';
+import { PronunciationScoreHttpError, mapScoreFetchFailure, mapScoreHttpStatus, scorePronunciation } from './client.js';
 import { SCORE_API_PATH } from './constants.js';
 
 const sampleProfile: ReferenceProsodyProfile = {
@@ -185,6 +185,52 @@ describe('pronunciation-score client', () => {
       name: 'PronunciationScoreHttpError',
       status: 401,
       code: 'unauthorized',
+    } satisfies Partial<PronunciationScoreHttpError>);
+  });
+
+  it('maps fetch transport failure to network error', async () => {
+    fetchMock.mockRejectedValue(new TypeError('Failed to fetch'));
+
+    await expect(
+      scorePronunciation({
+        url: 'http://api.example/api/v1/pronunciation/score',
+        apiKey: 'key',
+        audio: new Blob(['x'], { type: 'audio/webm' }),
+        referenceText: 'hi',
+        referenceDuration: 1,
+        language: 'auto',
+      }),
+    ).rejects.toMatchObject({
+      name: 'PronunciationScoreHttpError',
+      status: 0,
+      code: 'network',
+      message: '网络不可用或评分服务未运行，请检查连接后重试',
+    } satisfies Partial<PronunciationScoreHttpError>);
+  });
+
+  it('maps AbortError to aborted', async () => {
+    const abortError = new DOMException('Aborted', 'AbortError');
+    expect(mapScoreFetchFailure(abortError)).toMatchObject({
+      status: 0,
+      code: 'aborted',
+      message: '评分已取消',
+    });
+
+    fetchMock.mockRejectedValue(abortError);
+
+    await expect(
+      scorePronunciation({
+        url: 'http://api.example/api/v1/pronunciation/score',
+        apiKey: 'key',
+        audio: new Blob(['x'], { type: 'audio/webm' }),
+        referenceText: 'hi',
+        referenceDuration: 1,
+        language: 'auto',
+        signal: AbortSignal.abort(),
+      }),
+    ).rejects.toMatchObject({
+      code: 'aborted',
+      message: '评分已取消',
     } satisfies Partial<PronunciationScoreHttpError>);
   });
 });

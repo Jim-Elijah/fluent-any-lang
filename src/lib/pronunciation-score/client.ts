@@ -8,6 +8,8 @@ export type ScoreHttpErrorCode =
   | 'invalid'
   | 'quota'
   | 'unavailable'
+  | 'network'
+  | 'aborted'
   | 'unknown';
 
 export class PronunciationScoreHttpError extends Error {
@@ -20,6 +22,25 @@ export class PronunciationScoreHttpError extends Error {
     this.status = status;
     this.code = code;
   }
+}
+
+function isAbortError(error: unknown): boolean {
+  return (
+    (error instanceof DOMException && error.name === 'AbortError') ||
+    (error instanceof Error && error.name === 'AbortError')
+  );
+}
+
+/** Maps fetch transport failures (no HTTP response) to a typed client error. */
+export function mapScoreFetchFailure(error: unknown): PronunciationScoreHttpError {
+  if (isAbortError(error)) {
+    return new PronunciationScoreHttpError(0, 'aborted', msg('评分已取消'));
+  }
+  return new PronunciationScoreHttpError(
+    0,
+    'network',
+    msg('网络不可用或评分服务未运行，请检查连接后重试'),
+  );
 }
 
 const STATUS_CODE_MAP: Record<number, ScoreHttpErrorCode> = {
@@ -101,12 +122,17 @@ export async function scorePronunciation(
     }
   }
 
-  const response = await fetch(input.url.trim(), {
-    method: 'POST',
-    headers: { 'X-API-Key': input.apiKey },
-    body: form,
-    signal: input.signal,
-  });
+  let response: Response;
+  try {
+    response = await fetch(input.url.trim(), {
+      method: 'POST',
+      headers: { 'X-API-Key': input.apiKey },
+      body: form,
+      signal: input.signal,
+    });
+  } catch (error) {
+    throw mapScoreFetchFailure(error);
+  }
 
   if (!response.ok) {
     const mapped = mapScoreHttpStatus(response.status);

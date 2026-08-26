@@ -54,7 +54,7 @@ import { Message } from '../ui/message.js';
 /** Row height including the --space-md (12px) gap below each card. */
 const RECORD_ROW_HEIGHT = 88;
 /** Narrow: meta + actions stacked; includes the same gap below each card. */
-const RECORD_ROW_HEIGHT_NARROW = 112;
+const RECORD_ROW_HEIGHT_NARROW = 100;
 const RECORD_LIST_HEIGHT = 480;
 
 @customElement('record-list')

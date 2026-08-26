@@ -44,6 +44,8 @@ export const practiceViewStyles = css`
     flex-direction: column;
     gap: var(--space-xs);
     margin-top: var(--space-sm);
+    max-height: 12rem;
+    overflow-y: auto;
   }
 
   .noise-item-row {

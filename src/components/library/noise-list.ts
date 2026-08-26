@@ -197,6 +197,7 @@ export class NoiseList extends LitElement {
 
       :host([selection-mode]) .actions {
         grid-column: 1 / -1;
+        justify-self: end;
       }
 
       .details {
