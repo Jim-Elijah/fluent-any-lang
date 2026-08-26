@@ -1,5 +1,6 @@
 import { msg, str } from '@lit/localize';
 import type { PronunciationScoreApiResponse, ReferenceProsodyProfile } from '../../types/models.js';
+import { normalizeNewlines } from './normalize.js';
 
 export type ScoreHttpErrorCode =
   | 'unauthorized'
@@ -85,7 +86,8 @@ export async function scorePronunciation(
 ): Promise<PronunciationScoreApiResponse> {
   const form = new FormData();
   form.append('audio', input.audio, audioFileName(input.audio));
-  form.append('reference_text', input.referenceText);
+  // LF-normalize before upload; server normalizes again, but this reduces cross-end drift.
+  form.append('reference_text', normalizeNewlines(input.referenceText).trim());
   form.append('reference_duration', String(input.referenceDuration));
   form.append('language', input.language);
 

@@ -22,6 +22,7 @@ export {
   hasSpeechScorePrivacyAck,
   ackSpeechScorePrivacy,
 } from './privacy.js';
+export { normalizeNewlines } from './normalize.js';
 export {
   buildReferenceHighlightSpans,
   buildTranscriptHighlightSpans,

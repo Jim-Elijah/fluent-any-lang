@@ -89,7 +89,8 @@ When `reference_duration` is provided, the server compares the learner's aligned
       "words": [],
       "f0_contour": [],
       "energy_contour": []
-    }
+    },
+    "reference_newline": "lf"
   },
   "meta": {
     "model": "whisperx-base",
@@ -132,9 +133,10 @@ Example with positioned error buckets (same response shape; fields shown for fro
 - `details.reference_prosody_profile` is returned only when the server **newly built** a profile from `reference_audio`; when the client reused a cache, it is `null`. The client stores new profiles in IndexedDB for later Echo match requests.
 - `meta.reference_source`: `text` | `audio` | `profile`.
 - `details.missing_words`, `details.misread_words`, and `details.extra_words` are mutually exclusive word-level error buckets (delete / replace / insert from token alignment).
-- **Positions:** `ref_index` / `hyp_index` are 0-based indices into the same tokenization used for scoring (`tokenize` of `reference_text` / `details.transcript`). `char_start` / `char_end` (and `ref_char_*` / `hyp_char_*` on misreads) are half-open character spans `[start, end)` into those original strings (case/punctuation preserved). Use them for in-text highlighting; do not re-search by word string.
+- **Newline / char indices:** `details.reference_newline` is always `"lf"`. Before scoring, the server normalizes `\r\n` / `\r` to `\n` in the reference script and in `details.transcript`. All `char_*` / `ref_char_*` / `hyp_char_*` are half-open `[start, end)` into those **LF-normalized** strings (case/punctuation preserved). `details.reference_text` is **not** returned — slice a local LF-normalized reference (`normalizeNewlines` then `slice`), and use `details.transcript` for hyp spans. Do not re-search by word string.
 - **Misread timing:** `misread_words[].start` / `end` are audio seconds on the learner recording when `word_scores` align 1:1 with reference tokens (same axis as `word_scores[].start` / `end`); otherwise `null`. `extra_words` do not include timing (timestamps come from reference forced-align, not transcript inserts).
-- **UI hint:** highlight missing + misread `expected` on reference text; highlight misread `actual` + extra on transcript; reuse the same error-type styles on the 漏读 / 读错 / 多读 summary lists (missing = gray strikethrough, extra = purple wavy underline, misread = red tint — independent of `word_scores` chip bands); seek playback from misread `start` when present.
+- **UI hint:** highlight missing + misread `expected` on LF-normalized reference text; highlight misread `actual` + extra on `details.transcript`; reuse the same error-type styles on the 漏读 / 读错 / 多读 summary lists (missing = gray strikethrough, extra = purple wavy underline, misread = red tint — independent of `word_scores` chip bands); seek playback from misread `start` when present. If the UI still shows original `\r\n` subtitles, keep a separate display copy — do not mix display newlines with the slice coordinate system.
+- **Upload:** this app LF-normalizes (and trims) `reference_text` before POST; the server normalizes again.
 
 ### Display rules (this app)
 

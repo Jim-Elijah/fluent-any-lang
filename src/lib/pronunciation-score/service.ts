@@ -25,6 +25,7 @@ import {
   scoreTooLargeMessage,
   scoreTooLongMessage,
 } from './constants.js';
+import { normalizeNewlines } from './normalize.js';
 
 export {
   isSpeechScoreConfigured,
@@ -71,7 +72,7 @@ function notConfigured() {
 
 function joinReferenceTexts(texts: string[]): string {
   return texts
-    .map((text) => text.trim())
+    .map((text) => normalizeNewlines(text).trim())
     .filter(Boolean)
     .join('\n');
 }
@@ -89,15 +90,19 @@ function segmentReferenceText(
   segment: { id: string; text?: string } | undefined,
   byId: Map<string, string>,
 ): string | null {
-  const snapshot = segment?.text?.trim();
+  const snapshot = segment?.text ? normalizeNewlines(segment.text).trim() : '';
   if (snapshot) {
     return snapshot;
   }
-  const live = segment ? byId.get(segment.id)?.trim() : undefined;
-  return live ? live : null;
+  const liveRaw = segment ? byId.get(segment.id) : undefined;
+  const live = liveRaw ? normalizeNewlines(liveRaw).trim() : '';
+  return live || null;
 }
 
-/** Resolve reference text from a Practice Record snapshot, falling back to the live Subtitle Track. */
+/**
+ * Resolve reference text from a Practice Record snapshot, falling back to the live Subtitle Track.
+ * Newlines are LF-normalized (and trimmed) so upload / highlight share the API char index space.
+ */
 export function resolveReferenceText(
   record: PracticeRecord,
   subtitleTrack: { segments: ReadonlyArray<{ id: string; text: string }> } | undefined,
@@ -114,8 +119,9 @@ export function resolveReferenceText(
     if (!segmentId) {
       return null;
     }
-    const live = byId.get(segmentId)?.trim();
-    return live ? live : null;
+    const liveRaw = byId.get(segmentId);
+    const live = liveRaw ? normalizeNewlines(liveRaw).trim() : '';
+    return live || null;
   }
 
   const parts: string[] = [];
@@ -146,7 +152,7 @@ export function isCachedProfileValid(
   referenceText: string,
   referenceDuration: number,
 ): boolean {
-  if (profile.reference_text !== referenceText) {
+  if (normalizeNewlines(profile.reference_text).trim() !== normalizeNewlines(referenceText).trim()) {
     return false;
   }
   return (

@@ -197,9 +197,9 @@ export type PronunciationWordScore = {
 /** Missing (deleted) token from POST /api/v2/pronunciation/score `details.missing_words`. */
 export type PronunciationMissingWord = {
   word: string;
-  /** 0-based index into tokenize(reference_text). */
+  /** 0-based index into tokenize(LF-normalized reference script). */
   ref_index: number;
-  /** Half-open `[char_start, char_end)` into reference_text. */
+  /** Half-open `[char_start, char_end)` into LF-normalized reference script. */
   char_start: number;
   char_end: number;
 };
@@ -207,9 +207,9 @@ export type PronunciationMissingWord = {
 /** Extra (inserted) token from POST /api/v2/pronunciation/score `details.extra_words`. */
 export type PronunciationExtraWord = {
   word: string;
-  /** 0-based index into tokenize(details.transcript). */
+  /** 0-based index into tokenize(details.transcript) (already LF). */
   hyp_index: number;
-  /** Half-open `[char_start, char_end)` into details.transcript. */
+  /** Half-open `[char_start, char_end)` into details.transcript (already LF). */
   char_start: number;
   char_end: number;
 };
@@ -218,14 +218,14 @@ export type PronunciationExtraWord = {
 export type PronunciationMisreadWord = {
   expected: string;
   actual: string;
-  /** 0-based index into tokenize(reference_text). */
+  /** 0-based index into tokenize(LF-normalized reference script). */
   ref_index: number;
-  /** 0-based index into tokenize(details.transcript). */
+  /** 0-based index into tokenize(details.transcript) (already LF). */
   hyp_index: number;
-  /** Half-open span into reference_text. */
+  /** Half-open span into LF-normalized reference script. */
   ref_char_start: number;
   ref_char_end: number;
-  /** Half-open span into details.transcript. */
+  /** Half-open span into details.transcript (already LF). */
   hyp_char_start: number;
   hyp_char_end: number;
   /** Learner-recording seconds when word_scores align 1:1 with reference; else null. */
@@ -309,6 +309,12 @@ export type PronunciationScoreDetails = {
   prosody_match?: number | null;
   /** Present when the server built a new profile from reference_audio; null when reusing cache. */
   reference_prosody_profile?: ReferenceProsodyProfile | null;
+  /**
+   * Char-span coordinate system for reference/transcript indices.
+   * Always `"lf"`: server normalizes `\r\n` / `\r` to `\n` before scoring.
+   * Do not use a `details.reference_text` echo (not returned); slice local LF-normalized reference.
+   */
+  reference_newline?: 'lf';
 };
 
 /** Meta payload aligned with POST /api/v2/pronunciation/score `meta`. */

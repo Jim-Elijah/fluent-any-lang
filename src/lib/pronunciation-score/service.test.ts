@@ -175,6 +175,46 @@ describe('resolveReferenceText', () => {
     ).toBe('Hello there');
   });
 
+  it('LF-normalizes CRLF inside snapshot / live Subtitle Segment text', () => {
+    expect(
+      resolveReferenceText(
+        makeRecord({
+          segments: [
+            {
+              id: 'seg-a',
+              sourceStartTime: 0,
+              sourceEndTime: 2,
+              recordingStartTime: 0,
+              recordingEndTime: 2,
+              text: 'Hello\r\nthere',
+            },
+          ],
+        }),
+        undefined,
+      ),
+    ).toBe('Hello\nthere');
+
+    expect(
+      resolveReferenceText(
+        makeRecord({
+          segments: [
+            {
+              id: 'seg-a',
+              sourceStartTime: 0,
+              sourceEndTime: 2,
+              recordingStartTime: 0,
+              recordingEndTime: 2,
+            },
+          ],
+        }),
+        {
+          ...subtitleTrack,
+          segments: [{ id: 'seg-a', startTime: 0, endTime: 2, text: 'Hi\rthere' }],
+        },
+      ),
+    ).toBe('Hi\nthere');
+  });
+
   it('prefers the snapshot over a later Subtitle Track', () => {
     expect(
       resolveReferenceText(
@@ -261,6 +301,16 @@ describe('isCachedProfileValid', () => {
     expect(isCachedProfileValid(sampleProfile, 'Hello there', 2.04)).toBe(true);
     expect(isCachedProfileValid(sampleProfile, 'Hello there', 2.06)).toBe(false);
     expect(isCachedProfileValid(sampleProfile, 'Other text', 2)).toBe(false);
+  });
+
+  it('treats CRLF and LF reference_text as the same for cache reuse', () => {
+    expect(
+      isCachedProfileValid(
+        { ...sampleProfile, reference_text: 'Hello\r\nthere' },
+        'Hello\nthere',
+        2,
+      ),
+    ).toBe(true);
   });
 });
 

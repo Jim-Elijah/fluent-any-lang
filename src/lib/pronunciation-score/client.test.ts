@@ -90,6 +90,27 @@ describe('pronunciation-score client', () => {
     expect(audioPart).toBeInstanceOf(Blob);
   });
 
+  it('LF-normalizes reference_text before upload', async () => {
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify(successBody), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+
+    await scorePronunciation({
+      url: `http://localhost:8000${SCORE_API_PATH}`,
+      apiKey: 'test-key',
+      audio: new Blob(['abc'], { type: 'audio/webm' }),
+      referenceText: 'hello\r\nworld\r!',
+      referenceDuration: 3.5,
+      language: 'en',
+    });
+
+    const form = (fetchMock.mock.calls[0] as [string, RequestInit])[1].body as FormData;
+    expect(form.get('reference_text')).toBe('hello\nworld\n!');
+  });
+
   it('sends reference_prosody_profile and omits reference_audio', async () => {
     fetchMock.mockResolvedValue(
       new Response(JSON.stringify(successBody), {

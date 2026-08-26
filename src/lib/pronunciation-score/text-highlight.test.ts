@@ -1,10 +1,17 @@
 import { describe, expect, it } from 'vitest';
 
+import { normalizeNewlines } from './normalize.js';
 import {
   buildReferenceHighlightSpans,
   buildTranscriptHighlightSpans,
   misreadHasPlayableStart,
 } from './text-highlight.js';
+
+describe('normalizeNewlines', () => {
+  it('maps CRLF and CR to LF', () => {
+    expect(normalizeNewlines('a\r\nb\rc')).toBe('a\nb\nc');
+  });
+});
 
 describe('pronunciation-score text-highlight', () => {
   it('highlights missing and misread on reference text by char spans', () => {
@@ -34,6 +41,36 @@ describe('pronunciation-score text-highlight', () => {
       { kind: 'plain', text: ' ', misreadIndex: undefined },
       { kind: 'missing', text: 'were', misreadIndex: undefined },
       { kind: 'plain', text: ' gone', misreadIndex: undefined },
+    ]);
+  });
+
+  it('LF-normalizes local reference before applying API char spans', () => {
+    // API indices assume LF: "line1\nwas gone" → "was" at [6, 9)
+    const localRef = 'line1\r\nwas gone';
+    const misread = {
+      expected: 'was',
+      actual: 'is',
+      ref_index: 1,
+      hyp_index: 1,
+      ref_char_start: 6,
+      ref_char_end: 9,
+      hyp_char_start: 6,
+      hyp_char_end: 8,
+    };
+    const transcript = 'line1\nis gone';
+
+    expect(
+      normalizeNewlines(localRef).slice(misread.ref_char_start, misread.ref_char_end).toLowerCase(),
+    ).toBe(misread.expected);
+    expect(transcript.slice(misread.hyp_char_start, misread.hyp_char_end).toLowerCase()).toBe(
+      misread.actual,
+    );
+
+    const spans = buildReferenceHighlightSpans(localRef, [], [misread]);
+    expect(spans.map((s) => ({ kind: s.kind, text: s.text }))).toEqual([
+      { kind: 'plain', text: 'line1\n' },
+      { kind: 'misread', text: 'was' },
+      { kind: 'plain', text: ' gone' },
     ]);
   });
 
