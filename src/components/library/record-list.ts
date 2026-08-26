@@ -19,8 +19,10 @@ import {
   requestScore,
   resolveReferenceText,
   SCORE_MAX_DURATION_SEC,
+  scoreBand,
   scoreTooLongMessage,
 } from '../../lib/pronunciation-score/index.js';
+import { scoreBandStyles } from '../shared/score-band-styles.js';
 import { getAppSettings } from '../../lib/app-settings.js';
 import { exportRecording } from '../../lib/export-content.js';
 import {
@@ -58,7 +60,9 @@ const RECORD_LIST_HEIGHT = 480;
 @customElement('record-list')
 @localized()
 export class RecordList extends LitElement {
-  static styles = css`
+  static styles = [
+    scoreBandStyles,
+    css`
     :host {
       display: block;
     }
@@ -189,8 +193,6 @@ export class RecordList extends LitElement {
       font-size: 0.75rem;
       font-weight: 600;
       line-height: 1.2;
-      background: rgba(82, 196, 26, 0.14);
-      color: #389e0d;
     }
 
     .score-badge.pending {
@@ -275,7 +277,8 @@ export class RecordList extends LitElement {
         justify-content: flex-end;
       }
     }
-  `;
+  `,
+  ];
 
   @property({ type: String })
   keyword?: string;
@@ -645,6 +648,7 @@ export class RecordList extends LitElement {
       recording,
       this._subtitleByMediaId.get(recording.mediaId),
     );
+    const scoreConfigured = isSpeechScoreConfigured(getAppSettings());
     const scoreBlocked = scoring || tooLong || noReference;
     const scoreLabel =
       score?.status === 'success' ? msg('重新评分') : scoring ? msg('评分中') : msg('评分');
@@ -699,16 +703,18 @@ export class RecordList extends LitElement {
               <ui-icon name="download"></ui-icon>
             </ui-button>
           </ui-tooltip>
-          <ui-tooltip title="${scoreTip}">
-            <ui-button
-              variant="secondary"
-              aria-label="${scoreLabel}"
-              ?disabled=${scoreBlocked}
-              @click="${() => this._handleScore(recording)}"
-            >
-              <ui-icon name="score"></ui-icon>
-            </ui-button>
-          </ui-tooltip>
+          ${scoreConfigured
+            ? html`<ui-tooltip title="${scoreTip}">
+                <ui-button
+                  variant="secondary"
+                  aria-label="${scoreLabel}"
+                  ?disabled=${scoreBlocked}
+                  @click="${() => this._handleScore(recording)}"
+                >
+                  <ui-icon name="score"></ui-icon>
+                </ui-button>
+              </ui-tooltip>`
+            : null}
           <ui-popconfirm
             title=${msg('确定删除该录音吗？')}
             placement="bottom"
@@ -736,7 +742,9 @@ export class RecordList extends LitElement {
       ></span>`;
     }
     if (score?.status === 'success' && typeof score.overall === 'number') {
-      return html`<span class="score-badge">${formatOverallBadge(score.overall)}</span>`;
+      return html`<span class="score-badge score-band ${scoreBand(score.overall)}"
+        >${formatOverallBadge(score.overall)}</span
+      >`;
     }
     return null;
   }

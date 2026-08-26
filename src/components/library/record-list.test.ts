@@ -13,12 +13,13 @@ vi.mock('../../lib/export-content.js', () => ({
 }));
 
 const requestScoreMock = vi.fn();
+let speechScoreConfigured = true;
 vi.mock('../../lib/pronunciation-score/index.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../lib/pronunciation-score/index.js')>();
   return {
     ...actual,
     requestScore: (...args: unknown[]) => requestScoreMock(...args),
-    isSpeechScoreConfigured: () => true,
+    isSpeechScoreConfigured: () => speechScoreConfigured,
     hasSpeechScorePrivacyAck: () => true,
     ackSpeechScorePrivacy: vi.fn(),
   };
@@ -57,6 +58,7 @@ describe('record-list', () => {
   let cleanup: (() => void) | undefined;
 
   beforeEach(() => {
+    speechScoreConfigured = true;
     vi.spyOn(recordDb, 'getRecordingList').mockResolvedValue([]);
     vi.spyOn(recordDb, 'findRecordings').mockResolvedValue([]);
     vi.spyOn(recordDb, 'deleteRecording').mockResolvedValue(undefined as never);
@@ -455,7 +457,80 @@ describe('record-list', () => {
     await el.updateComplete;
 
     expect(el.shadowRoot?.querySelector('.score-badge')?.textContent?.trim()).toBe('84');
+    expect(el.shadowRoot?.querySelector('.score-badge.score-band.good')).not.toBeNull();
     expect(el.shadowRoot?.querySelector('ui-button[aria-label="重新评分"]')).not.toBeNull();
+  });
+
+  it('hides the score action when speech score is not configured', async () => {
+    speechScoreConfigured = false;
+    vi.mocked(recordDb.getRecordingList).mockResolvedValue([sampleRecord]);
+
+    const el = await renderList();
+    await el.refresh();
+    await el.updateComplete;
+
+    expect(el.shadowRoot?.querySelector('ui-button[aria-label="评分"]')).toBeNull();
+    expect(el.shadowRoot?.querySelector('ui-button[aria-label="重新评分"]')).toBeNull();
+  });
+
+  it('keeps the score badge but hides rescore when not configured', async () => {
+    speechScoreConfigured = false;
+    const score: PronunciationScore = {
+      id: 'score-1',
+      recordId: 'rec-1',
+      status: 'success',
+      referenceText: 'hello',
+      overall: 84.2,
+      createdAt: 1,
+    };
+    vi.mocked(recordDb.getRecordingList).mockResolvedValue([sampleRecord]);
+    vi.mocked(scoreDb.getScoresByRecordIds).mockResolvedValue(new Map([['rec-1', score]]));
+
+    const el = await renderList();
+    await el.refresh();
+    await el.updateComplete;
+
+    expect(el.shadowRoot?.querySelector('.score-badge')?.textContent?.trim()).toBe('84');
+    expect(el.shadowRoot?.querySelector('ui-button[aria-label="重新评分"]')).toBeNull();
+  });
+
+  it('applies good, mid and low score-band classes on overall badges', async () => {
+    const midScore: PronunciationScore = {
+      id: 'score-mid',
+      recordId: 'rec-1',
+      status: 'success',
+      referenceText: 'hello',
+      overall: 65,
+      createdAt: 1,
+    };
+    vi.mocked(recordDb.getRecordingList).mockResolvedValue([sampleRecord]);
+    vi.mocked(scoreDb.getScoresByRecordIds).mockResolvedValue(new Map([['rec-1', midScore]]));
+
+    const el = await renderList();
+    await el.refresh();
+    await el.updateComplete;
+    expect(el.shadowRoot?.querySelector('.score-badge.score-band.mid')).not.toBeNull();
+
+    vi.mocked(scoreDb.getScoresByRecordIds).mockResolvedValue(
+      new Map([['rec-1', { ...midScore, id: 'score-good', overall: 85 }]]),
+    );
+    await el.refresh();
+    await el.updateComplete;
+    expect(el.shadowRoot?.querySelector('.score-badge.score-band.good')).not.toBeNull();
+
+    vi.mocked(scoreDb.getScoresByRecordIds).mockResolvedValue(
+      new Map([['rec-1', { ...midScore, id: 'score-high', overall: 92 }]]),
+    );
+    await el.refresh();
+    await el.updateComplete;
+    expect(el.shadowRoot?.querySelector('.score-badge.score-band.high')).not.toBeNull();
+
+    vi.mocked(scoreDb.getScoresByRecordIds).mockResolvedValue(
+      new Map([['rec-1', { ...midScore, id: 'score-low', overall: 40 }]]),
+    );
+    await el.refresh();
+    await el.updateComplete;
+    expect(el.shadowRoot?.querySelector('.score-badge.score-band.low')).not.toBeNull();
   });
 
   it('requests a score from the row action', async () => {

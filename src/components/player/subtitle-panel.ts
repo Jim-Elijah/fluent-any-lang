@@ -9,7 +9,8 @@ import type {
 } from '../../controllers/media-controller.js';
 import { reportSubtitleImportResult } from '../import/subtitle-import-feedback.js';
 import { formatTime } from '../../lib/playback-utils.js';
-import { formatOverallBadge } from '../../lib/pronunciation-score/aggregate.js';
+import { formatOverallBadge, scoreBand } from '../../lib/pronunciation-score/index.js';
+import { scoreBandStyles } from '../shared/score-band-styles.js';
 import { supportsKeyboardShortcuts } from '../../lib/hotkeys/index.js';
 import { getMicrophoneBlockedMessage } from '../../lib/microphone-access.js';
 import {
@@ -197,7 +198,9 @@ const FULLSCREEN_PORTAL_STYLES = `
 @customElement('subtitle-panel')
 @localized()
 export class SubtitlePanel extends LitElement {
-  static styles = css`
+  static styles = [
+    scoreBandStyles,
+    css`
     :host {
       display: block;
     }
@@ -374,18 +377,6 @@ export class SubtitlePanel extends LitElement {
       font-weight: 600;
       line-height: 1;
       text-decoration: none;
-      background: rgba(82, 196, 26, 0.16);
-      color: #389e0d;
-    }
-
-    .echo-score.mid {
-      background: rgba(250, 173, 20, 0.2);
-      color: #ad6800;
-    }
-
-    .echo-score.low {
-      background: rgba(255, 77, 79, 0.16);
-      color: #cf1322;
     }
 
     @media (max-width: 767px) {
@@ -396,7 +387,8 @@ export class SubtitlePanel extends LitElement {
         text-align: left;
       }
     }
-  `;
+  `,
+  ];
 
   @property({ attribute: false })
   controller: MediaController | null = null;
@@ -818,10 +810,10 @@ export class SubtitlePanel extends LitElement {
     if (typeof overall !== 'number') {
       return nothing;
     }
-    const band = overall >= 80 ? '' : overall >= 60 ? 'mid' : 'low';
+    const band = scoreBand(overall);
     return html`
       <span
-        class="echo-score ${band}"
+        class="echo-score score-band ${band}"
         aria-label="${msg(str`发音评分 ${formatOverallBadge(overall)}`)}"
         >${formatOverallBadge(overall)}</span
       >

@@ -1536,9 +1536,11 @@ describe('recording-preview', () => {
     const texts = el.shadowRoot?.querySelector('.score-texts');
     expect(texts?.textContent).toContain('读错');
     expect(texts?.textContent).toMatch(/world\s*→\s*help/);
-    expect(texts?.querySelectorAll('button.score-hl--misread')).toHaveLength(2);
-    expect(texts?.querySelector('.score-hl--misread')?.textContent).toBe('help');
-    // In-text (2) + summary list expected/actual (2)
+    const labels = texts?.textContent ?? '';
+    expect(labels.indexOf('参考文本')).toBeLessThan(labels.indexOf('识别文本'));
+    // In-text expected/actual + summary list expected/actual (all playable → buttons)
+    expect(texts?.querySelectorAll('button.score-hl--misread')).toHaveLength(4);
+    expect(texts?.querySelector('.score-hl--misread')?.textContent).toBe('world');
     expect(texts?.querySelectorAll('.score-hl--misread')).toHaveLength(4);
   });
 
@@ -1835,7 +1837,8 @@ describe('recording-preview', () => {
     await flushUpdates();
 
     expect(playback.playRecordingAt).toHaveBeenCalledWith(0.42);
-    expect(el.shadowRoot?.querySelectorAll('.score-hl--paired')).toHaveLength(2);
+    // In-text expected/actual + 读错 list expected/actual
+    expect(el.shadowRoot?.querySelectorAll('.score-hl--paired')).toHaveLength(4);
 
     el._pairedMisreadIndex = null;
     await el.updateComplete;
