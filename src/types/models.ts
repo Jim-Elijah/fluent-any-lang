@@ -470,6 +470,8 @@ export type AppSettings = {
   skipDiscriminationTips: boolean;
   /** ID of the last playlist loaded into practice. */
   lastPlayedPlaylistId: string;
+  /** ID of the last Media loaded into practice (single or playlist). */
+  lastPlayedMediaId: string;
   /** 辨音训练偏好（噪声选择 + 速听阶梯） */
   discrimination: DiscriminationSettings;
   /** Full POST URL for pronunciation scoring (`…/api/v2/pronunciation/score`). */
@@ -563,6 +565,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   skipEchoTips: false,
   skipDiscriminationTips: false,
   lastPlayedPlaylistId: '',
+  lastPlayedMediaId: '',
   discrimination: { ...DEFAULT_DISCRIMINATION_SETTINGS, ladderRates: [1] },
   speechScoreApiUrl: '',
   speechScoreApiKey: '',

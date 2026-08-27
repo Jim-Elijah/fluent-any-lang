@@ -268,7 +268,7 @@ describe('record-list', () => {
       | { itemHeight?: number }
       | null
       | undefined;
-    expect(grid?.itemHeight).toBe(112);
+    expect(grid?.itemHeight).toBe(100);
   });
 
   it('loads recordings for a specific media id', async () => {

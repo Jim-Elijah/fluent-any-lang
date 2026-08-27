@@ -1540,7 +1540,7 @@ describe('recording-preview', () => {
     expect(labels.indexOf('参考文本')).toBeLessThan(labels.indexOf('识别文本'));
     // In-text expected/actual + summary list expected/actual (all playable → buttons)
     expect(texts?.querySelectorAll('button.score-hl--misread')).toHaveLength(4);
-    expect(texts?.querySelector('.score-hl--misread')?.textContent).toBe('world');
+    expect(texts?.querySelector('.score-hl--misread')?.textContent?.trim()).toBe('world');
     expect(texts?.querySelectorAll('.score-hl--misread')).toHaveLength(4);
   });
 

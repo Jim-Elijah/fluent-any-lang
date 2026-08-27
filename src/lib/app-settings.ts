@@ -280,6 +280,10 @@ function parseAppSettings(raw: unknown): AppSettings {
       typeof raw.lastPlayedPlaylistId === 'string'
         ? raw.lastPlayedPlaylistId
         : DEFAULT_SETTINGS.lastPlayedPlaylistId,
+    lastPlayedMediaId:
+      typeof raw.lastPlayedMediaId === 'string'
+        ? raw.lastPlayedMediaId
+        : DEFAULT_SETTINGS.lastPlayedMediaId,
     discrimination: normalizeDiscriminationSettings(raw.discrimination, maxPlaybackRate),
     speechScoreApiUrl: parseSpeechScoreApiUrl(
       raw,

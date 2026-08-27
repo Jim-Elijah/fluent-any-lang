@@ -1,6 +1,7 @@
 import { msg, str, localized } from '@lit/localize';
 import { css, html, LitElement, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import { keyed } from 'lit/directives/keyed.js';
 
 import {
   deleteMedia,
@@ -15,6 +16,7 @@ import {
 } from '../../db/service.js';
 
 import { reportError } from '../../lib/error-reporter.js';
+import { getAppSettings, setAppSettings } from '../../lib/app-settings.js';
 import {
   findImportedSubtitleTrack,
   runSubtitleImport,
@@ -298,6 +300,9 @@ export class MediaList extends LitElement {
   private _narrow = false;
 
   @state()
+  private _lastPlayedMediaId = '';
+
+  @state()
   private _createPlaylistModalOpen = false;
 
   @state()
@@ -327,6 +332,7 @@ export class MediaList extends LitElement {
 
   connectedCallback(): void {
     super.connectedCallback();
+    this._lastPlayedMediaId = getAppSettings().lastPlayedMediaId;
     this._narrowMq = window.matchMedia(NARROW_VIEWPORT_MQ);
     this._narrow = this._narrowMq.matches;
     this._narrowMq.addEventListener('change', this._onNarrowMqChange);
@@ -369,6 +375,7 @@ export class MediaList extends LitElement {
   async refresh(): Promise<void> {
     this._loading = true;
     this._error = '';
+    this._lastPlayedMediaId = getAppSettings().lastPlayedMediaId;
 
     try {
       const [items, playlists, favorites] = await Promise.all([
@@ -377,6 +384,10 @@ export class MediaList extends LitElement {
         getPlaylist(FAVORITES_PLAYLIST_ID),
       ]);
       this._items = items;
+      if (this._lastPlayedMediaId && !items.some((item) => item.id === this._lastPlayedMediaId)) {
+        setAppSettings({ lastPlayedMediaId: '' });
+        this._lastPlayedMediaId = '';
+      }
       this._playlists = playlists
         .filter((playlist) => playlist.kind === 'user')
         .map((playlist) => ({ id: playlist.id, name: playlist.name }));
@@ -585,103 +596,111 @@ export class MediaList extends LitElement {
   private _renderItem = (item: unknown): unknown => {
     const media = item as MediaItem;
     const isFavorite = this._favoriteStates.get(media.id) || false;
+    const isLastPlayed = Boolean(this._lastPlayedMediaId) && media.id === this._lastPlayedMediaId;
+    const practiceLabel = isLastPlayed ? msg('继续练习') : msg('练习');
 
-    return html`
-      <div class="item" @click=${this.selectionMode ? () => this._toggleSelection(media.id) : null}>
-        ${this.selectionMode
-          ? html`<input
-              type="checkbox"
-              class="batch-checkbox"
-              .checked=${this._visibleSelected.has(media.id)}
-              @change=${() => this._toggleSelection(media.id)}
-              @click=${(e: Event) => e.stopPropagation()}
-            />`
-          : null}
-        <div class="meta">
-          <p class="title">${media.title}</p>
-          <p class="details">
-            <span class="badge">
-              <ui-tooltip title="${media.type === 'video' ? msg('视频') : msg('音频')}">
-                <ui-icon
-                  name="${media.type === 'video' ? 'video' : 'music'}"
-                  size="var(--icon-md)"
-                ></ui-icon>
-              </ui-tooltip>
-            </span>
-            <span>${formatTime(media.duration)}</span>
-            <span class="date">${formatDate(media.createdAt, true)}</span>
-            ${media.hasSubtitles
-              ? html`
-                  <span class="badge">
-                    <ui-tooltip title="${msg('含字幕')}">
-                      <ui-icon name="subtitle-on" size="var(--icon-md)"></ui-icon>
-                    </ui-tooltip>
-                  </span>
-                `
-              : nothing}
-          </p>
-        </div>
-        <div class="actions" @click=${(e: Event) => e.stopPropagation()}>
-          <ui-tooltip title="${isFavorite ? msg('取消喜欢') : msg('喜欢')}">
-            <ui-button
-              variant="ghost"
-              aria-label="${isFavorite ? msg('取消喜欢') : msg('喜欢')}"
-              class="favorite-btn ${isFavorite ? 'active' : ''}"
-              @click="${() => this._handleToggleFavorite(media)}"
-            >
-              <ui-icon name="${isFavorite ? 'like-fill' : 'like'}" style="color: red"></ui-icon>
-            </ui-button>
-          </ui-tooltip>
-
-          <ui-tooltip title="${media.hasSubtitles ? msg('更新字幕') : msg('导入字幕')}">
-            <ui-button
-              variant="secondary"
-              aria-label="${media.hasSubtitles ? msg('更新字幕') : msg('导入字幕')}"
-              ?disabled="${this._importingSubtitleId === media.id}"
-              @click="${() => this._openSubtitlePicker(media, media.hasSubtitles)}"
-            >
-              <ui-icon name="subtitle"></ui-icon>
-            </ui-button>
-          </ui-tooltip>
-          <ui-tooltip title="${msg('练习')}">
-            <ui-button
-              variant="secondary"
-              aria-label="${msg('练习')}"
-              @click="${() => this._handlePractice(media)}"
-            >
-              <ui-icon name="practice"></ui-icon>
-            </ui-button>
-          </ui-tooltip>
-          <ui-popconfirm
-            title=${msg('确定删除该资源吗？')}
-            placement="bottom"
-            ?confirm-loading=${this._deletingId === media.id}
-            @confirm=${() => this._handleDelete(media)}
-          >
-            <ui-button
-              variant="danger"
-              aria-label="${msg('删除')}"
-              ?disabled="${this._deletingId === media.id}"
-            >
-              <ui-icon name="delete"></ui-icon>
-            </ui-button>
-          </ui-popconfirm>
-          <ui-dropdown
-            trigger="click"
-            placement="bottomRight"
-            .menu=${{ items: this._getAddToPlaylistMenuItems() }}
-            @menu-click=${(e: CustomEvent<DropdownMenuClickDetail>) =>
-              void this._handleAddToPlaylist(e, media)}
-          >
-            <ui-tooltip title="${msg('加入播放列表')}">
-              <ui-button variant="secondary" aria-label="${msg('加入播放列表')}">
-                <ui-icon name="add-to-playlist"></ui-icon>
+    return keyed(
+      media.id,
+      html`
+        <div
+          class="item"
+          @click=${this.selectionMode ? () => this._toggleSelection(media.id) : null}
+        >
+          ${this.selectionMode
+            ? html`<input
+                type="checkbox"
+                class="batch-checkbox"
+                .checked=${this._visibleSelected.has(media.id)}
+                @change=${() => this._toggleSelection(media.id)}
+                @click=${(e: Event) => e.stopPropagation()}
+              />`
+            : null}
+          <div class="meta">
+            <p class="title">${media.title}</p>
+            <p class="details">
+              <span class="badge">
+                <ui-tooltip title="${media.type === 'video' ? msg('视频') : msg('音频')}">
+                  <ui-icon
+                    name="${media.type === 'video' ? 'video' : 'music'}"
+                    size="var(--icon-md)"
+                  ></ui-icon>
+                </ui-tooltip>
+              </span>
+              <span>${formatTime(media.duration)}</span>
+              <span class="date">${formatDate(media.createdAt, true)}</span>
+              ${media.hasSubtitles
+                ? html`
+                    <span class="badge">
+                      <ui-tooltip title="${msg('含字幕')}">
+                        <ui-icon name="subtitle-on" size="var(--icon-md)"></ui-icon>
+                      </ui-tooltip>
+                    </span>
+                  `
+                : nothing}
+            </p>
+          </div>
+          <div class="actions" @click=${(e: Event) => e.stopPropagation()}>
+            <ui-tooltip title="${isFavorite ? msg('取消喜欢') : msg('喜欢')}">
+              <ui-button
+                variant="ghost"
+                aria-label="${isFavorite ? msg('取消喜欢') : msg('喜欢')}"
+                class="favorite-btn ${isFavorite ? 'active' : ''}"
+                @click="${() => this._handleToggleFavorite(media)}"
+              >
+                <ui-icon name="${isFavorite ? 'like-fill' : 'like'}" style="color: red"></ui-icon>
               </ui-button>
             </ui-tooltip>
-          </ui-dropdown>
+
+            <ui-tooltip title="${media.hasSubtitles ? msg('更新字幕') : msg('导入字幕')}">
+              <ui-button
+                variant="secondary"
+                aria-label="${media.hasSubtitles ? msg('更新字幕') : msg('导入字幕')}"
+                ?disabled="${this._importingSubtitleId === media.id}"
+                @click="${() => this._openSubtitlePicker(media, media.hasSubtitles)}"
+              >
+                <ui-icon name="subtitle"></ui-icon>
+              </ui-button>
+            </ui-tooltip>
+            <ui-tooltip title="${practiceLabel}">
+              <ui-button
+                variant=${isLastPlayed ? 'primary' : 'secondary'}
+                aria-label="${practiceLabel}"
+                @click="${() => this._handlePractice(media)}"
+              >
+                <ui-icon name="practice"></ui-icon>
+              </ui-button>
+            </ui-tooltip>
+            <ui-popconfirm
+              title=${msg('确定删除该资源吗？')}
+              placement="bottom"
+              ?confirm-loading=${this._deletingId === media.id}
+              @confirm=${() => this._handleDelete(media)}
+            >
+              <ui-button
+                variant="danger"
+                aria-label="${msg('删除')}"
+                ?disabled="${this._deletingId === media.id}"
+              >
+                <ui-icon name="delete"></ui-icon>
+              </ui-button>
+            </ui-popconfirm>
+            <ui-dropdown
+              trigger="click"
+              placement="bottomRight"
+              .menu=${{ items: this._getAddToPlaylistMenuItems() }}
+              @menu-click=${(e: CustomEvent<DropdownMenuClickDetail>) =>
+                void this._handleAddToPlaylist(e, media)}
+            >
+              <ui-tooltip title="${msg('加入播放列表')}">
+                <ui-button variant="secondary" aria-label="${msg('加入播放列表')}">
+                  <ui-icon name="add-to-playlist"></ui-icon>
+                </ui-button>
+              </ui-tooltip>
+            </ui-dropdown>
+          </div>
         </div>
-      </div>
-    `;
+      `,
+    );
   };
 
   private async _handleToggleFavorite(media: MediaItem): Promise<void> {
@@ -955,6 +974,10 @@ export class MediaList extends LitElement {
     try {
       await Promise.all([deleteMedia(item.id), deleteSubtitle(item.id)]);
       this._items = this._items.filter((entry) => entry.id !== item.id);
+      if (this._lastPlayedMediaId === item.id) {
+        setAppSettings({ lastPlayedMediaId: '' });
+        this._lastPlayedMediaId = '';
+      }
       this.dispatchEvent(
         new CustomEvent('media-deleted', {
           detail: { id: item.id },

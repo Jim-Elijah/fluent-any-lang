@@ -187,307 +187,307 @@ export class RecordingPreview extends LitElement {
   static styles = [
     scoreBandStyles,
     css`
-    :host {
-      display: block;
-    }
+      :host {
+        display: block;
+      }
 
-    .preview {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-inline);
-    }
+      .preview {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-inline);
+      }
 
-    .subtitle-area {
-      min-height: 0;
-      text-align: center;
-    }
+      .subtitle-area {
+        min-height: 0;
+        text-align: center;
+      }
 
-    .subtitle-text {
-      margin: 0;
-      font-size: 1rem;
-      line-height: 1.5;
-      color: var(--color-text, rgba(0, 0, 0, 0.88));
-      white-space: pre-wrap;
-    }
+      .subtitle-text {
+        margin: 0;
+        font-size: 1rem;
+        line-height: 1.5;
+        color: var(--color-text, rgba(0, 0, 0, 0.88));
+        white-space: pre-wrap;
+      }
 
-    .subtitle-translation {
-      margin: var(--space-xs) 0 0;
-      font-size: 0.875rem;
-      line-height: 1.45;
-      color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
-      white-space: pre-wrap;
-    }
+      .subtitle-translation {
+        margin: var(--space-xs) 0 0;
+        font-size: 0.875rem;
+        line-height: 1.45;
+        color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
+        white-space: pre-wrap;
+      }
 
-    .segment-nav {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: var(--space-sm);
-    }
+      .segment-nav {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: var(--space-sm);
+      }
 
-    .controls {
-      display: flex;
-      flex-direction: column;
-      align-items: stretch;
-      gap: var(--space-sm);
-    }
+      .controls {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--space-sm);
+      }
 
-    .mode-row {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: var(--space-sm);
-    }
+      .mode-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--space-sm);
+      }
 
-    .volume-row {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: var(--space-md);
-    }
+      .volume-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--space-md);
+      }
 
-    .volume-item {
-      display: inline-flex;
-      align-items: center;
-      gap: var(--space-xs);
-    }
+      .volume-item {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--space-xs);
+      }
 
-    .volume-item-label {
-      font-size: 0.8125rem;
-      color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
-      white-space: nowrap;
-    }
+      .volume-item-label {
+        font-size: 0.8125rem;
+        color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
+        white-space: nowrap;
+      }
 
-    .status {
-      margin: 0;
-      color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
-      font-size: 0.8125rem;
-    }
+      .status {
+        margin: 0;
+        color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
+        font-size: 0.8125rem;
+      }
 
-    .status strong {
-      color: var(--color-text, rgba(0, 0, 0, 0.88));
-      font-weight: 600;
-    }
+      .status strong {
+        color: var(--color-text, rgba(0, 0, 0, 0.88));
+        font-weight: 600;
+      }
 
-    .overlay-panel-label {
-      display: block;
-      margin-bottom: var(--space-xs);
-      font-size: 0.8125rem;
-      color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
-    }
+      .overlay-panel-label {
+        display: block;
+        margin-bottom: var(--space-xs);
+        font-size: 0.8125rem;
+        color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
+      }
 
-    .volume-trigger {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: var(--space-xs);
-      border: none;
-      border-radius: var(--radius-md, 8px);
-      background: transparent;
-      color: inherit;
-      line-height: 0;
-      cursor: pointer;
-    }
+      .volume-trigger {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: var(--space-xs);
+        border: none;
+        border-radius: var(--radius-md, 8px);
+        background: transparent;
+        color: inherit;
+        line-height: 0;
+        cursor: pointer;
+      }
 
-    .volume-trigger:hover {
-      background: rgba(0, 0, 0, 0.04);
-    }
+      .volume-trigger:hover {
+        background: rgba(0, 0, 0, 0.04);
+      }
 
-    .volume-trigger--boosted {
-      color: var(--color-warning, #fa8c16);
-    }
+      .volume-trigger--boosted {
+        color: var(--color-warning, #fa8c16);
+      }
 
-    .score-panel {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-sm);
-      max-height: min(26dvh, 280px);
-      min-height: 0;
-      overflow-y: auto;
-      padding: var(--space-md);
-      border: 1px solid var(--color-border, #d9d9d9);
-      border-radius: var(--radius-md, 8px);
-      background: var(--color-surface, #fff);
-    }
+      .score-panel {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-sm);
+        max-height: min(26dvh, 280px);
+        min-height: 0;
+        overflow-y: auto;
+        padding: var(--space-md);
+        border: 1px solid var(--color-border, #d9d9d9);
+        border-radius: var(--radius-md, 8px);
+        background: var(--color-surface, #fff);
+      }
 
-    .score-header {
-      position: sticky;
-      top: 0;
-      z-index: 1;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: var(--space-sm);
-      padding-bottom: var(--space-xs);
-      background: var(--color-surface, #fff);
-      box-shadow: 0 8px 10px 2px var(--color-surface, #fff);
-    }
+      .score-header {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--space-sm);
+        padding-bottom: var(--space-xs);
+        background: var(--color-surface, #fff);
+        box-shadow: 0 8px 10px 2px var(--color-surface, #fff);
+      }
 
-    .score-overall {
-      font-size: 1.75rem;
-      font-weight: 700;
-      line-height: 1.1;
-      color: var(--color-text, rgba(0, 0, 0, 0.88));
-    }
+      .score-overall {
+        font-size: 1.75rem;
+        font-weight: 700;
+        line-height: 1.1;
+        color: var(--color-text, rgba(0, 0, 0, 0.88));
+      }
 
-    .score-metrics {
-      display: grid;
-      gap: var(--space-xs);
-    }
+      .score-metrics {
+        display: grid;
+        gap: var(--space-xs);
+      }
 
-    .score-metric {
-      display: grid;
-      grid-template-columns: minmax(3.5rem, max-content) 1fr 2.5rem;
-      align-items: center;
-      gap: var(--space-sm);
-      font-size: 0.8125rem;
-    }
+      .score-metric {
+        display: grid;
+        grid-template-columns: minmax(3.5rem, max-content) 1fr 2.5rem;
+        align-items: center;
+        gap: var(--space-sm);
+        font-size: 0.8125rem;
+      }
 
-    .score-metric--nested {
-      padding-left: 1rem;
-      opacity: 0.9;
-    }
+      .score-metric--nested {
+        padding-left: 1rem;
+        opacity: 0.9;
+      }
 
-    .score-bar {
-      height: 6px;
-      border-radius: 999px;
-      background: rgba(22, 119, 255, 0.12);
-      overflow: hidden;
-    }
+      .score-bar {
+        height: 6px;
+        border-radius: 999px;
+        background: rgba(22, 119, 255, 0.12);
+        overflow: hidden;
+      }
 
-    .score-bar-fill {
-      height: 100%;
-      border-radius: inherit;
-      background: var(--color-primary, #1677ff);
-    }
+      .score-bar-fill {
+        height: 100%;
+        border-radius: inherit;
+        background: var(--color-primary, #1677ff);
+      }
 
-    .score-texts {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-      font-size: 0.8125rem;
-      color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
-    }
+      .score-texts {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        font-size: 0.8125rem;
+        color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
+      }
 
-    .score-texts strong {
-      color: var(--color-text, rgba(0, 0, 0, 0.88));
-      font-weight: 600;
-    }
+      .score-texts strong {
+        color: var(--color-text, rgba(0, 0, 0, 0.88));
+        font-weight: 600;
+      }
 
-    .score-text-body {
-      display: inline;
-      line-height: 1.55;
-      word-break: break-word;
-    }
+      .score-text-body {
+        display: inline;
+        line-height: 1.55;
+        word-break: break-word;
+      }
 
-    .score-hl {
-      border-radius: 2px;
-      padding: 0 1px;
-    }
+      .score-hl {
+        border-radius: 2px;
+        padding: 0 1px;
+      }
 
-    /* Error-type legend (independent of word-chip score bands):
+      /* Error-type legend (independent of word-chip score bands):
        missing = omitted → gray strikethrough; extra = inserted → purple wavy;
        misread = substituted → red tint. Same classes on in-text + summary lists. */
-    .score-hl--missing {
-      background: rgba(0, 0, 0, 0.06);
-      color: #8c8c8c;
-      text-decoration: line-through;
-    }
-
-    .score-hl--extra {
-      background: rgba(114, 46, 209, 0.14);
-      color: #531dab;
-      text-decoration: underline;
-      text-decoration-style: wavy;
-      text-underline-offset: 2px;
-    }
-
-    .score-hl--misread {
-      background: rgba(255, 77, 79, 0.18);
-      color: #cf1322;
-    }
-
-    button.score-hl--misread {
-      margin: 0;
-      border: none;
-      font: inherit;
-      cursor: pointer;
-      vertical-align: baseline;
-    }
-
-    button.score-hl--misread:focus-visible {
-      outline: 2px solid var(--color-primary, #1677ff);
-      outline-offset: 1px;
-    }
-
-    .score-hl--paired {
-      box-shadow: 0 0 0 2px rgba(255, 77, 79, 0.45);
-    }
-
-    .word-heatmap {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 4px;
-    }
-
-    .word-chip {
-      padding: 1px 6px;
-      border: none;
-      border-radius: 4px;
-      font: inherit;
-      font-size: 0.8125rem;
-      line-height: 1.4;
-      cursor: pointer;
-    }
-
-    .word-rail {
-      position: relative;
-      height: 100%;
-      pointer-events: none;
-    }
-
-    .word-marker {
-      position: absolute;
-      top: 0;
-      height: 100%;
-      width: auto;
-      padding: 0 4px;
-      border: none;
-      border-radius: 3px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      font: inherit;
-      font-size: 0.6875rem;
-      line-height: ${WORD_RAIL_LANE_PX}px;
-      text-align: center;
-      cursor: pointer;
-      pointer-events: auto;
-    }
-
-    .score-skeleton {
-      height: 12px;
-      border-radius: 6px;
-      background: linear-gradient(90deg, #f0f0f0 25%, #e6e6e6 37%, #f0f0f0 63%);
-      background-size: 400% 100%;
-      animation: preview-score-skeleton 1.2s ease infinite;
-    }
-
-    @keyframes preview-score-skeleton {
-      0% {
-        background-position: 100% 50%;
+      .score-hl--missing {
+        background: rgba(0, 0, 0, 0.06);
+        color: #8c8c8c;
+        text-decoration: line-through;
       }
-      100% {
-        background-position: 0 50%;
-      }
-    }
 
-    .score-pending-label {
-      margin: 0;
-      font-size: 0.8125rem;
-      color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
-    }
-  `,
+      .score-hl--extra {
+        background: rgba(114, 46, 209, 0.14);
+        color: #531dab;
+        text-decoration: underline;
+        text-decoration-style: wavy;
+        text-underline-offset: 2px;
+      }
+
+      .score-hl--misread {
+        background: rgba(255, 77, 79, 0.18);
+        color: #cf1322;
+      }
+
+      button.score-hl--misread {
+        margin: 0;
+        border: none;
+        font: inherit;
+        cursor: pointer;
+        vertical-align: baseline;
+      }
+
+      button.score-hl--misread:focus-visible {
+        outline: 2px solid var(--color-primary, #1677ff);
+        outline-offset: 1px;
+      }
+
+      .score-hl--paired {
+        box-shadow: 0 0 0 2px rgba(255, 77, 79, 0.45);
+      }
+
+      .word-heatmap {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+      }
+
+      .word-chip {
+        padding: 1px 6px;
+        border: none;
+        border-radius: 4px;
+        font: inherit;
+        font-size: 0.8125rem;
+        line-height: 1.4;
+        cursor: pointer;
+      }
+
+      .word-rail {
+        position: relative;
+        height: 100%;
+        pointer-events: none;
+      }
+
+      .word-marker {
+        position: absolute;
+        top: 0;
+        height: 100%;
+        width: auto;
+        padding: 0 4px;
+        border: none;
+        border-radius: 3px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font: inherit;
+        font-size: 0.6875rem;
+        line-height: ${WORD_RAIL_LANE_PX}px;
+        text-align: center;
+        cursor: pointer;
+        pointer-events: auto;
+      }
+
+      .score-skeleton {
+        height: 12px;
+        border-radius: 6px;
+        background: linear-gradient(90deg, #f0f0f0 25%, #e6e6e6 37%, #f0f0f0 63%);
+        background-size: 400% 100%;
+        animation: preview-score-skeleton 1.2s ease infinite;
+      }
+
+      @keyframes preview-score-skeleton {
+        0% {
+          background-position: 100% 50%;
+        }
+        100% {
+          background-position: 0 50%;
+        }
+      }
+
+      .score-pending-label {
+        margin: 0;
+        font-size: 0.8125rem;
+        color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
+      }
+    `,
   ];
 
   @property({ attribute: false })
@@ -937,7 +937,9 @@ export class RecordingPreview extends LitElement {
         class=${classes}
         title=${msg('从该处播放录音')}
         @click=${() => this._onMisreadHighlightClick(misread, index)}
-      >${text}</button>`;
+      >
+        ${text}
+      </button>`;
     }
     return html`<span class=${classes}>${text}</span>`;
   }
@@ -945,11 +947,11 @@ export class RecordingPreview extends LitElement {
   private _renderMisreadWordList(words: PronunciationMisreadWord[]): TemplateResult {
     const sep = wordListSeparator();
     return html`${words.map((word, i) => {
-      const pair = html`${this._renderMisreadToken(word.expected, word, i)}${' → '}${this._renderMisreadToken(
-        word.actual,
+      const pair = html`${this._renderMisreadToken(
+        word.expected,
         word,
         i,
-      )}`;
+      )}${' → '}${this._renderMisreadToken(word.actual, word, i)}`;
       return i > 0 ? html`${sep}${pair}` : pair;
     })}`;
   }

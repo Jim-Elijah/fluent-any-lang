@@ -27,7 +27,11 @@ function isFiniteInt(n: unknown): n is number {
   return typeof n === 'number' && Number.isFinite(n);
 }
 
-function clampMark(textLen: number, start: number, end: number): { start: number; end: number } | null {
+function clampMark(
+  textLen: number,
+  start: number,
+  end: number,
+): { start: number; end: number } | null {
   const s = Math.max(0, Math.min(textLen, Math.floor(start)));
   const e = Math.max(0, Math.min(textLen, Math.floor(end)));
   if (e <= s) return null;

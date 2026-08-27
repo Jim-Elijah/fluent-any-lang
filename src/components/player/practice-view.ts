@@ -691,6 +691,7 @@ export class PracticeView extends NavigatorElement {
     }
     this._echoClipPlayer.dispose();
     this._syncMediaIdFromController();
+    this._rememberLastPlayedMedia();
     this._syncTimeTrackerMedia();
     this._syncSpeakingModeAvailability();
     if (this._discriminationActive) {
@@ -1196,6 +1197,11 @@ export class PracticeView extends NavigatorElement {
     this._mediaId = playlist[currentIndex]?.id ?? '';
   }
 
+  private _rememberLastPlayedMedia(): void {
+    if (!this._mediaId) return;
+    setAppSettings({ lastPlayedMediaId: this._mediaId });
+  }
+
   private _getPracticeQueryValue(
     key: 'mediaId' | 'playlistId' | 'segmentId',
     context: RouteContext = this.routeContext,
@@ -1282,9 +1288,13 @@ export class PracticeView extends NavigatorElement {
       }
       if (launchContext.kind === 'playlist') {
         setAppSettings({ lastPlayedPlaylistId: launchContext.playlistId });
+      } else {
+        // Single-media entry has no playlist context; clear stale playlist resume marker.
+        setAppSettings({ lastPlayedPlaylistId: '' });
       }
       await this._controller.loadTracks(playlist, startIndex);
       this._syncMediaIdFromController();
+      this._rememberLastPlayedMedia();
       this._syncTimeTrackerMedia();
       this._syncSpeakingModeAvailability();
       await this._refreshRecordings();

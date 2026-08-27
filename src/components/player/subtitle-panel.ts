@@ -9,7 +9,7 @@ import type {
 } from '../../controllers/media-controller.js';
 import { reportSubtitleImportResult } from '../import/subtitle-import-feedback.js';
 import { formatTime } from '../../lib/playback-utils.js';
-import { formatOverallBadge, scoreBand } from '../../lib/pronunciation-score/index.js';
+import { formatOverallBadge, overallBadgeBand } from '../../lib/pronunciation-score/index.js';
 import { scoreBandStyles } from '../shared/score-band-styles.js';
 import { supportsKeyboardShortcuts } from '../../lib/hotkeys/index.js';
 import { getMicrophoneBlockedMessage } from '../../lib/microphone-access.js';
@@ -201,193 +201,193 @@ export class SubtitlePanel extends LitElement {
   static styles = [
     scoreBandStyles,
     css`
-    :host {
-      display: block;
-    }
+      :host {
+        display: block;
+      }
 
-    .surface {
-      background: var(--color-surface, #fff);
-      border: 1px solid var(--color-border, #d9d9d9);
-      border-radius: var(--radius-md, 8px);
-      box-shadow: var(--shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.06));
-      overflow: hidden;
-    }
+      .surface {
+        background: var(--color-surface, #fff);
+        border: 1px solid var(--color-border, #d9d9d9);
+        border-radius: var(--radius-md, 8px);
+        box-shadow: var(--shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.06));
+        overflow: hidden;
+      }
 
-    .header {
-      padding: var(--space-block) var(--space-inline);
-      border-bottom: 1px solid var(--color-border, #d9d9d9);
-      font-size: 0.9375rem;
-      font-weight: 600;
-    }
-    .title-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: var(--space-block);
-    }
+      .header {
+        padding: var(--space-block) var(--space-inline);
+        border-bottom: 1px solid var(--color-border, #d9d9d9);
+        font-size: 0.9375rem;
+        font-weight: 600;
+      }
+      .title-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--space-block);
+      }
 
-    .title {
-      margin: 0;
-      font-size: 1rem;
-      font-weight: 600;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      margin-right: auto;
-    }
+      .title {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 600;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        margin-right: auto;
+      }
 
-    .list {
-      /* Let .main-content own page scroll; avoid a second scrollbar beside it. */
-      max-height: none;
-      overflow: visible;
-      margin: 0;
-      padding: var(--space-sm) 0;
-      list-style: none;
-    }
+      .list {
+        /* Let .main-content own page scroll; avoid a second scrollbar beside it. */
+        max-height: none;
+        overflow: visible;
+        margin: 0;
+        padding: var(--space-sm) 0;
+        list-style: none;
+      }
 
-    .segment {
-      display: flex;
-      gap: var(--space-xs);
-      align-items: center;
-      padding: 6px var(--space-inline);
-      cursor: pointer;
-      transition: background-color 0.15s ease;
-      /* Keep active rows clear of the session dock (covers mobile nav while active). */
-      scroll-margin-bottom: var(--session-dock-inset, 0px);
-    }
+      .segment {
+        display: flex;
+        gap: var(--space-xs);
+        align-items: center;
+        padding: 6px var(--space-inline);
+        cursor: pointer;
+        transition: background-color 0.15s ease;
+        /* Keep active rows clear of the session dock (covers mobile nav while active). */
+        scroll-margin-bottom: var(--session-dock-inset, 0px);
+      }
 
-    .segment:hover {
-      background: rgba(22, 119, 255, 0.04);
-    }
+      .segment:hover {
+        background: rgba(22, 119, 255, 0.04);
+      }
 
-    .segment:hover .text {
-      text-decoration: underline;
-    }
+      .segment:hover .text {
+        text-decoration: underline;
+      }
 
-    .segment.active {
-      background: rgba(22, 119, 255, 0.1);
-      border-left: 3px solid var(--color-primary, #1677ff);
-      padding-left: calc(var(--space-inline) - 3px);
-    }
+      .segment.active {
+        background: rgba(22, 119, 255, 0.1);
+        border-left: 3px solid var(--color-primary, #1677ff);
+        padding-left: calc(var(--space-inline) - 3px);
+      }
 
-    .navigation-locked .segment {
-      cursor: default;
-    }
+      .navigation-locked .segment {
+        cursor: default;
+      }
 
-    .navigation-locked .segment:not(.active) {
-      opacity: 0.45;
-    }
+      .navigation-locked .segment:not(.active) {
+        opacity: 0.45;
+      }
 
-    .navigation-locked .segment:not(.active):hover {
-      background: transparent;
-    }
+      .navigation-locked .segment:not(.active):hover {
+        background: transparent;
+      }
 
-    .navigation-locked .segment:not(.active):hover .text {
-      text-decoration: none;
-    }
+      .navigation-locked .segment:not(.active):hover .text {
+        text-decoration: none;
+      }
 
-    .content {
-      display: flex;
-      align-items: center;
-      flex-direction: column;
-      flex: 1;
-    }
-
-    .time {
-      color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
-      font-size: 0.75rem;
-      font-variant-numeric: tabular-nums;
-      white-space: nowrap;
-    }
-
-    .text {
-      margin: 0;
-      font-weight: 600;
-      text-align: center;
-    }
-
-    .translation {
-      font-weight: 400;
-    }
-
-    .translation.hidden {
-      display: none;
-    }
-
-    .empty {
-      padding: var(--space-stack) var(--space-inline);
-      text-align: center;
-      color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
-    }
-
-    .empty p {
-      margin: 0;
-    }
-
-    .empty-actions {
-      display: flex;
-      justify-content: center;
-      margin-top: var(--space-block);
-    }
-
-    input[type='file'] {
-      display: none;
-    }
-
-    .hidden-note {
-      padding: var(--space-stack) var(--space-inline);
-      text-align: center;
-      color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
-    }
-
-    .echo-controls {
-      display: flex;
-      align-items: center;
-      gap: var(--space-xs);
-      flex-shrink: 0;
-      margin-left: auto;
-    }
-
-    .echo-controls ui-button button {
-      padding: var(--space-xs) var(--space-sm);
-    }
-
-    .row-actions {
-      display: flex;
-      align-items: center;
-      gap: var(--space-xs);
-      flex-shrink: 0;
-    }
-
-    .row-actions ui-button button {
-      padding: var(--space-xs) var(--space-sm);
-    }
-
-    .echo-score {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      vertical-align: middle;
-      margin-left: var(--space-xs);
-      min-width: 1.375rem;
-      height: 1.25rem;
-      padding: 0 4px;
-      border-radius: 999px;
-      font-size: 0.6875rem;
-      font-weight: 600;
-      line-height: 1;
-      text-decoration: none;
-    }
-
-    @media (max-width: 767px) {
       .content {
-        align-items: flex-start;
+        display: flex;
+        align-items: center;
+        flex-direction: column;
+        flex: 1;
       }
+
+      .time {
+        color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
+        font-size: 0.75rem;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+      }
+
       .text {
-        text-align: left;
+        margin: 0;
+        font-weight: 600;
+        text-align: center;
       }
-    }
-  `,
+
+      .translation {
+        font-weight: 400;
+      }
+
+      .translation.hidden {
+        display: none;
+      }
+
+      .empty {
+        padding: var(--space-stack) var(--space-inline);
+        text-align: center;
+        color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
+      }
+
+      .empty p {
+        margin: 0;
+      }
+
+      .empty-actions {
+        display: flex;
+        justify-content: center;
+        margin-top: var(--space-block);
+      }
+
+      input[type='file'] {
+        display: none;
+      }
+
+      .hidden-note {
+        padding: var(--space-stack) var(--space-inline);
+        text-align: center;
+        color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
+      }
+
+      .echo-controls {
+        display: flex;
+        align-items: center;
+        gap: var(--space-xs);
+        flex-shrink: 0;
+        margin-left: auto;
+      }
+
+      .echo-controls ui-button button {
+        padding: var(--space-xs) var(--space-sm);
+      }
+
+      .row-actions {
+        display: flex;
+        align-items: center;
+        gap: var(--space-xs);
+        flex-shrink: 0;
+      }
+
+      .row-actions ui-button button {
+        padding: var(--space-xs) var(--space-sm);
+      }
+
+      .echo-score {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        vertical-align: middle;
+        margin-left: var(--space-xs);
+        min-width: 1.375rem;
+        height: 1.25rem;
+        padding: 0 4px;
+        border-radius: 999px;
+        font-size: 0.6875rem;
+        font-weight: 600;
+        line-height: 1;
+        text-decoration: none;
+      }
+
+      @media (max-width: 767px) {
+        .content {
+          align-items: flex-start;
+        }
+        .text {
+          text-align: left;
+        }
+      }
+    `,
   ];
 
   @property({ attribute: false })
@@ -810,12 +810,12 @@ export class SubtitlePanel extends LitElement {
     if (typeof overall !== 'number') {
       return nothing;
     }
-    const band = scoreBand(overall);
+    const text = formatOverallBadge(overall);
     return html`
       <span
-        class="echo-score score-band ${band}"
-        aria-label="${msg(str`发音评分 ${formatOverallBadge(overall)}`)}"
-        >${formatOverallBadge(overall)}</span
+        class="echo-score score-band ${overallBadgeBand(overall)}"
+        aria-label="${msg(str`发音评分 ${text}`)}"
+        >${text}</span
       >
     `;
   }

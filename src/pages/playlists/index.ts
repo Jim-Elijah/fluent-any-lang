@@ -436,6 +436,9 @@ export class PlaylistsPage extends NavigatorElement {
   private _lastPlayedPlaylistId = '';
 
   @state()
+  private _lastPlayedMediaId = '';
+
+  @state()
   private _loading = true;
 
   @state()
@@ -460,7 +463,9 @@ export class PlaylistsPage extends NavigatorElement {
 
   connectedCallback(): void {
     super.connectedCallback();
-    this._lastPlayedPlaylistId = getAppSettings().lastPlayedPlaylistId;
+    const settings = getAppSettings();
+    this._lastPlayedPlaylistId = settings.lastPlayedPlaylistId;
+    this._lastPlayedMediaId = settings.lastPlayedMediaId;
     this._compactMq = window.matchMedia(COMPACT_VIEWPORT_MQ);
     this.compact = this._compactMq.matches;
     this._compactMq.addEventListener('change', this._onCompactMqChange);
@@ -491,16 +496,17 @@ export class PlaylistsPage extends NavigatorElement {
 
   private async _loadPlaylists(): Promise<void> {
     this._playlists = await getPlaylistList();
-    const lastPlayedPlaylistId = getAppSettings().lastPlayedPlaylistId;
+    const { lastPlayedPlaylistId, lastPlayedMediaId } = getAppSettings();
     if (
       lastPlayedPlaylistId &&
       !this._playlists.some((playlist) => playlist.id === lastPlayedPlaylistId)
     ) {
       setAppSettings({ lastPlayedPlaylistId: '' });
       this._lastPlayedPlaylistId = '';
-      return;
+    } else {
+      this._lastPlayedPlaylistId = lastPlayedPlaylistId;
     }
-    this._lastPlayedPlaylistId = lastPlayedPlaylistId;
+    this._lastPlayedMediaId = lastPlayedMediaId;
   }
 
   private async _selectPlaylist(id: string): Promise<void> {
@@ -577,8 +583,20 @@ export class PlaylistsPage extends NavigatorElement {
     return Boolean(this._lastPlayedPlaylistId) && playlistId === this._lastPlayedPlaylistId;
   }
 
+  private _isLastPlayedEntry(playlistId: string, mediaId: string): boolean {
+    return (
+      this._isLastPlayedPlaylist(playlistId) &&
+      Boolean(this._lastPlayedMediaId) &&
+      mediaId === this._lastPlayedMediaId
+    );
+  }
+
   private _getPlaylistPrimaryActionLabel(playlistId: string) {
     return this._isLastPlayedPlaylist(playlistId) ? msg('继续练习') : msg('开始练习');
+  }
+
+  private _getEntryPrimaryActionLabel(playlistId: string, mediaId: string) {
+    return this._isLastPlayedEntry(playlistId, mediaId) ? msg('继续练习') : msg('练习');
   }
 
   private _getPlaylistMenuItems(index: number, playlistId: string): DropdownMenuItem[] {
@@ -919,14 +937,24 @@ export class PlaylistsPage extends NavigatorElement {
   }
 
   private _startPractice(playlist: Playlist, mediaId?: string): void {
-    const firstPlayable = mediaId || playlist.entries.find((entry) => !entry.removed)?.mediaId;
+    let startMediaId = mediaId;
+    if (!startMediaId && this._isLastPlayedPlaylist(playlist.id) && this._lastPlayedMediaId) {
+      const stillInList = playlist.entries.some(
+        (entry) => !entry.removed && entry.mediaId === this._lastPlayedMediaId,
+      );
+      if (stillInList) {
+        startMediaId = this._lastPlayedMediaId;
+      }
+    }
+
+    const firstPlayable = startMediaId || playlist.entries.find((entry) => !entry.removed)?.mediaId;
     if (!firstPlayable) {
       Message.warning(msg('当前播放列表为空，请先添加媒体。'));
       return;
     }
     const params = new URLSearchParams({ playlistId: playlist.id });
-    if (mediaId) {
-      params.set('mediaId', mediaId);
+    if (startMediaId) {
+      params.set('mediaId', startMediaId);
     }
     this.navigate(`/practice?${params.toString()}`);
   }
@@ -1174,11 +1202,18 @@ export class PlaylistsPage extends NavigatorElement {
                                 item.media?.title,
                                 item.entry.titleSnapshot,
                               );
+                              const isLastPlayedEntry = this._isLastPlayedEntry(
+                                selectedPlaylist!.id,
+                                item.entry.mediaId,
+                              );
                               return html`
                                 <div class="entry-item">
                                   <div class="entry-main">
                                     <div class="entry-title-row">
                                       <span class="entry-title">${title}</span>
+                                      ${isLastPlayedEntry
+                                        ? html`<span class="tag muted">${msg('上次练习')}</span>`
+                                        : null}
                                     </div>
                                     <div class="entry-meta">
                                       <span class="badge ${item.media ? '' : 'muted'}">
@@ -1221,9 +1256,15 @@ export class PlaylistsPage extends NavigatorElement {
                                   </div>
 
                                   <div class="entry-actions">
-                                    <ui-tooltip title=${msg('练习')} .zIndex=${Z_INDEX.MODAL + 1}>
+                                    <ui-tooltip
+                                      title=${this._getEntryPrimaryActionLabel(
+                                        selectedPlaylist!.id,
+                                        item.entry.mediaId,
+                                      )}
+                                      .zIndex=${Z_INDEX.MODAL + 1}
+                                    >
                                       <ui-button
-                                        variant="secondary"
+                                        variant=${isLastPlayedEntry ? 'primary' : 'secondary'}
                                         @click=${() =>
                                           this._startPractice(
                                             selectedPlaylist!,
@@ -1294,7 +1335,9 @@ export class PlaylistsPage extends NavigatorElement {
                           .zIndex=${Z_INDEX.MODAL + 1}
                         >
                           <ui-button
-                            variant="primary"
+                            variant=${this._isLastPlayedPlaylist(selectedPlaylist.id)
+                              ? 'primary'
+                              : 'secondary'}
                             ?disabled=${activeEntryCount === 0}
                             @click=${() => this._startPractice(selectedPlaylist)}
                           >

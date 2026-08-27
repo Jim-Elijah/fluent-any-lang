@@ -21,7 +21,12 @@ export {
   type RequestScoreOutcome,
   type RequestScoreOptions,
 } from './service.js';
-export { aggregateEchoLatestOverall, formatOverallBadge } from './aggregate.js';
+export {
+  aggregateEchoLatestOverall,
+  formatOverallBadge,
+  overallBadgeBand,
+  roundOverallForBadge,
+} from './aggregate.js';
 export {
   scoreBand,
   SCORE_BAND_HIGH_MIN,

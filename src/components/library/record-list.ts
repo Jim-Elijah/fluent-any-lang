@@ -16,10 +16,10 @@ import {
   formatOverallBadge,
   hasSpeechScorePrivacyAck,
   isSpeechScoreConfigured,
+  overallBadgeBand,
   requestScore,
   resolveReferenceText,
   SCORE_MAX_DURATION_SEC,
-  scoreBand,
   scoreTooLongMessage,
 } from '../../lib/pronunciation-score/index.js';
 import { scoreBandStyles } from '../shared/score-band-styles.js';
@@ -63,221 +63,221 @@ export class RecordList extends LitElement {
   static styles = [
     scoreBandStyles,
     css`
-    :host {
-      display: block;
-    }
-
-    :host([fill-height]) {
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-      min-height: 0;
-    }
-
-    :host([fill-height]) section {
-      display: flex;
-      flex-direction: column;
-      flex: 1;
-      min-height: 0;
-    }
-
-    :host([fill-height]) .list-viewport {
-      flex: 1;
-      min-height: 0;
-    }
-
-    :host([fill-height]) .list-viewport ui-virtual-grid {
-      display: block;
-      height: 100%;
-    }
-
-    .header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: var(--space-block);
-      margin-bottom: var(--space-block);
-      flex-shrink: 0;
-    }
-
-    h2 {
-      margin: 0;
-      font-size: 1.125rem;
-      font-weight: 600;
-    }
-
-    .count {
-      color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
-      font-size: 0.875rem;
-    }
-
-    .item {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      gap: var(--space-md);
-      align-items: center;
-      /* Reserve --space-md to match RECORD_ROW_HEIGHT gap (fixed, not --space-block). */
-      height: calc(100% - var(--space-md));
-      padding: var(--space-md) var(--space-lg);
-      background: var(--color-surface, #fff);
-      border: 1px solid var(--color-border, #d9d9d9);
-      border-radius: var(--radius-md, 8px);
-      box-shadow: var(--shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.06));
-      box-sizing: border-box;
-    }
-
-    .meta {
-      min-width: 0;
-    }
-
-    .title {
-      margin: 0 0 var(--space-xs);
-      font-size: 1rem;
-      font-weight: 600;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .details {
-      display: flex;
-      flex-wrap: nowrap;
-      align-items: center;
-      gap: var(--space-sm);
-      margin: 0;
-      min-width: 0;
-      overflow: hidden;
-      color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
-      font-size: 0.8125rem;
-    }
-
-    .details > span {
-      flex-shrink: 0;
-      white-space: nowrap;
-    }
-
-    .details > .date {
-      flex-shrink: 1;
-      min-width: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      padding: 2px var(--space-sm);
-      border-radius: 999px;
-      font-size: 0.75rem;
-      font-weight: 500;
-      line-height: 1.2;
-    }
-
-    .badge.shadowing {
-      background: rgba(19, 194, 194, 0.12);
-      color: #08979c;
-    }
-
-    .badge.echo {
-      background: rgba(250, 140, 22, 0.12);
-      color: #d46b08;
-    }
-
-    .score-badge {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 1.5rem;
-      padding: 2px 6px;
-      border-radius: 999px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      line-height: 1.2;
-    }
-
-    .score-badge.pending {
-      background: rgba(22, 119, 255, 0.1);
-      color: var(--color-primary, #1677ff);
-    }
-
-    .score-spinner {
-      width: 10px;
-      height: 10px;
-      border: 2px solid rgba(22, 119, 255, 0.25);
-      border-top-color: var(--color-primary, #1677ff);
-      border-radius: 50%;
-      animation: record-list-spin 0.8s linear infinite;
-    }
-
-    @keyframes record-list-spin {
-      to {
-        transform: rotate(360deg);
+      :host {
+        display: block;
       }
-    }
 
-    .actions {
-      display: flex;
-      gap: var(--space-sm);
-      flex-shrink: 0;
-    }
+      :host([fill-height]) {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        min-height: 0;
+      }
 
-    .empty {
-      padding: var(--space-stack);
-      text-align: center;
-      color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
-      background: var(--color-surface, #fff);
-      border: 1px dashed var(--color-border, #d9d9d9);
-      border-radius: var(--radius-md, 8px);
-    }
+      :host([fill-height]) section {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-height: 0;
+      }
 
-    .batch-controls {
-      display: flex;
-      align-items: center;
-      gap: var(--space-sm);
-    }
+      :host([fill-height]) .list-viewport {
+        flex: 1;
+        min-height: 0;
+      }
 
-    .batch-checkbox {
-      width: 18px;
-      height: 18px;
-      flex-shrink: 0;
-      cursor: pointer;
-      accent-color: var(--color-primary, #1677ff);
-    }
+      :host([fill-height]) .list-viewport ui-virtual-grid {
+        display: block;
+        height: 100%;
+      }
 
-    :host([selection-mode]) .item {
-      grid-template-columns: auto minmax(0, 1fr) auto;
-      cursor: pointer;
-    }
+      .header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--space-block);
+        margin-bottom: var(--space-block);
+        flex-shrink: 0;
+      }
 
-    @media (max-width: 767px) {
+      h2 {
+        margin: 0;
+        font-size: 1.125rem;
+        font-weight: 600;
+      }
+
+      .count {
+        color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
+        font-size: 0.875rem;
+      }
+
       .item {
-        grid-template-columns: 1fr;
-        align-items: start;
-        align-content: start;
-        gap: var(--space-xs);
-        height: calc(100% - var(--space-xs));
-        padding: var(--space-sm) var(--space-md);
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: var(--space-md);
+        align-items: center;
+        /* Reserve --space-md to match RECORD_ROW_HEIGHT gap (fixed, not --space-block). */
+        height: calc(100% - var(--space-md));
+        padding: var(--space-md) var(--space-lg);
+        background: var(--color-surface, #fff);
+        border: 1px solid var(--color-border, #d9d9d9);
+        border-radius: var(--radius-md, 8px);
+        box-shadow: var(--shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.06));
+        box-sizing: border-box;
       }
 
-      /* Override desktop 3-col selection layout so actions stay on their own row. */
-      :host([selection-mode]) .item {
-        grid-template-columns: auto minmax(0, 1fr);
+      .meta {
+        min-width: 0;
       }
 
-      :host([selection-mode]) .actions {
-        grid-column: 1 / -1;
+      .title {
+        margin: 0 0 var(--space-xs);
+        font-size: 1rem;
+        font-weight: 600;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
 
       .details {
-        gap: var(--space-xs);
+        display: flex;
+        flex-wrap: nowrap;
+        align-items: center;
+        gap: var(--space-sm);
+        margin: 0;
+        min-width: 0;
+        overflow: hidden;
+        color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
+        font-size: 0.8125rem;
+      }
+
+      .details > span {
+        flex-shrink: 0;
+        white-space: nowrap;
+      }
+
+      .details > .date {
+        flex-shrink: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px var(--space-sm);
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        line-height: 1.2;
+      }
+
+      .badge.shadowing {
+        background: rgba(19, 194, 194, 0.12);
+        color: #08979c;
+      }
+
+      .badge.echo {
+        background: rgba(250, 140, 22, 0.12);
+        color: #d46b08;
+      }
+
+      .score-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 1.5rem;
+        padding: 2px 6px;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        line-height: 1.2;
+      }
+
+      .score-badge.pending {
+        background: rgba(22, 119, 255, 0.1);
+        color: var(--color-primary, #1677ff);
+      }
+
+      .score-spinner {
+        width: 10px;
+        height: 10px;
+        border: 2px solid rgba(22, 119, 255, 0.25);
+        border-top-color: var(--color-primary, #1677ff);
+        border-radius: 50%;
+        animation: record-list-spin 0.8s linear infinite;
+      }
+
+      @keyframes record-list-spin {
+        to {
+          transform: rotate(360deg);
+        }
       }
 
       .actions {
-        gap: var(--space-xs);
-        justify-content: flex-end;
+        display: flex;
+        gap: var(--space-sm);
+        flex-shrink: 0;
       }
-    }
-  `,
+
+      .empty {
+        padding: var(--space-stack);
+        text-align: center;
+        color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
+        background: var(--color-surface, #fff);
+        border: 1px dashed var(--color-border, #d9d9d9);
+        border-radius: var(--radius-md, 8px);
+      }
+
+      .batch-controls {
+        display: flex;
+        align-items: center;
+        gap: var(--space-sm);
+      }
+
+      .batch-checkbox {
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
+        cursor: pointer;
+        accent-color: var(--color-primary, #1677ff);
+      }
+
+      :host([selection-mode]) .item {
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        cursor: pointer;
+      }
+
+      @media (max-width: 767px) {
+        .item {
+          grid-template-columns: 1fr;
+          align-items: start;
+          align-content: start;
+          gap: var(--space-xs);
+          height: calc(100% - var(--space-xs));
+          padding: var(--space-sm) var(--space-md);
+        }
+
+        /* Override desktop 3-col selection layout so actions stay on their own row. */
+        :host([selection-mode]) .item {
+          grid-template-columns: auto minmax(0, 1fr);
+        }
+
+        :host([selection-mode]) .actions {
+          grid-column: 1 / -1;
+        }
+
+        .details {
+          gap: var(--space-xs);
+        }
+
+        .actions {
+          gap: var(--space-xs);
+          justify-content: flex-end;
+        }
+      }
+    `,
   ];
 
   @property({ type: String })
@@ -742,7 +742,7 @@ export class RecordList extends LitElement {
       ></span>`;
     }
     if (score?.status === 'success' && typeof score.overall === 'number') {
-      return html`<span class="score-badge score-band ${scoreBand(score.overall)}"
+      return html`<span class="score-badge score-band ${overallBadgeBand(score.overall)}"
         >${formatOverallBadge(score.overall)}</span
       >`;
     }

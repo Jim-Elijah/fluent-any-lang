@@ -7,6 +7,7 @@ import * as playlistDb from '../../db/playlist.js';
 import { PlaylistNameConflictError } from '../../db/playlist.js';
 import * as importContent from '../../lib/import-content.js';
 import { NARROW_VIEWPORT_MQ } from '../../lib/layout-compact.js';
+import { getAppSettings, setAppSettings } from '../../lib/app-settings.js';
 import type { PendingSubtitleImport } from '../../lib/subtitle-import-helpers.js';
 import { FAVORITES_PLAYLIST_ID, type MediaItem, type SubtitleTrack } from '../../types/models.js';
 import { flushUpdates, mount } from '../ui/test-utils.js';
@@ -52,6 +53,7 @@ describe('media-list', () => {
   let cleanup: (() => void) | undefined;
 
   beforeEach(() => {
+    localStorage.clear();
     vi.spyOn(mediaDb, 'getMediaList').mockResolvedValue([]);
     vi.spyOn(mediaDb, 'deleteMedia').mockResolvedValue(undefined as never);
     vi.spyOn(subtitleDb, 'deleteSubtitle').mockResolvedValue(undefined as never);
@@ -100,6 +102,7 @@ describe('media-list', () => {
   afterEach(() => {
     cleanup?.();
     cleanup = undefined;
+    localStorage.clear();
     vi.restoreAllMocks();
   });
 
@@ -397,6 +400,51 @@ describe('media-list', () => {
     await el.updateComplete;
 
     expect(selected).toHaveBeenCalledWith(expect.objectContaining({ detail: { id: 'media-1' } }));
+  });
+
+  it('marks lastPlayedMediaId with continue-practice CTA', async () => {
+    setAppSettings({ lastPlayedMediaId: 'media-1' });
+    vi.mocked(mediaDb.getMediaList).mockResolvedValue([
+      makeMedia({ id: 'media-1', title: 'Last' }),
+      makeMedia({ id: 'media-2', title: 'Other', contentHash: 'hash-2' }),
+    ]);
+    const el = await renderList();
+    await el.refresh();
+    await el.updateComplete;
+
+    const lastPlayedButton = el.shadowRoot?.querySelector('ui-button[aria-label="继续练习"]') as {
+      variant?: string;
+    } | null;
+    const otherButton = el.shadowRoot?.querySelector('ui-button[aria-label="练习"]') as {
+      variant?: string;
+    } | null;
+
+    expect(lastPlayedButton?.variant).toBe('primary');
+    expect(otherButton?.variant).toBe('secondary');
+  });
+
+  it('clears stale lastPlayedMediaId when media is missing from the library', async () => {
+    setAppSettings({ lastPlayedMediaId: 'gone-media' });
+    vi.mocked(mediaDb.getMediaList).mockResolvedValue([makeMedia()]);
+    const el = await renderList();
+    await el.refresh();
+    await el.updateComplete;
+
+    expect(getAppSettings().lastPlayedMediaId).toBe('');
+    expect(el.shadowRoot?.querySelector('ui-button[aria-label="继续练习"]')).toBeNull();
+  });
+
+  it('clears lastPlayedMediaId when that media is deleted', async () => {
+    setAppSettings({ lastPlayedMediaId: 'media-1' });
+    vi.mocked(mediaDb.getMediaList).mockResolvedValue([makeMedia()]);
+    const el = (await renderList()) as MediaListHarness;
+    await el.refresh();
+    await el.updateComplete;
+
+    await el._handleDelete(makeMedia());
+    await el.updateComplete;
+
+    expect(getAppSettings().lastPlayedMediaId).toBe('');
   });
 
   it('toggles favorite state and notifies playlist change', async () => {

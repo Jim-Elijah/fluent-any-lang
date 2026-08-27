@@ -2,7 +2,8 @@ import { css } from 'lit';
 
 /**
  * Shared high / good / mid / low fill for Pronunciation Score badges and chips.
- * Pair with `scoreBand()` and class `score-band ${band}`.
+ * Pair with `scoreBand()` (raw scores) or `overallBadgeBand()` (rounded overall badges)
+ * and class `score-band ${band}`.
  * Traffic-light palette: excellent → good → passing → fail (tinted bg + darker fg).
  */
 export const scoreBandStyles = css`

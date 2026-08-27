@@ -169,6 +169,10 @@ describe('playlists-page', () => {
     expect(el.shadowRoot?.textContent).toContain('Daily Practice');
     expect(drawer?.textContent).toContain('Lesson 1');
     expect(el.shadowRoot?.textContent).toContain('上次练习');
+    // Playlist-level resume only — entry highlight needs lastPlayedMediaId too.
+    expect(drawer?.querySelector('.entry-title-row .tag')?.textContent ?? '').not.toContain(
+      '上次练习',
+    );
     expect(drawer?.textContent).not.toContain('上次播放的播放列表');
 
     drawer?.dispatchEvent(
@@ -183,6 +187,67 @@ describe('playlists-page', () => {
     expect(getDrawer(el)?.open).toBe(false);
     expect(el.shadowRoot?.querySelector('.playlist-item.active')).toBeNull();
     expect(getDrawer(el)?.textContent ?? '').not.toContain('Lesson 1');
+  });
+
+  it('highlights the last-played entry in the drawer when playlist and media ids both match', async () => {
+    stubMatchMedia(false);
+    const lastPlayed = makeMedia('m1', 'Last Lesson');
+    const other = makeMedia('m2', 'Other Lesson');
+    await addMedia(lastPlayed, { mediaId: lastPlayed.id, blob: new Blob(['a']) });
+    await addMedia(other, { mediaId: other.id, blob: new Blob(['b']) });
+    const playlist = await createPlaylist('Resume List');
+    await addMediaToPlaylist(playlist.id, lastPlayed.id);
+    await addMediaToPlaylist(playlist.id, other.id);
+    setAppSettings({
+      lastPlayedPlaylistId: playlist.id,
+      lastPlayedMediaId: lastPlayed.id,
+    });
+
+    const el = await renderPage();
+    const drawer = await openPlaylistDrawer(el, 'Resume List');
+    await waitForText(el, 'Last Lesson');
+
+    const entryItems = Array.from(drawer?.querySelectorAll('.entry-item') ?? []);
+    const lastPlayedItem = entryItems.find((item) => item.textContent?.includes('Last Lesson'));
+    const otherItem = entryItems.find((item) => item.textContent?.includes('Other Lesson'));
+    expect(lastPlayedItem?.querySelector('.entry-title-row .tag')?.textContent).toContain(
+      '上次练习',
+    );
+    expect(otherItem?.querySelector('.entry-title-row .tag')).toBeNull();
+
+    const resumeTooltip = lastPlayedItem?.querySelector('.entry-actions ui-tooltip') as {
+      title?: string;
+    } | null;
+    expect(resumeTooltip?.title).toBe('继续练习');
+    expect(
+      (lastPlayedItem?.querySelector('.entry-actions ui-button') as { variant?: string } | null)
+        ?.variant,
+    ).toBe('primary');
+    expect(
+      (otherItem?.querySelector('.entry-actions ui-tooltip') as { title?: string } | null)?.title,
+    ).toBe('练习');
+    expect(
+      (otherItem?.querySelector('.entry-actions ui-button') as { variant?: string } | null)
+        ?.variant,
+    ).toBe('secondary');
+  });
+
+  it('does not highlight a matching media entry when lastPlayedPlaylistId is absent', async () => {
+    stubMatchMedia(false);
+    const media = makeMedia('m1', 'Solo Lesson');
+    await addMedia(media, { mediaId: media.id, blob: new Blob(['a']) });
+    const playlist = await createPlaylist('From Media List');
+    await addMediaToPlaylist(playlist.id, media.id);
+    setAppSettings({ lastPlayedPlaylistId: '', lastPlayedMediaId: media.id });
+
+    const el = await renderPage();
+    const drawer = await openPlaylistDrawer(el, 'From Media List');
+    await waitForText(el, 'Solo Lesson');
+
+    expect(drawer?.querySelector('.entry-title-row .tag')).toBeNull();
+    expect(
+      (drawer?.querySelector('.entry-actions ui-tooltip') as { title?: string } | null)?.title,
+    ).toBe('练习');
   });
 
   it('hides soft-deleted playlist entries from the drawer', async () => {
@@ -221,7 +286,7 @@ describe('playlists-page', () => {
     await addMedia(media, blob);
     const playlist = await createPlaylist('Daily Practice');
     await addMediaToPlaylist(playlist.id, media.id);
-    setAppSettings({ lastPlayedPlaylistId: playlist.id });
+    setAppSettings({ lastPlayedPlaylistId: playlist.id, lastPlayedMediaId: media.id });
 
     const el = (await renderPage()) as PlaylistsPageHarness;
     await settlePage(el);
@@ -235,13 +300,75 @@ describe('playlists-page', () => {
 
     expect(resumeButton).toBeTruthy();
     resumeButton?.click();
-    expect(navigateSpy).toHaveBeenCalledWith(`/practice?playlistId=${playlist.id}`);
+    expect(navigateSpy).toHaveBeenCalledWith(
+      `/practice?playlistId=${playlist.id}&mediaId=${media.id}`,
+    );
 
     await el._handleDeletePlaylist(playlist.id);
     await settlePage(el);
 
     expect(getAppSettings().lastPlayedPlaylistId).toBe('');
     expect(el.shadowRoot?.textContent ?? '').not.toContain('上次练习');
+  });
+
+  it('resumes playlist practice from lastPlayedMediaId when still in the list', async () => {
+    stubMatchMedia(false);
+    const first = makeMedia('m1', 'First Lesson');
+    const lastPlayed = makeMedia('m2', 'Resume Lesson');
+    await addMedia(first, { mediaId: first.id, blob: new Blob(['a']) });
+    await addMedia(lastPlayed, { mediaId: lastPlayed.id, blob: new Blob(['b']) });
+    const playlist = await createPlaylist('Resume From Media');
+    await addMediaToPlaylist(playlist.id, first.id);
+    await addMediaToPlaylist(playlist.id, lastPlayed.id);
+    setAppSettings({
+      lastPlayedPlaylistId: playlist.id,
+      lastPlayedMediaId: lastPlayed.id,
+    });
+
+    const el = (await renderPage()) as PlaylistsPageHarness;
+    await settlePage(el);
+    const navigateSpy = vi.fn();
+    el.navigate = navigateSpy;
+
+    const resumeTooltip = Array.from(
+      el.shadowRoot?.querySelectorAll('.playlist-actions ui-tooltip') ?? [],
+    ).find((tooltip) => (tooltip as { title?: string }).title === '继续练习');
+    (resumeTooltip?.querySelector('ui-button') as HTMLElement | undefined)?.click();
+    expect(navigateSpy).toHaveBeenCalledWith(
+      `/practice?playlistId=${playlist.id}&mediaId=${lastPlayed.id}`,
+    );
+
+    navigateSpy.mockClear();
+    const drawer = await openPlaylistDrawer(el, 'Resume From Media');
+    drawer
+      ?.querySelector('.drawer-footer ui-button')
+      ?.dispatchEvent(new Event('click', { bubbles: true }));
+    expect(navigateSpy).toHaveBeenCalledWith(
+      `/practice?playlistId=${playlist.id}&mediaId=${lastPlayed.id}`,
+    );
+  });
+
+  it('falls back to first entry when lastPlayedMediaId is no longer in the playlist', async () => {
+    stubMatchMedia(false);
+    const media = makeMedia('m1', 'Only Lesson');
+    await addMedia(media, { mediaId: media.id, blob: new Blob(['a']) });
+    const playlist = await createPlaylist('Stale Media Resume');
+    await addMediaToPlaylist(playlist.id, media.id);
+    setAppSettings({
+      lastPlayedPlaylistId: playlist.id,
+      lastPlayedMediaId: 'missing-media-id',
+    });
+
+    const el = (await renderPage()) as PlaylistsPageHarness;
+    await settlePage(el);
+    const navigateSpy = vi.fn();
+    el.navigate = navigateSpy;
+
+    const resumeTooltip = Array.from(
+      el.shadowRoot?.querySelectorAll('.playlist-actions ui-tooltip') ?? [],
+    ).find((tooltip) => (tooltip as { title?: string }).title === '继续练习');
+    (resumeTooltip?.querySelector('ui-button') as HTMLElement | undefined)?.click();
+    expect(navigateSpy).toHaveBeenCalledWith(`/practice?playlistId=${playlist.id}`);
   });
 
   it('shows a specific message when creating a duplicate playlist name', async () => {

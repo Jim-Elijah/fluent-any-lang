@@ -1,7 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { PronunciationScoreApiResponse, ReferenceProsodyProfile } from '../../types/models.js';
-import { PronunciationScoreHttpError, mapScoreFetchFailure, mapScoreHttpStatus, scorePronunciation } from './client.js';
+import {
+  PronunciationScoreHttpError,
+  mapScoreFetchFailure,
+  mapScoreHttpStatus,
+  scorePronunciation,
+} from './client.js';
 import { SCORE_API_PATH } from './constants.js';
 
 const sampleProfile: ReferenceProsodyProfile = {

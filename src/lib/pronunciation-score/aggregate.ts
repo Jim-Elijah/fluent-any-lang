@@ -1,4 +1,5 @@
 import type { PracticeRecord, PronunciationScore } from '../../types/models.js';
+import { scoreBand, type ScoreBand } from './score-band.js';
 
 /**
  * Latest successful overall per Echo Subtitle Segment.
@@ -21,6 +22,16 @@ export function aggregateEchoLatestOverall(
   return result;
 }
 
+/** Integer shown on overall badges; band colors must use this same value. */
+export function roundOverallForBadge(overall: number): number {
+  return Math.round(overall);
+}
+
 export function formatOverallBadge(overall: number): string {
-  return String(Math.round(overall));
+  return String(roundOverallForBadge(overall));
+}
+
+/** ScoreBand for an overall badge — keyed off the rounded display value. */
+export function overallBadgeBand(overall: number): ScoreBand {
+  return scoreBand(roundOverallForBadge(overall));
 }

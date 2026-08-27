@@ -35,7 +35,9 @@ describe('pronunciation-score text-highlight', () => {
       ],
     );
 
-    expect(spans.map((s) => ({ kind: s.kind, text: s.text, misreadIndex: s.misreadIndex }))).toEqual([
+    expect(
+      spans.map((s) => ({ kind: s.kind, text: s.text, misreadIndex: s.misreadIndex })),
+    ).toEqual([
       { kind: 'plain', text: 'he ', misreadIndex: undefined },
       { kind: 'misread', text: 'was', misreadIndex: 0 },
       { kind: 'plain', text: ' ', misreadIndex: undefined },
@@ -104,8 +106,11 @@ describe('pronunciation-score text-highlight', () => {
 
   it('skips invalid spans and reports playable misread start', () => {
     expect(
-      buildReferenceHighlightSpans('abc', [{ word: 'x', ref_index: 0, char_start: 5, char_end: 2 }], [])
-        .map((s) => s.kind),
+      buildReferenceHighlightSpans(
+        'abc',
+        [{ word: 'x', ref_index: 0, char_start: 5, char_end: 2 }],
+        [],
+      ).map((s) => s.kind),
     ).toEqual(['plain']);
 
     expect(

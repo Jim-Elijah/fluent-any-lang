@@ -120,13 +120,19 @@ describe('app-settings', () => {
     expect(normalized.maxStorageMB).toBe(DEFAULT_SETTINGS.maxStorageMB);
   });
 
-  it('does not prefill last played playlist by default', () => {
+  it('does not prefill last played playlist or media by default', () => {
     expect(getAppSettings().lastPlayedPlaylistId).toBe('');
+    expect(getAppSettings().lastPlayedMediaId).toBe('');
   });
 
   it('persists lastPlayedPlaylistId when provided', () => {
     setAppSettings({ lastPlayedPlaylistId: 'playlist-42' });
     expect(getAppSettings().lastPlayedPlaylistId).toBe('playlist-42');
+  });
+
+  it('persists lastPlayedMediaId when provided', () => {
+    setAppSettings({ lastPlayedMediaId: 'media-42' });
+    expect(getAppSettings().lastPlayedMediaId).toBe('media-42');
   });
 
   it('persists pronunciation scoring API settings', () => {

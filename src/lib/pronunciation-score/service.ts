@@ -152,7 +152,9 @@ export function isCachedProfileValid(
   referenceText: string,
   referenceDuration: number,
 ): boolean {
-  if (normalizeNewlines(profile.reference_text).trim() !== normalizeNewlines(referenceText).trim()) {
+  if (
+    normalizeNewlines(profile.reference_text).trim() !== normalizeNewlines(referenceText).trim()
+  ) {
     return false;
   }
   return (

@@ -901,8 +901,7 @@ export class MediaController extends EventTarget {
       return;
     }
     this.mediaElement.loop =
-      this.sleepMode !== 'until-end' &&
-      (this._lockScreenLoop || this.loopMode === 'single');
+      this.sleepMode !== 'until-end' && (this._lockScreenLoop || this.loopMode === 'single');
   }
 
   private _handleEnded = (): void => {
