@@ -538,6 +538,31 @@ describe('MediaController', () => {
     expect(audio.loop).toBe(false);
   });
 
+  it('sets native loop when lockScreenLoop is enabled', async () => {
+    await controller.loadTracks([makeTrack('a', 'Track A')]);
+    expect(audio.loop).toBe(false);
+
+    controller.setLockScreenLoop(true);
+    expect(audio.loop).toBe(true);
+
+    controller.setSleepMode('until-end');
+    expect(audio.loop).toBe(false);
+
+    controller.setSleepMode('off');
+    expect(audio.loop).toBe(true);
+
+    controller.setLockScreenLoop(false);
+    expect(audio.loop).toBe(false);
+  });
+
+  it('clears lockScreenLoop native flag after resetSettings', async () => {
+    await controller.loadTracks([makeTrack('a', 'Track A')]);
+    controller.setLockScreenLoop(true);
+    expect(audio.loop).toBe(true);
+    controller.resetSettings();
+    expect(audio.loop).toBe(false);
+  });
+
   it('restores the default native loop flag after resetSettings', async () => {
     await controller.loadTracks([makeTrack('a', 'Track A')]);
     controller.setLoopMode('single');
@@ -549,6 +574,14 @@ describe('MediaController', () => {
   it('re-applies native loop after load() when staying on single', async () => {
     await controller.loadTracks([makeTrack('a', 'Track A'), makeTrack('b', 'Track B')]);
     controller.setLoopMode('single');
+    expect(audio.loop).toBe(true);
+    await controller.loadTrack(1);
+    expect(audio.loop).toBe(true);
+  });
+
+  it('re-applies lockScreenLoop after load()', async () => {
+    await controller.loadTracks([makeTrack('a', 'Track A'), makeTrack('b', 'Track B')]);
+    controller.setLockScreenLoop(true);
     expect(audio.loop).toBe(true);
     await controller.loadTrack(1);
     expect(audio.loop).toBe(true);

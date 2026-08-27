@@ -66,6 +66,8 @@ describe('NoiseMixer', () => {
     ]);
     expect(FakeAudio.instances).toHaveLength(2);
     expect(FakeAudio.instances[0].volume).toBe(0.4);
+    expect(FakeAudio.instances[0].loop).toBe(true);
+    expect(FakeAudio.instances[1].loop).toBe(true);
 
     mixer.setPlaying(true);
     await Promise.resolve();
@@ -79,7 +81,7 @@ describe('NoiseMixer', () => {
     mixer.destroy();
   });
 
-  it('restarts a track when it ends while playing', async () => {
+  it('uses native loop instead of ended restart handlers', async () => {
     globalThis.Audio = FakeAudio as unknown as typeof Audio;
     const mixer = new NoiseMixer();
     mixer.setTracks([{ id: 'a', url: 'https://example.com/a.mp3', volume: 1 }]);
@@ -87,11 +89,12 @@ describe('NoiseMixer', () => {
     await Promise.resolve();
 
     const audio = FakeAudio.instances[0];
+    expect(audio.loop).toBe(true);
     audio.play.mockClear();
     audio.currentTime = 12;
     audio.dispatch('ended');
-    expect(audio.currentTime).toBe(0);
-    expect(audio.play).toHaveBeenCalled();
+    expect(audio.currentTime).toBe(12);
+    expect(audio.play).not.toHaveBeenCalled();
 
     mixer.destroy();
   });

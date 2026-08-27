@@ -58,14 +58,23 @@ Sentence practice (`/sentence-practice`) is a lighter path on clipped Sentence B
 
 ## Critical couplings
 
-- **`practice-view` ↔ `MediaController`** — mode profiles, seek/lock, segment alignment
+- **`practice-view` ↔ `MediaController`** — mode profiles, seek/lock, segment alignment; Discrimination may set `setLockScreenLoop` while the document is hidden
 - **`PracticeTimeTracker` ↔ controller + `practice-session`** — observational only; active duration, not wall-clock
-- **`practice-view` ↔ NoiseMixer / RateLadder`** — Discrimination play/pause and ladder on track `ended`
+- **`practice-view` ↔ NoiseMixer / RateLadder`** — Discrimination play/pause and ladder on track `ended` (foreground); lock-screen uses native `loop` on the main element + Noise elements (see risks below)
 - **`practice-view` ↔ EchoClipPlayer`** — Echo listen must not seek the main media element
 - **`recording-preview` ↔ DualTrackPlayback / waveform** — compare & single-track preview; segment `viewRange` includes the trailing gap to the next Subtitle Segment (`getPracticeSegmentViewRange`); current-line text prefers the live Subtitle Track, then the Practice Segment snapshot; Pronunciation Score `word_scores` overlay the current Practice Segment on the recording waveform (HTML lane above the canvas; click seeks/plays that word; hidden while idle or playing source). Score heatmap chips stay visible in every play mode and jump to the same recording time (score bands only — not error-type colors). Positioned error buckets use a shared error-type legend on reference then transcript (expected→actual reading order) and on 漏读/读错/多读 summary lists (missing = gray strikethrough, extra = purple wavy underline, misread = red tint); playable misreads (`start` present) are clickable in-text and in the 读错 list (seek + brief expected↔actual pair emphasis).
 - **`pronunciation-score` ↔ Practice Record** — on-demand scoring only; score / re-score UI hidden until settings have URL+key (stored scores remain visible); `deleteRecording` must cascade; scores export with recordings in backup v5; reference text prefers the Practice Segment snapshot, live Subtitle Track is legacy fallback; HTTP contract in [`pronunciation-score-api.md`](./pronunciation-score-api.md) (full POST URL in settings, no health probe; char spans are LF-normalized — client `normalizeNewlines` before upload/highlight). Echo match scoring (`speechScoreProsodyBasis=match`) may send clipped reference audio or a cached prosody profile; default `naturalness` and Shadowing stay text+duration; profiles are not backed up. Re-score API failure/cancel restores the prior `success` row (does not persist `failed` over it)
 - **`import-content` ↔ media + subtitle`** — import writes both
 - **`deleteMedia` → playlist + sentence-bank + reference prosody profiles`** — soft-delete / unavailable cascade; clear profile cache for that Media
+
+### Discrimination lock-screen (risks)
+
+Native `HTMLMediaElement.loop` keeps the main Media (and Noise) wrapping when the document is hidden, because JS `ended` → seek/play is unreliable on mobile lock screens. Trade-offs:
+
+1. **Ladder does not advance while hidden** — RateLadder stays on the current step; unlock does not catch up. The next step applies only after a foreground `ended`.
+2. **Last ladder step** — lock-screen loop is off so the main element can end natively; Noise may keep playing until `ended`/visibility handlers run `setPlaying(false)`.
+3. **Secondary Noise `Audio()` elements** — some platforms only keep the primary media session alive; Noise may still stop under lock screen even with native `loop`.
+4. **Mode switch must clear `lockScreenLoop`** — leaking the override into Free Listening would force unwanted native loop.
 
 ## Invariants
 

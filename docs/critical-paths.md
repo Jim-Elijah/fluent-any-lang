@@ -23,15 +23,15 @@ Prefer automated tests where they exist; use this list when changing the named a
 
 | If you change…                                            | Also verify…                                                                                                                                                                       |
 | --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `MediaController` seek / segment end / `navigationLocked` | Free Listening loop & segment nav; **single** uses native `loop` except when sleep is until-end; Shadowing stop-on-segment; Discrimination ladder still advances                 |
-| `practice-view` mode switching                            | All 4 Practice Modes; tracker mode labels (`free` not legacy `listening`); tip/hotkey wiring                                                                                       |
-| `PracticeTimeTracker` / session flush                     | Stats dashboard; background/tab hide; short sessions dropped; no side effects on playback                                                                                          |
-| `EchoClipPlayer` / echo listen                            | Mic route change does not cut clip into recording; main element position stable                                                                                                    |
-| `audio-recorder` / `saveRecording`                        | Shadowing multi-segment + Echo per-segment records; library preview dual-track; Practice Segment snapshot text present when recorded with subtitles                                |
-| `deleteRecording` / Pronunciation Score                   | Score row is removed with the Practice Record; `record-list` emits `recordings-changed` (score / delete / batch-delete) so practice-view refreshes Echo subtitle badge + counts   |
+| `MediaController` seek / segment end / `navigationLocked` | Free Listening loop & segment nav; **single** uses native `loop` except when sleep is until-end; Discrimination may set `lockScreenLoop` while hidden (not last ladder step); Shadowing stop-on-segment; Discrimination ladder still advances in foreground |
+| `practice-view` mode switching                            | All 4 Practice Modes; tracker mode labels (`free` not legacy `listening`); tip/hotkey wiring; Discrimination enter/exit clears `lockScreenLoop`                                                                                       |
+| `PracticeTimeTracker` / session flush                     | Stats dashboard; background/tab hide; short sessions dropped; no side effects on playback                                                                                                                                          |
+| `EchoClipPlayer` / echo listen                            | Mic route change does not cut clip into recording; main element position stable                                                                                                                                                    |
+| `audio-recorder` / `saveRecording`                        | Shadowing multi-segment + Echo per-segment records; library preview dual-track; Practice Segment snapshot text present when recorded with subtitles                                                                                |
+| `deleteRecording` / Pronunciation Score                   | Score row is removed with the Practice Record; `record-list` emits `recordings-changed` (score / delete / batch-delete) so practice-view refreshes Echo subtitle badge + counts                                                   |
 | `lib/pronunciation-score` / speech score settings         | On-demand score only (no auto-score on save); full POST URL in settings (legacy base URL → v2 path; saved v1 URLs left alone); score / re-score actions hidden until URL+key set (existing badges still shown); 60s/10MB rejection; Echo match only when `speechScoreProsodyBasis=match` (profile cache or clipped reference audio, silent degrade); default naturalness + Shadowing text-only; Echo subtitle overall badge; snapshot scores after Subtitle Track delete; score action disabled without 对照原稿; re-score API fail keeps prior success |
-| `microphone-access` / Speaking mic gate                   | `practice-view` Shadowing/Echo; sentence-practice Speaking recorder disabled + permission refresh                                                                                  |
-| NoiseMixer / RateLadder / discrimination prefs            | Noise ≠ Media; play/pause sync with main; ladder on `ended`                                                                                                                        |
+| `microphone-access` / Speaking mic gate                   | `practice-view` Shadowing/Echo; sentence-practice Speaking recorder disabled + permission refresh                                                                                                                                  |
+| NoiseMixer / RateLadder / discrimination prefs            | Noise ≠ Media; play/pause sync with main; Noise uses native `loop`; ladder advances on `ended` when visible; lock-screen risks below                                                                                               |
 | `segment-id` / subtitle import / migrate                  | Existing Echo records & Sentence Bank still match segments                                                                                                                         |
 | `db/schema` / `db/index` upgrade                          | Fresh open + upgrade from previous version; migrations idempotent                                                                                                                  |
 | `db/media` delete cascade                                 | Playlists soft-remove; sentence bank unavailable flags; reference prosody profiles cleared by mediaId                                                                              |
@@ -51,11 +51,19 @@ Unit/integration coverage already clusters around:
 
 When adding a critical behavior, prefer a test here over only updating this doc.
 
+## Discrimination lock-screen risks
+
+See [`architecture.md`](./architecture.md#discrimination-lock-screen-risks). Short checklist:
+
+- Hidden + more ladder steps → main `lockScreenLoop` on; visible / last step / leave Discrimination → off
+- Ladder does not advance while locked; unlock stays on the same step until the next foreground `ended`
+- Noise uses native `loop` but may still stop on some devices (secondary `Audio()`)
+
 ## Release smoke (manual, ~10 min)
 
 1. Import one audio + SRT
 2. Free Listening: seek + loop one Subtitle Segment
-3. Discrimination: enable one Noise track briefly
+3. Discrimination: enable one Noise track briefly; with 2+ ladder steps, lock screen mid-play then unlock (main should keep looping at the same rate; ladder advances only after a visible `ended`)
 4. Shadowing: one take → appears in records
 5. Echo: one segment listen + record
 6. Confirm today’s Practice Session time moved on Stats/Home

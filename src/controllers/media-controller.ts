@@ -126,6 +126,12 @@ export class MediaController extends EventTarget {
    * next cue and resumes — instead of normal pauseMode.
    */
   shadowingGapCompress = false;
+  /**
+   * When true, force native `HTMLMediaElement.loop` (unless sleep is until-end).
+   * Used by Discrimination while the document is hidden so lock-screen replay
+   * does not depend on JS `ended` → seek/play.
+   */
+  private _lockScreenLoop = false;
 
   private readonly _sleepScheduler = new DeadlineScheduler();
   private readonly _segmentPauseScheduler = new DeadlineScheduler();
@@ -581,6 +587,20 @@ export class MediaController extends EventTarget {
     this._emitChange();
   }
 
+  /**
+   * Force native media loop for lock-screen continuity (e.g. Discrimination).
+   * Cleared on {@link resetSettings}. Does not change {@link loopMode}.
+   */
+  setLockScreenLoop(enabled: boolean): void {
+    if (this._lockScreenLoop === enabled) {
+      this._syncNativeLoop();
+      return;
+    }
+    this._lockScreenLoop = enabled;
+    this._syncNativeLoop();
+    this._emitChange();
+  }
+
   setSleepMode(mode: SleepMode): void {
     this.sleepMode = mode;
 
@@ -672,6 +692,7 @@ export class MediaController extends EventTarget {
     this.pauseMode = DEFAULT_PLAYER_SETTINGS.pauseMode;
     this.pauseSeconds = DEFAULT_PLAYER_SETTINGS.pauseSeconds;
     this.pausePercent = DEFAULT_PLAYER_SETTINGS.pausePercent;
+    this._lockScreenLoop = false;
 
     if (this.mediaElement) {
       this.mediaElement.playbackRate = this.playbackRate;
@@ -871,12 +892,17 @@ export class MediaController extends EventTarget {
     this.currentTime = endTime;
   }
 
-  /** Native wrap for Free Listening single when sleep is not until-end (lock-screen replay). */
+  /**
+   * Native wrap for Free Listening `single`, or Discrimination lock-screen override,
+   * when sleep is not until-end.
+   */
   private _syncNativeLoop(): void {
     if (!this.mediaElement) {
       return;
     }
-    this.mediaElement.loop = this.loopMode === 'single' && this.sleepMode !== 'until-end';
+    this.mediaElement.loop =
+      this.sleepMode !== 'until-end' &&
+      (this._lockScreenLoop || this.loopMode === 'single');
   }
 
   private _handleEnded = (): void => {

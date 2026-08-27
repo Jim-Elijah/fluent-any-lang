@@ -1509,6 +1509,51 @@ describe('practice-view', () => {
       expect(playSpy).toHaveBeenCalled();
     });
 
+    it('enables lock-screen native loop while hidden with more ladder steps', async () => {
+      const el = await renderView();
+      await switchToDiscriminationMode(el);
+      mockRateLadder.getIndex.mockReturnValue(0);
+      mockRateLadder.getSequence.mockReturnValue([1, 1.5, 1]);
+
+      const lockSpy = vi.spyOn(el._controller, 'setLockScreenLoop');
+      const visibilityState = vi.spyOn(document, 'visibilityState', 'get');
+
+      visibilityState.mockReturnValue('hidden');
+      document.dispatchEvent(new Event('visibilitychange'));
+      expect(lockSpy).toHaveBeenCalledWith(true);
+
+      visibilityState.mockReturnValue('visible');
+      document.dispatchEvent(new Event('visibilitychange'));
+      expect(lockSpy).toHaveBeenCalledWith(false);
+
+      visibilityState.mockRestore();
+    });
+
+    it('clears lock-screen loop when leaving discrimination', async () => {
+      const el = await renderView();
+      await switchToDiscriminationMode(el);
+      const lockSpy = vi.spyOn(el._controller, 'setLockScreenLoop');
+
+      findButton(el, '自由听')?.click();
+      await el.updateComplete;
+
+      expect(lockSpy).toHaveBeenCalledWith(false);
+    });
+
+    it('does not enable lock-screen loop on the last ladder step', async () => {
+      const el = await renderView();
+      await switchToDiscriminationMode(el);
+      mockRateLadder.getIndex.mockReturnValue(2);
+      mockRateLadder.getSequence.mockReturnValue([1, 1.5, 1]);
+
+      const lockSpy = vi.spyOn(el._controller, 'setLockScreenLoop');
+      const visibilityState = vi.spyOn(document, 'visibilityState', 'get');
+      visibilityState.mockReturnValue('hidden');
+      document.dispatchEvent(new Event('visibilitychange'));
+      expect(lockSpy).toHaveBeenCalledWith(false);
+      visibilityState.mockRestore();
+    });
+
     it('wires discrimination panel noise and ladder events', async () => {
       mockGetNoiseList.mockResolvedValue([
         {

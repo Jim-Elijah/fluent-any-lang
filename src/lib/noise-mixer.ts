@@ -14,7 +14,8 @@ type TrackRuntime = {
 
 /**
  * Plays one or more ambient noise tracks in sync with a main media play/pause flag.
- * Does not follow seek, rate, or segment navigation. Loops each track on `ended`.
+ * Does not follow seek, rate, or segment navigation. Uses native `loop` so Noise
+ * keeps wrapping while the main track is marked playing (incl. lock-screen).
  */
 export class NoiseMixer {
   private tracks: TrackRuntime[] = [];
@@ -26,11 +27,10 @@ export class NoiseMixer {
     this._clearTracks();
     this.tracks = next.map((track) => {
       const audio = new Audio();
-      audio.loop = false;
+      audio.loop = true;
       audio.preload = 'auto';
       audio.src = track.url;
       audio.volume = Math.max(0, Math.min(1, track.volume));
-      audio.addEventListener('ended', this._onTrackEnded);
       return { id: track.id, url: track.url, audio, ownedUrl: track.url.startsWith('blob:') };
     });
     if (this.playing) {
@@ -62,15 +62,6 @@ export class NoiseMixer {
     this._clearTracks();
   }
 
-  private _onTrackEnded = (event: Event): void => {
-    if (!this.playing || this.destroyed) return;
-    const audio = event.target as HTMLAudioElement;
-    audio.currentTime = 0;
-    void audio.play().catch(() => {
-      // Autoplay / interruption — ignore; next setPlaying(true) retries.
-    });
-  };
-
   private async _playAll(): Promise<void> {
     await Promise.all(
       this.tracks.map(async (track) => {
@@ -91,7 +82,6 @@ export class NoiseMixer {
 
   private _clearTracks(): void {
     for (const track of this.tracks) {
-      track.audio.removeEventListener('ended', this._onTrackEnded);
       track.audio.pause();
       track.audio.removeAttribute('src');
       track.audio.load();

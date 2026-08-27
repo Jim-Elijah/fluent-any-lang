@@ -561,6 +561,7 @@ export class PracticeView extends NavigatorElement {
     if (result.kind === 'finished') {
       this._noiseMixer.setPlaying(false);
       this._controller.setPlaybackRate(this._rateLadder.getCurrentRate());
+      this._syncDiscriminationLockScreenLoop();
       return;
     }
     this._ladderAdvancing = true;
@@ -569,8 +570,27 @@ export class PracticeView extends NavigatorElement {
     void this._controller.play().finally(() => {
       this._ladderAdvancing = false;
       this._noiseMixer.setPlaying(true);
+      this._syncDiscriminationLockScreenLoop();
     });
   };
+
+  /** True while RateLadder still has steps after the current index. */
+  private _discriminationHasMoreLadderSteps(): boolean {
+    const sequence = this._rateLadder.getSequence();
+    return this._rateLadder.getIndex() < sequence.length - 1;
+  }
+
+  /**
+   * Enable native main-track loop only while Discrimination is active, the
+   * document is hidden, and more ladder steps remain (lock-screen continuity).
+   */
+  private _syncDiscriminationLockScreenLoop(): void {
+    const enable =
+      this._discriminationActive &&
+      document.visibilityState === 'hidden' &&
+      this._discriminationHasMoreLadderSteps();
+    this._controller.setLockScreenLoop(enable);
+  }
 
   private async _refreshNoiseItems(): Promise<void> {
     try {
@@ -600,6 +620,7 @@ export class PracticeView extends NavigatorElement {
         void this._syncNoiseMixerTracks();
       }
       this._controller.setPlaybackRate(this._rateLadder.getCurrentRate());
+      this._syncDiscriminationLockScreenLoop();
     }
   }
 
@@ -627,12 +648,14 @@ export class PracticeView extends NavigatorElement {
     this._rateLadder.reset();
     this._ladderDisplayIndex = 0;
     this._controller.setPlaybackRate(this._rateLadder.getCurrentRate());
+    this._syncDiscriminationLockScreenLoop();
     await this._syncNoiseMixerTracks();
   }
 
   private _teardownDiscrimination(): void {
     this._discriminationActive = false;
     this._ladderAdvancing = false;
+    this._controller.setLockScreenLoop(false);
     this._noiseMixer.setPlaying(false);
     this._noiseMixer.setTracks([]);
     this._restorePracticePlaybackSettings();
@@ -674,6 +697,7 @@ export class PracticeView extends NavigatorElement {
       this._rateLadder.reset();
       this._ladderDisplayIndex = 0;
       this._controller.setPlaybackRate(this._rateLadder.getCurrentRate());
+      this._syncDiscriminationLockScreenLoop();
     }
     void this._refreshRecordings();
     void this._refreshSentenceBankIds();
@@ -1534,6 +1558,7 @@ export class PracticeView extends NavigatorElement {
   };
 
   private _onVisibilityChange = (): void => {
+    this._syncDiscriminationLockScreenLoop();
     if (document.visibilityState === 'visible') {
       void this._refreshMicStatus();
     }
