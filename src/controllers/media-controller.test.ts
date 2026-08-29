@@ -725,6 +725,60 @@ describe('MediaController', () => {
     expect(audioTime).toBe(5.1);
   });
 
+  it('clears the active segment when seeking into the leading or trailing gap during segment loop', async () => {
+    const segments: SubtitleSegment[] = [
+      { id: 's1', startTime: 2, endTime: 5, text: 'one' },
+      { id: 's2', startTime: 5.25, endTime: 8, text: 'two' },
+      { id: 's3', startTime: 8.4, endTime: 12, text: 'three' },
+    ];
+    await controller.loadTracks([makeTrack('a', 'Track A', { segments })]);
+    controller.setLoopMode('segment');
+    controller.seekToSegment(1);
+    expect(controller.currentSegmentIndex).toBe(1);
+    expect(controller.getSnapshot().canReplaySegment).toBe(true);
+
+    controller.seek(0.5);
+    expect(controller.currentSegmentIndex).toBe(-1);
+    expect(controller.currentTime).toBe(0.5);
+    expect(controller.getSnapshot().canReplaySegment).toBe(false);
+
+    controller.seekToSegment(1);
+    controller.seek(15);
+    expect(controller.currentSegmentIndex).toBe(-1);
+    expect(controller.currentTime).toBe(15);
+    expect(controller.getSnapshot().canReplaySegment).toBe(false);
+
+    controller.replaySegment();
+    expect(controller.currentSegmentIndex).toBe(-1);
+    expect(controller.currentTime).toBe(15);
+  });
+
+  it('adopts a segment again when playback enters one after a leading-gap seek in segment loop', async () => {
+    const segments: SubtitleSegment[] = [
+      { id: 's1', startTime: 2, endTime: 5, text: 'one' },
+      { id: 's2', startTime: 5.25, endTime: 8, text: 'two' },
+    ];
+    await controller.loadTracks([makeTrack('a', 'Track A', { segments })]);
+    controller.setLoopMode('segment');
+    controller.seekToSegment(1);
+    controller.seek(0.5);
+    expect(controller.currentSegmentIndex).toBe(-1);
+
+    let audioTime = 0.5;
+    Object.defineProperty(audio, 'paused', { configurable: true, value: false });
+    Object.defineProperty(audio, 'currentTime', {
+      configurable: true,
+      get: () => audioTime,
+      set: (value: number) => {
+        audioTime = value;
+      },
+    });
+
+    audioTime = 2.1;
+    audio.dispatchEvent(new Event('timeupdate'));
+    expect(controller.currentSegmentIndex).toBe(0);
+  });
+
   it('keeps progress after seekToSegment during segment loop', async () => {
     const segments: SubtitleSegment[] = [
       { id: 's1', startTime: 0, endTime: 5, text: 'one' },

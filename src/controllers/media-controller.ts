@@ -424,12 +424,10 @@ export class MediaController extends EventTarget {
     }
     if (this.loopMode === 'segment') {
       // Gaps keep the previous cue in findSegmentIndex (playback flicker guard).
-      // Intentional seeks should adopt the following Subtitle Segment instead,
-      // or segment loop would treat the gap as "past end" and snap back to start.
-      const idx = findSegmentIndexPreferNextInGap(this.segments, clamped);
-      if (idx >= 0) {
-        this._setCurrentSegmentIndex(idx);
-      }
+      // Intentional seeks adopt the following Subtitle Segment in mid-track gaps
+      // so segment loop does not treat the gap as "past end" and snap back.
+      // Leading / trailing gaps (no Subtitle Segment) clear the active index.
+      this._setCurrentSegmentIndex(findSegmentIndexPreferNextInGap(this.segments, clamped));
     } else {
       this._updateCurrentSegment({ allowForward: true });
     }
@@ -591,10 +589,8 @@ export class MediaController extends EventTarget {
 
     this.loopMode = mode;
     if (mode === 'segment') {
-      const idx = findSegmentIndex(this.segments, this.currentTime);
-      if (idx >= 0) {
-        this._setCurrentSegmentIndex(idx);
-      }
+      // Leading / trailing gaps leave no active Subtitle Segment (index -1).
+      this._setCurrentSegmentIndex(findSegmentIndex(this.segments, this.currentTime));
     } else if (mode === 'shuffle') {
       this._resetShuffleOrder(this.currentIndex);
     }
@@ -825,15 +821,19 @@ export class MediaController extends EventTarget {
 
     this._detectSegmentEnd();
     this._applySegmentLoop();
-    // Segment loop pins the active sentence: time-based index updates (including
-    // findSegmentIndex's "keep previous in gap" rule) can jump backward when a
-    // rewind undershoots into the pre-segment gap.
+    // Segment loop pins the active Subtitle Segment once set: time-based updates
+    // (including findSegmentIndex's "keep previous in gap" rule) can jump
+    // backward when a rewind undershoots into the pre-segment gap.
     // Compress jumps also land briefly in inter-cue hollows — never regress there.
+    // When index is cleared (seek into leading/trailing gap), adopt again as
+    // playback enters a real Subtitle Segment.
     if (this.loopMode !== 'segment') {
       this._updateCurrentSegment({
         allowForward: true,
         allowBackward: !this.shadowingGapCompress,
       });
+    } else if (this.currentSegmentIndex < 0) {
+      this._updateCurrentSegment({ allowForward: true, allowBackward: true });
     }
 
     this._previousPlaybackTime = this.currentTime;

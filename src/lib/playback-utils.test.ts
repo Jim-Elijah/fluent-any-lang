@@ -158,6 +158,10 @@ describe('findSegmentIndexPreferNextInGap', () => {
   it('still returns -1 after all subtitles have ended', () => {
     expect(findSegmentIndexPreferNextInGap(sampleSegments, 16)).toBe(-1);
   });
+
+  it('still returns -1 before the first segment', () => {
+    expect(findSegmentIndexPreferNextInGap(sampleSegments, -1)).toBe(-1);
+  });
 });
 
 describe('getPracticeSourceSpan', () => {

@@ -58,7 +58,7 @@ Sentence practice (`/sentence-practice`) is a lighter path on clipped Sentence B
 
 ## Critical couplings
 
-- **`practice-view` ↔ `MediaController`** — mode profiles, seek/lock, segment alignment; Discrimination may set `setLockScreenLoop` while the document is hidden
+- **`practice-view` ↔ `MediaController`** — mode profiles, seek/lock, segment alignment; Discrimination may set `setLockScreenLoop` while the document is hidden. Segment loop: scrub into a mid-track gap adopts the following Subtitle Segment; leading/trailing gaps clear `currentSegmentIndex` (−1, no highlight / replay) until playback or seek lands inside a segment again.
 - **`PracticeTimeTracker` ↔ controller + `practice-session`** — observational only; active duration, not wall-clock
 - **`practice-view` ↔ NoiseMixer / RateLadder`** — Discrimination play/pause and ladder on track `ended` (foreground); lock-screen uses native `loop` on the main element + Noise elements (see risks below)
 - **`practice-view` ↔ EchoClipPlayer`** — Echo listen must not seek the main media element
