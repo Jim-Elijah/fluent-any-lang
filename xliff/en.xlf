@@ -2311,10 +2311,6 @@
   <source>多读</source>
   <target>Extra</target>
 </trans-unit>
-<trans-unit id="s4a888818b3ccd874">
-  <source>漏读，录音中没有对应位置</source>
-  <target>Missing — not found in the recording</target>
-</trans-unit>
 <trans-unit id="s60933dd7108f8b2b">
   <source>评分完成</source>
   <target>Scoring complete</target>
@@ -2328,7 +2324,7 @@
   <target>Recording too short; discarded</target>
 </trans-unit>
 <trans-unit id="sfcbde79ab48e8201">
-  <source>发音评分 <x id="0" equiv-text="${formatOverallBadge(overall)}"/></source>
+  <source>发音评分 <x id="0" equiv-text="${text}"/></source>
   <target>Pronunciation score <x id="0" equiv-text="${formatOverallBadge(overall)}"/></target>
 </trans-unit>
 <trans-unit id="se527c2a5b2c4f3c2">
@@ -2530,6 +2526,14 @@
 <trans-unit id="s4c924d1ceea537ee">
   <source>评分时会把录音上传到你配置的服务器以计算分数；选「像原声」时 Echo 还可能上传原声片段。服务端不保存音频；分数只保存在本设备。</source>
   <target>When scoring, your recording is uploaded to the server you configured to compute scores. With “Match reference”, Echo may also upload a reference clip. The server does not keep audio; scores stay on this device only.</target>
+</trans-unit>
+<trans-unit id="se3827cbc54079c73">
+  <source>从该处播放录音</source>
+  <target>Play recording from here</target>
+</trans-unit>
+<trans-unit id="sd2d05af28ba50819">
+  <source>网络不可用或评分服务未运行，请检查连接后重试</source>
+  <target>Network unavailable or scoring service is not running. Check the connection and try again.</target>
 </trans-unit>
 </body>
 </file>

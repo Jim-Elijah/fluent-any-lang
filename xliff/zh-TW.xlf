@@ -2277,10 +2277,6 @@
   <source>多读</source>
   <target>多讀</target>
 </trans-unit>
-<trans-unit id="s4a888818b3ccd874">
-  <source>漏读，录音中没有对应位置</source>
-  <target>漏讀，錄音中沒有對應位置</target>
-</trans-unit>
 <trans-unit id="s60933dd7108f8b2b">
   <source>评分完成</source>
   <target>評分完成</target>
@@ -2294,7 +2290,7 @@
   <target>錄音時長不足，已丟棄</target>
 </trans-unit>
 <trans-unit id="sfcbde79ab48e8201">
-  <source>发音评分 <x id="0" equiv-text="${formatOverallBadge(overall)}"/></source>
+  <source>发音评分 <x id="0" equiv-text="${text}"/></source>
   <target>發音評分 <x id="0" equiv-text="${formatOverallBadge(overall)}"/></target>
 </trans-unit>
 <trans-unit id="se527c2a5b2c4f3c2">
@@ -2496,6 +2492,14 @@
 <trans-unit id="s4c924d1ceea537ee">
   <source>评分时会把录音上传到你配置的服务器以计算分数；选「像原声」时 Echo 还可能上传原声片段。服务端不保存音频；分数只保存在本设备。</source>
   <target>評分時會把錄音上傳到你設定的伺服器以計算分數；選「像原聲」時 Echo 還可能上傳原聲片段。服務端不保存音訊；分數只保存在本裝置。</target>
+</trans-unit>
+<trans-unit id="se3827cbc54079c73">
+  <source>从该处播放录音</source>
+  <target>從該處播放錄音</target>
+</trans-unit>
+<trans-unit id="sd2d05af28ba50819">
+  <source>网络不可用或评分服务未运行，请检查连接后重试</source>
+  <target>網路不可用或評分服務未運行，請檢查連線後重試</target>
 </trans-unit>
 </body>
 </file>

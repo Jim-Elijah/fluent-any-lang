@@ -2277,10 +2277,6 @@
   <source>多读</source>
   <target>余分な読み</target>
 </trans-unit>
-<trans-unit id="s4a888818b3ccd874">
-  <source>漏读，录音中没有对应位置</source>
-  <target>読み飛ばし — 録音に該当箇所がありません</target>
-</trans-unit>
 <trans-unit id="s60933dd7108f8b2b">
   <source>评分完成</source>
   <target>採点完了</target>
@@ -2294,7 +2290,7 @@
   <target>録音が短すぎるため破棄しました</target>
 </trans-unit>
 <trans-unit id="sfcbde79ab48e8201">
-  <source>发音评分 <x id="0" equiv-text="${formatOverallBadge(overall)}"/></source>
+  <source>发音评分 <x id="0" equiv-text="${text}"/></source>
   <target>発音スコア <x id="0" equiv-text="${formatOverallBadge(overall)}"/></target>
 </trans-unit>
 <trans-unit id="se527c2a5b2c4f3c2">
@@ -2496,6 +2492,14 @@
 <trans-unit id="s4c924d1ceea537ee">
   <source>评分时会把录音上传到你配置的服务器以计算分数；选「像原声」时 Echo 还可能上传原声片段。服务端不保存音频；分数只保存在本设备。</source>
   <target>採点時は設定したサーバーへ録音を送ります。「お手本に近い」を選ぶと Echo ではお手本断片も送る場合があります。サーバーは音声を保存しません。スコアはこの端末のみに保存されます。</target>
+</trans-unit>
+<trans-unit id="se3827cbc54079c73">
+  <source>从该处播放录音</source>
+  <target>ここから録音を再生</target>
+</trans-unit>
+<trans-unit id="sd2d05af28ba50819">
+  <source>网络不可用或评分服务未运行，请检查连接后重试</source>
+  <target>ネットワークが利用できないか、採点サービスが稼働していません。接続を確認してから再試行してください。</target>
 </trans-unit>
 </body>
 </file>
