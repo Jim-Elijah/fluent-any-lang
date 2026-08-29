@@ -660,6 +660,100 @@ describe('MediaController', () => {
     expect(controller.currentSegmentIndex).toBe(1);
   });
 
+  it('keeps progress when seeking into another segment during segment loop', async () => {
+    const segments: SubtitleSegment[] = [
+      { id: 's1', startTime: 0, endTime: 5, text: 'one' },
+      { id: 's2', startTime: 5.25, endTime: 8, text: 'two' },
+      { id: 's3', startTime: 8.4, endTime: 12, text: 'three' },
+    ];
+    await controller.loadTracks([makeTrack('a', 'Track A', { segments })]);
+    controller.setLoopMode('segment');
+    controller.seekToSegment(0);
+    expect(controller.currentSegmentIndex).toBe(0);
+
+    let audioTime = 2;
+    Object.defineProperty(audio, 'paused', { configurable: true, value: false });
+    Object.defineProperty(audio, 'currentTime', {
+      configurable: true,
+      get: () => audioTime,
+      set: (value: number) => {
+        audioTime = value;
+      },
+    });
+
+    // Progress-bar seek into the middle of another Subtitle Segment
+    controller.seek(6.5);
+    expect(controller.currentSegmentIndex).toBe(1);
+    expect(controller.currentTime).toBe(6.5);
+    expect(audioTime).toBe(6.5);
+
+    audio.dispatchEvent(new Event('timeupdate'));
+    expect(controller.currentSegmentIndex).toBe(1);
+    expect(controller.currentTime).toBe(6.5);
+    expect(audioTime).toBe(6.5);
+  });
+
+  it('adopts the next segment when seeking into an inter-segment gap during segment loop', async () => {
+    const segments: SubtitleSegment[] = [
+      { id: 's1', startTime: 0, endTime: 5, text: 'one' },
+      { id: 's2', startTime: 5.25, endTime: 8, text: 'two' },
+      { id: 's3', startTime: 8.4, endTime: 12, text: 'three' },
+    ];
+    await controller.loadTracks([makeTrack('a', 'Track A', { segments })]);
+    controller.setLoopMode('segment');
+    controller.seekToSegment(0);
+
+    let audioTime = 2;
+    Object.defineProperty(audio, 'paused', { configurable: true, value: false });
+    Object.defineProperty(audio, 'currentTime', {
+      configurable: true,
+      get: () => audioTime,
+      set: (value: number) => {
+        audioTime = value;
+      },
+    });
+
+    // Click lands in the gap after s1 — must not snap back to s1.start
+    controller.seek(5.1);
+    expect(controller.currentSegmentIndex).toBe(1);
+    expect(controller.currentTime).toBe(5.1);
+    expect(audioTime).toBe(5.1);
+
+    audio.dispatchEvent(new Event('timeupdate'));
+    expect(controller.currentSegmentIndex).toBe(1);
+    expect(controller.currentTime).toBe(5.1);
+    expect(audioTime).toBe(5.1);
+  });
+
+  it('keeps progress after seekToSegment during segment loop', async () => {
+    const segments: SubtitleSegment[] = [
+      { id: 's1', startTime: 0, endTime: 5, text: 'one' },
+      { id: 's2', startTime: 5.25, endTime: 8, text: 'two' },
+    ];
+    await controller.loadTracks([makeTrack('a', 'Track A', { segments })]);
+    controller.setLoopMode('segment');
+    controller.seekToSegment(0);
+
+    let audioTime = 2;
+    Object.defineProperty(audio, 'paused', { configurable: true, value: false });
+    Object.defineProperty(audio, 'currentTime', {
+      configurable: true,
+      get: () => audioTime,
+      set: (value: number) => {
+        audioTime = value;
+      },
+    });
+
+    controller.seekToSegment(1);
+    expect(controller.currentSegmentIndex).toBe(1);
+    expect(controller.currentTime).toBe(5.25);
+
+    audio.dispatchEvent(new Event('timeupdate'));
+    expect(controller.currentSegmentIndex).toBe(1);
+    expect(controller.currentTime).toBe(5.25);
+    expect(audioTime).toBe(5.25);
+  });
+
   it('detects segment end during playback and emits segment-end', async () => {
     const segments: SubtitleSegment[] = [
       { id: 's1', startTime: 0, endTime: 5, text: 'one' },
@@ -792,7 +886,7 @@ describe('MediaController', () => {
     expect(audioTime).toBe(0);
   });
 
-  it('does not settle superseded seek early when two seeks target the same time', async () => {
+  it('settles seek after the latest seeked when two rapid seeks fire', async () => {
     const segments: SubtitleSegment[] = [{ id: 's1', startTime: 0, endTime: 5, text: 'one' }];
     await controller.loadTracks([makeTrack('a', 'Track A', { segments })]);
 
@@ -823,11 +917,8 @@ describe('MediaController', () => {
     const playPromise = controller.play();
     expect(audio.play).not.toHaveBeenCalled();
 
-    pendingApplies[0]!();
-    await Promise.resolve();
-    await Promise.resolve();
-    expect(audio.play).not.toHaveBeenCalled();
-
+    // Browsers coalesce rapid seeks — only one seeked fires.
+    // Simulate the final seeked (skip the first, which was superseded).
     pendingApplies[1]!();
     await Promise.resolve();
     await playPromise;

@@ -6,6 +6,7 @@ import {
   findCrossedSegmentEnd,
   findPracticeSegmentIndex,
   findSegmentIndex,
+  findSegmentIndexPreferNextInGap,
   formatTime,
   getLongerPracticeAxis,
   getPracticeSegmentDuration,
@@ -142,6 +143,20 @@ describe('findSegmentIndex', () => {
 
   it('assigns the last segment when time equals its endTime', () => {
     expect(findSegmentIndex(sampleSegments, 15)).toBe(2);
+  });
+});
+
+describe('findSegmentIndexPreferNextInGap', () => {
+  it('matches findSegmentIndex inside a segment', () => {
+    expect(findSegmentIndexPreferNextInGap(sampleSegments, 7)).toBe(1);
+  });
+
+  it('maps an inter-segment gap to the following segment', () => {
+    expect(findSegmentIndexPreferNextInGap(sampleSegments, 11)).toBe(2);
+  });
+
+  it('still returns -1 after all subtitles have ended', () => {
+    expect(findSegmentIndexPreferNextInGap(sampleSegments, 16)).toBe(-1);
   });
 });
 

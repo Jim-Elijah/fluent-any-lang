@@ -2,6 +2,7 @@ import {
   computeSegmentPauseMs,
   findCrossedSegmentEnd,
   findSegmentIndex,
+  findSegmentIndexPreferNextInGap,
   MAX_SLEEP_MINUTES,
   NATIVE_MEDIA_EVENTS,
   shuffleIndices,
@@ -409,7 +410,11 @@ export class MediaController extends EventTarget {
     this._seekSettlePromise = new Promise<void>((resolve) => {
       this._resolveSeekSettle = resolve;
     });
-    this._outstandingSeekOps++;
+    // A new seek supersedes any previous in-flight seeks. The browser will only
+    // fire one `seeked` for the final currentTime assignment, so reset the
+    // counter instead of accumulating — otherwise rapid seeks strand the counter
+    // above 0 and _seekInFlight stays true forever.
+    this._outstandingSeekOps = 1;
     this.mediaElement.currentTime = clamped;
     this.currentTime = clamped;
     this._previousPlaybackTime = clamped;
@@ -417,7 +422,17 @@ export class MediaController extends EventTarget {
       // Sync seek: currentTime already applied and seeked may never fire.
       this._completeSeekOp(generation);
     }
-    this._updateCurrentSegment({ allowForward: true });
+    if (this.loopMode === 'segment') {
+      // Gaps keep the previous cue in findSegmentIndex (playback flicker guard).
+      // Intentional seeks should adopt the following Subtitle Segment instead,
+      // or segment loop would treat the gap as "past end" and snap back to start.
+      const idx = findSegmentIndexPreferNextInGap(this.segments, clamped);
+      if (idx >= 0) {
+        this._setCurrentSegmentIndex(idx);
+      }
+    } else {
+      this._updateCurrentSegment({ allowForward: true });
+    }
     if (resumeAfterSegmentPause) {
       // Segment pause is a temporary study gap, not a user stop — keep the session going.
       void this.play();
@@ -1029,7 +1044,11 @@ export class MediaController extends EventTarget {
       return;
     }
 
-    if (this.mediaElement.currentTime >= segment.endTime - LOOP_EPSILON) {
+    // Only rewind when playback crosses the end from inside the segment.
+    // A bare `currentTime >= end` check also fires after user seeks into the
+    // trailing gap and snaps progress back to start (progress-bar bug).
+    const loopEnd = segment.endTime - LOOP_EPSILON;
+    if (this._previousPlaybackTime < loopEnd && this.mediaElement.currentTime >= loopEnd) {
       this.mediaElement.currentTime = segment.startTime;
       this.currentTime = segment.startTime;
     }

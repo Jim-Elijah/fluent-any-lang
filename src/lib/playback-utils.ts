@@ -407,6 +407,23 @@ export function findSegmentIndex(segments: SubtitleSegment[], time: number): num
   return candidate;
 }
 
+/**
+ * Resolve a Subtitle Segment for an intentional seek (progress bar / scrub).
+ * Unlike {@link findSegmentIndex}, inter-segment gaps map to the following segment
+ * so scrubbing past a cue end does not stick on the previous cue.
+ */
+export function findSegmentIndexPreferNextInGap(segments: SubtitleSegment[], time: number): number {
+  const idx = findSegmentIndex(segments, time);
+  if (idx < 0 || idx >= segments.length - 1) {
+    return idx;
+  }
+  const seg = segments[idx];
+  if (seg && time >= seg.endTime) {
+    return idx + 1;
+  }
+  return idx;
+}
+
 export function shuffleIndices(length: number): number[] {
   const indices = Array.from({ length }, (_, index) => index);
 
