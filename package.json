@@ -20,6 +20,8 @@
     "test:e2e": "pnpm run build && playwright test",
     "localize:extract": "lit-localize extract",
     "localize:build": "lit-localize build",
+    "localize:missing": "node scripts/xliff-missing.mjs",
+    "localize:missing:json": "node scripts/xliff-missing.mjs --json",
     "changelog": "conventional-changelog -p conventionalcommits -i CHANGELOG.md -o CHANGELOG.md",
     "changelog:first": "conventional-changelog -p conventionalcommits -i CHANGELOG.md -o CHANGELOG.md -r 0",
     "release:notes": "node scripts/release-notes.mjs",
