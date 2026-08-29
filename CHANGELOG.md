@@ -1,3 +1,19 @@
+## [0.4.2](https://github.com/Jim-Elijah/fluent-any-lang/compare/v0.4.1...v0.4.2) (2026-08-29)
+
+### Features
+
+* **practice-view:** implement lock-screen loop behavior for discrimination mode ([9ff19a0](https://github.com/Jim-Elijah/fluent-any-lang/commit/9ff19a029755bc05fac91c429717f1dcb5fffaaf))
+* **practice:** resume last-played media from library and playlists ([8bc65ba](https://github.com/Jim-Elijah/fluent-any-lang/commit/8bc65baa87c8a80d6e86cddf73dd1d8cacd43188))
+* **pronunciation-score:** highlight missing, extra, and misread words in score text ([784b8f8](https://github.com/Jim-Elijah/fluent-any-lang/commit/784b8f85851b142412eacb57d5e292bbfb456cb0))
+* **pronunciation-score:** share four score bands and gate score actions on settings ([c736bb2](https://github.com/Jim-Elijah/fluent-any-lang/commit/c736bb2e7e0f11f831668d5ad40859266ca36bf9))
+
+### Bug Fixes
+
+* **playback:** clear active segment on leading/trailing gap seeks ([fae71fb](https://github.com/Jim-Elijah/fluent-any-lang/commit/fae71fbd4919979da2110b59ac687eb1d50e6c4c))
+* **playback:** keep progress after seek during segment loop ([09de780](https://github.com/Jim-Elijah/fluent-any-lang/commit/09de7801aca198bfd539149117683c0504a47c63))
+* **pronunciation-score:** keep word highlights aligned when reference text has CRLF ([5304b70](https://github.com/Jim-Elijah/fluent-any-lang/commit/5304b705b46f2270441347c2c7a852d10aede520))
+* **pronunciation-score:** map fetch failures to network and abort errors ([a4392d3](https://github.com/Jim-Elijah/fluent-any-lang/commit/a4392d3fb365daa5b6413bbb822c6126abd1651d))
+
 ## [0.4.1](https://github.com/Jim-Elijah/fluent-any-lang/compare/v0.4.0...v0.4.1) (2026-08-24)
 
 ### Features

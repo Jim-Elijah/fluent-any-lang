@@ -1,21 +1,25 @@
 {
-  "version": "0.4.1",
+  "version": "0.4.2",
   "highlights": {
     "zh-CN": [
-      "media-player: 单句暂停后会正确续播；单曲循环更顺畅，并与睡眠模式配合",
-      "backup: 导入备份时同名播放列表会增量合并，备份中仍在用的条目也会恢复"
+      "practice: 辨音模式下锁屏后仍可循环播放；从媒体库和播放列表可恢复上次播放的内容",
+      "pronunciation-score: 评分文本会标出漏读、多读与读错；统一四档分数，并按设置控制评分操作",
+      "playback: 片段循环中拖动后进度保持正确；拖到句首/句尾空隙时清除当前活动片段"
     ],
     "en": [
-      "media-player: enhance pause mode functionality with playback resume logic; implement native loop behavior for single mode with sleep handling;",
-      "backup: enhance playlist import functionality"
+      "practice: implement lock-screen loop behavior for discrimination mode; resume last-played media from library and playlists",
+      "pronunciation-score: highlight missing, extra, and misread words in score text; share four score bands and gate score actions on settings",
+      "playback: keep progress after seek during segment loop; clear active segment on leading/trailing gap seeks"
     ],
     "ja": [
-      "media-player: 単一文の一時停止後に正しく再生を再開。1曲リピートが安定し、スリープタイマーとも連動",
-      "backup: バックアップ取り込み時、同名プレイリストは増分マージし、バックアップ側で有効な項目も復元"
+      "practice: 聴き取りモードでロック画面中もループ継続；ライブラリとプレイリストから前回の再生を再開",
+      "pronunciation-score: 採点テキストで読み飛ばし・余分な読み・読み誤りをハイライト；4段階のスコア帯を統一し、設定で採点操作を制御",
+      "playback: セグメントループ中のシーク後も進捗を維持；先頭/末尾の隙間へシークするとアクティブセグメントを解除"
     ],
     "zh-TW": [
-      "media-player: 單句暫停後會正確續播；單曲循環更順暢，並與睡眠模式配合",
-      "backup: 匯入備份時同名播放清單會增量合併，備份中仍在用的項目也會還原"
+      "practice: 辨音模式下鎖屏後仍可循環播放；從媒體庫和播放清單可恢復上次播放的內容",
+      "pronunciation-score: 評分文字會標出漏讀、多讀與讀錯；統一四檔分數，並依設定控制評分操作",
+      "playback: 片段循環中拖動後進度保持正確；拖到句首/句尾空隙時清除目前活動片段"
     ]
   }
 }
