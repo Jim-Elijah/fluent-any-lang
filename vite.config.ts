@@ -1,7 +1,7 @@
 /// <reference types="vitest/config" />
 
 import { execSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig, type Plugin } from 'vite';
@@ -11,6 +11,21 @@ import basicSsl from '@vitejs/plugin-basic-ssl';
 const rootDir = dirname(fileURLToPath(import.meta.url));
 const lanHost = Boolean(process.env.VITE_DEV_HOST);
 const lanSsl = Boolean(process.env.VITE_DEV_SSL);
+
+/** Local mkcert files under `certs/` (gitignored). Prefer over basicSsl when present. */
+function loadMkcertHttps(): { cert: Buffer; key: Buffer } | undefined {
+  const certDir = resolve(rootDir, 'certs');
+  if (!existsSync(certDir)) return undefined;
+  const keyName = readdirSync(certDir).find((name) => name.endsWith('-key.pem'));
+  if (!keyName) return undefined;
+  const certName = keyName.replace(/-key\.pem$/, '.pem');
+  const certPath = resolve(certDir, certName);
+  const keyPath = resolve(certDir, keyName);
+  if (!existsSync(certPath)) return undefined;
+  return { cert: readFileSync(certPath), key: readFileSync(keyPath) };
+}
+
+const mkcertHttps = lanSsl ? loadMkcertHttps() : undefined;
 
 /**
  * Vitest's vi.mock resolves relative paths with an importer taken from the
@@ -103,7 +118,18 @@ function readCommitHash(): string {
 }
 
 export default defineConfig({
-  ...(lanHost ? { server: { host: true } } : {}),
+  ...(lanHost
+    ? {
+        server: {
+          host: true,
+          ...(mkcertHttps ? { https: mkcertHttps } : {}),
+        },
+        preview: {
+          host: true,
+          ...(mkcertHttps ? { https: mkcertHttps } : {}),
+        },
+      }
+    : {}),
   // Vite 8 uses Oxc (not esbuild). Lit needs:
   // 1) legacy decorators lowered (otherwise `@customElement` / `@property` stay in output)
   // 2) class fields as assign (`this.x = …`), not define — matches tsconfig
@@ -167,12 +193,14 @@ export default defineConfig({
         globIgnores: ['**/release-notes.json'],
         navigateFallback: 'index.html',
         navigateFallbackDenylist: [/^\/api/],
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
       },
       devOptions: {
         enabled: false,
       },
     }),
-    ...(lanSsl ? [basicSsl()] : []),
+    // Fall back to self-signed basicSsl only when mkcert files are missing.
+    ...(lanSsl && !mkcertHttps ? [basicSsl()] : []),
   ],
   test: {
     environment: 'happy-dom',
