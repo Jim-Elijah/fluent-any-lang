@@ -5,6 +5,7 @@ import { navigator } from 'lit-element-router';
 
 import { deleteSentenceBankEntry, getSentenceBankList } from '../../db/service.js';
 import { reportError } from '../../lib/error-reporter.js';
+import { exportSentenceBankEntry } from '../../lib/export-content.js';
 import { COMPACT_VIEWPORT_MQ } from '../../lib/layout-compact.js';
 import { formatDate, formatTime } from '../../lib/playback-utils.js';
 import type { SentenceBankEntry, SortDirection } from '../../types/models.js';
@@ -362,6 +363,15 @@ export class SentencesPage extends NavigatorElement {
     this.navigate(`/practice?${query.toString()}`);
   }
 
+  private async _export(entry: SentenceBankEntry): Promise<void> {
+    try {
+      await exportSentenceBankEntry(entry);
+    } catch (error) {
+      void reportError(error, { where: 'sentences-page.export', entryId: entry.id });
+      Message.error(msg('导出失败，请重试'));
+    }
+  }
+
   private async _delete(entry: SentenceBankEntry): Promise<void> {
     if (this._busyId) {
       return;
@@ -493,6 +503,15 @@ export class SentencesPage extends NavigatorElement {
               @click=${() => this._viewSource(entry)}
             >
               <ui-icon name="locate"></ui-icon>
+            </ui-button>
+          </ui-tooltip>
+          <ui-tooltip title="${msg('导出')}">
+            <ui-button
+              variant="secondary"
+              aria-label="${msg('导出')}"
+              @click=${() => void this._export(entry)}
+            >
+              <ui-icon name="download"></ui-icon>
             </ui-button>
           </ui-tooltip>
           <ui-popconfirm

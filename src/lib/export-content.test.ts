@@ -1,17 +1,23 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { PracticeRecord } from '../types/models.js';
-import { downloadBlob, estimateStorage, formatRecordingFileName } from './export-content.js';
+import type { PracticeRecord, SentenceBankEntry } from '../types/models.js';
+import {
+  downloadBlob,
+  estimateStorage,
+  formatRecordingFileName,
+  formatSentenceBankFileName,
+} from './export-content.js';
 
 vi.mock('../db/service.js', () => ({
   getRecordingBlob: vi.fn(),
+  getSentenceBankBlob: vi.fn(),
   getMedia: vi.fn(),
 }));
 
 function makeRecord(overrides: Partial<PracticeRecord> = {}): PracticeRecord {
   return {
     id: 'rec-1',
-    mediaId: 'media-1',
+    mediaId: 'a1b2c3d4e5f67890',
     mediaTitle: 'Lesson 1',
     mediaFilename: 'lesson-1.mp3',
     mode: 'shadowing',
@@ -24,16 +30,56 @@ function makeRecord(overrides: Partial<PracticeRecord> = {}): PracticeRecord {
   };
 }
 
+function makeEntry(
+  overrides: Partial<
+    Pick<SentenceBankEntry, 'sourceMediaId' | 'sourceSegmentId' | 'createdAt'>
+  > = {},
+) {
+  return {
+    sourceMediaId: 'a1b2c3d4e5f67890',
+    sourceSegmentId: 'f0e1d2c3b4a59687',
+    createdAt: 1_704_067_200_000,
+    ...overrides,
+  };
+}
+
 describe('formatRecordingFileName', () => {
-  it('uses title and mime extension when provided', () => {
+  it('keeps shadowing title when provided', () => {
     const name = formatRecordingFileName(makeRecord(), 'My Lesson');
     expect(name).toMatch(/^shadowing-My Lesson-/);
     expect(name).toMatch(/\.webm$/);
   });
 
-  it('falls back to mediaId when title is omitted', () => {
-    const name = formatRecordingFileName(makeRecord({ mediaId: 'abc-123' }));
-    expect(name).toMatch(/^shadowing-abc-123-/);
+  it('falls back to short mediaId when title is omitted', () => {
+    const name = formatRecordingFileName(makeRecord({ mediaId: 'abc123456789' }));
+    expect(name).toMatch(/^shadowing-abc12345-/);
+  });
+
+  it('uses echo prefix with short mediaId, segmentId, and date', () => {
+    const name = formatRecordingFileName(
+      makeRecord({
+        mode: 'echo',
+        mediaId: 'mediaid012345',
+        segmentId: 'segmentid9999',
+        mimeType: 'audio/webm',
+      }),
+    );
+    expect(name).toMatch(/^echo-mediaid0-segmenti-/);
+    expect(name).toMatch(/\.webm$/);
+  });
+
+  it('falls back without segmentId for echo', () => {
+    const name = formatRecordingFileName(makeRecord({ mode: 'echo', mediaId: 'mediaid012345' }));
+    expect(name).toMatch(/^echo-mediaid0-/);
+    expect(name).not.toContain('undefined');
+  });
+});
+
+describe('formatSentenceBankFileName', () => {
+  it('uses sentence prefix with short mediaId, segmentId, and date', () => {
+    const name = formatSentenceBankFileName(makeEntry(), 'audio/wav');
+    expect(name).toMatch(/^sentence-a1b2c3d4-f0e1d2c3-/);
+    expect(name).toMatch(/\.wav$/);
   });
 });
 
@@ -69,6 +115,35 @@ describe('exportRecording', () => {
 
     const { exportRecording } = await import('./export-content.js');
     await expect(exportRecording(makeRecord())).rejects.toThrow('录音文件未找到');
+  });
+});
+
+describe('exportSentenceBankEntry', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('throws when sentence bank blob is missing', async () => {
+    const { getSentenceBankBlob } = await import('../db/service.js');
+    vi.mocked(getSentenceBankBlob).mockResolvedValue(undefined);
+
+    const { exportSentenceBankEntry } = await import('./export-content.js');
+    await expect(
+      exportSentenceBankEntry({
+        id: 'entry-1',
+        contentHash: 'hash-1',
+        text: 'Hello',
+        sourceMediaId: 'media-1',
+        sourceSegmentId: 'seg-1',
+        sourceStartTime: 0,
+        sourceEndTime: 1,
+        sourceTitleSnapshot: 'Lesson',
+        sourceMediaType: 'audio',
+        sourceAvailable: true,
+        removed: false,
+        createdAt: 1,
+      }),
+    ).rejects.toThrow('句库音频未找到');
   });
 });
 

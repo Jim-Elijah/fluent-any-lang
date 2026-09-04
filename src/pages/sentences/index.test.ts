@@ -6,11 +6,16 @@ import { flushUpdates, mount } from '../../components/ui/test-utils.js';
 
 const mockGetSentenceBankList = vi.fn();
 const mockDeleteSentenceBankEntry = vi.fn();
+const mockExportSentenceBankEntry = vi.fn();
 const mockReportError = vi.fn().mockResolvedValue(undefined);
 
 vi.mock('../../db/service.js', () => ({
   getSentenceBankList: (...args: unknown[]) => mockGetSentenceBankList(...args),
   deleteSentenceBankEntry: (...args: unknown[]) => mockDeleteSentenceBankEntry(...args),
+}));
+
+vi.mock('../../lib/export-content.js', () => ({
+  exportSentenceBankEntry: (...args: unknown[]) => mockExportSentenceBankEntry(...args),
 }));
 
 vi.mock('../../lib/error-reporter.js', () => ({
@@ -62,6 +67,7 @@ describe('sentences-page', () => {
   beforeEach(() => {
     mockGetSentenceBankList.mockReset();
     mockDeleteSentenceBankEntry.mockReset();
+    mockExportSentenceBankEntry.mockReset();
     mockReportError.mockClear();
     Message.closeAll();
     stubMatchMedia(false);
@@ -204,6 +210,31 @@ describe('sentences-page', () => {
     expect(mockDeleteSentenceBankEntry).toHaveBeenCalledWith('entry-1');
     expect(successSpy).toHaveBeenCalled();
     expect(el.shadowRoot?.querySelectorAll('.item').length).toBe(0);
+  });
+
+  it('exports an entry from the row action', async () => {
+    const entry = makeEntry();
+    mockGetSentenceBankList.mockResolvedValue([entry]);
+    mockExportSentenceBankEntry.mockResolvedValue(undefined);
+    const el = await renderPage();
+
+    el.shadowRoot!.querySelector('ui-button[aria-label="导出"]')!.click();
+    await flushUpdates();
+
+    expect(mockExportSentenceBankEntry).toHaveBeenCalledWith(entry);
+  });
+
+  it('reports export failures', async () => {
+    mockGetSentenceBankList.mockResolvedValue([makeEntry()]);
+    mockExportSentenceBankEntry.mockRejectedValue(new Error('export fail'));
+    const el = await renderPage();
+    const errorSpy = vi.spyOn(Message, 'error');
+
+    el.shadowRoot!.querySelector('ui-button[aria-label="导出"]')!.click();
+    await flushUpdates();
+
+    expect(errorSpy).toHaveBeenCalled();
+    expect(mockReportError).toHaveBeenCalled();
   });
 
   it('reports delete failures and keeps the entry visible', async () => {

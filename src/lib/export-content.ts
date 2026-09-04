@@ -2,13 +2,49 @@ import { msg } from '@lit/localize';
 
 import { getAppSettings } from './app-settings.js';
 import { formatDate } from './playback-utils.js';
-import type { PracticeRecord } from '../types/models.js';
-import { getMedia, getRecordingBlob } from '../db/service.js';
+import type { PracticeRecord, SentenceBankEntry } from '../types/models.js';
+import { getMedia, getRecordingBlob, getSentenceBankBlob } from '../db/service.js';
 
+/** Short prefix of UUID/hash ids so export filenames stay readable. */
+const ID_PREFIX_LEN = 8;
+
+function extensionFromMimeType(mimeType: string): string {
+  const match = mimeType.match(/\/([^;]+)/);
+  return match ? match[1] : 'webm';
+}
+
+function shortId(id: string): string {
+  return id.slice(0, ID_PREFIX_LEN);
+}
+
+/**
+ * Pairable with Sentence Bank exports via short mediaId + segmentId.
+ * Echo: `echo-{mediaId8}-{segmentId8}-{createdAt}.{ext}`
+ * Shadowing: `shadowing-{title|mediaId8}-{createdAt}.{ext}` (original shape)
+ */
 export function formatRecordingFileName(recording: PracticeRecord, title?: string): string {
-  const match = recording.mimeType.match(/\/([^;]+)/);
-  const ext = match ? match[1] : 'webm';
-  return `shadowing-${title ?? recording.mediaId}-${formatDate(recording.createdAt, false)}.${ext}`;
+  const ext = extensionFromMimeType(recording.mimeType);
+  const date = formatDate(recording.createdAt, false);
+  if (recording.mode === 'echo' && recording.segmentId) {
+    return `echo-${shortId(recording.mediaId)}-${shortId(recording.segmentId)}-${date}.${ext}`;
+  }
+  if (recording.mode === 'echo') {
+    return `echo-${shortId(recording.mediaId)}-${date}.${ext}`;
+  }
+  return `shadowing-${title ?? shortId(recording.mediaId)}-${date}.${ext}`;
+}
+
+/**
+ * Pairable with Echo recording exports via short sourceMediaId + sourceSegmentId.
+ * `sentence-{mediaId8}-{segmentId8}-{createdAt}.{ext}`
+ */
+export function formatSentenceBankFileName(
+  entry: Pick<SentenceBankEntry, 'sourceMediaId' | 'sourceSegmentId' | 'createdAt'>,
+  mimeType: string,
+): string {
+  const ext = extensionFromMimeType(mimeType);
+  const date = formatDate(entry.createdAt, false);
+  return `sentence-${shortId(entry.sourceMediaId)}-${shortId(entry.sourceSegmentId)}-${date}.${ext}`;
 }
 
 export function downloadBlob(blob: Blob, fileName: string): void {
@@ -24,8 +60,13 @@ export async function exportRecording(recording: PracticeRecord): Promise<void> 
   const blob = await getRecordingBlob(recording.id);
   if (!blob) throw new Error(msg('录音文件未找到'));
   const mediaItem = await getMedia(recording.mediaId);
-  const fileName = formatRecordingFileName(recording, mediaItem?.title);
-  downloadBlob(blob, fileName);
+  downloadBlob(blob, formatRecordingFileName(recording, mediaItem?.title));
+}
+
+export async function exportSentenceBankEntry(entry: SentenceBankEntry): Promise<void> {
+  const blobRecord = await getSentenceBankBlob(entry.id);
+  if (!blobRecord) throw new Error(msg('句库音频未找到'));
+  downloadBlob(blobRecord.blob, formatSentenceBankFileName(entry, blobRecord.mimeType));
 }
 
 export async function estimateStorage() {
