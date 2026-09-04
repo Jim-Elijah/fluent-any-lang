@@ -104,10 +104,19 @@ function readCommitHash(): string {
 
 export default defineConfig({
   ...(lanHost ? { server: { host: true } } : {}),
-  // Vite 8 uses Oxc (not esbuild). Legacy TS decorators must be lowered explicitly
-  // or production bundles keep `@customElement` / `@property` and fail to parse.
+  // Vite 8 uses Oxc (not esbuild). Lit needs:
+  // 1) legacy decorators lowered (otherwise `@customElement` / `@property` stay in output)
+  // 2) class fields as assign (`this.x = …`), not define — matches tsconfig
+  //    `useDefineForClassFields: false`, so Lit's reactive accessors are not shadowed
+  //    (otherwise `@state` updates never re-render; e.g. stuck「加载中」).
   oxc: {
     decorator: { legacy: true },
+    typescript: {
+      removeClassFieldsWithoutInitializer: true,
+    },
+    assumptions: {
+      setPublicClassFields: true,
+    },
   },
   define: {
     __APP_VERSION__: JSON.stringify(readPackageVersion()),

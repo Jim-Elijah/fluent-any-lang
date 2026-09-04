@@ -248,7 +248,7 @@ export class MyApp extends RouterNavigatorApp {
   locale: Locale;
 
   @state()
-  private _loadedRoutes = new Set<AppRoute>();
+  private _loadedRoutes: readonly AppRoute[] = [];
 
   private _getMenuItems(): Array<MenuItem & { link: string }> {
     return [
@@ -383,8 +383,17 @@ export class MyApp extends RouterNavigatorApp {
     return this._mainEl;
   }
 
+  private _isRouteLoaded(route: AppRoute): boolean {
+    return this._loadedRoutes.includes(route);
+  }
+
+  private _markRouteLoaded(route: AppRoute): void {
+    if (this._isRouteLoaded(route)) return;
+    this._loadedRoutes = [...this._loadedRoutes, route];
+  }
+
   private _ensurePageLoaded(route: AppRoute): Promise<void> {
-    if (this._loadedRoutes.has(route)) {
+    if (this._isRouteLoaded(route)) {
       return Promise.resolve();
     }
     const main = this._getMainEl();
@@ -397,12 +406,13 @@ export class MyApp extends RouterNavigatorApp {
     }
     return loadPageModule(route)
       .then(() => {
-        if (!this.isConnected || this._loadedRoutes.has(route)) {
+        if (!this.isConnected || this._isRouteLoaded(route)) {
           return;
         }
-        const next = new Set(this._loadedRoutes);
-        next.add(route);
-        this._loadedRoutes = next;
+        this._markRouteLoaded(route);
+      })
+      .catch((error) => {
+        console.error(`Error loading route ${route}:`, error);
       })
       .finally(() => {
         this._pageLoading?.close();
@@ -416,7 +426,7 @@ export class MyApp extends RouterNavigatorApp {
     if (!render) {
       return nothing;
     }
-    if (!this._loadedRoutes.has(route)) {
+    if (!this._isRouteLoaded(route)) {
       void this._ensurePageLoaded(route);
       return nothing; // 遮罩盖在 main 上，不再渲染文案占位
     }
