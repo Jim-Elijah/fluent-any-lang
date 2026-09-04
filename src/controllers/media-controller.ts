@@ -1237,10 +1237,19 @@ export class MediaController extends EventTarget {
   }
 
   private _resumeAfterSegmentPause(): void {
-    if (this.loopMode === 'segment') {
+    if (this.loopMode === 'segment' && this.mediaElement) {
       const loopIndex = this._resolveLoopSegmentIndex();
       if (loopIndex >= 0 && this._shouldLoopSegment(loopIndex)) {
-        this.seekToSegment(loopIndex, false, { force: true });
+        const segment = this.segments[loopIndex];
+        if (segment) {
+          // Direct currentTime (same idea as `_applySegmentLoop`): do not go through
+          // seek() → play()-awaits-seeked. On mobile lock screens `seeked` often never
+          // fires while hidden, so that path would hang and never resume.
+          this._setCurrentSegmentIndex(loopIndex);
+          this.mediaElement.currentTime = segment.startTime;
+          this.currentTime = segment.startTime;
+          this._previousPlaybackTime = segment.startTime;
+        }
       }
     }
     void this.play();

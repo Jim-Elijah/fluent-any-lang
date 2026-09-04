@@ -1003,6 +1003,54 @@ describe('MediaController', () => {
     vi.useRealTimers();
   });
 
+  it('resumes segment loop after pause without waiting for seeked', async () => {
+    // Mobile lock screen: currentTime assign may leave seeking=true and never fire seeked.
+    // Segment loop + pause must still call play() (must not await seek settle).
+    vi.useFakeTimers();
+    const segments: SubtitleSegment[] = [
+      { id: 's1', startTime: 0, endTime: 5, text: 'one' },
+      { id: 's2', startTime: 5, endTime: 10, text: 'two' },
+    ];
+    await controller.loadTracks([makeTrack('a', 'Track A', { segments })]);
+    controller.setLoopMode('segment');
+    controller.setPauseMode('seconds');
+    controller.setPauseSeconds(2);
+    controller.seekToSegment(0);
+
+    let audioTime = 0;
+    let seeking = false;
+    Object.defineProperty(audio, 'currentTime', {
+      configurable: true,
+      get: () => audioTime,
+      set: (value: number) => {
+        seeking = true;
+        audioTime = value;
+        // Intentionally no seeked event.
+      },
+    });
+    Object.defineProperty(audio, 'seeking', {
+      configurable: true,
+      get: () => seeking,
+    });
+
+    Object.defineProperty(audio, 'paused', { configurable: true, value: false });
+    audioTime = 5.1;
+    audio.dispatchEvent(new Event('timeupdate'));
+
+    expect(controller.getSnapshot().segmentPausePending).toBe(true);
+    Object.defineProperty(audio, 'paused', { configurable: true, value: true });
+
+    audio.play.mockClear();
+    await vi.advanceTimersByTimeAsync(2100);
+
+    expect(controller.getSnapshot().segmentPausePending).toBe(false);
+    expect(controller.currentSegmentIndex).toBe(0);
+    expect(controller.currentTime).toBe(0);
+    expect(audioTime).toBe(0);
+    expect(audio.play).toHaveBeenCalledTimes(1);
+    vi.useRealTimers();
+  });
+
   it('cancels pending segment pause', async () => {
     const segments: SubtitleSegment[] = [{ id: 's1', startTime: 0, endTime: 5, text: 'one' }];
     await controller.loadTracks([makeTrack('a', 'Track A', { segments })]);
