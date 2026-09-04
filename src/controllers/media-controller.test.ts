@@ -1233,6 +1233,61 @@ describe('MediaController', () => {
     );
   });
 
+  it('force-settles stranded seek on visibility change', async () => {
+    // Mobile lock screen may swallow seeked — becoming visible must unstick play().
+    await controller.loadTracks([makeTrack('a', 'Track A')]);
+
+    let audioTime = 4.5;
+    let seeking = false;
+    Object.defineProperty(audio, 'currentTime', {
+      configurable: true,
+      get: () => audioTime,
+      set: (value: number) => {
+        seeking = true;
+        audioTime = value;
+        // No seeked fires (simulating mobile lock screen).
+      },
+    });
+    Object.defineProperty(audio, 'seeking', {
+      configurable: true,
+      get: () => seeking,
+    });
+
+    controller.seek(0, { force: true });
+    // play() is now awaiting seeked that never comes.
+    const playPromise = controller.play();
+
+    // Simulate becoming visible — should force-settle.
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' });
+    document.dispatchEvent(new Event('visibilitychange'));
+
+    await playPromise;
+    expect(audio.play).toHaveBeenCalled();
+  });
+
+  it('single loop ended resumes without waiting for seeked', async () => {
+    await controller.loadTracks([makeTrack('a', 'Track A')]);
+    controller.setLoopMode('single');
+
+    let audioTime = 30;
+    Object.defineProperty(audio, 'currentTime', {
+      configurable: true,
+      get: () => audioTime,
+      set: (value: number) => {
+        audioTime = value;
+        // No seeked event.
+      },
+    });
+    Object.defineProperty(audio, 'paused', { configurable: true, value: false });
+
+    // Ended fires despite native loop (e.g. race with sleep toggle).
+    // Must not hang on seeked.
+    audio.play.mockClear();
+    audio.dispatchEvent(new Event('ended'));
+    expect(audioTime).toBe(0);
+    expect(audio.play).toHaveBeenCalledTimes(1);
+  });
+
   it('syncs playback on visibility change while playing', async () => {
     const segments: SubtitleSegment[] = [{ id: 's1', startTime: 0, endTime: 5, text: 'one' }];
     await controller.loadTracks([makeTrack('a', 'Track A', { segments })]);

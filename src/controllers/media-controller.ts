@@ -854,6 +854,12 @@ export class MediaController extends EventTarget {
       return;
     }
 
+    // Force-settle any stranded seek so play() doesn't hang forever.
+    // Mobile lock-screen may swallow seeked events.
+    if (this._seekInFlight) {
+      this._settleSeek(this._pendingSeekGeneration);
+    }
+
     // Sleep / segment-pause DeadlineSchedulers resync themselves on visibility.
     if (this.mediaElement && !this.mediaElement.paused) {
       this._syncFromMedia();
@@ -928,8 +934,8 @@ export class MediaController extends EventTarget {
 
     switch (this.loopMode) {
       case 'single':
-        this.seek(0, { force: true });
-        void this.play();
+        // Direct seek — ended may fire on mobile lock screen where seeked is unreliable.
+        this._seekDirectAndPlay(0);
         break;
       case 'list':
         this.nextTrack(true, { force: true });
@@ -940,10 +946,12 @@ export class MediaController extends EventTarget {
       case 'segment': {
         const loopIndex = this._resolveLoopSegmentIndex();
         if (loopIndex >= 0) {
-          this.seekToSegment(loopIndex, true, { force: true });
+          const seg = this.segments[loopIndex];
+          if (seg) {
+            this._seekDirectAndPlay(seg.startTime, loopIndex);
+          }
         } else {
-          this.seek(0, { force: true });
-          void this.play();
+          this._seekDirectAndPlay(0);
         }
         break;
       }
@@ -1227,33 +1235,51 @@ export class MediaController extends EventTarget {
 
     this._clearSegmentPauseTimer();
     this.pause({ reason: 'segment' });
+    const nextSegment = this.segments[nextIndex]!;
     this._segmentPauseScheduler.start({
       endsAt: Date.now() + SHADOWING_COMPRESS_GAP_MS,
       onFire: () => {
-        this.seekToSegment(nextIndex, true, { force: true });
+        // Direct seek — timer may fire while hidden (seeked unreliable).
+        this._seekDirectAndPlay(nextSegment.startTime, nextIndex);
+        this._emitChange();
       },
     });
     this._emitChange();
   }
 
   private _resumeAfterSegmentPause(): void {
-    if (this.loopMode === 'segment' && this.mediaElement) {
+    if (this.loopMode === 'segment') {
       const loopIndex = this._resolveLoopSegmentIndex();
       if (loopIndex >= 0 && this._shouldLoopSegment(loopIndex)) {
         const segment = this.segments[loopIndex];
         if (segment) {
-          // Direct currentTime (same idea as `_applySegmentLoop`): do not go through
-          // seek() → play()-awaits-seeked. On mobile lock screens `seeked` often never
-          // fires while hidden, so that path would hang and never resume.
-          this._setCurrentSegmentIndex(loopIndex);
-          this.mediaElement.currentTime = segment.startTime;
-          this.currentTime = segment.startTime;
-          this._previousPlaybackTime = segment.startTime;
+          this._seekDirectAndPlay(segment.startTime, loopIndex);
+          this._emitChange();
+          return;
         }
       }
     }
-    void this.play();
+    // Non-segment-loop: just resume from current position.
+    this.mediaElement?.play().catch(() => {});
     this._emitChange();
+  }
+
+  /**
+   * Assign currentTime directly and play — no seek()/seeked await.
+   * Use for all auto-resume paths (timers, ended loops) that may fire while
+   * the document is hidden and seeked events are unreliable.
+   */
+  private _seekDirectAndPlay(time: number, segmentIndex?: number): void {
+    if (!this.mediaElement) {
+      return;
+    }
+    if (segmentIndex !== undefined) {
+      this._setCurrentSegmentIndex(segmentIndex);
+    }
+    this.mediaElement.currentTime = time;
+    this.currentTime = time;
+    this._previousPlaybackTime = time;
+    this.mediaElement.play().catch(() => {});
   }
 
   private _clearSegmentPauseTimer(): void {
