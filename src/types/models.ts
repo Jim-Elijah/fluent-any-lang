@@ -468,6 +468,11 @@ export type AppSettings = {
   skipEchoTips: boolean;
   /** When true, discrimination mode tips modal is skipped. */
   skipDiscriminationTips: boolean;
+  /**
+   * When true, enable browser echoCancellation (AEC) on the practice mic.
+   * Helps speaker/phone use; may clip Shadowing takes. Default off (headphones).
+   */
+  reduceSpeakerEcho: boolean;
   /** ID of the last playlist loaded into practice. */
   lastPlayedPlaylistId: string;
   /** ID of the last Media loaded into practice (single or playlist). */
@@ -564,6 +569,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   shadowingGapPolicy: 'compress',
   skipEchoTips: false,
   skipDiscriminationTips: false,
+  reduceSpeakerEcho: false,
   lastPlayedPlaylistId: '',
   lastPlayedMediaId: '',
   discrimination: { ...DEFAULT_DISCRIMINATION_SETTINGS, ladderRates: [1] },

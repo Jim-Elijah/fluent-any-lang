@@ -15,6 +15,7 @@ import {
   shouldSkipEchoTips,
   shouldSkipRecordingCountdown,
   shouldSkipShadowingTips,
+  shouldReduceSpeakerEcho,
   USER_SETTINGS_STORAGE_KEY,
 } from './app-settings.js';
 import { DEFAULT_SETTINGS } from '../types/models.js';
@@ -34,6 +35,7 @@ describe('app-settings', () => {
     expect(shouldSkipRecordingCountdown()).toBe(false);
     expect(shouldSkipShadowingTips()).toBe(false);
     expect(shouldSkipEchoTips()).toBe(false);
+    expect(shouldReduceSpeakerEcho()).toBe(false);
   });
 
   it('persists tip preferences via setAppSettings', () => {
@@ -42,6 +44,15 @@ describe('app-settings', () => {
     expect(getAppSettings().skipShadowingTips).toBe(true);
     expect(shouldSkipRecordingCountdown()).toBe(true);
     expect(shouldSkipShadowingTips()).toBe(true);
+  });
+
+  it('persists reduceSpeakerEcho for practice mic echoCancellation', () => {
+    expect(getAppSettings().reduceSpeakerEcho).toBe(false);
+    setAppSettings({ reduceSpeakerEcho: true });
+    expect(getAppSettings().reduceSpeakerEcho).toBe(true);
+    expect(shouldReduceSpeakerEcho()).toBe(true);
+    setAppSettings({ reduceSpeakerEcho: false });
+    expect(shouldReduceSpeakerEcho()).toBe(false);
   });
 
   it('clamps numeric settings to allowed ranges', () => {

@@ -91,6 +91,6 @@ Native `HTMLMediaElement.loop` keeps the main Media (and Noise) wrapping when th
 
 ## Settings vs data
 
-- **Preferences / limits / Discrimination defaults / last-played resume ids / speech score API URL + key + Echo prosody basis** → `app-settings` (localStorage)
+- **Preferences / limits / Discrimination defaults / last-played resume ids / speech score API URL + key + Echo prosody basis / reduceSpeakerEcho (mic AEC)** → `app-settings` (localStorage)
 - **Learner content, sessions, and Pronunciation Scores** → IndexedDB
 - **Backup** → `lib/backup/` (export/import IDB content; respect soft-delete rules; scores travel with recordings; reference prosody profiles are omitted)

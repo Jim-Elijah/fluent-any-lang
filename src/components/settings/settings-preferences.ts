@@ -12,9 +12,13 @@ import type { SelectChangeDetail } from '../ui/select.js';
 import '../ui/message.js';
 import { Message } from '../ui/message.js';
 
-type TipKey = keyof Pick<
+type PreferenceToggleKey = keyof Pick<
   AppSettings,
-  'skipRecordingCountdown' | 'skipShadowingTips' | 'skipEchoTips' | 'skipDiscriminationTips'
+  | 'reduceSpeakerEcho'
+  | 'skipRecordingCountdown'
+  | 'skipShadowingTips'
+  | 'skipEchoTips'
+  | 'skipDiscriminationTips'
 >;
 
 @customElement('settings-preferences')
@@ -58,22 +62,22 @@ export class SettingsPreferences extends LitElement {
   @state()
   private _settings: AppSettings = getAppSettings();
 
-  private _setTip(key: TipKey, checked: boolean) {
+  private _setToggle(key: PreferenceToggleKey, checked: boolean) {
     this._settings = setAppSettings({ [key]: checked });
   }
 
-  private _onSwitch(key: TipKey) {
+  private _onSwitch(key: PreferenceToggleKey) {
     return (event: CustomEvent<SwitchChangeDetail>) => {
       event.stopPropagation();
-      this._setTip(key, event.detail.checked);
+      this._setToggle(key, event.detail.checked);
     };
   }
 
-  private _onRowClick(key: TipKey) {
+  private _onRowClick(key: PreferenceToggleKey) {
     return (event: Event) => {
       const target = event.target as HTMLElement | null;
       if (target?.closest('ui-switch')) return;
-      this._setTip(key, !this._settings[key]);
+      this._setToggle(key, !this._settings[key]);
     };
   }
 
@@ -91,7 +95,7 @@ export class SettingsPreferences extends LitElement {
     return html`
       <section class="card" aria-labelledby="prefs-heading">
         <h2 id="prefs-heading">${msg('偏好与提示')}</h2>
-        <p class="desc">${msg('控制练习流程中的倒计时与各练习模式说明是否自动跳过。')}</p>
+        <p class="desc">${msg('控制录音麦克风处理、练习流程倒计时，以及各练习模式说明是否自动跳过。')}</p>
         <div class="rows">
           <div class="field">
             <span class="field-label">${msg('影子跟读 · 句间空隙')}</span>
@@ -117,11 +121,37 @@ export class SettingsPreferences extends LitElement {
             class="row"
             role="button"
             tabindex="0"
+            @click=${this._onRowClick('reduceSpeakerEcho')}
+            @keydown=${(e: KeyboardEvent) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                this._setToggle('reduceSpeakerEcho', !s.reduceSpeakerEcho);
+              }
+            }}
+          >
+            <div class="label-wrap">
+              <span class="label">${msg('减少外放回声')}</span>
+              <span class="hint"
+                >${msg(
+                  '扬声器练习时建议开启；可能偶发录音缺音。戴耳机时保持关闭（推荐）。下次录音时生效。',
+                )}</span
+              >
+            </div>
+            <ui-switch
+              .checked=${s.reduceSpeakerEcho}
+              .label=${msg('减少外放回声')}
+              @change=${this._onSwitch('reduceSpeakerEcho')}
+            ></ui-switch>
+          </div>
+          <div
+            class="row"
+            role="button"
+            tabindex="0"
             @click=${this._onRowClick('skipRecordingCountdown')}
             @keydown=${(e: KeyboardEvent) => {
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
-                this._setTip('skipRecordingCountdown', !s.skipRecordingCountdown);
+                this._setToggle('skipRecordingCountdown', !s.skipRecordingCountdown);
               }
             }}
           >
@@ -143,7 +173,7 @@ export class SettingsPreferences extends LitElement {
             @keydown=${(e: KeyboardEvent) => {
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
-                this._setTip('skipShadowingTips', !s.skipShadowingTips);
+                this._setToggle('skipShadowingTips', !s.skipShadowingTips);
               }
             }}
           >
@@ -165,7 +195,7 @@ export class SettingsPreferences extends LitElement {
             @keydown=${(e: KeyboardEvent) => {
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
-                this._setTip('skipEchoTips', !s.skipEchoTips);
+                this._setToggle('skipEchoTips', !s.skipEchoTips);
               }
             }}
           >
@@ -187,7 +217,7 @@ export class SettingsPreferences extends LitElement {
             @keydown=${(e: KeyboardEvent) => {
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
-                this._setTip('skipDiscriminationTips', !s.skipDiscriminationTips);
+                this._setToggle('skipDiscriminationTips', !s.skipDiscriminationTips);
               }
             }}
           >

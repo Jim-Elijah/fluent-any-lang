@@ -1,4 +1,5 @@
 import { msg } from '@lit/localize';
+import { shouldReduceSpeakerEcho } from './app-settings.js';
 import { getAudioContext } from './audio-context.js';
 // import { Message } from '../components/ui/message.js';
 
@@ -72,8 +73,12 @@ export class AudioRecorderController {
     try {
       this.stream = await navigator.mediaDevices.getUserMedia({
         audio: {
+          /**
+           * AEC off by default: keeps Shadowing takes intact.
+           * Settings →「减少外放回声」turns it on for speaker/phone use.
+           */
           /** 关闭 AEC (自动回声消除)，否则会在 shadowing 录音时，部分句子从中间切开，导致缺音 */
-          echoCancellation: false,
+          echoCancellation: shouldReduceSpeakerEcho(),
           /** 开启 ANS (自动噪声抑制) 和 AGC (自动增益控制) */
           noiseSuppression: true,
           autoGainControl: true,

@@ -21,16 +21,18 @@ import { setAppSettings } from '../../lib/app-settings.js';
 import { mount } from '../ui/test-utils.js';
 
 type TipKey =
+  | 'reduceSpeakerEcho'
   | 'skipRecordingCountdown'
   | 'skipShadowingTips'
   | 'skipEchoTips'
   | 'skipDiscriminationTips';
 
 const PREFERENCE_TOGGLES: ReadonlyArray<{ key: TipKey; rowIndex: number }> = [
-  { key: 'skipRecordingCountdown', rowIndex: 0 },
-  { key: 'skipShadowingTips', rowIndex: 1 },
-  { key: 'skipEchoTips', rowIndex: 2 },
-  { key: 'skipDiscriminationTips', rowIndex: 3 },
+  { key: 'reduceSpeakerEcho', rowIndex: 0 },
+  { key: 'skipRecordingCountdown', rowIndex: 1 },
+  { key: 'skipShadowingTips', rowIndex: 2 },
+  { key: 'skipEchoTips', rowIndex: 3 },
+  { key: 'skipDiscriminationTips', rowIndex: 4 },
 ];
 
 describe('settings-preferences', () => {
@@ -65,9 +67,10 @@ describe('settings-preferences', () => {
 
   it('renders all preference switches from current settings', async () => {
     const el = await renderPreferences();
-    expect(switches(el).length).toBe(4);
+    expect(switches(el).length).toBe(5);
     expect(switches(el).every((sw) => !(sw as UiSwitchLike).checked)).toBe(true);
     expect(el.shadowRoot?.querySelector('ui-select')).not.toBeNull();
+    expect(el.shadowRoot?.textContent).toContain('减少外放回声');
   });
 
   it('persists shadowing gap policy from the select control', async () => {

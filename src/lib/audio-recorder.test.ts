@@ -109,6 +109,7 @@ describe('AudioRecorderController', () => {
   beforeEach(() => {
     lastRecorder = null;
     deferRecorderStart = false;
+    localStorage.clear();
     const stream = {
       getTracks: () => [{ stop: vi.fn() }],
     } as unknown as MediaStream;
@@ -124,6 +125,7 @@ describe('AudioRecorderController', () => {
   });
 
   afterEach(() => {
+    localStorage.clear();
     globalThis.MediaRecorder = originalMediaRecorder;
   });
 
@@ -143,9 +145,34 @@ describe('AudioRecorderController', () => {
     await controller.prepare();
 
     expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalledTimes(1);
+    expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalledWith({
+      audio: {
+        echoCancellation: false,
+        noiseSuppression: true,
+        autoGainControl: true,
+      },
+    });
     expect(controller.isReady()).toBe(true);
     expect(controller.getState()).toBe('inactive');
     expect(onStateChange).not.toHaveBeenCalled();
+  });
+
+  it('requests echoCancellation when reduceSpeakerEcho is enabled', async () => {
+    const { setAppSettings } = await import('./app-settings.js');
+    setAppSettings({ reduceSpeakerEcho: true });
+
+    const controller = new AudioRecorderController();
+    await controller.prepare();
+
+    expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalledWith({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+      },
+    });
+
+    setAppSettings({ reduceSpeakerEcho: false });
   });
 
   it('reuses the prepared mic when recording starts', async () => {

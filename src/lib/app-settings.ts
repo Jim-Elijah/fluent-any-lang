@@ -276,6 +276,7 @@ function parseAppSettings(raw: unknown): AppSettings {
       raw.skipDiscriminationTips,
       DEFAULT_SETTINGS.skipDiscriminationTips,
     ),
+    reduceSpeakerEcho: parseBoolean(raw.reduceSpeakerEcho, DEFAULT_SETTINGS.reduceSpeakerEcho),
     lastPlayedPlaylistId:
       typeof raw.lastPlayedPlaylistId === 'string'
         ? raw.lastPlayedPlaylistId
@@ -432,4 +433,9 @@ export function shouldSkipEchoTips(): boolean {
 
 export function shouldSkipDiscriminationTips(): boolean {
   return getAppSettings().skipDiscriminationTips;
+}
+
+/** Whether practice recording should request browser echoCancellation. */
+export function shouldReduceSpeakerEcho(): boolean {
+  return getAppSettings().reduceSpeakerEcho;
 }
