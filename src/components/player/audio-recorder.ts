@@ -371,8 +371,8 @@ export class AudioRecorder extends LitElement {
   }
 
   /**
-   * Open the mic ahead of `startRecording` so the device/route switch it causes
-   * happens in silence instead of cutting the tail of whatever is still playing.
+   * Open the mic ahead of `startRecording` so the device/route switch happens in
+   * silence (call after Echo listen drain — not during listen, or AEC can mute the clip).
    * Best effort: permission/device failures are surfaced later by `startRecording`.
    */
   async warmUpMicrophone(): Promise<void> {

@@ -1704,9 +1704,17 @@ export class PracticeView extends NavigatorElement {
     this._seekEchoSegmentToStart();
     this._setSessionPhase('draining');
 
-    // Let the output device finish sounding the clip before the mic opens.
+    // Let the output device finish sounding the clip, then open the mic in silence.
+    // Opening earlier (during listen) enables AEC / route switch that can mute the clip
+    // on mobile when reduceSpeakerEcho is on.
     await this._echoClipPlayer.waitForOutputDrain();
     if (sessionId !== this._echoSessionId) {
+      return;
+    }
+
+    await this._echoRecorderEl?.warmUpMicrophone();
+    if (sessionId !== this._echoSessionId) {
+      this._echoRecorderEl?.releaseMicrophone();
       return;
     }
 
@@ -1746,7 +1754,7 @@ export class PracticeView extends NavigatorElement {
 
   private _resetSessionUi(): void {
     // Ends every echo session path (cancel, countdown cancel, mic failure): give back a
-    // mic that was warmed up for listening but never recorded. No-op while recording.
+    // mic that was warmed after drain but never recorded. No-op while recording.
     this._echoRecorderEl?.releaseMicrophone();
     this._restorePracticePlaybackSettings();
     this._setSessionPhase('idle');
@@ -1822,17 +1830,9 @@ export class PracticeView extends NavigatorElement {
     this._suppressNonPracticeSettings({ pauseMode: 'off' });
 
     // Hard-cut main player: freeze UI clock at sentence start; clip owns listen audio.
+    // Mic opens only after drain (see `_onEchoClipEnded`) so listen stays audible with AEC on.
     this._controller.pause();
     this._seekEchoSegmentToStart();
-
-    // Open the mic while nothing is sounding: doing it after the clip lets the
-    // device/route switch cut the clip tail (and that tail lands in the recording).
-    await this._echoRecorderEl?.warmUpMicrophone();
-    if (sessionId !== this._echoSessionId) {
-      // Cancelled while the mic was opening: the session already ran its release.
-      this._echoRecorderEl?.releaseMicrophone();
-      return;
-    }
 
     this._echoClipPlayer.onEnded = () => {
       void this._onEchoClipEnded();

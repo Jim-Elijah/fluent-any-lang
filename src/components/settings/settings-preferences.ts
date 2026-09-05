@@ -95,7 +95,9 @@ export class SettingsPreferences extends LitElement {
     return html`
       <section class="card" aria-labelledby="prefs-heading">
         <h2 id="prefs-heading">${msg('偏好与提示')}</h2>
-        <p class="desc">${msg('控制录音麦克风处理、练习流程倒计时，以及各练习模式说明是否自动跳过。')}</p>
+        <p class="desc">
+          ${msg('控制录音麦克风处理、练习流程倒计时，以及各练习模式说明是否自动跳过。')}
+        </p>
         <div class="rows">
           <div class="field">
             <span class="field-label">${msg('影子跟读 · 句间空隙')}</span>

@@ -665,7 +665,7 @@ describe('practice-view', () => {
     expect(el._sessionPhase).toBe('listening');
   });
 
-  it('opens the mic before the clip plays', async () => {
+  it('opens the mic after drain before recording', async () => {
     const el = await renderView();
     await switchToEchoMode(el);
 
@@ -673,19 +673,57 @@ describe('practice-view', () => {
     const echoRecorder = el.shadowRoot!.querySelector('audio-recorder#echo-recorder') as {
       warmUpMicrophone: () => Promise<void>;
       startRecording: () => Promise<void>;
+      recording: boolean;
     };
+    Object.defineProperty(echoRecorder, 'recording', {
+      configurable: true,
+      get: () => true,
+    });
     const warmUpSpy = vi.spyOn(echoRecorder, 'warmUpMicrophone').mockResolvedValue(undefined);
-    vi.spyOn(echoRecorder, 'startRecording').mockResolvedValue(undefined);
+    const startRecordingSpy = vi.spyOn(echoRecorder, 'startRecording').mockResolvedValue(undefined);
 
     await dispatchEchoRecordRequest(el);
 
+    expect(warmUpSpy).not.toHaveBeenCalled();
+    expect(mockEchoClipPlayer.play).toHaveBeenCalled();
+
+    mockEchoClipPlayer.onEnded?.();
+    await el.updateComplete;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
     expect(warmUpSpy).toHaveBeenCalled();
+    expect(startRecordingSpy).toHaveBeenCalled();
     expect(warmUpSpy.mock.invocationCallOrder[0]!).toBeLessThan(
-      mockEchoClipPlayer.play.mock.invocationCallOrder[0]!,
+      startRecordingSpy.mock.invocationCallOrder[0]!,
+    );
+    expect(mockEchoClipPlayer.waitForOutputDrain.mock.invocationCallOrder[0]!).toBeLessThan(
+      warmUpSpy.mock.invocationCallOrder[0]!,
     );
   });
 
-  it('releases a warmed-up mic when the session is cancelled', async () => {
+  it('releases mic when echo listen is cancelled before drain', async () => {
+    const el = await renderView();
+    await switchToEchoMode(el);
+
+    vi.spyOn(el._controller, 'pause').mockReturnValue(undefined as never);
+    const echoRecorder = el.shadowRoot!.querySelector('audio-recorder#echo-recorder') as {
+      releaseMicrophone: () => void;
+      startRecording: () => Promise<void>;
+    };
+    const releaseSpy = vi.spyOn(echoRecorder, 'releaseMicrophone').mockReturnValue(undefined);
+    vi.spyOn(echoRecorder, 'startRecording').mockResolvedValue(undefined);
+
+    await dispatchEchoRecordRequest(el);
+    el.shadowRoot!.querySelector('subtitle-panel')!.dispatchEvent(
+      new CustomEvent('echo-record-stop', { bubbles: true, composed: true }),
+    );
+    await el.updateComplete;
+
+    expect(releaseSpy).toHaveBeenCalled();
+    expect(el._sessionPhase).toBe('idle');
+  });
+
+  it('releases a warmed-up mic when the session is cancelled during drain', async () => {
     const el = await renderView();
     await switchToEchoMode(el);
 
@@ -695,14 +733,25 @@ describe('practice-view', () => {
       releaseMicrophone: () => void;
       startRecording: () => Promise<void>;
     };
-    vi.spyOn(echoRecorder, 'warmUpMicrophone').mockResolvedValue(undefined);
+    let resolveWarmUp: (() => void) | undefined;
+    const warmUpPending = new Promise<void>((resolve) => {
+      resolveWarmUp = resolve;
+    });
+    vi.spyOn(echoRecorder, 'warmUpMicrophone').mockReturnValue(warmUpPending);
     const releaseSpy = vi.spyOn(echoRecorder, 'releaseMicrophone').mockReturnValue(undefined);
     vi.spyOn(echoRecorder, 'startRecording').mockResolvedValue(undefined);
 
     await dispatchEchoRecordRequest(el);
+    mockEchoClipPlayer.onEnded?.();
+    await el.updateComplete;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
     el.shadowRoot!.querySelector('subtitle-panel')!.dispatchEvent(
       new CustomEvent('echo-record-stop', { bubbles: true, composed: true }),
     );
+    await el.updateComplete;
+    resolveWarmUp?.();
+    await warmUpPending;
     await el.updateComplete;
 
     expect(releaseSpy).toHaveBeenCalled();

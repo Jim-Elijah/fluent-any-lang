@@ -57,8 +57,8 @@ export class AudioRecorderController {
   }
 
   /**
-   * 提前打开麦克风（不开始录音）。开麦会让系统切换音频输出路由，
-   * 提前到播放之前做，可避免切换时截断正在播放的音频尾部。
+   * 提前打开麦克风（不开始录音）。开麦会切换音频输出路由；
+   * 应在输出已静音后调用（如 Echo drain 之后），避免截断尾音或在听原音时启用 AEC。
    */
   public async prepare(): Promise<void> {
     await this.initRecorder();
