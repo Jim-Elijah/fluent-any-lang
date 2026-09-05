@@ -1,3 +1,17 @@
+## [0.4.3](https://github.com/Jim-Elijah/fluent-any-lang/compare/v0.4.2...v0.4.3) (2026-09-05)
+
+### Features
+
+* **sentences:** export sentence-bank audio with pairable echo filenames ([7241e96](https://github.com/Jim-Elijah/fluent-any-lang/commit/7241e96d78fc0b7e54c717ce919d0316b30a2d4b))
+* **settings:** add reduce-speaker-echo mic preference ([9268060](https://github.com/Jim-Elijah/fluent-any-lang/commit/926806073f53a0e010e833ab4d21d0acdc1e56b7))
+
+### Bug Fixes
+
+* **app:** keep route loading reactive under Vite Oxc class fields ([f6c2f15](https://github.com/Jim-Elijah/fluent-any-lang/commit/f6c2f15a9f895f89f9923ce2dcb387e999c305b1))
+* **playback:** resume loops without waiting for seeked on lock screen ([f6b345e](https://github.com/Jim-Elijah/fluent-any-lang/commit/f6b345ee8b80ccbf7943134831e2eecbb990c549))
+* **playback:** resume segment loop after pause without waiting for seeked ([f124a01](https://github.com/Jim-Elijah/fluent-any-lang/commit/f124a018dd25077785f5dc7f15ac0e0a6c8cc754))
+* **practice:** open Echo mic after listen so AEC does not mute the clip ([6d626e0](https://github.com/Jim-Elijah/fluent-any-lang/commit/6d626e0a059a2d58e65eb74fc47ccd793277e069))
+
 ## [0.4.2](https://github.com/Jim-Elijah/fluent-any-lang/compare/v0.4.1...v0.4.2) (2026-08-29)
 
 ### Features

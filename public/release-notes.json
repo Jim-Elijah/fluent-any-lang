@@ -1,25 +1,33 @@
 {
-  "version": "0.4.2",
+  "version": "0.4.3",
   "highlights": {
     "zh-CN": [
-      "practice: 辨音模式下锁屏后仍可循环播放；从媒体库和播放列表可恢复上次播放的内容",
-      "pronunciation-score: 评分文本会标出漏读、多读与读错；统一四档分数，并按设置控制评分操作",
-      "playback: 片段循环中拖动后进度保持正确；拖到句首/句尾空隙时清除当前活动片段"
+      "practice: 回声跟读听完原音后再开麦，避免回声消除把片段消音",
+      "playback: 锁屏循环与暂停后的片段循环可更快恢复，无需等待定位完成",
+      "sentences: 导出句库音频时使用可与回声录音配对的文件名",
+      "app: 页面切换时的加载状态保持正常响应",
+      "settings: 新增「减少外放回声」麦克风偏好"
     ],
     "en": [
-      "practice: implement lock-screen loop behavior for discrimination mode; resume last-played media from library and playlists",
-      "pronunciation-score: highlight missing, extra, and misread words in score text; share four score bands and gate score actions on settings",
-      "playback: keep progress after seek during segment loop; clear active segment on leading/trailing gap seeks"
+      "practice: open Echo mic after listen so AEC does not mute the clip",
+      "playback: resume loops without waiting for seeked on lock screen; resume segment loop after pause without waiting for seeked",
+      "sentences: export sentence-bank audio with pairable echo filenames",
+      "app: keep route loading reactive under Vite Oxc class fields",
+      "settings: add reduce-speaker-echo mic preference"
     ],
     "ja": [
-      "practice: 聴き取りモードでロック画面中もループ継続；ライブラリとプレイリストから前回の再生を再開",
-      "pronunciation-score: 採点テキストで読み飛ばし・余分な読み・読み誤りをハイライト；4段階のスコア帯を統一し、設定で採点操作を制御",
-      "playback: セグメントループ中のシーク後も進捗を維持；先頭/末尾の隙間へシークするとアクティブセグメントを解除"
+      "practice: エコーシャドーイングは原音再生後にマイクを開き、AECでクリップが無音になるのを防ぐ",
+      "playback: ロック画面のループと一時停止後のセグメントループが、シーク完了を待たずに再開しやすく",
+      "sentences: 文庫音声のエクスポートで、エコー録音と対応しやすいファイル名を使用",
+      "app: 画面切り替え時の読み込み状態が正しく反応し続ける",
+      "settings: 「スピーカーのエコーを軽減」マイク設定を追加"
     ],
     "zh-TW": [
-      "practice: 辨音模式下鎖屏後仍可循環播放；從媒體庫和播放清單可恢復上次播放的內容",
-      "pronunciation-score: 評分文字會標出漏讀、多讀與讀錯；統一四檔分數，並依設定控制評分操作",
-      "playback: 片段循環中拖動後進度保持正確；拖到句首/句尾空隙時清除目前活動片段"
+      "practice: 回聲跟讀聽完原音後再開麥，避免回聲消除把片段消音",
+      "playback: 鎖屏循環與暫停後的片段循環可更快恢復，無需等待定位完成",
+      "sentences: 匯出句庫音訊時使用可與回聲錄音配對的檔名",
+      "app: 頁面切換時的載入狀態保持正常回應",
+      "settings: 新增「減少外放回聲」麥克風偏好"
     ]
   }
 }
