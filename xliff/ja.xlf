@@ -1785,10 +1785,6 @@
   <source>开启定时关闭时的默认时长。</source>
   <target>スリープタイマーを有効にしたときのデフォルト時間。</target>
 </trans-unit>
-<trans-unit id="s531d81b8f9d987f9">
-  <source>控制练习流程中的倒计时与各练习模式说明是否自动跳过。</source>
-  <target>練習フローのカウントダウンと各練習モードの説明を自動でスキップするかどうかを制御します。</target>
-</trans-unit>
 <trans-unit id="s5a9ba1b43b858bfc">
   <source>句库为空。在练习页点击字幕旁的 ♡ 即可加入。</source>
   <target>文庫は空です。練習ページで字幕横の ♡ をタップして追加できます。</target>
@@ -2500,6 +2496,26 @@
 <trans-unit id="sd2d05af28ba50819">
   <source>网络不可用或评分服务未运行，请检查连接后重试</source>
   <target>ネットワークが利用できないか、採点サービスが稼働していません。接続を確認してから再試行してください。</target>
+</trans-unit>
+<trans-unit id="s0c8787a3358178e1">
+  <source>控制录音麦克风处理、练习流程倒计时，以及各练习模式说明是否自动跳过。</source>
+  <target>録音時のマイク処理、練習フローのカウントダウン、各練習モードの説明を自動でスキップするかどうかを制御します。</target>
+</trans-unit>
+<trans-unit id="s4cb692efc09d4eab">
+  <source>减少外放回声</source>
+  <target>スピーカーのエコーを軽減</target>
+</trans-unit>
+<trans-unit id="s94122288271af044">
+  <source>耳机练习时建议关闭（推荐）；外放练习时建议开启，但可能偶发录音缺音。下次录音时生效。</source>
+  <target>イヤホン練習時はオフ推奨；スピーカー練習時はオン推奨ですが、まれに録音が欠けることがあります。次回の録音から有効になります。</target>
+</trans-unit>
+<trans-unit id="s5fee218cd50c7763">
+  <source>句库音频未找到</source>
+  <target>文庫音声が見つかりません</target>
+</trans-unit>
+<trans-unit id="safe1c6857256249e">
+  <source>导出失败，请重试</source>
+  <target>エクスポートに失敗しました。やり直してください</target>
 </trans-unit>
 </body>
 </file>

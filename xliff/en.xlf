@@ -1819,10 +1819,6 @@
   <source>开启定时关闭时的默认时长。</source>
   <target>Default duration when the sleep timer is enabled.</target>
 </trans-unit>
-<trans-unit id="s531d81b8f9d987f9">
-  <source>控制练习流程中的倒计时与各练习模式说明是否自动跳过。</source>
-  <target>Control whether the recording countdown and practice-mode tips are skipped automatically.</target>
-</trans-unit>
 <trans-unit id="s5a9ba1b43b858bfc">
   <source>句库为空。在练习页点击字幕旁的 ♡ 即可加入。</source>
   <target>Sentence bank is empty. Tap ♡ next to a subtitle on the practice page to add one.</target>
@@ -2534,6 +2530,26 @@
 <trans-unit id="sd2d05af28ba50819">
   <source>网络不可用或评分服务未运行，请检查连接后重试</source>
   <target>Network unavailable or scoring service is not running. Check the connection and try again.</target>
+</trans-unit>
+<trans-unit id="s0c8787a3358178e1">
+  <source>控制录音麦克风处理、练习流程倒计时，以及各练习模式说明是否自动跳过。</source>
+  <target>Control microphone processing for recording, the practice countdown, and whether tips for each practice mode are skipped automatically.</target>
+</trans-unit>
+<trans-unit id="s4cb692efc09d4eab">
+  <source>减少外放回声</source>
+  <target>Reduce speaker echo</target>
+</trans-unit>
+<trans-unit id="s94122288271af044">
+  <source>耳机练习时建议关闭（推荐）；外放练习时建议开启，但可能偶发录音缺音。下次录音时生效。</source>
+  <target>Leave off when practicing with headphones (recommended); turn on for speaker practice, though recordings may occasionally drop audio. Takes effect on the next recording.</target>
+</trans-unit>
+<trans-unit id="s5fee218cd50c7763">
+  <source>句库音频未找到</source>
+  <target>Sentence bank audio not found</target>
+</trans-unit>
+<trans-unit id="safe1c6857256249e">
+  <source>导出失败，请重试</source>
+  <target>Export failed. Please try again</target>
 </trans-unit>
 </body>
 </file>

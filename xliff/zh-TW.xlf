@@ -1785,10 +1785,6 @@
   <source>开启定时关闭时的默认时长。</source>
   <target>開啟定時關閉時的預設時長。</target>
 </trans-unit>
-<trans-unit id="s531d81b8f9d987f9">
-  <source>控制练习流程中的倒计时与各练习模式说明是否自动跳过。</source>
-  <target>控制練習流程中的倒數計時與各練習模式說明是否自動跳過。</target>
-</trans-unit>
 <trans-unit id="s5a9ba1b43b858bfc">
   <source>句库为空。在练习页点击字幕旁的 ♡ 即可加入。</source>
   <target>句庫為空。在練習頁點擊字幕旁的 ♡ 即可加入。</target>
@@ -2500,6 +2496,26 @@
 <trans-unit id="sd2d05af28ba50819">
   <source>网络不可用或评分服务未运行，请检查连接后重试</source>
   <target>網路不可用或評分服務未運行，請檢查連線後重試</target>
+</trans-unit>
+<trans-unit id="s0c8787a3358178e1">
+  <source>控制录音麦克风处理、练习流程倒计时，以及各练习模式说明是否自动跳过。</source>
+  <target>控制錄音麥克風處理、練習流程倒數，以及各練習模式說明是否自動跳過。</target>
+</trans-unit>
+<trans-unit id="s4cb692efc09d4eab">
+  <source>减少外放回声</source>
+  <target>減少外放回聲</target>
+</trans-unit>
+<trans-unit id="s94122288271af044">
+  <source>耳机练习时建议关闭（推荐）；外放练习时建议开启，但可能偶发录音缺音。下次录音时生效。</source>
+  <target>耳機練習時建議關閉（推薦）；外放練習時建議開啟，但可能偶發錄音缺音。下次錄音時生效。</target>
+</trans-unit>
+<trans-unit id="s5fee218cd50c7763">
+  <source>句库音频未找到</source>
+  <target>句庫音訊未找到</target>
+</trans-unit>
+<trans-unit id="safe1c6857256249e">
+  <source>导出失败，请重试</source>
+  <target>匯出失敗，請重試</target>
 </trans-unit>
 </body>
 </file>

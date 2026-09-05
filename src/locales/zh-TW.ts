@@ -4,6 +4,9 @@
 import { html } from 'lit';
 import { str } from '@lit/localize';
 
+/* eslint-disable no-irregular-whitespace */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 export const templates = {
   h005078dd262274ad: html`已暫停原音片段${0}`,
   h01c1e14ddec5eda4: html`正在同步播放片段${0}`,
@@ -45,6 +48,7 @@ export const templates = {
   s0bd8fcf730ce3469: `套用設定`,
   s0c3483aa85ae0374: str`匯入錄音失敗：${0}`,
   s0c72c74a9946e750: `錄製時跳過字幕間的長靜音，句間只留約 1 秒；對照時按句同步播放，便於逐句對比。`,
+  s0c8787a3358178e1: `控制錄音麥克風處理、練習流程倒數，以及各練習模式說明是否自動跳過。`,
   s0ca1c0c33406c604: str`匯入句庫失敗：${0}`,
   s0cf49690e095b055: `載入中…`,
   s0d11e3ba360b2d75: `跟讀完成後點擊停止`,
@@ -212,9 +216,9 @@ export const templates = {
   s49a62a2963e86598: `隱藏字幕 (C)`,
   s49f525aefe49d4d0: `刪除失敗，請重試`,
   s4a43d021163cfac5: str`錄音：${0}`,
-  s4a888818b3ccd874: `漏讀，錄音中沒有對應位置`,
   s4af4b94e70819d5a: `檢查更新`,
   s4c924d1ceea537ee: `評分時會把錄音上傳到你設定的伺服器以計算分數；選「像原聲」時 Echo 還可能上傳原聲片段。服務端不保存音訊；分數只保存在本裝置。`,
+  s4cb692efc09d4eab: `減少外放回聲`,
   s4d093e6b477349e4: str`第 ${0} 檔倍速`,
   s4d20049fe3f8ef2e: str`未找到有效的字幕條目（第 ${0} 行：${1}）`,
   s4d3c3c8b4d1e8295: `自然度`,
@@ -226,7 +230,6 @@ export const templates = {
   s5102441511456701: `匯出異常日誌`,
   s5289efcad3778518: `溫馨提示：`,
   s52c334ecad404034: `重播本句`,
-  s531d81b8f9d987f9: `控制練習流程中的倒數計時與各練習模式說明是否自動跳過。`,
   s53a0c1ff65d39ba2: `無匹配噪音素材`,
   s5412ed77b37800af: `暫無播放清單`,
   s541a50b7ab9715ef: `上次練習`,
@@ -255,6 +258,7 @@ export const templates = {
   s5f4af527a66c337d: `時間戳格式無效`,
   s5f5e46ed8f9c6256: `已加入句庫`,
   s5f940f0f82a9b8cb: `錄音預覽時原音的預設音量。`,
+  s5fee218cd50c7763: `句庫音訊未找到`,
   s6055cd73955e7155: str`句庫：${0}`,
   s60933dd7108f8b2b: `評分完成`,
   s609e55fed26fb3b0: `隱藏翻譯`,
@@ -376,6 +380,7 @@ export const templates = {
   s91c0df7b71802cd0: `清除全部學習資料`,
   s92c9c4c310e436b2: `確定刪除該播放清單嗎？`,
   s940ecd082c22b85f: `漏讀`,
+  s94122288271af044: `耳機練習時建議關閉（推薦）；外放練習時建議開啟，但可能偶發錄音缺音。下次錄音時生效。`,
   s9508747af122491f: `從句庫移除失敗，請重試`,
   s9528f5209b708b75: str`匯入學習記錄失敗：${0}`,
   s956426855b65053c: `API Key 無效或已過期，請檢查設定`,
@@ -452,6 +457,7 @@ export const templates = {
   saf9b8f4c866091b5: `秒`,
   safbaa44c86956264: `天`,
   safbe4e4c869b9c42: `庫`,
+  safe1c6857256249e: `匯出失敗，請重試`,
   safeeea4c86ee3556: `起`,
   saffb37fcdeb14dd5: `1. 播放器始終可用（進度／音量／切句／切歌等等）；可隨時調整噪音與階梯。`,
   saffbf44c87045d54: `項`,
@@ -533,6 +539,7 @@ export const templates = {
   sd0144e085eeb8776: `練習`,
   sd0af32cc43a284e7: `開始！`,
   sd140f999a4743cb5: `請跟上原音`,
+  sd2d05af28ba50819: `網路不可用或評分服務未運行，請檢查連線後重試`,
   sd35940a54147f6b0: `今日模式占比`,
   sd372d71da982e5b7: str`總時長 ${0}`,
   sd3d8b374fd3724ea: `連續對照 (E)`,
@@ -581,6 +588,7 @@ export const templates = {
   se2ecfc7c3f5987de: `以後不再提醒`,
   se329613f6209f026: `立即前往`,
   se372d1094923599f: `跳過`,
+  se3827cbc54079c73: `從該處播放錄音`,
   se3eecd09498e150f: `跟讀`,
   se4067cfc3b0b5cf8: `只根據你的錄音評語速、節奏是否自然。Echo 與 Shadowing 都只上傳錄音，不上傳原聲，更省流量。`,
   se502e9fe68f166a9: `隱藏密碼`,

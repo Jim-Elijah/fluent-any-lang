@@ -135,7 +135,7 @@ export class SettingsPreferences extends LitElement {
               <span class="label">${msg('减少外放回声')}</span>
               <span class="hint"
                 >${msg(
-                  '扬声器练习时建议开启；可能偶发录音缺音。戴耳机时保持关闭（推荐）。下次录音时生效。',
+                  '耳机练习时建议关闭（推荐）；外放练习时建议开启，但可能偶发录音缺音。下次录音时生效。',
                 )}</span
               >
             </div>
