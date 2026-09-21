@@ -206,7 +206,7 @@ describe('sentence-practice-page', () => {
     el.shadowRoot
       ?.querySelector('.header .actions ui-button')
       ?.dispatchEvent(new Event('click', { bubbles: true }));
-    expect(navigateSpy).toHaveBeenCalledWith('/sentences');
+    expect(navigateSpy).toHaveBeenCalledWith('/library/sentences');
 
     navigateSpy.mockClear();
     el.shadowRoot

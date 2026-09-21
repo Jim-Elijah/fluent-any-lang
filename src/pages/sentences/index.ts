@@ -11,15 +11,15 @@ import { formatDate, formatTime } from '../../lib/playback-utils.js';
 import type { SentenceBankEntry, SortDirection } from '../../types/models.js';
 import { Message } from '../../components/ui/message.js';
 
+import '../../components/library/library-list-toolbar.js';
+import '../../components/library/library-section-back.js';
 import '../../components/ui/alert.js';
 import '../../components/ui/button.js';
 import '../../components/ui/icon.js';
-import '../../components/ui/input.js';
 import '../../components/ui/popconfirm.js';
-import '../../components/ui/select.js';
 import '../../components/ui/tooltip.js';
-import type { InputChangeDetail } from '../../components/ui/input.js';
-import type { SelectChangeDetail } from '../../components/ui/select.js';
+import type { LibraryListToolbarChangeDetail } from '../../components/library/library-list-toolbar.js';
+import type { SelectOption } from '../../components/ui/select.js';
 
 const NavigatorElement = navigator(LitElement);
 
@@ -46,39 +46,6 @@ export class SentencesPage extends NavigatorElement {
       flex: 1;
       min-height: 0;
       gap: var(--space-sm);
-    }
-
-    .toolbar {
-      display: flex;
-      align-items: center;
-      gap: var(--space-block);
-      flex-wrap: wrap;
-      flex-shrink: 0;
-    }
-
-    .search {
-      flex: 1 1 240px;
-      min-width: 0;
-    }
-
-    .sort-group {
-      display: flex;
-      align-items: center;
-      gap: var(--space-sm);
-      flex: 0 0 auto;
-    }
-
-    .sort-label {
-      display: inline-flex;
-      align-items: center;
-      gap: var(--space-xs);
-      color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
-      font-size: 0.875rem;
-      white-space: nowrap;
-    }
-
-    .sort-group ui-select {
-      width: 7.5rem;
     }
 
     .hint {
@@ -307,7 +274,7 @@ export class SentencesPage extends NavigatorElement {
     }
   }
 
-  private _getSortByOptions() {
+  private _getSortByOptions(): SelectOption[] {
     return [
       { value: 'date', label: msg('日期') },
       { value: 'source', label: msg('来源') },
@@ -315,12 +282,11 @@ export class SentencesPage extends NavigatorElement {
     ];
   }
 
-  private _getSortDirectionOptions() {
-    return [
-      { value: 'asc', label: msg('升序') },
-      { value: 'desc', label: msg('降序') },
-    ];
-  }
+  private _onFiltersChange = (e: CustomEvent<LibraryListToolbarChangeDetail>): void => {
+    this._keyword = e.detail.keyword;
+    this._sortBy = e.detail.sortBy;
+    this._sortDirection = e.detail.sortDirection;
+  };
 
   private _getVisibleEntries(): SentenceBankEntry[] {
     const keyword = this._keyword.trim().toLowerCase();
@@ -394,43 +360,15 @@ export class SentencesPage extends NavigatorElement {
 
     return html`
       <div class="layout">
-        <div class="toolbar">
-          <ui-input
-            class="search"
-            .value=${this._keyword}
-            allow-clear
-            placeholder="${msg('搜索句子 / 来源标题')}"
-            aria-label="${msg('搜索句子 / 来源标题')}"
-            @change=${(e: CustomEvent<InputChangeDetail>) => {
-              this._keyword = (e.detail.value || '').trim();
-            }}
-          >
-            <ui-icon slot="prefix" name="search" size="var(--icon-md)"></ui-icon>
-          </ui-input>
-
-          <div class="sort-group">
-            <span class="sort-label">
-              <ui-icon name="sort" size="var(--icon-md)"></ui-icon>
-              ${msg('排序')}
-            </span>
-            <ui-select
-              .value=${this._sortBy}
-              .options=${this._getSortByOptions()}
-              aria-label="${msg('排序字段')}"
-              @change=${(e: CustomEvent<SelectChangeDetail>) => {
-                this._sortBy = e.detail.value as string;
-              }}
-            ></ui-select>
-            <ui-select
-              .value=${this._sortDirection}
-              .options=${this._getSortDirectionOptions()}
-              aria-label="${msg('排序方向')}"
-              @change=${(e: CustomEvent<SelectChangeDetail>) => {
-                this._sortDirection = e.detail.value as SortDirection;
-              }}
-            ></ui-select>
-          </div>
-        </div>
+        <library-section-back></library-section-back>
+        <library-list-toolbar
+          .keyword=${this._keyword}
+          .sortBy=${this._sortBy}
+          .sortDirection=${this._sortDirection}
+          .sortByOptions=${this._getSortByOptions()}
+          searchPlaceholder="${msg('搜索句子 / 来源标题')}"
+          @filters-change=${this._onFiltersChange}
+        ></library-list-toolbar>
 
         <p class="hint">${msg('收藏喜欢的句子，单独练习或跳回原媒体上下文。')}</p>
 

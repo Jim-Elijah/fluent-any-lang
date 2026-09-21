@@ -1653,14 +1653,6 @@
   <source>已存在相同内容的噪音素材</source>
   <target>同じ内容のノイズ素材が既にあります</target>
 </trans-unit>
-<trans-unit id="sfa98099584a84be6">
-  <source>搜索媒体 / 录音 / 噪音标题</source>
-  <target>メディア／録音／ノイズのタイトルを検索</target>
-</trans-unit>
-<trans-unit id="s4590594157893af7">
-  <source>筛选与排序同时作用于下方媒体库、录音库与噪音素材</source>
-  <target>フィルターと並べ替えは、下のメディア・録音・ノイズ素材に同時に適用されます</target>
-</trans-unit>
 <trans-unit id="s1979d2557f8e15b4">
   <source>将播放：</source>
   <target>再生予定：</target>
@@ -2517,6 +2509,46 @@
   <source>导出失败，请重试</source>
   <target>エクスポートに失敗しました。やり直してください</target>
 </trans-unit>
+<trans-unit id="s5bc381bb8e9e5e7c">
+  <source>返回库</source>
+  <target>ライブラリに戻る</target>
+  </trans-unit>
+<trans-unit id="s7dd96b1c3b02ee89">
+  <source>浏览与管理练习材料、录音、噪音、播放列表与句库。</source>
+  <target>練習素材・録音・ノイズ・プレイリスト・文庫を閲覧・管理します。</target>
+  </trans-unit>
+<trans-unit id="sd74101866a3ff956">
+  <source>导入的音视频练习材料</source>
+  <target>インポートした音声・動画の練習素材</target>
+  </trans-unit>
+<trans-unit id="sb298e45d1e26cf4c">
+  <source>口语练习产生的录音</source>
+  <target>スピーキング練習で作成した録音</target>
+  </trans-unit>
+<trans-unit id="s9fca60210d88f53f">
+  <source>听辨练习用的环境噪音叠加素材</source>
+  <target>聞き分け練習用の環境ノイズ重ね素材</target>
+  </trans-unit>
+<trans-unit id="s18c600f993195284">
+  <source>按列表顺序练习多个媒体</source>
+  <target>リスト順に複数のメディアを練習</target>
+  </trans-unit>
+<trans-unit id="se953768c474d2758">
+  <source>收藏的句子，可单独练习</source>
+  <target>保存した文を単独で練習</target>
+  </trans-unit>
+<trans-unit id="s98ae92a154ba545f">
+  <source>搜索媒体标题</source>
+  <target>メディアタイトルを検索</target>
+  </trans-unit>
+<trans-unit id="s7a0906988c306657">
+  <source>搜索噪音标题</source>
+  <target>ノイズタイトルを検索</target>
+  </trans-unit>
+<trans-unit id="s99e4c3765ecdbee4">
+  <source>搜索录音标题</source>
+  <target>録音タイトルを検索</target>
+  </trans-unit>
 </body>
 </file>
 </xliff>

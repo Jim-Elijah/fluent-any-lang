@@ -8,15 +8,15 @@ Prefer automated tests where they exist; use this list when changing the named a
 
 | #   | Path                                     | Entry                                             | Success signal                                                            |
 | --- | ---------------------------------------- | ------------------------------------------------- | ------------------------------------------------------------------------- |
-| 1   | Import Media (+ optional Subtitle Track) | Library / importer                                | Item in library; subtitles play in sync                                   |
+| 1   | Import Media (+ optional Subtitle Track) | Library → 媒体库 / importer                   | Item in library; subtitles play in sync                                   |
 | 2   | Free Listening                           | `/practice?mediaId=`                              | Play, rate, loop, segment nav, pause                                      |
 | 3   | Discrimination                           | Practice → Discrimination                         | Noise overlay + optional rate ladder; main track still controllable       |
 | 4   | Shadowing                                | Practice → Speaking → Shadowing                   | Record in sync; Practice Record saved; compare playback                   |
 | 5   | Echo                                     | Practice → Speaking → Echo (needs subtitles)      | Listen clip → record; multiple takes per segment OK                       |
 | 6   | Practice Session accounting              | Any Practice Mode with real practice              | Stats/home show active time (not mere page open)                          |
-| 7   | Playlist practice                        | `/practice?playlistId=&mediaId=`                  | Track order / next; Favorites still works                                 |
-| 8   | Sentence Bank save → isolated practice   | Subtitle panel → Sentences → `/sentence-practice` | Clip saved; practice from bank works if source available                  |
-| 9   | Delete Media                             | Library                                           | Soft-delete playlist/sentence refs; no orphan main-track practice         |
+| 7   | Playlist practice                        | `/library/playlists` → `/practice?playlistId=&mediaId=` | Track order / next; Favorites still works                                 |
+| 8   | Sentence Bank save → isolated practice   | Subtitle panel → `/library/sentences` → `/sentence-practice` | Clip saved; practice from bank works if source available                  |
+| 9   | Delete Media                             | Library → 媒体库                              | Soft-delete playlist/sentence refs; no orphan main-track practice         |
 | 10  | Backup export/import                     | Settings                                          | Round-trip keeps media/subtitles/records/scores; removed entries stay out |
 
 ## Change X → must verify Y

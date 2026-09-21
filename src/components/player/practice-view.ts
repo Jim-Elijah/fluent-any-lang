@@ -1016,7 +1016,7 @@ export class PracticeView extends NavigatorElement {
   };
 
   private _openLibrary = (): void => {
-    this.navigate('/library#noise-list-title');
+    this.navigate('/library/noise');
   };
 
   private _onDiscriminationNoiseToggle = (

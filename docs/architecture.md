@@ -9,7 +9,7 @@ On-device listening and speaking practice. Domain terms: [`CONTEXT.md`](../CONTE
 | `src/app/`                                        | Shell, routes, locale                                      |
 | `src/pages/`                                      | Thin route pages                                           |
 | `src/components/player/`                          | Practice hub (`practice-view`, media/subtitle/recorder UI) |
-| `src/components/{library,import,settings,stats}/` | Feature UI                                                 |
+| `src/components/{library,import,settings,stats}/` | Feature UI (library hub + collection lists)        |
 | `src/controllers/`                                | `MediaController` (playback truth), waveform               |
 | `src/db/`                                         | IndexedDB schema + entity CRUD                             |
 | `src/lib/`                                        | Import, playback helpers, settings, backup                 |
@@ -55,6 +55,21 @@ IndexedDB: `fluent-any-lang`, version in `db/schema.ts`. Open/upgrade: `db/index
 | Echo           | `EchoClipPlayer` (private media element clip) + per-segment record |
 
 Sentence practice (`/sentence-practice`) is a lighter path on clipped Sentence Bank audio — not the full four-mode stack. Speaking still guards the recorder with `microphone-access` (same status/permission refresh pattern as `practice-view`).
+
+## Library hub
+
+`/library` is an index of collection pages (not a stacked multi-list). Sub-routes:
+
+| Path | Page |
+| ---- | ---- |
+| `/library` | Hub links |
+| `/library/media` | Media list |
+| `/library/records` | Practice Record list |
+| `/library/noise` | Noise list |
+| `/library/playlists` | Playlist management |
+| `/library/sentences` | Sentence Bank list |
+
+Legacy `/playlists` and `/sentences` redirect into the hub. Sentence practice returns to `/library/sentences`.
 
 ## Critical couplings
 

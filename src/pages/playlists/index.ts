@@ -26,6 +26,7 @@ import { formatDate, formatTime } from '../../lib/playback-utils.js';
 import type { MediaItem, Playlist, PlaylistEntry } from '../../types/models.js';
 import { Message } from '../../components/ui/message.js';
 
+import '../../components/library/library-section-back.js';
 import '../../components/ui/alert.js';
 import '../../components/ui/button.js';
 import '../../components/ui/dropdown.js';
@@ -969,6 +970,7 @@ export class PlaylistsPage extends NavigatorElement {
 
     return html`
       <div class="layout">
+        <library-section-back></library-section-back>
         <p class="intro">${msg('在这里快速开始练习，并集中管理播放列表中的音视频与顺序。')}</p>
 
         ${this._error ? html`<ui-alert class="error" type="error">${this._error}</ui-alert>` : null}

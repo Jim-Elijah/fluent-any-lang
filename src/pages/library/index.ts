@@ -1,411 +1,168 @@
 import { css, html, LitElement } from 'lit';
-import { customElement, property, query, state } from 'lit/decorators.js';
+import { customElement } from 'lit/decorators.js';
 import { msg, localized } from '@lit/localize';
 import { navigator } from 'lit-element-router';
-import { styleMap } from 'lit/directives/style-map.js';
 
-import '../../components/library/media-list.js';
-import '../../components/library/record-list.js';
-import '../../components/library/noise-list.js';
-import '../../components/ui/select.js';
-import '../../components/ui/input.js';
 import '../../components/ui/icon.js';
-import type { SelectChangeDetail } from '../../components/ui/select.js';
-import { InputChangeDetail } from '../../components/ui/input.js';
-import {
-  allocateLibraryStackHeights,
-  MIN_STACKED_LIST_PX,
-  type ListMetricsDetail,
-} from '../../lib/split-list-heights.js';
-import {
-  COMPACT_VIEWPORT_MQ,
-  EXIT_LIBRARY_STACK_PX,
-  MIN_LIBRARY_STACK_PX,
-  gapPx,
-  measurePageViewportHeight,
-} from '../../lib/layout-compact.js';
-import { SortDirection } from '../../types/models.js';
-
-const STACK_GAP_FALLBACK_PX = 16;
-/** Three sections → two gaps between them. */
-const STACK_SECTION_COUNT = 3;
 
 const NavigatorElement = navigator(LitElement);
+
+type HubLink = {
+  href: string;
+  icon: string;
+  title: string;
+  description: string;
+};
+
 @customElement('library-page')
 @localized()
 export class LibraryPage extends NavigatorElement {
   static styles = css`
     :host {
+      display: block;
+    }
+
+    .intro {
+      margin: 0 0 var(--space-section);
+      color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
+      font-size: 0.9375rem;
+    }
+
+    .hub {
       display: flex;
       flex-direction: column;
-      min-height: 0;
-      height: 100%;
-      overflow: hidden;
+      gap: var(--space-md);
+      margin: 0;
+      padding: 0;
+      list-style: none;
     }
 
-    :host([compact]) {
-      height: auto;
-      overflow: visible;
-    }
-
-    .layout {
-      display: flex;
-      flex-direction: column;
-      flex: 1;
-      min-height: 0;
-    }
-
-    .toolbar {
-      display: flex;
+    button.link {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
       align-items: center;
-      gap: var(--space-block);
-      flex-wrap: wrap;
-      flex-shrink: 0;
-      margin-bottom: var(--space-sm);
+      gap: var(--space-md);
+      width: 100%;
+      margin: 0;
+      padding: var(--space-md) var(--space-lg);
+      border: 1px solid var(--color-border, #d9d9d9);
+      border-radius: var(--radius-md, 8px);
+      background: var(--color-surface, #fff);
+      box-shadow: var(--shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.06));
+      text-align: left;
+      font: inherit;
+      color: inherit;
+      cursor: pointer;
+      box-sizing: border-box;
     }
 
-    .search {
-      flex: 1 1 240px;
+    button.link:hover {
+      border-color: var(--color-primary, #1677ff);
+    }
+
+    .icon-wrap {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 2.5rem;
+      height: 2.5rem;
+      border-radius: var(--radius-md, 8px);
+      background: var(--color-primary-bg, #e6f4ff);
+      color: var(--color-primary, #1677ff);
+      flex-shrink: 0;
+    }
+
+    .copy {
       min-width: 0;
     }
 
-    .sort-group {
-      display: flex;
-      align-items: center;
-      gap: var(--space-sm);
-      flex: 0 0 auto;
+    .title {
+      margin: 0 0 var(--space-xs);
+      font-size: 1.0625rem;
+      font-weight: 600;
     }
 
-    .sort-label {
-      display: inline-flex;
-      align-items: center;
-      gap: var(--space-xs);
+    .desc {
+      margin: 0;
       color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
-      font-size: 0.875rem;
-      white-space: nowrap;
-    }
-
-    .sort-group ui-select {
-      width: 7.5rem;
-    }
-
-    .hint {
-      flex-shrink: 0;
-      margin: 0 0 var(--space-inline);
-      color: var(--color-text-secondary, rgba(0, 0, 0, 0.45));
       font-size: 0.8125rem;
+      line-height: 1.45;
     }
 
-    .stack {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-stack);
-      flex: 1;
-      min-height: 0;
-      overflow: hidden;
+    .chevron {
+      color: var(--color-text-secondary, rgba(0, 0, 0, 0.45));
+      flex-shrink: 0;
     }
 
-    :host([compact]) .stack {
-      flex: none;
-      overflow: visible;
-    }
+    @media (max-width: 767px) {
+      .hub {
+        gap: var(--space-xs);
+      }
 
-    media-list,
-    record-list,
-    noise-list {
-      min-height: 0;
-      overflow: hidden;
-    }
-
-    :host([compact]) media-list,
-    :host([compact]) record-list,
-    :host([compact]) noise-list {
-      overflow: visible;
-    }
-
-    media-list.pending,
-    record-list.pending,
-    noise-list.pending {
-      flex: 1;
+      button.link {
+        gap: var(--space-xs);
+        padding: var(--space-sm) var(--space-md);
+      }
     }
   `;
 
-  @property({ type: Boolean, reflect: true })
-  compact = false;
-
-  @query('.stack')
-  private _stack?: HTMLElement;
-
-  @state()
-  private _keyword = '';
-
-  @state()
-  private _sortBy: string = 'date';
-
-  @state()
-  private _sortDirection: SortDirection = 'desc';
-
-  @state()
-  private _mediaHeight = 0;
-
-  @state()
-  private _recordHeight = 0;
-
-  @state()
-  private _noiseHeight = 0;
-
-  private _mediaNatural = 128;
-
-  private _recordNatural = 128;
-
-  private _noiseNatural = 128;
-
-  private _resizeObserver: ResizeObserver | null = null;
-
-  private _observed = new Set<Element>();
-
-  private _compactMq?: MediaQueryList;
-
-  connectedCallback() {
-    super.connectedCallback();
-    this._compactMq = window.matchMedia(COMPACT_VIEWPORT_MQ);
-    this.compact = this._compactMq.matches;
-    this._compactMq.addEventListener('change', this._onCompactMqChange);
-  }
-
-  disconnectedCallback(): void {
-    this._compactMq?.removeEventListener('change', this._onCompactMqChange);
-    this._resizeObserver?.disconnect();
-    this._resizeObserver = null;
-    this._observed.clear();
-    super.disconnectedCallback();
-  }
-
-  private _onCompactMqChange = (e: MediaQueryListEvent) => {
-    if (e.matches) {
-      this._setCompact(true);
-      return;
-    }
-    this._syncCompactFromSpace();
-  };
-
-  protected firstUpdated(): void {
-    this._resizeObserver = new ResizeObserver(() => this._syncCompactFromSpace());
-    this._observe(this);
-    const mainContent = this.parentElement?.parentElement;
-    if (mainContent) this._observe(mainContent);
-    this._observeShadowTargets();
-    this._syncCompactFromSpace();
-  }
-
-  protected updated(): void {
-    this._observeShadowTargets();
-  }
-
-  private _observe(el: Element | null | undefined): void {
-    if (!el || !this._resizeObserver || this._observed.has(el)) return;
-    this._resizeObserver.observe(el);
-    this._observed.add(el);
-  }
-
-  private _observeShadowTargets(): void {
-    const root = this.renderRoot;
-    this._observe(root.querySelector('.toolbar'));
-    this._observe(root.querySelector('.hint'));
-    this._observe(root.querySelector('.stack'));
-  }
-
-  private _setCompact(next: boolean): void {
-    if (this.compact === next) {
-      if (!next) this._reallocate();
-      return;
-    }
-    this.compact = next;
-    if (next) {
-      this._mediaHeight = 0;
-      this._recordHeight = 0;
-      this._noiseHeight = 0;
-    } else {
-      this._reallocate();
-    }
-  }
-
-  private _estimateStackBudget(): number {
-    const pageViewport = measurePageViewportHeight(this);
-    if (pageViewport <= 0) return 0;
-
-    const root = this.renderRoot;
-    const toolbar = root.querySelector('.toolbar') as HTMLElement | null;
-    const hint = root.querySelector('.hint') as HTMLElement | null;
-    const toolbarMb = toolbar ? Number.parseFloat(getComputedStyle(toolbar).marginBottom) || 0 : 0;
-    const hintMb = hint ? Number.parseFloat(getComputedStyle(hint).marginBottom) || 0 : 0;
-
-    return Math.max(
-      0,
-      pageViewport - (toolbar?.offsetHeight ?? 0) - toolbarMb - (hint?.offsetHeight ?? 0) - hintMb,
-    );
-  }
-
-  private _syncCompactFromSpace(): void {
-    if (this._compactMq?.matches) {
-      this._setCompact(true);
-      return;
-    }
-
-    if (!this.compact) {
-      const stackHeight = this._stack?.clientHeight ?? 0;
-      // Ignore 0 until flex layout has assigned a height.
-      if (stackHeight > 0 && stackHeight < MIN_LIBRARY_STACK_PX) {
-        this._setCompact(true);
-        return;
-      }
-      this._reallocate();
-      return;
-    }
-
-    const budget = this._estimateStackBudget();
-    if (budget >= EXIT_LIBRARY_STACK_PX) {
-      this._setCompact(false);
-    }
-  }
-
-  private _getSortByOptions() {
-    return [
-      { value: 'title', label: msg('名称') },
-      { value: 'date', label: msg('日期') },
-    ];
-  }
-
-  private _getSortDirectionOptions() {
-    return [
-      { value: 'asc', label: msg('升序') },
-      { value: 'desc', label: msg('降序') },
-    ];
-  }
-
-  private _getStackGapPx(): number {
-    return gapPx(this._stack ?? this, STACK_GAP_FALLBACK_PX);
-  }
-
-  private _reallocate(): void {
-    if (this.compact) return;
-    const gapTotal = this._getStackGapPx() * (STACK_SECTION_COUNT - 1);
-    const available = Math.max(0, (this._stack?.clientHeight ?? 0) - gapTotal);
-    const [mediaHeight, recordHeight, noiseHeight] = allocateLibraryStackHeights(
-      this._mediaNatural,
-      this._recordNatural,
-      this._noiseNatural,
-      available,
-      MIN_STACKED_LIST_PX,
-    );
-    if (
-      mediaHeight === this._mediaHeight &&
-      recordHeight === this._recordHeight &&
-      noiseHeight === this._noiseHeight
-    ) {
-      return;
-    }
-    this._mediaHeight = mediaHeight ?? 0;
-    this._recordHeight = recordHeight ?? 0;
-    this._noiseHeight = noiseHeight ?? 0;
-  }
-
-  private _handleMediaMetrics = (event: CustomEvent<ListMetricsDetail>): void => {
-    this._mediaNatural = event.detail.naturalHeight;
-    this._reallocate();
-  };
-
-  private _handleRecordMetrics = (event: CustomEvent<ListMetricsDetail>): void => {
-    this._recordNatural = event.detail.naturalHeight;
-    this._reallocate();
-  };
-
-  private _handleNoiseMetrics = (event: CustomEvent<ListMetricsDetail>): void => {
-    this._noiseNatural = event.detail.naturalHeight;
-    this._reallocate();
-  };
-
   render() {
-    const sized =
-      !this.compact && this._mediaHeight > 0 && this._recordHeight > 0 && this._noiseHeight > 0;
-
     return html`
-      <div class="layout">
-        <div class="toolbar">
-          <ui-input
-            class="search"
-            .value=${this._keyword}
-            allow-clear
-            placeholder="${msg('搜索媒体 / 录音 / 噪音标题')}"
-            aria-label="${msg('搜索媒体 / 录音 / 噪音标题')}"
-            @change=${(e: CustomEvent<InputChangeDetail>) => {
-              this._keyword = (e.detail.value || '').trim();
-            }}
-          >
-            <ui-icon slot="prefix" name="search" size="var(--icon-md)"></ui-icon>
-          </ui-input>
-
-          <div class="sort-group">
-            <span class="sort-label">
-              <ui-icon name="sort" size="var(--icon-md)"></ui-icon>
-              ${msg('排序')}
-            </span>
-            <ui-select
-              .value=${this._sortBy}
-              .options=${this._getSortByOptions()}
-              aria-label="${msg('排序字段')}"
-              @change=${(e: CustomEvent<SelectChangeDetail>) => {
-                this._sortBy = e.detail.value as string;
-              }}
-            ></ui-select>
-            <ui-select
-              .value=${this._sortDirection}
-              .options=${this._getSortDirectionOptions()}
-              aria-label="${msg('排序方向')}"
-              @change=${(e: CustomEvent<SelectChangeDetail>) => {
-                this._sortDirection = e.detail.value as SortDirection;
-              }}
-            ></ui-select>
-          </div>
-        </div>
-        <p class="hint">${msg('筛选与排序同时作用于下方媒体库、录音库与噪音素材')}</p>
-        <div class="stack">
-          <media-list
-            class=${sized || this.compact ? '' : 'pending'}
-            ?fill-height=${!this.compact}
-            style=${styleMap(sized ? { height: `${this._mediaHeight}px`, flex: 'none' } : {})}
-            .keyword=${this._keyword}
-            .sortBy=${this._sortBy}
-            .sortDirection=${this._sortDirection}
-            @list-metrics=${this._handleMediaMetrics}
-            @media-selected="${this._handleMediaSelected}"
-          ></media-list>
-          <record-list
-            class=${sized || this.compact ? '' : 'pending'}
-            ?fill-height=${!this.compact}
-            style=${styleMap(sized ? { height: `${this._recordHeight}px`, flex: 'none' } : {})}
-            .keyword=${this._keyword}
-            .sortBy=${this._sortBy}
-            .sortDirection=${this._sortDirection}
-            @list-metrics=${this._handleRecordMetrics}
-          ></record-list>
-          <noise-list
-            class=${sized || this.compact ? '' : 'pending'}
-            ?fill-height=${!this.compact}
-            style=${styleMap(sized ? { height: `${this._noiseHeight}px`, flex: 'none' } : {})}
-            .keyword=${this._keyword}
-            .sortBy=${this._sortBy}
-            .sortDirection=${this._sortDirection}
-            @list-metrics=${this._handleNoiseMetrics}
-          ></noise-list>
-        </div>
-      </div>
+      <p class="intro">${msg('浏览与管理练习材料、录音、噪音、播放列表与句库。')}</p>
+      <ul class="hub">
+        ${this._getLinks().map(
+          (link) => html`
+            <li>
+              <button type="button" class="link" @click=${() => this.navigate(link.href)}>
+                <span class="icon-wrap">
+                  <ui-icon name=${link.icon} size="var(--icon-lg, 1.25rem)"></ui-icon>
+                </span>
+                <span class="copy">
+                  <p class="title">${link.title}</p>
+                  <p class="desc">${link.description}</p>
+                </span>
+                <ui-icon class="chevron" name="right-arrow" size="var(--icon-sm)"></ui-icon>
+              </button>
+            </li>
+          `,
+        )}
+      </ul>
     `;
   }
 
-  private _handleMediaSelected(event: CustomEvent<{ id: string }>): void {
-    const params = new URLSearchParams({ mediaId: event.detail.id });
-    this.navigate(`/practice?${params.toString()}`);
+  private _getLinks(): HubLink[] {
+    return [
+      {
+        href: '/library/media',
+        icon: 'media',
+        title: msg('媒体库'),
+        description: msg('导入的音视频练习材料'),
+      },
+      {
+        href: '/library/records',
+        icon: 'recording',
+        title: msg('录音库'),
+        description: msg('口语练习产生的录音'),
+      },
+      {
+        href: '/library/noise',
+        icon: 'listen',
+        title: msg('噪音素材'),
+        description: msg('听辨练习用的环境噪音叠加素材'),
+      },
+      {
+        href: '/library/playlists',
+        icon: 'playlist',
+        title: msg('播放列表'),
+        description: msg('按列表顺序练习多个媒体'),
+      },
+      {
+        href: '/library/sentences',
+        icon: 'dialog',
+        title: msg('句库'),
+        description: msg('收藏的句子，可单独练习'),
+      },
+    ];
   }
 }
 

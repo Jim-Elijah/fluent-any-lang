@@ -136,23 +136,31 @@ describe('sentences-page', () => {
       makeEntry({ id: 'c', text: 'Cherry', sourceTitleSnapshot: 'Berry Basket' }),
     ]);
     const el = await renderPage();
+    const toolbar = el.shadowRoot?.querySelector('library-list-toolbar') as HTMLElement;
 
-    const search = el.shadowRoot?.querySelector('ui-input.search') as HTMLElement;
-    search.dispatchEvent(
-      new CustomEvent('change', { detail: { value: 'apple' }, bubbles: true, composed: true }),
+    toolbar.dispatchEvent(
+      new CustomEvent('filters-change', {
+        detail: { keyword: 'apple', sortBy: 'date', sortDirection: 'desc' },
+        bubbles: true,
+        composed: true,
+      }),
     );
     await el.updateComplete;
 
     expect(getEntryTexts(el)).toEqual(['Apple pie', 'Banana']);
 
-    search.dispatchEvent(
-      new CustomEvent('change', { detail: { value: 'berry' }, bubbles: true, composed: true }),
+    toolbar.dispatchEvent(
+      new CustomEvent('filters-change', {
+        detail: { keyword: 'berry', sortBy: 'date', sortDirection: 'desc' },
+        bubbles: true,
+        composed: true,
+      }),
     );
     await el.updateComplete;
 
-    search.dispatchEvent(
-      new CustomEvent('change', {
-        detail: { value: 'missing-keyword' },
+    toolbar.dispatchEvent(
+      new CustomEvent('filters-change', {
+        detail: { keyword: 'missing-keyword', sortBy: 'date', sortDirection: 'desc' },
         bubbles: true,
         composed: true,
       }),
@@ -169,28 +177,34 @@ describe('sentences-page', () => {
       makeEntry({ id: 'c', text: 'Mike', sourceTitleSnapshot: 'Charlie', createdAt: 200 }),
     ]);
     const el = await renderPage();
-    const selects = el.shadowRoot?.querySelectorAll('ui-select') ?? [];
+    const toolbar = el.shadowRoot?.querySelector('library-list-toolbar') as HTMLElement;
 
-    selects[0]?.dispatchEvent(
-      new CustomEvent('change', { detail: { value: 'text' }, bubbles: true, composed: true }),
-    );
-    selects[1]?.dispatchEvent(
-      new CustomEvent('change', { detail: { value: 'asc' }, bubbles: true, composed: true }),
+    toolbar.dispatchEvent(
+      new CustomEvent('filters-change', {
+        detail: { keyword: '', sortBy: 'text', sortDirection: 'asc' },
+        bubbles: true,
+        composed: true,
+      }),
     );
     await el.updateComplete;
     expect(getEntryTexts(el)).toEqual(['Alpha', 'Mike', 'Zulu']);
 
-    selects[0]?.dispatchEvent(
-      new CustomEvent('change', { detail: { value: 'source' }, bubbles: true, composed: true }),
+    toolbar.dispatchEvent(
+      new CustomEvent('filters-change', {
+        detail: { keyword: '', sortBy: 'source', sortDirection: 'asc' },
+        bubbles: true,
+        composed: true,
+      }),
     );
     await el.updateComplete;
     expect(getEntryTexts(el)).toEqual(['Alpha', 'Zulu', 'Mike']);
 
-    selects[0]?.dispatchEvent(
-      new CustomEvent('change', { detail: { value: 'date' }, bubbles: true, composed: true }),
-    );
-    selects[1]?.dispatchEvent(
-      new CustomEvent('change', { detail: { value: 'desc' }, bubbles: true, composed: true }),
+    toolbar.dispatchEvent(
+      new CustomEvent('filters-change', {
+        detail: { keyword: '', sortBy: 'date', sortDirection: 'desc' },
+        bubbles: true,
+        composed: true,
+      }),
     );
     await el.updateComplete;
     expect(getEntryTexts(el)).toEqual(['Alpha', 'Mike', 'Zulu']);

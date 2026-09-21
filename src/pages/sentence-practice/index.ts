@@ -331,7 +331,7 @@ export class SentencePracticePage extends NavigatorElement {
   }
 
   private _backToBank(): void {
-    this.navigate('/sentences');
+    this.navigate('/library/sentences');
   }
 
   private _sentencePracticeHotkeysEnabled(): boolean {

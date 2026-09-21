@@ -14,22 +14,49 @@ type AppRoute =
   | 'home'
   | 'practice'
   | 'library'
-  | 'playlists'
-  | 'sentences'
+  | 'library-media'
+  | 'library-records'
+  | 'library-noise'
+  | 'library-playlists'
+  | 'library-sentences'
   | 'sentence-practice'
   | 'stats'
   | 'settings'
   | 'not-found';
+
+/** Legacy top-level paths that redirect into the library hub. */
+type RedirectRoute = 'playlists' | 'sentences';
+
 type RouteRenderContext = {
   routeContext: RouteContext;
+};
+
+const LIBRARY_MENU_ROUTES = new Set<string>([
+  'library',
+  'library-media',
+  'library-records',
+  'library-noise',
+  'library-playlists',
+  'library-sentences',
+  'playlists',
+  'sentences',
+  'sentence-practice',
+]);
+
+const LEGACY_REDIRECTS: Record<RedirectRoute, string> = {
+  playlists: '/library/playlists',
+  sentences: '/library/sentences',
 };
 
 const ROUTE_LOADERS: Record<AppRoute, () => Promise<unknown>> = {
   home: () => import('../pages/home/index.js'),
   practice: () => import('../pages/practice/index.js'),
   library: () => import('../pages/library/index.js'),
-  playlists: () => import('../pages/playlists/index.js'),
-  sentences: () => import('../pages/sentences/index.js'),
+  'library-media': () => import('../pages/library/media.js'),
+  'library-records': () => import('../pages/library/records.js'),
+  'library-noise': () => import('../pages/library/noise.js'),
+  'library-playlists': () => import('../pages/playlists/index.js'),
+  'library-sentences': () => import('../pages/sentences/index.js'),
   'sentence-practice': () => import('../pages/sentence-practice/index.js'),
   stats: () => import('../pages/practice-stats/index.js'),
   settings: () => import('../pages/settings/index.js'),
@@ -53,8 +80,11 @@ const ROUTE_PAGES: Record<AppRoute, (ctx: RouteRenderContext) => TemplateResult>
   practice: ({ routeContext }) =>
     html`<practice-page .routeContext=${routeContext}></practice-page>`,
   library: () => html`<library-page></library-page>`,
-  playlists: () => html`<playlists-page></playlists-page>`,
-  sentences: () => html`<sentences-page></sentences-page>`,
+  'library-media': () => html`<library-media-page></library-media-page>`,
+  'library-records': () => html`<library-records-page></library-records-page>`,
+  'library-noise': () => html`<library-noise-page></library-noise-page>`,
+  'library-playlists': () => html`<playlists-page></playlists-page>`,
+  'library-sentences': () => html`<sentences-page></sentences-page>`,
   'sentence-practice': ({ routeContext }) =>
     html`<sentence-practice-page .routeContext=${routeContext}></sentence-practice-page>`,
   stats: () => html`<practice-stats-page></practice-stats-page>`,
@@ -117,16 +147,20 @@ export class MyApp extends RouterNavigatorApp {
       overflow: auto;
     }
 
-    /* Home / library fill the main pane; lists scroll internally. */
+    /* Fill-height collection pages: lists scroll internally. */
     .main-content:has(home-page:not([compact])),
-    .main-content:has(library-page:not([compact])),
+    .main-content:has(library-media-page:not([compact])),
+    .main-content:has(library-records-page:not([compact])),
+    .main-content:has(library-noise-page:not([compact])),
     .main-content:has(playlists-page:not([compact])),
     .main-content:has(sentences-page:not([compact])) {
       overflow: hidden;
     }
 
     .main-content:has(home-page:not([compact])) > main,
-    .main-content:has(library-page:not([compact])) > main,
+    .main-content:has(library-media-page:not([compact])) > main,
+    .main-content:has(library-records-page:not([compact])) > main,
+    .main-content:has(library-noise-page:not([compact])) > main,
     .main-content:has(playlists-page:not([compact])) > main,
     .main-content:has(sentences-page:not([compact])) > main {
       flex: 1;
@@ -136,7 +170,9 @@ export class MyApp extends RouterNavigatorApp {
     }
 
     .main-content:has(home-page:not([compact])) > main > home-page,
-    .main-content:has(library-page:not([compact])) > main > library-page,
+    .main-content:has(library-media-page:not([compact])) > main > library-media-page,
+    .main-content:has(library-records-page:not([compact])) > main > library-records-page,
+    .main-content:has(library-noise-page:not([compact])) > main > library-noise-page,
     .main-content:has(playlists-page:not([compact])) > main > playlists-page,
     .main-content:has(sentences-page:not([compact])) > main > sentences-page {
       flex: 1;
@@ -145,7 +181,9 @@ export class MyApp extends RouterNavigatorApp {
 
     /* Compact: page scrolls in .main-content so lists stay reachable. */
     .main-content:has(home-page[compact]) > main,
-    .main-content:has(library-page[compact]) > main,
+    .main-content:has(library-media-page[compact]) > main,
+    .main-content:has(library-records-page[compact]) > main,
+    .main-content:has(library-noise-page[compact]) > main,
     .main-content:has(playlists-page[compact]) > main,
     .main-content:has(sentences-page[compact]) > main {
       flex: none;
@@ -153,7 +191,9 @@ export class MyApp extends RouterNavigatorApp {
     }
 
     .main-content:has(home-page[compact]) > main > home-page,
-    .main-content:has(library-page[compact]) > main > library-page,
+    .main-content:has(library-media-page[compact]) > main > library-media-page,
+    .main-content:has(library-records-page[compact]) > main > library-records-page,
+    .main-content:has(library-noise-page[compact]) > main > library-noise-page,
     .main-content:has(playlists-page[compact]) > main > playlists-page,
     .main-content:has(sentences-page[compact]) > main > sentences-page {
       flex: none;
@@ -254,8 +294,6 @@ export class MyApp extends RouterNavigatorApp {
     return [
       { key: 'home', label: msg('首页'), link: '/', icon: 'home' },
       { key: 'library', label: msg('库'), link: '/library', icon: 'media' },
-      { key: 'playlists', label: msg('播放列表'), link: '/playlists', icon: 'playlist' },
-      { key: 'sentences', label: msg('句库'), link: '/sentences', icon: 'dialog' },
       { key: 'stats', label: msg('统计'), link: '/stats', icon: 'stats' },
       { key: 'settings', label: msg('设置'), link: '/settings', icon: 'setting' },
     ];
@@ -269,6 +307,26 @@ export class MyApp extends RouterNavigatorApp {
         name: 'home',
         pattern: '',
         data: { title: msg('首页') },
+      },
+      {
+        name: 'library-media',
+        pattern: 'library/media',
+      },
+      {
+        name: 'library-records',
+        pattern: 'library/records',
+      },
+      {
+        name: 'library-noise',
+        pattern: 'library/noise',
+      },
+      {
+        name: 'library-playlists',
+        pattern: 'library/playlists',
+      },
+      {
+        name: 'library-sentences',
+        pattern: 'library/sentences',
       },
       {
         name: 'library',
@@ -351,6 +409,17 @@ export class MyApp extends RouterNavigatorApp {
     query: { [key: string]: string },
     data: object,
   ) {
+    const redirectTo = LEGACY_REDIRECTS[route as RedirectRoute];
+    if (redirectTo) {
+      this._replaceLocation(redirectTo);
+      return;
+    }
+
+    if (route === 'library' && window.location.hash.includes('noise-list-title')) {
+      this._replaceLocation('/library/noise');
+      return;
+    }
+
     this.activeRoute = route;
     this.routeContext = {
       route,
@@ -358,11 +427,15 @@ export class MyApp extends RouterNavigatorApp {
       query,
       data,
     };
-    const menuKey = route === 'sentence-practice' ? 'sentences' : route || 'home';
-    this.selectedKeys = [menuKey];
+    this.selectedKeys = [LIBRARY_MENU_ROUTES.has(route) ? 'library' : route || 'home'];
     if (route in ROUTE_LOADERS) {
       void this._ensurePageLoaded(route as AppRoute);
     }
+  }
+
+  private _replaceLocation(path: string): void {
+    window.history.replaceState({}, '', path);
+    window.dispatchEvent(new CustomEvent('route'));
   }
 
   private _handleMenuSelect(event: CustomEvent<MenuSelectDetail>) {

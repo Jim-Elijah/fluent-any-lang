@@ -1701,7 +1701,7 @@ describe('practice-view', () => {
       el.shadowRoot!.querySelector('discrimination-panel')!.dispatchEvent(
         new CustomEvent('open-library', { bubbles: true, composed: true }),
       );
-      expect(navigateSpy).toHaveBeenCalledWith('/library#noise-list-title');
+      expect(navigateSpy).toHaveBeenCalledWith('/library/noise');
     });
   });
 

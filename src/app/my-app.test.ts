@@ -22,6 +22,9 @@ beforeAll(async () => {
   await Promise.all([
     import('../pages/home/index.js'),
     import('../pages/library/index.js'),
+    import('../pages/library/media.js'),
+    import('../pages/library/records.js'),
+    import('../pages/library/noise.js'),
     import('../pages/playlists/index.js'),
     import('../pages/sentences/index.js'),
     import('../pages/sentence-practice/index.js'),
@@ -138,15 +141,20 @@ describe('app-shell', () => {
     await waitForSelector(el, 'library-page');
   });
 
-  it('maps sentence-practice route to sentences menu selection', async () => {
+  it('maps sentence-practice and library sub-routes to library menu selection', async () => {
     stubMatchMedia(false);
     const el = await renderApp();
 
     el.router('sentence-practice', { mediaId: 'm1' }, {}, {});
     await el.updateComplete;
 
-    expect(el.selectedKeys).toEqual(['sentences']);
+    expect(el.selectedKeys).toEqual(['library']);
     await waitForSelector(el, 'sentence-practice-page');
+
+    el.router('library-media', {}, {}, {});
+    await el.updateComplete;
+    expect(el.selectedKeys).toEqual(['library']);
+    await waitForSelector(el, 'library-media-page');
   });
 
   it('navigates from menu selection and tracks open keys', async () => {
@@ -207,18 +215,35 @@ describe('app-shell', () => {
     await waitForSelector(el, 'not-found-page');
   });
 
-  it('renders library, playlists, and sentences routes', async () => {
+  it('renders library hub and collection sub-routes', async () => {
     stubMatchMedia(false);
     const el = await renderApp();
 
     el.router('library', {}, {}, {});
     await waitForSelector(el, 'library-page');
 
+    el.router('library-playlists', {}, {}, {});
+    await waitForSelector(el, 'playlists-page');
+
+    el.router('library-sentences', {}, {}, {});
+    await waitForSelector(el, 'sentences-page');
+
+    el.router('library-noise', {}, {}, {});
+    await waitForSelector(el, 'library-noise-page');
+  });
+
+  it('redirects legacy playlists and sentences paths into the library hub', async () => {
+    stubMatchMedia(false);
+    const el = await renderApp();
+
     el.router('playlists', {}, {}, {});
     await waitForSelector(el, 'playlists-page');
+    expect(window.location.pathname).toBe('/library/playlists');
+    expect(el.selectedKeys).toEqual(['library']);
 
     el.router('sentences', {}, {}, {});
     await waitForSelector(el, 'sentences-page');
+    expect(window.location.pathname).toBe('/library/sentences');
   });
 
   it('passes routeContext into practice pages', async () => {
