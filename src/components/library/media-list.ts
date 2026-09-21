@@ -101,6 +101,31 @@ export class MediaList extends LitElement {
       font-size: 0.875rem;
     }
 
+    .selection-chrome {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-sm);
+      margin-bottom: var(--space-block);
+      flex-shrink: 0;
+    }
+
+    .selection-chrome .header {
+      margin-bottom: 0;
+    }
+
+    .selection-count {
+      margin: 0;
+      font-size: 1.125rem;
+      font-weight: 600;
+    }
+
+    .batch-controls {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: var(--space-sm);
+    }
+
     .item {
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
@@ -192,12 +217,6 @@ export class MediaList extends LitElement {
       margin-bottom: var(--space-block);
     }
 
-    .batch-controls {
-      display: flex;
-      align-items: center;
-      gap: var(--space-sm);
-    }
-
     .batch-checkbox {
       width: 18px;
       height: 18px;
@@ -275,6 +294,9 @@ export class MediaList extends LitElement {
   private _batchDeleting = false;
 
   @state()
+  private _batchAddingToPlaylist = false;
+
+  @state()
   private _items: MediaItem[] = [];
 
   @state()
@@ -292,7 +314,7 @@ export class MediaList extends LitElement {
   @state()
   private _favoriteStates = new Map<string, boolean>();
 
-  /** User playlists only (excludes favorites — favorites use the ★ button). */
+  /** User playlists only (favorites appear separately in the add-to-playlist menu). */
   @state()
   private _playlists: Array<{ id: string; name: string }> = [];
 
@@ -318,7 +340,8 @@ export class MediaList extends LitElement {
   private _pendingSubtitleOverwrite = false;
   private _pendingMismatchImport: PendingSubtitleImport | null = null;
 
-  private _createPlaylistMediaId = '';
+  /** Media IDs to add after creating a playlist (single-row or batch). */
+  private _createPlaylistMediaIds: string[] = [];
 
   private _visibleIds: string[] = [];
 
@@ -414,9 +437,10 @@ export class MediaList extends LitElement {
   private _getAddToPlaylistMenuItems(): DropdownMenuItem[] {
     const items: DropdownMenuItem[] = [
       { key: CREATE_PLAYLIST_MENU_KEY, label: msg('新建播放列表…') },
+      { key: '__divider__', type: 'divider', label: '' },
+      { key: FAVORITES_PLAYLIST_ID, label: msg('加入「喜欢」') },
     ];
     if (this._playlists.length > 0) {
-      items.push({ key: '__divider__', type: 'divider', label: '' });
       items.push(
         ...this._playlists.map((playlist) => ({
           key: playlist.id,
@@ -425,6 +449,13 @@ export class MediaList extends LitElement {
       );
     }
     return items;
+  }
+
+  private _playlistDisplayName(playlistId: string): string {
+    if (playlistId === FAVORITES_PLAYLIST_ID) {
+      return msg('喜欢');
+    }
+    return this._playlists.find((p) => p.id === playlistId)?.name ?? msg('播放列表');
   }
 
   render() {
@@ -466,44 +497,83 @@ export class MediaList extends LitElement {
     this._visibleIds = visibleIds;
     const visibleSet = new Set(visibleIds);
     this._visibleSelected = new Set([...this._selected].filter((id) => visibleSet.has(id)));
+    const allVisibleSelected =
+      visibleIds.length > 0 && this._visibleSelected.size === visibleIds.length;
 
     return html`
       <section>
-        <div class="header">
-          <h2>${msg('媒体库')}</h2>
-          ${this.selectionMode
-            ? html`<div class="batch-controls">
+        ${this.selectionMode
+          ? html`<div class="selection-chrome">
+              <div class="header">
+                <p class="selection-count">
+                  ${msg(str`已选 ${this._visibleSelected.size} 项`)}
+                </p>
                 <ui-button
                   variant="secondary"
                   size="small"
-                  @click=${() => this._selectAll(visibleIds)}
-                  >${msg('全选')}</ui-button
+                  @click=${() => this.exitSelectionMode()}
+                  >${msg('取消')}</ui-button
                 >
-                <ui-button
-                  variant="secondary"
-                  size="small"
-                  @click=${() => this._invertSelection(visibleIds)}
-                  >${msg('反选')}</ui-button
+              </div>
+              <div class="batch-controls">
+                <ui-tooltip
+                  title="${allVisibleSelected ? msg('取消全选') : msg('全选')}"
                 >
+                  <ui-button
+                    variant="secondary"
+                    size="small"
+                    aria-label="${allVisibleSelected ? msg('取消全选') : msg('全选')}"
+                    @click=${() =>
+                      allVisibleSelected
+                        ? this._clearSelection()
+                        : this._selectAll(visibleIds)}
+                  >
+                    <ui-icon
+                      name="${allVisibleSelected ? 'unselect-all' : 'select-all'}"
+                    ></ui-icon>
+                  </ui-button>
+                </ui-tooltip>
+                <ui-dropdown
+                  trigger="click"
+                  placement="bottomLeft"
+                  ?disabled=${this._visibleSelected.size === 0 || this._batchAddingToPlaylist}
+                  .menu=${{ items: this._getAddToPlaylistMenuItems() }}
+                  @menu-click=${(e: CustomEvent<DropdownMenuClickDetail>) =>
+                    void this._handleBatchAddToPlaylist(e)}
+                >
+                  <ui-tooltip title="${msg('加入播放列表')}">
+                    <ui-button
+                      variant="secondary"
+                      size="small"
+                      aria-label="${msg('加入播放列表')}"
+                      ?disabled=${this._visibleSelected.size === 0 || this._batchAddingToPlaylist}
+                    >
+                      <ui-icon name="add-to-playlist"></ui-icon>
+                    </ui-button>
+                  </ui-tooltip>
+                </ui-dropdown>
                 <ui-popconfirm
-                  title=${msg('确定删除选中的媒体吗？')}
+                  title=${msg(str`确定删除选中的 ${this._visibleSelected.size} 项吗？`)}
                   placement="bottom"
                   ?confirm-loading=${this._batchDeleting}
                   @confirm=${() => this._handleBatchDelete()}
                 >
-                  <ui-button
-                    variant="danger"
-                    size="small"
-                    ?disabled=${this._visibleSelected.size === 0 || this._batchDeleting}
-                  >
-                    ${msg('删除')} (${this._visibleSelected.size})
-                  </ui-button>
+                  <ui-tooltip title="${msg('删除')}">
+                    <ui-button
+                      variant="danger"
+                      size="small"
+                      aria-label="${msg('删除')}"
+                      ?disabled=${this._visibleSelected.size === 0 || this._batchDeleting}
+                    >
+                      <ui-icon name="delete"></ui-icon>
+                    </ui-button>
+                  </ui-tooltip>
                 </ui-popconfirm>
-                <ui-button variant="secondary" size="small" @click=${() => this.exitSelectionMode()}
-                  >${msg('取消')}</ui-button
-                >
-              </div>`
-            : html`<div class="batch-controls">
+              </div>
+            </div>`
+          : html`<div class="header">
+              <h2>${msg('媒体库')}</h2>
+              <div class="batch-controls">
                 <span class="count"
                   >${this.limit && this.limit > 0 ? msg('最近') : ''} ${renderedItems.length}
                   ${msg('项')}</span
@@ -518,8 +588,8 @@ export class MediaList extends LitElement {
                       >${msg('管理')}</ui-button
                     >`
                   : null}
-              </div>`}
-        </div>
+              </div>
+            </div>`}
 
         ${this._error ? html`<ui-alert class="error" type="error">${this._error}</ui-alert>` : null}
         ${this._loading
@@ -721,8 +791,9 @@ export class MediaList extends LitElement {
     }
   }
 
-  private _openCreatePlaylistModal(mediaId: string): void {
-    this._createPlaylistMediaId = mediaId;
+  private _openCreatePlaylistModal(mediaIds: string | string[]): void {
+    const ids = Array.isArray(mediaIds) ? mediaIds : [mediaIds];
+    this._createPlaylistMediaIds = ids.filter(Boolean);
     this._createPlaylistName = '';
     this._createPlaylistModalOpen = true;
   }
@@ -730,7 +801,7 @@ export class MediaList extends LitElement {
   private _closeCreatePlaylistModal(): void {
     this._createPlaylistModalOpen = false;
     this._createPlaylistName = '';
-    this._createPlaylistMediaId = '';
+    this._createPlaylistMediaIds = [];
     this._createPlaylistBusy = false;
   }
 
@@ -759,21 +830,30 @@ export class MediaList extends LitElement {
       return;
     }
 
-    const mediaId = this._createPlaylistMediaId;
-    if (!mediaId) {
+    const mediaIds = this._createPlaylistMediaIds;
+    if (mediaIds.length === 0) {
       return;
     }
 
     this._createPlaylistBusy = true;
     try {
       const playlist = await createPlaylist(name);
-      await addMediaToPlaylist(playlist.id, mediaId);
+      const results = await Promise.allSettled(
+        mediaIds.map((mediaId) => addMediaToPlaylist(playlist.id, mediaId)),
+      );
+      const failed = results.filter((r) => r.status === 'rejected').length;
       const playlists = await getPlaylistList();
       this._playlists = playlists
         .filter((item) => item.kind === 'user')
         .map((item) => ({ id: item.id, name: item.name }));
       this._closeCreatePlaylistModal();
-      Message.success(msg(str`已创建「${name}」并添加`));
+      if (failed > 0) {
+        Message.error(msg(str`已创建「${name}」，但部分媒体添加失败`));
+      } else if (mediaIds.length === 1) {
+        Message.success(msg(str`已创建「${name}」并添加`));
+      } else {
+        Message.success(msg(str`已创建「${name}」并添加 ${mediaIds.length} 项`));
+      }
       this.dispatchEvent(
         new CustomEvent('playlist-changed', {
           bubbles: true,
@@ -787,7 +867,7 @@ export class MediaList extends LitElement {
       }
       void reportError(error, {
         where: 'media-list.createPlaylistAndAdd',
-        mediaId,
+        mediaIds,
       });
       Message.error(msg('创建失败，请重试'));
     } finally {
@@ -808,8 +888,11 @@ export class MediaList extends LitElement {
 
     try {
       await addMediaToPlaylist(playlistId, media.id);
-      const playlistName =
-        this._playlists.find((p) => p.id === playlistId)?.name ?? msg('播放列表');
+      if (playlistId === FAVORITES_PLAYLIST_ID) {
+        this._favoriteStates.set(media.id, true);
+        this.requestUpdate();
+      }
+      const playlistName = this._playlistDisplayName(playlistId);
       Message.success(msg(str`已添加到「${playlistName}」`));
       this.dispatchEvent(
         new CustomEvent('playlist-changed', {
@@ -820,6 +903,57 @@ export class MediaList extends LitElement {
     } catch (error) {
       void reportError(error, { where: 'media-list.addToPlaylist', mediaId: media.id });
       Message.error(msg('添加失败，请重试'));
+    }
+  }
+
+  private async _handleBatchAddToPlaylist(
+    e: CustomEvent<DropdownMenuClickDetail>,
+  ): Promise<void> {
+    const playlistId = e.detail.key;
+    const mediaIds = [...this._visibleSelected];
+    if (mediaIds.length === 0) return;
+
+    if (playlistId === CREATE_PLAYLIST_MENU_KEY) {
+      this._openCreatePlaylistModal(mediaIds);
+      return;
+    }
+    if (!playlistId) return;
+
+    this._batchAddingToPlaylist = true;
+    try {
+      const results = await Promise.allSettled(
+        mediaIds.map((mediaId) => addMediaToPlaylist(playlistId, mediaId)),
+      );
+      const failed = results.filter((r) => r.status === 'rejected').length;
+      if (playlistId === FAVORITES_PLAYLIST_ID) {
+        for (let i = 0; i < mediaIds.length; i++) {
+          if (results[i]?.status === 'fulfilled') {
+            this._favoriteStates.set(mediaIds[i]!, true);
+          }
+        }
+        this.requestUpdate();
+      }
+      const playlistName = this._playlistDisplayName(playlistId);
+      if (failed > 0) {
+        Message.error(msg(str`部分媒体未能加入「${playlistName}」`));
+      } else {
+        Message.success(msg(str`已将 ${mediaIds.length} 项添加到「${playlistName}」`));
+      }
+      this.dispatchEvent(
+        new CustomEvent('playlist-changed', {
+          bubbles: true,
+          composed: true,
+        }),
+      );
+    } catch (error) {
+      void reportError(error, {
+        where: 'media-list.batchAddToPlaylist',
+        playlistId,
+        count: mediaIds.length,
+      });
+      Message.error(msg('添加失败，请重试'));
+    } finally {
+      this._batchAddingToPlaylist = false;
     }
   }
 
@@ -932,12 +1066,8 @@ export class MediaList extends LitElement {
     this._selected = new Set(visibleIds);
   }
 
-  private _invertSelection(visibleIds: string[]): void {
-    const next = new Set<string>();
-    for (const id of visibleIds) {
-      if (!this._selected.has(id)) next.add(id);
-    }
-    this._selected = next;
+  private _clearSelection(): void {
+    this._selected = new Set();
   }
 
   exitSelectionMode(): void {

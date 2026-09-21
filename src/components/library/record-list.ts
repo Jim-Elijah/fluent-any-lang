@@ -1,4 +1,4 @@
-import { msg, localized } from '@lit/localize';
+import { msg, localized, str } from '@lit/localize';
 import { css, html, LitElement } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 
@@ -109,6 +109,24 @@ export class RecordList extends LitElement {
       .count {
         color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
         font-size: 0.875rem;
+      }
+
+      .selection-chrome {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-sm);
+        margin-bottom: var(--space-block);
+        flex-shrink: 0;
+      }
+
+      .selection-chrome .header {
+        margin-bottom: 0;
+      }
+
+      .selection-count {
+        margin: 0;
+        font-size: 1.125rem;
+        font-weight: 600;
       }
 
       .item {
@@ -233,6 +251,7 @@ export class RecordList extends LitElement {
       .batch-controls {
         display: flex;
         align-items: center;
+        flex-wrap: wrap;
         gap: var(--space-sm);
       }
 
@@ -327,6 +346,9 @@ export class RecordList extends LitElement {
 
   @state()
   private _batchDeleting = false;
+
+  @state()
+  private _batchExporting = false;
 
   @state()
   private _items: PracticeRecord[] = [];
@@ -509,61 +531,89 @@ export class RecordList extends LitElement {
 
     const visibleSet = new Set(visibleIds);
     this._visibleSelected = new Set([...this._selected].filter((id) => visibleSet.has(id)));
+    const allVisibleSelected =
+      visibleIds.length > 0 && this._visibleSelected.size === visibleIds.length;
 
     return html`
       <section>
         ${this.showHeader
-          ? html`<div class="header">
-              <h2>${msg('录音库')}</h2>
-              ${this.selectionMode
-                ? html`<div class="batch-controls">
+          ? this.selectionMode
+            ? html`<div class="selection-chrome">
+                <div class="header">
+                  <p class="selection-count">
+                    ${msg(str`已选 ${this._visibleSelected.size} 项`)}
+                  </p>
+                  <ui-button
+                    variant="secondary"
+                    size="small"
+                    @click=${() => this.exitSelectionMode()}
+                    >${msg('取消')}</ui-button
+                  >
+                </div>
+                <div class="batch-controls">
+                  <ui-tooltip
+                    title="${allVisibleSelected ? msg('取消全选') : msg('全选')}"
+                  >
                     <ui-button
                       variant="secondary"
                       size="small"
-                      @click=${() => this._selectAll(visibleIds)}
-                      >${msg('全选')}</ui-button
+                      aria-label="${allVisibleSelected ? msg('取消全选') : msg('全选')}"
+                      @click=${() =>
+                        allVisibleSelected
+                          ? this._clearSelection()
+                          : this._selectAll(visibleIds)}
                     >
+                      <ui-icon
+                        name="${allVisibleSelected ? 'unselect-all' : 'select-all'}"
+                      ></ui-icon>
+                    </ui-button>
+                  </ui-tooltip>
+                  <ui-tooltip title="${msg('导出')}">
                     <ui-button
                       variant="secondary"
                       size="small"
-                      @click=${() => this._invertSelection(visibleIds)}
-                      >${msg('反选')}</ui-button
+                      aria-label="${msg('导出')}"
+                      ?disabled=${this._visibleSelected.size === 0 || this._batchExporting}
+                      @click=${() => void this._handleBatchExport()}
                     >
-                    <ui-popconfirm
-                      title=${msg('确定删除选中的录音吗？')}
-                      placement="bottom"
-                      ?confirm-loading=${this._batchDeleting}
-                      @confirm=${() => this._handleBatchDelete()}
-                    >
+                      <ui-icon name="download"></ui-icon>
+                    </ui-button>
+                  </ui-tooltip>
+                  <ui-popconfirm
+                    title=${msg(str`确定删除选中的 ${this._visibleSelected.size} 项吗？`)}
+                    placement="bottom"
+                    ?confirm-loading=${this._batchDeleting}
+                    @confirm=${() => this._handleBatchDelete()}
+                  >
+                    <ui-tooltip title="${msg('删除')}">
                       <ui-button
                         variant="danger"
                         size="small"
+                        aria-label="${msg('删除')}"
                         ?disabled=${this._visibleSelected.size === 0 || this._batchDeleting}
                       >
-                        ${msg('删除')} (${this._visibleSelected.size})
+                        <ui-icon name="delete"></ui-icon>
                       </ui-button>
-                    </ui-popconfirm>
-                    <ui-button
-                      variant="secondary"
-                      size="small"
-                      @click=${() => this.exitSelectionMode()}
-                      >${msg('取消')}</ui-button
-                    >
-                  </div>`
-                : html`<div class="batch-controls">
-                    <span class="count">${renderedItems.length} ${msg('项')}</span>
-                    ${renderedItems.length > 0
-                      ? html`<ui-button
-                          variant="secondary"
-                          size="small"
-                          @click=${() => {
-                            this.selectionMode = true;
-                          }}
-                          >${msg('管理')}</ui-button
-                        >`
-                      : null}
-                  </div>`}
-            </div>`
+                    </ui-tooltip>
+                  </ui-popconfirm>
+                </div>
+              </div>`
+            : html`<div class="header">
+                <h2>${msg('录音库')}</h2>
+                <div class="batch-controls">
+                  <span class="count">${renderedItems.length} ${msg('项')}</span>
+                  ${renderedItems.length > 0
+                    ? html`<ui-button
+                        variant="secondary"
+                        size="small"
+                        @click=${() => {
+                          this.selectionMode = true;
+                        }}
+                        >${msg('管理')}</ui-button
+                      >`
+                    : null}
+                </div>
+              </div>`
           : null}
         ${this._error ? html`<ui-alert type="error">${this._error}</ui-alert>` : null}
         ${this._loading
@@ -897,17 +947,33 @@ export class RecordList extends LitElement {
     this._selected = new Set(visibleIds);
   }
 
-  private _invertSelection(visibleIds: string[]): void {
-    const next = new Set<string>();
-    for (const id of visibleIds) {
-      if (!this._selected.has(id)) next.add(id);
-    }
-    this._selected = next;
+  private _clearSelection(): void {
+    this._selected = new Set();
   }
 
   exitSelectionMode(): void {
     this.selectionMode = false;
     this._selected = new Set();
+  }
+
+  private async _handleBatchExport(): Promise<void> {
+    const visibleSet = new Set(this._visibleIds);
+    const toExport = this._items.filter(
+      (item) => this._selected.has(item.id) && visibleSet.has(item.id),
+    );
+    if (toExport.length === 0) return;
+    this._batchExporting = true;
+    try {
+      const results = await Promise.allSettled(toExport.map((item) => exportRecording(item)));
+      const failed = results.filter((r) => r.status === 'rejected').length;
+      if (failed > 0) {
+        Message.error(msg('部分录音导出失败'));
+      } else {
+        Message.success(msg(str`已导出 ${toExport.length} 项`));
+      }
+    } finally {
+      this._batchExporting = false;
+    }
   }
 
   private async _handleBatchDelete(): Promise<void> {

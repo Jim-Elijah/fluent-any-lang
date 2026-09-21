@@ -594,6 +594,81 @@ describe('record-list', () => {
     );
   });
 
+  it('shows selection chrome with export and delete icons', async () => {
+    vi.mocked(recordDb.getRecordingList).mockResolvedValue([sampleRecord]);
+    const el = await renderList();
+    await el.refresh();
+    el.selectionMode = true;
+    await el.updateComplete;
+
+    expect(
+      el.shadowRoot?.querySelector('.batch-controls ui-button[aria-label="导出"]'),
+    ).not.toBeNull();
+    expect(
+      el.shadowRoot?.querySelector('.batch-controls ui-button[aria-label="删除"]'),
+    ).not.toBeNull();
+    expect(
+      el.shadowRoot?.querySelector('.batch-controls ui-button[aria-label="全选"]'),
+    ).not.toBeNull();
+    expect(
+      el.shadowRoot?.querySelector('.batch-controls ui-icon[name="download"]'),
+    ).not.toBeNull();
+    expect(el.shadowRoot?.textContent).toContain('已选 0 项');
+    expect(el.shadowRoot?.textContent).not.toContain('反选');
+  });
+
+  it('batch-exports selected recordings', async () => {
+    const second: PracticeRecord = {
+      ...sampleRecord,
+      id: 'rec-2',
+      mediaTitle: 'Lesson 2',
+      createdAt: 2,
+    };
+    vi.mocked(recordDb.getRecordingList).mockResolvedValue([sampleRecord, second]);
+    vi.mocked(exportRecording).mockResolvedValue(undefined);
+    const el = await renderList();
+    await el.refresh();
+    await el.updateComplete;
+
+    const list = el as unknown as {
+      _selected: Set<string>;
+      _visibleIds: string[];
+      _handleBatchExport: () => Promise<void>;
+    };
+    list._visibleIds = ['rec-1', 'rec-2'];
+    list._selected = new Set(['rec-1', 'rec-2']);
+    const successSpy = vi.spyOn(Message, 'success');
+
+    await list._handleBatchExport();
+    await flushUpdates();
+
+    expect(exportRecording).toHaveBeenCalledWith(sampleRecord);
+    expect(exportRecording).toHaveBeenCalledWith(second);
+    expect(successSpy).toHaveBeenCalledWith('已导出 2 项');
+  });
+
+  it('shows batch export error when some exports fail', async () => {
+    vi.mocked(recordDb.getRecordingList).mockResolvedValue([sampleRecord]);
+    vi.mocked(exportRecording).mockRejectedValue(new Error('export fail'));
+    const el = await renderList();
+    await el.refresh();
+    await el.updateComplete;
+
+    const list = el as unknown as {
+      _selected: Set<string>;
+      _visibleIds: string[];
+      _handleBatchExport: () => Promise<void>;
+    };
+    list._visibleIds = ['rec-1'];
+    list._selected = new Set(['rec-1']);
+    const errorSpy = vi.spyOn(Message, 'error');
+
+    await list._handleBatchExport();
+    await flushUpdates();
+
+    expect(errorSpy).toHaveBeenCalledWith('部分录音导出失败');
+  });
+
   it('disables scoring when the recording has no reference script', async () => {
     vi.mocked(recordDb.getRecordingList).mockResolvedValue([
       {

@@ -339,4 +339,74 @@ describe('sentences-page', () => {
     await el.updateComplete;
     expect(el.compact).toBe(true);
   });
+
+  it('shows selection chrome with export and delete icons', async () => {
+    mockGetSentenceBankList.mockResolvedValue([makeEntry()]);
+    const el = await renderPage();
+    el.selectionMode = true;
+    await el.updateComplete;
+
+    expect(
+      el.shadowRoot?.querySelector('.batch-controls ui-button[aria-label="导出"]'),
+    ).not.toBeNull();
+    expect(
+      el.shadowRoot?.querySelector('.batch-controls ui-button[aria-label="删除"]'),
+    ).not.toBeNull();
+    expect(
+      el.shadowRoot?.querySelector('.batch-controls ui-button[aria-label="全选"]'),
+    ).not.toBeNull();
+    expect(
+      el.shadowRoot?.querySelector('.batch-controls ui-icon[name="download"]'),
+    ).not.toBeNull();
+    expect(el.shadowRoot?.textContent).toContain('已选 0 项');
+    expect(el.shadowRoot?.textContent).not.toContain('反选');
+  });
+
+  it('batch-exports selected entries', async () => {
+    const first = makeEntry({ id: 'entry-1' });
+    const second = makeEntry({ id: 'entry-2', text: 'Second', createdAt: 2 });
+    mockGetSentenceBankList.mockResolvedValue([first, second]);
+    mockExportSentenceBankEntry.mockResolvedValue(undefined);
+    const el = await renderPage();
+    const page = el as unknown as {
+      _selected: Set<string>;
+      _visibleIds: string[];
+      _handleBatchExport: () => Promise<void>;
+    };
+    page._visibleIds = ['entry-1', 'entry-2'];
+    page._selected = new Set(['entry-1', 'entry-2']);
+    const successSpy = vi.spyOn(Message, 'success');
+
+    await page._handleBatchExport();
+    await flushUpdates();
+
+    expect(mockExportSentenceBankEntry).toHaveBeenCalledWith(first);
+    expect(mockExportSentenceBankEntry).toHaveBeenCalledWith(second);
+    expect(successSpy).toHaveBeenCalledWith('已导出 2 项');
+  });
+
+  it('batch-deletes selected entries', async () => {
+    mockGetSentenceBankList.mockResolvedValue([
+      makeEntry({ id: 'entry-1' }),
+      makeEntry({ id: 'entry-2', text: 'Second', createdAt: 2 }),
+    ]);
+    mockDeleteSentenceBankEntry.mockResolvedValue(undefined);
+    const el = await renderPage();
+    const page = el as unknown as {
+      _selected: Set<string>;
+      _visibleIds: string[];
+      _handleBatchDelete: () => Promise<void>;
+    };
+    page._visibleIds = ['entry-1', 'entry-2'];
+    page._selected = new Set(['entry-1', 'entry-2']);
+    const successSpy = vi.spyOn(Message, 'success');
+
+    await page._handleBatchDelete();
+    await flushUpdates();
+
+    expect(mockDeleteSentenceBankEntry).toHaveBeenCalledWith('entry-1');
+    expect(mockDeleteSentenceBankEntry).toHaveBeenCalledWith('entry-2');
+    expect(successSpy).toHaveBeenCalledWith('批量删除完成');
+    expect(el.shadowRoot?.querySelectorAll('.item').length).toBe(0);
+  });
 });

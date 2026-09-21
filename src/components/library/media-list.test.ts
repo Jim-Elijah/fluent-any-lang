@@ -19,9 +19,11 @@ import type { MediaList } from './media-list.js';
 type MediaListHarness = MediaList & {
   _handleDelete(item: MediaItem): Promise<void>;
   _handleAddToPlaylist(e: CustomEvent<{ key: string }>, media: MediaItem): Promise<void>;
+  _handleBatchAddToPlaylist(e: CustomEvent<{ key: string }>): Promise<void>;
   _handleToggleFavorite(media: MediaItem): Promise<void>;
-  _openCreatePlaylistModal(mediaId: string): void;
+  _openCreatePlaylistModal(mediaIds: string | string[]): void;
   _createPlaylistName: string;
+  _createPlaylistMediaIds: string[];
   _submitCreatePlaylistAndAdd(): Promise<void>;
   _handleSubtitleFile(event: Event): Promise<void>;
   _pendingSubtitleMediaId: string;
@@ -30,6 +32,7 @@ type MediaListHarness = MediaList & {
   _confirmMismatchImport(): Promise<void>;
   _mismatchConfirmOpen: boolean;
   _narrow: boolean;
+  _selected: Set<string>;
   _onNarrowMqChange: (event: MediaQueryListEvent) => void;
 };
 
@@ -182,9 +185,12 @@ describe('media-list', () => {
     expect(dropdown.menu?.items).toEqual([
       expect.objectContaining({ key: '__create__' }),
       expect.objectContaining({ type: 'divider' }),
+      expect.objectContaining({
+        key: FAVORITES_PLAYLIST_ID,
+        label: expect.stringContaining('喜欢'),
+      }),
       expect.objectContaining({ key: 'playlist-1', label: expect.stringContaining('晨读') }),
     ]);
-    expect(dropdown.menu?.items?.some((item) => item.key === FAVORITES_PLAYLIST_ID)).toBe(false);
   });
 
   it('shows create-playlist option when no user playlists exist', async () => {
@@ -225,6 +231,11 @@ describe('media-list', () => {
       expect.objectContaining({
         key: '__create__',
         label: expect.stringContaining('新建播放列表'),
+      }),
+      expect.objectContaining({ type: 'divider' }),
+      expect.objectContaining({
+        key: FAVORITES_PLAYLIST_ID,
+        label: expect.stringContaining('喜欢'),
       }),
     ]);
   });
@@ -483,6 +494,126 @@ describe('media-list', () => {
     expect(playlistDb.addMediaToPlaylist).toHaveBeenCalledWith('playlist-1', 'media-1');
     expect(changed).toHaveBeenCalled();
     expect(successSpy).toHaveBeenCalled();
+  });
+
+  it('batch-adds selected media to an existing playlist', async () => {
+    vi.mocked(mediaDb.getMediaList).mockResolvedValue([
+      makeMedia({ id: 'media-1' }),
+      makeMedia({ id: 'media-2', title: 'Lesson 2', createdAt: 2 }),
+    ]);
+    const el = (await renderList()) as MediaListHarness;
+    await el.refresh();
+    el.selectionMode = true;
+    el._selected = new Set(['media-1', 'media-2']);
+    await el.updateComplete;
+
+    const changed = vi.fn();
+    el.addEventListener('playlist-changed', changed);
+    const successSpy = vi.spyOn(Message, 'success');
+
+    await el._handleBatchAddToPlaylist(
+      new CustomEvent('menu-click', { detail: { key: 'playlist-1' } }),
+    );
+    await el.updateComplete;
+
+    expect(playlistDb.addMediaToPlaylist).toHaveBeenCalledWith('playlist-1', 'media-1');
+    expect(playlistDb.addMediaToPlaylist).toHaveBeenCalledWith('playlist-1', 'media-2');
+    expect(changed).toHaveBeenCalled();
+    expect(successSpy).toHaveBeenCalled();
+  });
+
+  it('opens create-playlist modal with all selected ids for batch create', async () => {
+    vi.mocked(mediaDb.getMediaList).mockResolvedValue([
+      makeMedia({ id: 'media-1' }),
+      makeMedia({ id: 'media-2', title: 'Lesson 2', createdAt: 2 }),
+    ]);
+    const el = (await renderList()) as MediaListHarness;
+    await el.refresh();
+    el.selectionMode = true;
+    el._selected = new Set(['media-1', 'media-2']);
+    await el.updateComplete;
+
+    await el._handleBatchAddToPlaylist(
+      new CustomEvent('menu-click', { detail: { key: '__create__' } }),
+    );
+    await el.updateComplete;
+
+    expect(el._createPlaylistMediaIds).toEqual(['media-1', 'media-2']);
+    const modal = el.shadowRoot?.querySelector('ui-modal') as HTMLElement & { open?: boolean };
+    expect(modal?.open).toBe(true);
+
+    el._createPlaylistName = 'Course A';
+    await el._submitCreatePlaylistAndAdd();
+    await el.updateComplete;
+
+    expect(playlistDb.createPlaylist).toHaveBeenCalledWith('Course A');
+    expect(playlistDb.addMediaToPlaylist).toHaveBeenCalledWith('playlist-new', 'media-1');
+    expect(playlistDb.addMediaToPlaylist).toHaveBeenCalledWith('playlist-new', 'media-2');
+  });
+
+  it('shows batch add-to-playlist control in selection mode', async () => {
+    vi.mocked(mediaDb.getMediaList).mockResolvedValue([makeMedia()]);
+    const el = await renderList();
+    await el.refresh();
+    el.selectionMode = true;
+    await el.updateComplete;
+
+    expect(
+      el.shadowRoot?.querySelector(
+        '.batch-controls ui-button[aria-label="加入播放列表"]',
+      ),
+    ).not.toBeNull();
+    expect(
+      el.shadowRoot?.querySelector('.batch-controls ui-button[aria-label="删除"]'),
+    ).not.toBeNull();
+    expect(
+      el.shadowRoot?.querySelector('.batch-controls ui-button[aria-label="全选"]'),
+    ).not.toBeNull();
+    expect(
+      el.shadowRoot?.querySelector('.batch-controls ui-icon[name="select-all"]'),
+    ).not.toBeNull();
+    expect(el.shadowRoot?.textContent).toContain('已选 0 项');
+    expect(el.shadowRoot?.textContent).not.toContain('反选');
+  });
+
+  it('shows selected count separately when items are selected', async () => {
+    vi.mocked(mediaDb.getMediaList).mockResolvedValue([
+      makeMedia({ id: 'media-1' }),
+      makeMedia({ id: 'media-2', title: 'Lesson 2', createdAt: 2 }),
+    ]);
+    const el = (await renderList()) as MediaListHarness;
+    await el.refresh();
+    el.selectionMode = true;
+    el._selected = new Set(['media-1', 'media-2']);
+    await el.updateComplete;
+
+    expect(el.shadowRoot?.textContent).toContain('已选 2 项');
+    expect(
+      el.shadowRoot?.querySelector('.batch-controls ui-button[aria-label="取消全选"]'),
+    ).not.toBeNull();
+    expect(
+      el.shadowRoot?.querySelector('.batch-controls ui-icon[name="unselect-all"]'),
+    ).not.toBeNull();
+  });
+
+  it('batch-adds selected media to favorites', async () => {
+    vi.mocked(mediaDb.getMediaList).mockResolvedValue([
+      makeMedia({ id: 'media-1' }),
+      makeMedia({ id: 'media-2', title: 'Lesson 2', createdAt: 2 }),
+    ]);
+    const el = (await renderList()) as MediaListHarness;
+    await el.refresh();
+    el.selectionMode = true;
+    el._selected = new Set(['media-1', 'media-2']);
+    await el.updateComplete;
+
+    await el._handleBatchAddToPlaylist(
+      new CustomEvent('menu-click', { detail: { key: FAVORITES_PLAYLIST_ID } }),
+    );
+    await el.updateComplete;
+
+    expect(playlistDb.addMediaToPlaylist).toHaveBeenCalledWith(FAVORITES_PLAYLIST_ID, 'media-1');
+    expect(playlistDb.addMediaToPlaylist).toHaveBeenCalledWith(FAVORITES_PLAYLIST_ID, 'media-2');
   });
 
   it('uses fill-height layout for the virtual grid container', async () => {

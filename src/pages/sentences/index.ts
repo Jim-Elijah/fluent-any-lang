@@ -88,6 +88,39 @@ export class SentencesPage extends NavigatorElement {
       font-size: 0.875rem;
     }
 
+    .selection-chrome {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-sm);
+      margin-bottom: var(--space-block);
+      flex-shrink: 0;
+    }
+
+    .selection-chrome .header {
+      margin-bottom: 0;
+    }
+
+    .selection-count {
+      margin: 0;
+      font-size: 1.125rem;
+      font-weight: 600;
+    }
+
+    .batch-controls {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: var(--space-sm);
+    }
+
+    .batch-checkbox {
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+      cursor: pointer;
+      accent-color: var(--color-primary, #1677ff);
+    }
+
     .list-viewport {
       flex: 1;
       min-height: 0;
@@ -200,6 +233,11 @@ export class SentencesPage extends NavigatorElement {
       flex-shrink: 0;
     }
 
+    :host([selection-mode]) .item {
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      cursor: pointer;
+    }
+
     @media (max-width: 767px) {
       .list {
         gap: var(--space-xs);
@@ -211,6 +249,15 @@ export class SentencesPage extends NavigatorElement {
         padding: var(--space-sm) var(--space-md);
       }
 
+      :host([selection-mode]) .item {
+        grid-template-columns: auto minmax(0, 1fr);
+      }
+
+      :host([selection-mode]) .actions {
+        grid-column: 1 / -1;
+        justify-self: end;
+      }
+
       .actions {
         justify-content: flex-end;
       }
@@ -219,6 +266,9 @@ export class SentencesPage extends NavigatorElement {
 
   @property({ type: Boolean, reflect: true })
   compact = false;
+
+  @property({ type: Boolean, reflect: true, attribute: 'selection-mode' })
+  selectionMode = false;
 
   @state()
   private _entries: SentenceBankEntry[] = [];
@@ -233,6 +283,15 @@ export class SentencesPage extends NavigatorElement {
   private _busyId = '';
 
   @state()
+  private _selected = new Set<string>();
+
+  @state()
+  private _batchDeleting = false;
+
+  @state()
+  private _batchExporting = false;
+
+  @state()
   private _keyword = '';
 
   @state()
@@ -240,6 +299,10 @@ export class SentencesPage extends NavigatorElement {
 
   @state()
   private _sortDirection: SortDirection = 'desc';
+
+  private _visibleIds: string[] = [];
+
+  private _visibleSelected = new Set<string>();
 
   private _compactMq?: MediaQueryList;
 
@@ -346,6 +409,7 @@ export class SentencesPage extends NavigatorElement {
     try {
       await deleteSentenceBankEntry(entry.id);
       this._entries = this._entries.filter((item) => item.id !== entry.id);
+      this._selected = new Set([...this._selected].filter((id) => id !== entry.id));
       Message.success(msg('已从句库移除'));
     } catch (error) {
       void reportError(error, { where: 'sentences-page.delete', entryId: entry.id });
@@ -355,8 +419,81 @@ export class SentencesPage extends NavigatorElement {
     }
   }
 
+  private _toggleSelection(id: string): void {
+    const next = new Set(this._selected);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    this._selected = next;
+  }
+
+  private _selectAll(visibleIds: string[]): void {
+    this._selected = new Set(visibleIds);
+  }
+
+  private _clearSelection(): void {
+    this._selected = new Set();
+  }
+
+  private _exitSelectionMode(): void {
+    this.selectionMode = false;
+    this._selected = new Set();
+  }
+
+  private async _handleBatchExport(): Promise<void> {
+    const visibleSet = new Set(this._visibleIds);
+    const toExport = this._entries.filter(
+      (item) => this._selected.has(item.id) && visibleSet.has(item.id) && !item.removed,
+    );
+    if (toExport.length === 0) return;
+    this._batchExporting = true;
+    try {
+      const results = await Promise.allSettled(
+        toExport.map((item) => exportSentenceBankEntry(item)),
+      );
+      const failed = results.filter((r) => r.status === 'rejected').length;
+      if (failed > 0) {
+        Message.error(msg('部分条目导出失败'));
+      } else {
+        Message.success(msg(str`已导出 ${toExport.length} 项`));
+      }
+    } finally {
+      this._batchExporting = false;
+    }
+  }
+
+  private async _handleBatchDelete(): Promise<void> {
+    const visibleSet = new Set(this._visibleIds);
+    const toDelete = [...this._selected].filter((id) => visibleSet.has(id));
+    if (toDelete.length === 0) return;
+    this._batchDeleting = true;
+    try {
+      const results = await Promise.allSettled(
+        toDelete.map((id) => deleteSentenceBankEntry(id)),
+      );
+      const failed = results.filter((r) => r.status === 'rejected').length;
+      if (failed > 0) {
+        Message.error(msg('部分条目删除失败'));
+      } else {
+        Message.success(msg('批量删除完成'));
+      }
+      const deleted = new Set(
+        toDelete.filter((_, index) => results[index]?.status === 'fulfilled'),
+      );
+      this._entries = this._entries.filter((item) => !deleted.has(item.id));
+      this._selected = new Set([...this._selected].filter((id) => !deleted.has(id)));
+    } finally {
+      this._batchDeleting = false;
+    }
+  }
+
   render() {
     const visibleEntries = this._getVisibleEntries();
+    const visibleIds = visibleEntries.map((entry) => entry.id);
+    this._visibleIds = visibleIds;
+    const visibleSet = new Set(visibleIds);
+    this._visibleSelected = new Set([...this._selected].filter((id) => visibleSet.has(id)));
+    const allVisibleSelected =
+      visibleIds.length > 0 && this._visibleSelected.size === visibleIds.length;
 
     return html`
       <div class="layout">
@@ -377,10 +514,83 @@ export class SentencesPage extends NavigatorElement {
           : nothing}
 
         <section class="list-section">
-          <div class="header">
-            <h2>${msg('句库')}</h2>
-            <span class="count">${msg(str`${visibleEntries.length} 句`)}</span>
-          </div>
+          ${this.selectionMode
+            ? html`<div class="selection-chrome">
+                <div class="header">
+                  <p class="selection-count">
+                    ${msg(str`已选 ${this._visibleSelected.size} 项`)}
+                  </p>
+                  <ui-button
+                    variant="secondary"
+                    size="small"
+                    @click=${() => this._exitSelectionMode()}
+                    >${msg('取消')}</ui-button
+                  >
+                </div>
+                <div class="batch-controls">
+                  <ui-tooltip
+                    title="${allVisibleSelected ? msg('取消全选') : msg('全选')}"
+                  >
+                    <ui-button
+                      variant="secondary"
+                      size="small"
+                      aria-label="${allVisibleSelected ? msg('取消全选') : msg('全选')}"
+                      @click=${() =>
+                        allVisibleSelected
+                          ? this._clearSelection()
+                          : this._selectAll(visibleIds)}
+                    >
+                      <ui-icon
+                        name="${allVisibleSelected ? 'unselect-all' : 'select-all'}"
+                      ></ui-icon>
+                    </ui-button>
+                  </ui-tooltip>
+                  <ui-tooltip title="${msg('导出')}">
+                    <ui-button
+                      variant="secondary"
+                      size="small"
+                      aria-label="${msg('导出')}"
+                      ?disabled=${this._visibleSelected.size === 0 || this._batchExporting}
+                      @click=${() => void this._handleBatchExport()}
+                    >
+                      <ui-icon name="download"></ui-icon>
+                    </ui-button>
+                  </ui-tooltip>
+                  <ui-popconfirm
+                    title=${msg(str`确定删除选中的 ${this._visibleSelected.size} 项吗？`)}
+                    placement="bottom"
+                    ?confirm-loading=${this._batchDeleting}
+                    @confirm=${() => void this._handleBatchDelete()}
+                  >
+                    <ui-tooltip title="${msg('删除')}">
+                      <ui-button
+                        variant="danger"
+                        size="small"
+                        aria-label="${msg('删除')}"
+                        ?disabled=${this._visibleSelected.size === 0 || this._batchDeleting}
+                      >
+                        <ui-icon name="delete"></ui-icon>
+                      </ui-button>
+                    </ui-tooltip>
+                  </ui-popconfirm>
+                </div>
+              </div>`
+            : html`<div class="header">
+                <h2>${msg('句库')}</h2>
+                <div class="batch-controls">
+                  <span class="count">${msg(str`${visibleEntries.length} 句`)}</span>
+                  ${visibleEntries.length > 0
+                    ? html`<ui-button
+                        variant="secondary"
+                        size="small"
+                        @click=${() => {
+                          this.selectionMode = true;
+                        }}
+                        >${msg('管理')}</ui-button
+                      >`
+                    : nothing}
+                </div>
+              </div>`}
 
           ${this._loading
             ? html`<div class="empty">${msg('加载中…')}</div>`
@@ -407,7 +617,19 @@ export class SentencesPage extends NavigatorElement {
     const isVideo = entry.sourceMediaType === 'video';
 
     return html`
-      <li class="item">
+      <li
+        class="item"
+        @click=${this.selectionMode ? () => this._toggleSelection(entry.id) : null}
+      >
+        ${this.selectionMode
+          ? html`<input
+              type="checkbox"
+              class="batch-checkbox"
+              .checked=${this._visibleSelected.has(entry.id)}
+              @change=${() => this._toggleSelection(entry.id)}
+              @click=${(e: Event) => e.stopPropagation()}
+            />`
+          : nothing}
         <div class="meta">
           <p class="text">${entry.text}</p>
           ${entry.translation ? html`<p class="translation">${entry.translation}</p>` : nothing}
@@ -423,7 +645,7 @@ export class SentencesPage extends NavigatorElement {
             ${entry.sourceAvailable ? nothing : html`<span>${msg('源媒体已删除')}</span>`}
           </p>
         </div>
-        <div class="actions">
+        <div class="actions" @click=${(e: Event) => e.stopPropagation()}>
           <ui-tooltip title="${msg('练习')}">
             <ui-button
               variant="secondary"

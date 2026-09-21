@@ -177,4 +177,69 @@ describe('noise-list', () => {
     const el = await renderList({ keyword: 'missing' });
     expect(el.shadowRoot?.textContent).toContain('无匹配噪音素材');
   });
+
+  it('shows selection chrome with select-all and delete icons', async () => {
+    mockGetNoiseList.mockResolvedValue([makeItem()]);
+    const el = await renderList();
+    el.selectionMode = true;
+    await el.updateComplete;
+
+    expect(
+      el.shadowRoot?.querySelector('.batch-controls ui-button[aria-label="删除"]'),
+    ).not.toBeNull();
+    expect(
+      el.shadowRoot?.querySelector('.batch-controls ui-button[aria-label="全选"]'),
+    ).not.toBeNull();
+    expect(
+      el.shadowRoot?.querySelector('.batch-controls ui-icon[name="select-all"]'),
+    ).not.toBeNull();
+    expect(el.shadowRoot?.textContent).toContain('已选 0 项');
+    expect(el.shadowRoot?.textContent).not.toContain('反选');
+    expect(el.shadowRoot?.textContent).not.toContain('导入');
+  });
+
+  it('toggles select-all to clear selection and shows selected count', async () => {
+    mockGetNoiseList.mockResolvedValue([
+      makeItem({ id: 'noise-1' }),
+      makeItem({ id: 'noise-2', title: 'Wind', createdAt: 200 }),
+    ]);
+    const el = await renderList() as NoiseList & { _selected: Set<string> };
+    el.selectionMode = true;
+    el._selected = new Set(['noise-1', 'noise-2']);
+    await el.updateComplete;
+
+    expect(el.shadowRoot?.textContent).toContain('已选 2 项');
+    expect(
+      el.shadowRoot?.querySelector('.batch-controls ui-button[aria-label="取消全选"]'),
+    ).not.toBeNull();
+    expect(
+      el.shadowRoot?.querySelector('.batch-controls ui-icon[name="unselect-all"]'),
+    ).not.toBeNull();
+  });
+
+  it('batch-deletes selected noise items', async () => {
+    mockGetNoiseList
+      .mockResolvedValueOnce([
+        makeItem({ id: 'noise-1' }),
+        makeItem({ id: 'noise-2', title: 'Wind', createdAt: 200 }),
+      ])
+      .mockResolvedValue([]);
+    mockDeleteNoise.mockResolvedValue(undefined);
+    const el = await renderList() as NoiseList & {
+      _selected: Set<string>;
+      _visibleIds: string[];
+      _handleBatchDelete: () => Promise<void>;
+    };
+    el.selectionMode = true;
+    el._visibleIds = ['noise-1', 'noise-2'];
+    el._selected = new Set(['noise-1', 'noise-2']);
+    const successSpy = vi.spyOn(Message, 'success');
+
+    await el._handleBatchDelete();
+    await flushUpdates();
+
+    expect(mockDeleteNoise).toHaveBeenCalledWith('noise-1');
+    expect(mockDeleteNoise).toHaveBeenCalledWith('noise-2');
+    expect(successSpy).toHaveBeenCalledWith('批量删除完成');
+  });
 });
