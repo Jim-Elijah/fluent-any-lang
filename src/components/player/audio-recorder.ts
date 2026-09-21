@@ -431,6 +431,11 @@ export class AudioRecorder extends LitElement {
       this._dispatchCountdownEnd({ skipped });
     }
 
+    // Drop the previous take's peaks immediately so mobile users are not shown a
+    // stale waveform while getUserMedia / MediaRecorder.start is still pending.
+    // Keep the waveform canvas mounted (_hasWaveform) so the layout does not flash.
+    this._clearWaveformPeaks();
+
     // Seek / profile setup before MediaRecorder starts so the recording clock
     // does not include pre-roll seek latency in the first practice segment.
     this.beforeRecordingStart?.();
@@ -521,8 +526,13 @@ export class AudioRecorder extends LitElement {
   }
 
   clearWaveform(): void {
-    this._waveformController.clearTracks();
+    this._clearWaveformPeaks();
     this._hasWaveform = false;
+  }
+
+  /** Clears drawn peaks but leaves the waveform slot visible when already shown. */
+  private _clearWaveformPeaks(): void {
+    this._waveformController.clearTracks();
     this._liveTrackId = null;
   }
 

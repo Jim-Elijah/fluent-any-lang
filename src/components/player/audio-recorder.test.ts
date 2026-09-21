@@ -476,6 +476,43 @@ describe('audio-recorder component', () => {
     expect(el.shadowRoot?.querySelector('ui-icon')?.getAttribute('name')).toBe('micro');
   });
 
+  it('clears a prior take waveform before MediaRecorder start resolves', async () => {
+    vi.useFakeTimers();
+    const el = await renderRecorder();
+    await el.startRecording();
+    lastRecorder?.dispatchData(new Blob(['chunk'], { type: 'audio/webm' }));
+    const stopPromise = el.stopRecording();
+    await vi.advanceTimersByTimeAsync(RECORDING_TAIL_PAD_MS);
+    await stopPromise;
+    await el.updateComplete;
+    expect(el.shadowRoot?.querySelector('waveform-player')).not.toBeNull();
+
+    let resolveMic!: (stream: MediaStream) => void;
+    getUserMedia.mockImplementationOnce(
+      () =>
+        new Promise<MediaStream>((resolve) => {
+          resolveMic = resolve;
+        }),
+    );
+
+    const startPromise = el.startRecording();
+    await el.updateComplete;
+
+    expect(el.shadowRoot?.querySelector('waveform-player')).not.toBeNull();
+    expect(el.recording).toBe(false);
+
+    const tracks = [{ stop: vi.fn() }];
+    resolveMic({
+      getTracks: () => tracks,
+      getAudioTracks: () => tracks,
+    } as unknown as MediaStream);
+    await startPromise;
+    await el.updateComplete;
+
+    expect(el.recording).toBe(true);
+    expect(el.shadowRoot?.querySelector('waveform-player')).not.toBeNull();
+  });
+
   it('waits for countdown before starting recorder', async () => {
     vi.useFakeTimers();
     const el = await renderRecorder({ countdownBeforeStart: true });

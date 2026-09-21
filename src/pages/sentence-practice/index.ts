@@ -529,6 +529,7 @@ export class SentencePracticePage extends NavigatorElement {
 
               <media-player
                 .controller=${this._controller}
+                ?disabled=${this._recording}
                 mode="normal"
                 .controlsConfig=${SENTENCE_PLAYER_CONTROLS}
               ></media-player>

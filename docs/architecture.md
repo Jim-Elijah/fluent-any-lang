@@ -54,7 +54,7 @@ IndexedDB: `fluent-any-lang`, version in `db/schema.ts`. Open/upgrade: `db/index
 | Shadowing      | `audio-recorder` synced to source; gap policy on controller        |
 | Echo           | `EchoClipPlayer` (private media element clip) + per-segment record |
 
-Sentence practice (`/sentence-practice`) is a lighter path on clipped Sentence Bank audio — not the full four-mode stack. Speaking still guards the recorder with `microphone-access` (same status/permission refresh pattern as `practice-view`).
+Sentence practice (`/sentence-practice`) is a lighter path on clipped Sentence Bank audio — not the full four-mode stack. Speaking still guards the recorder with `microphone-access` (same status/permission refresh pattern as `practice-view`). While recording, `media-player` is disabled (playback already paused via `beforeRecordingStart`).
 
 ## Library hub
 

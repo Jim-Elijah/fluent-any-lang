@@ -302,6 +302,9 @@ describe('sentence-practice-page', () => {
       ?.dispatchEvent(new Event('click', { bubbles: true }));
     await el.updateComplete;
 
+    const mediaPlayer = el.shadowRoot?.querySelector('media-player') as { disabled: boolean };
+    expect(mediaPlayer.disabled).toBe(false);
+
     el.shadowRoot?.querySelector('audio-recorder')?.dispatchEvent(
       new CustomEvent('recording-state-change', {
         detail: { recording: true },
@@ -311,6 +314,7 @@ describe('sentence-practice-page', () => {
     );
     await el.updateComplete;
     expect(internals._recording).toBe(true);
+    expect(mediaPlayer.disabled).toBe(true);
 
     el.shadowRoot?.querySelector('audio-recorder')?.dispatchEvent(
       new CustomEvent('recording-state-change', {
@@ -321,6 +325,7 @@ describe('sentence-practice-page', () => {
     );
     await el.updateComplete;
     expect(internals._recording).toBe(false);
+    expect(mediaPlayer.disabled).toBe(false);
   });
 
   it('closes hotkeys help from footer button', async () => {

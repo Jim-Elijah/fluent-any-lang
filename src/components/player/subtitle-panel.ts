@@ -851,7 +851,7 @@ export class SubtitlePanel extends LitElement {
               placement="left"
             >
               <ui-button variant="ghost" @click="${() => this._setFullscreen(false)}">
-                <ui-icon size="var(--icon-xl)" name="close"></ui-icon>
+                <ui-icon size="var(--icon-xl)" name="fullscreen-exit"></ui-icon>
               </ui-button>
             </ui-tooltip>
           </div>

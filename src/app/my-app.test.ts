@@ -141,15 +141,20 @@ describe('app-shell', () => {
     await waitForSelector(el, 'library-page');
   });
 
-  it('maps sentence-practice and library sub-routes to library menu selection', async () => {
+  it('does not highlight library menu on sentence-practice', async () => {
     stubMatchMedia(false);
     const el = await renderApp();
 
     el.router('sentence-practice', { mediaId: 'm1' }, {}, {});
     await el.updateComplete;
 
-    expect(el.selectedKeys).toEqual(['library']);
+    expect(el.selectedKeys).toEqual(['sentence-practice']);
     await waitForSelector(el, 'sentence-practice-page');
+  });
+
+  it('maps library sub-routes to library menu selection', async () => {
+    stubMatchMedia(false);
+    const el = await renderApp();
 
     el.router('library-media', {}, {}, {});
     await el.updateComplete;

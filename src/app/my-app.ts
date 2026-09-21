@@ -40,7 +40,6 @@ const LIBRARY_MENU_ROUTES = new Set<string>([
   'library-sentences',
   'playlists',
   'sentences',
-  'sentence-practice',
 ]);
 
 const LEGACY_REDIRECTS: Record<RedirectRoute, string> = {
