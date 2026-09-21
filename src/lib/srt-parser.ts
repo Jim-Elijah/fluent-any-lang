@@ -72,10 +72,84 @@ function stripHtmlTags(text: string): string {
   return text.replace(/<[^>]+>/g, '').trim();
 }
 
+/** 行首 `- ` 或同行 ` - `（字幕说话人惯例，非格式字段） */
+function hasSpeakerMarkers(text: string): boolean {
+  return /(?:^|\n)\s*-\s+/.test(text) || / \s*-\s+/.test(text);
+}
+
+/**
+ * 按说话人切开：行首 `- `，或同行 ` - `。
+ * 返回各句正文（不含前导 `-`）以及行间用 `\n`、同行用空格拼接。
+ */
+function splitSpeakerTurns(raw: string): { bodies: string[]; joiner: '\n' | ' ' } {
+  const lines = raw
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const bodies: string[] = [];
+  let usedNewlineBetweenTurns = false;
+
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+    const line = lines[lineIndex]!;
+    const withoutLeading = line.replace(/^-\s+/, '');
+    const parts = withoutLeading.split(/\s+-\s+/).map((part) => part.trim()).filter(Boolean);
+    if (lineIndex > 0 && parts.length > 0 && bodies.length > 0) {
+      usedNewlineBetweenTurns = true;
+    }
+    bodies.push(...parts);
+  }
+
+  return {
+    bodies,
+    joiner: usedNewlineBetweenTurns ? '\n' : ' ',
+  };
+}
+
+function splitPipePair(part: string): { text: string; translation: string } {
+  const pipeIndex = part.indexOf('|');
+  if (pipeIndex === -1) {
+    return { text: part.trim(), translation: '' };
+  }
+  return {
+    text: part.slice(0, pipeIndex).trim(),
+    translation: part.slice(pipeIndex + 1).trim(),
+  };
+}
+
+function formatSpeakerJoined(parts: string[], joiner: '\n' | ' '): string {
+  return parts
+    .filter(Boolean)
+    .map((part) => `- ${part}`)
+    .join(joiner);
+}
+
 function parseBilingualText(raw: string): Pick<SubtitleSegment, 'text' | 'translation'> {
   const stripped = stripHtmlTags(raw);
   if (!stripped) {
     return { text: '' };
+  }
+
+  if (hasSpeakerMarkers(stripped)) {
+    const { bodies, joiner } = splitSpeakerTurns(stripped);
+    if (bodies.length === 0) {
+      return { text: '' };
+    }
+
+    const pairs = bodies.map(splitPipePair);
+    const text = formatSpeakerJoined(
+      pairs.map((pair) => pair.text),
+      joiner,
+    );
+    const translationParts = pairs.map((pair) => pair.translation);
+    const hasTranslation = translationParts.some(Boolean);
+    if (!hasTranslation) {
+      return { text };
+    }
+    return {
+      text,
+      translation: formatSpeakerJoined(translationParts, joiner),
+    };
   }
 
   const pipeIndex = stripped.indexOf('|');
@@ -90,7 +164,7 @@ function parseBilingualText(raw: string): Pick<SubtitleSegment, 'text' | 'transl
     .map((line) => line.trim())
     .filter(Boolean);
   if (lines.length >= 2) {
-    return { text: lines[0], translation: lines.slice(1).join('\n') };
+    return { text: lines[0]!, translation: lines.slice(1).join('\n') };
   }
 
   return { text: stripped };

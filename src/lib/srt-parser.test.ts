@@ -132,6 +132,50 @@ Line three`;
     expect(segments[0].translation).toBe('Line two\nLine three');
   });
 
+  it('keeps multi-line speaker dialogue in text (not as translation)', () => {
+    const content = `1
+00:01:20,000 --> 00:01:23,500
+- 你今天几点下班？
+- 大概六点。`;
+    const { segments } = parseSrt(content);
+    expect(segments).toHaveLength(1);
+    expect(segments[0].text).toBe('- 你今天几点下班？\n- 大概六点。');
+    expect(segments[0].translation).toBeUndefined();
+    expect(segments[0].startTime).toBe(80);
+    expect(segments[0].endTime).toBe(83.5);
+  });
+
+  it('keeps same-line speaker dialogue in text', () => {
+    const content = `1
+00:01:20,000 --> 00:01:23,500
+- 你今天几点下班？ - 大概六点。`;
+    const { segments } = parseSrt(content);
+    expect(segments).toHaveLength(1);
+    expect(segments[0].text).toBe('- 你今天几点下班？ - 大概六点。');
+    expect(segments[0].translation).toBeUndefined();
+  });
+
+  it('splits same-line speakers with pipe bilingual into text and translation', () => {
+    const content = `1
+00:00:10,000 --> 00:00:13,500
+- Hello, world! | 你好，世界！ - How are you? | 你最近怎么样？`;
+    const { segments } = parseSrt(content);
+    expect(segments).toHaveLength(1);
+    expect(segments[0].text).toBe('- Hello, world! - How are you?');
+    expect(segments[0].translation).toBe('- 你好，世界！ - 你最近怎么样？');
+  });
+
+  it('splits multi-line speakers with pipe bilingual into text and translation', () => {
+    const content = `1
+00:00:14,000 --> 00:00:17,200
+- Let's learn about SRT dual subtitles.| 让我们来了解一下SRT双语字幕。
+- Good. | 好的`;
+    const { segments } = parseSrt(content);
+    expect(segments).toHaveLength(1);
+    expect(segments[0].text).toBe("- Let's learn about SRT dual subtitles.\n- Good.");
+    expect(segments[0].translation).toBe('- 让我们来了解一下SRT双语字幕。\n- 好的');
+  });
+
   it('sorts segments by start time when cues are out of order', () => {
     const content = `1
 00:00:05,000 --> 00:00:06,000
@@ -307,6 +351,33 @@ plain noise
     expect(segments[0].text).toBe('Hello');
     expect(segments[0].translation).toBe('你好');
     expect(segments[0].endTime).toBe(5);
+  });
+
+  it('keeps same-timestamp speaker dialogue in text (not as translation)', () => {
+    const content = `[00:01.20]- 你今天几点下班？
+[00:01.20]- 大概六点。
+[00:05.00]Next`;
+    const { segments } = parseLrc(content);
+    expect(segments).toHaveLength(2);
+    expect(segments[0].text).toBe('- 你今天几点下班？\n- 大概六点。');
+    expect(segments[0].translation).toBeUndefined();
+  });
+
+  it('splits same-line LRC speakers with pipe bilingual into text and translation', () => {
+    const content = `[00:10.00]- Hello, world! | 你好，世界！ - How are you? | 你最近怎么样？`;
+    const { segments } = parseLrc(content);
+    expect(segments).toHaveLength(1);
+    expect(segments[0].text).toBe('- Hello, world! - How are you?');
+    expect(segments[0].translation).toBe('- 你好，世界！ - 你最近怎么样？');
+  });
+
+  it('splits same-timestamp LRC speakers with pipe bilingual into text and translation', () => {
+    const content = `[00:14.00]- Let's learn about SRT dual subtitles.| 让我们来了解一下SRT双语字幕。
+[00:14.00]- Good. | 好的`;
+    const { segments } = parseLrc(content);
+    expect(segments).toHaveLength(1);
+    expect(segments[0].text).toBe("- Let's learn about SRT dual subtitles.\n- Good.");
+    expect(segments[0].translation).toBe('- 让我们来了解一下SRT双语字幕。\n- 好的');
   });
 
   it('parses pipe bilingual lyrics and strips HTML', () => {
