@@ -480,6 +480,41 @@ describe('MediaController', () => {
     expect(controller.getSnapshot().pauseMode).toBe('off');
   });
 
+  it('downgrades segment loop to none when loading Media without subtitles', async () => {
+    const segments: SubtitleSegment[] = [{ id: 's1', startTime: 0, endTime: 5, text: 'one' }];
+    await controller.loadTracks([makeTrack('a', 'Track A', { segments })]);
+    controller.setLoopMode('segment');
+    expect(controller.getSnapshot().loopMode).toBe('segment');
+
+    await controller.loadTracks([makeTrack('b', 'Track B')]);
+    expect(controller.getSnapshot().loopMode).toBe('none');
+    expect(controller.getSnapshot().hasSubtitles).toBe(false);
+  });
+
+  it('downgrades segment loop to none when Subtitle Track is cleared', async () => {
+    const segments: SubtitleSegment[] = [{ id: 's1', startTime: 0, endTime: 5, text: 'one' }];
+    await controller.loadTracks([makeTrack('a', 'Track A', { segments })]);
+    controller.setLoopMode('segment');
+
+    controller.updateCurrentTrackSubtitles([]);
+    expect(controller.getSnapshot().loopMode).toBe('none');
+    expect(controller.getSnapshot().hasSubtitles).toBe(false);
+  });
+
+  it('does not wrap the whole Media on ended when segment loop has no Subtitle Segment', async () => {
+    await controller.loadTracks([makeTrack('a', 'Track A')]);
+    // Bypass setLoopMode guard to simulate a stale segment default.
+    controller.loopMode = 'segment';
+    audio.play.mockClear();
+    Object.defineProperty(audio, 'paused', { configurable: true, value: false });
+
+    audio.dispatchEvent(new Event('ended'));
+
+    expect(controller.getSnapshot().isPlaying).toBe(false);
+    expect(audio.play).not.toHaveBeenCalled();
+    expect(controller.currentTime).toBe(30);
+  });
+
   it('navigates between subtitle segments', async () => {
     const segments: SubtitleSegment[] = [
       { id: 's1', startTime: 0, endTime: 5, text: 'one' },
@@ -561,6 +596,14 @@ describe('MediaController', () => {
     expect(audio.loop).toBe(true);
     controller.resetSettings();
     expect(audio.loop).toBe(false);
+  });
+
+  it('keeps segment loop off after resetSettings on Media without subtitles', async () => {
+    const { setAppSettings } = await import('../lib/app-settings.js');
+    setAppSettings({ defaultLoopMode: 'segment' });
+    await controller.loadTracks([makeTrack('a', 'Track A')]);
+    controller.resetSettings();
+    expect(controller.getSnapshot().loopMode).toBe('none');
   });
 
   it('restores the default native loop flag after resetSettings', async () => {

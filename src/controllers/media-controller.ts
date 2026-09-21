@@ -241,8 +241,7 @@ export class MediaController extends EventTarget {
     this.segments = track.segments;
     this.currentSegmentIndex = this.segments.length > 0 ? 0 : -1;
     if (this.segments.length === 0) {
-      this.pauseMode = 'off';
-      this._clearSegmentPauseTimer();
+      this._clearSubtitleDependentModes();
     }
     this._revokeObjectUrl();
 
@@ -705,6 +704,10 @@ export class MediaController extends EventTarget {
     this.pausePercent = DEFAULT_PLAYER_SETTINGS.pausePercent;
     this._lockScreenLoop = false;
 
+    if (this.segments.length === 0) {
+      this._clearSubtitleDependentModes();
+    }
+
     if (this.mediaElement) {
       this.mediaElement.playbackRate = this.playbackRate;
       setLogicalVolume(this.mediaElement, this.volume);
@@ -734,8 +737,7 @@ export class MediaController extends EventTarget {
     this.currentSegmentIndex = segments.length > 0 ? 0 : -1;
 
     if (segments.length === 0) {
-      this.pauseMode = 'off';
-      this._clearSegmentPauseTimer();
+      this._clearSubtitleDependentModes();
     } else {
       this.subtitlesVisible = true;
     }
@@ -949,14 +951,17 @@ export class MediaController extends EventTarget {
           const seg = this.segments[loopIndex];
           if (seg) {
             this._seekDirectAndPlay(seg.startTime, loopIndex);
+            break;
           }
-        } else {
-          this._seekDirectAndPlay(0);
         }
+        // No Subtitle Segment to loop (e.g. empty track) — stop, do not wrap the whole Media.
+        this.isPlaying = false;
+        this._throttledEmitChange.cancel();
+        this._snapPlaybackToEnd();
+        this._emitChange();
         break;
       }
       default:
-        console.log('default');
         this.isPlaying = false;
         this._throttledEmitChange.cancel();
         this._snapPlaybackToEnd();
@@ -1148,8 +1153,20 @@ export class MediaController extends EventTarget {
     this.isPlaying = false;
     this._pendingAutoPlay = false;
     this._previousPlaybackTime = 0;
+    this._clearSubtitleDependentModes();
+  }
+
+  /**
+   * Pause-between-segments and segment loop require a Subtitle Track.
+   * Drop both when Media has no segments so defaults cannot silently wrap the whole file.
+   */
+  private _clearSubtitleDependentModes(): void {
     this.pauseMode = 'off';
     this._clearSegmentPauseTimer();
+    if (this.loopMode === 'segment') {
+      this.loopMode = 'none';
+      this._syncNativeLoop();
+    }
   }
 
   private _revokeObjectUrl(): void {
