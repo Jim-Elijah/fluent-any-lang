@@ -140,6 +140,9 @@ type PracticeLaunchContext =
   | { kind: 'single'; mediaId: string }
   | { kind: 'playlist'; playlistId: string; mediaId?: string };
 
+/** Min recording duration (seconds) to keep a Shadowing take with no Subtitle Track. */
+export const MIN_AUDIO_ONLY_SHADOWING_RECORDING_S = 1;
+
 const NavigatorElement = Navigator(LitElement);
 
 @customElement('practice-view')
@@ -1536,16 +1539,42 @@ export class PracticeView extends NavigatorElement {
 
   private _onShadowingRecordingComplete = (event: CustomEvent<RecordingCompleteDetail>): void => {
     const { blob, segments } = event.detail;
-    const currentItem = this._controller.getSnapshot().currentItem;
+    const { currentItem, hasSubtitles } = this._controller.getSnapshot();
     if (!currentItem) {
       return;
     }
-    if (segments.length === 0) {
+    if (hasSubtitles) {
+      if (segments.length === 0) {
+        Message.warning(msg('录音时长不足，已丢弃'));
+        return;
+      }
+      void this._saveShadowingRecording(blob, currentItem, segments);
+      return;
+    }
+    void this._maybeSaveAudioOnlyShadowing(blob, currentItem, segments);
+  };
+
+  /**
+   * No Subtitle Track: practice segments stay empty. Keep the take when the
+   * blob is long enough; otherwise discard accidental short taps.
+   */
+  private async _maybeSaveAudioOnlyShadowing(
+    blob: Blob,
+    media: MediaItem,
+    segments: PracticeSegment[],
+  ): Promise<void> {
+    try {
+      const duration = await getMediaDuration(blob, blob.type);
+      if (duration < MIN_AUDIO_ONLY_SHADOWING_RECORDING_S) {
+        Message.warning(msg('录音时长不足，已丢弃'));
+        return;
+      }
+    } catch {
       Message.warning(msg('录音时长不足，已丢弃'));
       return;
     }
-    void this._saveShadowingRecording(blob, currentItem, segments);
-  };
+    await this._saveShadowingRecording(blob, media, segments);
+  }
 
   private _onEchoRecordingComplete = (event: CustomEvent<RecordingCompleteDetail>): void => {
     const { blob } = event.detail;

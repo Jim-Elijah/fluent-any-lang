@@ -149,7 +149,11 @@ vi.mock('../../lib/microphone-access.js', async (importOriginal) => {
 });
 
 import './practice-view.js';
-import type { PracticeView } from './practice-view.js';
+import {
+  MIN_AUDIO_ONLY_SHADOWING_RECORDING_S,
+  type PracticeView,
+} from './practice-view.js';
+import { getMediaDuration } from '../../lib/file-validation.js';
 import { flushUpdates, mount } from '../ui/test-utils.js';
 import { Message } from '../ui/message.js';
 import {
@@ -320,12 +324,15 @@ describe('practice-view', () => {
     mockCountEchoRecordings.mockResolvedValue(0);
     mockCountShadowingRecordings.mockResolvedValue(0);
     mockFindAllEchoRecordings.mockResolvedValue([]);
+    mockSaveRecording.mockReset();
     mockSaveRecording.mockResolvedValue(undefined);
     mockAddToSentenceBank.mockResolvedValue({ status: 'added' });
     mockRemoveFromSentenceBank.mockResolvedValue({ status: 'removed' });
     mockGetSentenceBankList.mockResolvedValue([]);
     mockGetNoiseList.mockResolvedValue([]);
     mockGetNoiseBlob.mockResolvedValue(new Blob(['noise'], { type: 'audio/mpeg' }));
+    vi.mocked(getMediaDuration).mockReset();
+    vi.mocked(getMediaDuration).mockResolvedValue(3);
     mockEstimateStorage.mockResolvedValue({
       usage: 0,
       quota: 100,
@@ -1937,6 +1944,90 @@ describe('practice-view', () => {
 
       expect(mockSaveRecording).toHaveBeenCalled();
       expect(successSpy).toHaveBeenCalled();
+    });
+
+    it('discards empty-segment shadowing when media has subtitles', async () => {
+      const warningSpy = vi.spyOn(Message, 'warning');
+      const el = await renderView();
+      await switchToShadowingMode(el);
+
+      el.shadowRoot!.querySelector('audio-recorder#shadowing-recorder')!.dispatchEvent(
+        new CustomEvent('recording-complete', {
+          detail: {
+            blob: new Blob(['rec'], { type: 'audio/webm' }),
+            segments: [],
+            reason: 'manual',
+          },
+          bubbles: true,
+          composed: true,
+        }),
+      );
+      await settleView(el);
+
+      expect(mockSaveRecording).not.toHaveBeenCalled();
+      expect(warningSpy).toHaveBeenCalled();
+    });
+
+    it('saves audio-only shadowing when duration meets the threshold', async () => {
+      mockLoadMedia.mockResolvedValue(makeLoadedMedia('media-1', { hasSubtitles: false }));
+      vi.mocked(getMediaDuration).mockResolvedValue(MIN_AUDIO_ONLY_SHADOWING_RECORDING_S);
+      const successSpy = vi.spyOn(Message, 'success');
+      const el = await renderView();
+      await settleView(el);
+      findButton(el, '口语')?.click();
+      await el.updateComplete;
+      await settleView(el);
+
+      el.shadowRoot!.querySelector('audio-recorder#shadowing-recorder')!.dispatchEvent(
+        new CustomEvent('recording-complete', {
+          detail: {
+            blob: new Blob(['rec'], { type: 'audio/webm' }),
+            segments: [],
+            reason: 'manual',
+          },
+          bubbles: true,
+          composed: true,
+        }),
+      );
+      await vi.waitFor(() => {
+        expect(mockSaveRecording).toHaveBeenCalled();
+      });
+      await settleView(el);
+
+      expect(successSpy).toHaveBeenCalled();
+      expect(mockSaveRecording.mock.calls.at(-1)?.[0]).toMatchObject({
+        mode: 'shadowing',
+        segments: [],
+      });
+    });
+
+    it('discards audio-only shadowing shorter than the duration threshold', async () => {
+      mockLoadMedia.mockResolvedValue(makeLoadedMedia('media-1', { hasSubtitles: false }));
+      vi.mocked(getMediaDuration).mockResolvedValue(MIN_AUDIO_ONLY_SHADOWING_RECORDING_S - 0.01);
+      const warningSpy = vi.spyOn(Message, 'warning');
+      const el = await renderView();
+      await settleView(el);
+      findButton(el, '口语')?.click();
+      await el.updateComplete;
+      await settleView(el);
+
+      el.shadowRoot!.querySelector('audio-recorder#shadowing-recorder')!.dispatchEvent(
+        new CustomEvent('recording-complete', {
+          detail: {
+            blob: new Blob(['rec'], { type: 'audio/webm' }),
+            segments: [],
+            reason: 'manual',
+          },
+          bubbles: true,
+          composed: true,
+        }),
+      );
+      await vi.waitFor(() => {
+        expect(warningSpy).toHaveBeenCalled();
+      });
+      await settleView(el);
+
+      expect(mockSaveRecording).not.toHaveBeenCalled();
     });
 
     it('shows recording error when shadowing save fails', async () => {
