@@ -10,6 +10,7 @@ import { NARROW_VIEWPORT_MQ } from '../../lib/layout-compact.js';
 
 vi.mock('../../lib/export-content.js', () => ({
   exportRecording: vi.fn(),
+  exportRecordingsBatch: vi.fn(),
 }));
 
 const requestScoreMock = vi.fn();
@@ -27,7 +28,7 @@ vi.mock('../../lib/pronunciation-score/index.js', async (importOriginal) => {
 
 import './record-list.js';
 import type { RecordList } from './record-list.js';
-import { exportRecording } from '../../lib/export-content.js';
+import { exportRecording, exportRecordingsBatch } from '../../lib/export-content.js';
 import { mount, flushUpdates } from '../ui/test-utils.js';
 import { Message } from '../ui/message.js';
 import { RECORDING_PREVIEW_OPEN_EVENT } from '../../lib/audio-focus.js';
@@ -62,6 +63,7 @@ describe('record-list', () => {
     vi.spyOn(recordDb, 'getRecordingList').mockResolvedValue([]);
     vi.spyOn(recordDb, 'findRecordings').mockResolvedValue([]);
     vi.spyOn(recordDb, 'deleteRecording').mockResolvedValue(undefined as never);
+    vi.spyOn(recordDb, 'deleteRecordingBatch').mockResolvedValue(undefined as never);
     vi.spyOn(recordDb, 'getRecordingBlob').mockResolvedValue(null);
     vi.spyOn(mediaDb, 'getMediaBlob').mockResolvedValue(undefined as never);
     vi.spyOn(subtitleDb, 'getSubtitle').mockResolvedValue(undefined as never);
@@ -586,7 +588,7 @@ describe('record-list', () => {
     await list._handleBatchDelete();
     await flushUpdates();
 
-    expect(recordDb.deleteRecording).toHaveBeenCalledWith('rec-1');
+    expect(recordDb.deleteRecordingBatch).toHaveBeenCalledWith(['rec-1']);
     expect(changed).toHaveBeenCalledWith(
       expect.objectContaining({
         detail: { reason: 'batch-deleted' },
@@ -625,7 +627,7 @@ describe('record-list', () => {
       createdAt: 2,
     };
     vi.mocked(recordDb.getRecordingList).mockResolvedValue([sampleRecord, second]);
-    vi.mocked(exportRecording).mockResolvedValue(undefined);
+    vi.mocked(exportRecordingsBatch).mockResolvedValue({ failedCount: 0 });
     const el = await renderList();
     await el.refresh();
     await el.updateComplete;
@@ -642,14 +644,13 @@ describe('record-list', () => {
     await list._handleBatchExport();
     await flushUpdates();
 
-    expect(exportRecording).toHaveBeenCalledWith(sampleRecord);
-    expect(exportRecording).toHaveBeenCalledWith(second);
+    expect(exportRecordingsBatch).toHaveBeenCalledWith([second, sampleRecord]);
     expect(successSpy).toHaveBeenCalledWith('已导出 2 项');
   });
 
   it('shows batch export error when some exports fail', async () => {
     vi.mocked(recordDb.getRecordingList).mockResolvedValue([sampleRecord]);
-    vi.mocked(exportRecording).mockRejectedValue(new Error('export fail'));
+    vi.mocked(exportRecordingsBatch).mockResolvedValue({ failedCount: 1 });
     const el = await renderList();
     await el.refresh();
     await el.updateComplete;

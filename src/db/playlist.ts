@@ -217,6 +217,44 @@ export async function setPlaylistEntryOrder(
   return playlist;
 }
 
+function upsertPlaylistMediaEntry(
+  playlist: Playlist,
+  mediaId: string,
+  titleSnapshot: string,
+): void {
+  const existingIndex = playlist.entries.findIndex((e: PlaylistEntry) => e.mediaId === mediaId);
+  if (existingIndex >= 0) {
+    playlist.entries[existingIndex]!.removed = false;
+    playlist.entries[existingIndex]!.titleSnapshot = titleSnapshot;
+  } else {
+    playlist.entries.push({ mediaId, removed: false, titleSnapshot });
+  }
+}
+
+/**
+ * Add multiple media to a playlist in one read/write (avoids lost updates from parallel adds).
+ */
+export async function addMediaBatchToPlaylist(
+  playlistId: string,
+  mediaIds: string[],
+): Promise<Playlist | null> {
+  const uniqueIds = [...new Set(mediaIds.filter(Boolean))];
+  if (uniqueIds.length === 0) return null;
+
+  const db = await getDB();
+  const playlist = await db.get(STORE_PLAYLIST, playlistId);
+  if (!playlist) return null;
+
+  for (const mediaId of uniqueIds) {
+    const media = await getMedia(mediaId);
+    upsertPlaylistMediaEntry(playlist, mediaId, media?.title ?? '');
+  }
+
+  playlist.updatedAt = Date.now();
+  await db.put(STORE_PLAYLIST, playlist);
+  return playlist;
+}
+
 /**
  * Add media to playlist (upsert entry: if exists set removed=false, else append).
  */
@@ -224,26 +262,7 @@ export async function addMediaToPlaylist(
   playlistId: string,
   mediaId: string,
 ): Promise<Playlist | null> {
-  const db = await getDB();
-  const playlist = await db.get(STORE_PLAYLIST, playlistId);
-  if (!playlist) return null;
-
-  const media = await getMedia(mediaId);
-  const titleSnapshot = media?.title ?? '';
-
-  const existingIndex = playlist.entries.findIndex((e: PlaylistEntry) => e.mediaId === mediaId);
-  if (existingIndex >= 0) {
-    // Re-add: flip removed flag & refresh snapshot.
-    playlist.entries[existingIndex].removed = false;
-    playlist.entries[existingIndex].titleSnapshot = titleSnapshot;
-  } else {
-    // New entry.
-    playlist.entries.push({ mediaId, removed: false, titleSnapshot });
-  }
-
-  playlist.updatedAt = Date.now();
-  await db.put(STORE_PLAYLIST, playlist);
-  return playlist;
+  return addMediaBatchToPlaylist(playlistId, [mediaId]);
 }
 
 /**
@@ -306,23 +325,37 @@ export async function isMediaInFavorites(mediaId: string): Promise<boolean> {
 }
 
 /**
- * Mark media as removed in all playlists (called on media delete).
+ * Mark multiple media as removed in all playlists (single transaction).
  */
-export async function markMediaRemovedInAllPlaylists(mediaId: string): Promise<void> {
-  const db = await getDB();
-  const playlists = await getPlaylistList();
+export async function markMediaRemovedInAllPlaylistsBatch(mediaIds: string[]): Promise<void> {
+  const idSet = new Set(mediaIds.filter(Boolean));
+  if (idSet.size === 0) return;
 
+  const db = await getDB();
   const tx = db.transaction(STORE_PLAYLIST, 'readwrite');
   const store = tx.objectStore(STORE_PLAYLIST);
+  const playlists = await store.getAll();
 
   for (const playlist of playlists) {
-    const entry = playlist.entries.find((e) => e.mediaId === mediaId);
-    if (entry && !entry.removed) {
-      entry.removed = true;
+    let changed = false;
+    for (const entry of playlist.entries) {
+      if (idSet.has(entry.mediaId) && !entry.removed) {
+        entry.removed = true;
+        changed = true;
+      }
+    }
+    if (changed) {
       playlist.updatedAt = Date.now();
       await store.put(playlist);
     }
   }
 
   await tx.done;
+}
+
+/**
+ * Mark media as removed in all playlists (called on media delete).
+ */
+export async function markMediaRemovedInAllPlaylists(mediaId: string): Promise<void> {
+  await markMediaRemovedInAllPlaylistsBatch([mediaId]);
 }

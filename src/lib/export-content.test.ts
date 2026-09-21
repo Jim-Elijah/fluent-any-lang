@@ -8,11 +8,26 @@ import {
   formatSentenceBankFileName,
 } from './export-content.js';
 
+const mockGetRecordingBlobsBatch = vi.fn();
+const mockGetSentenceBankBlobsBatch = vi.fn();
+
 vi.mock('../db/service.js', () => ({
   getRecordingBlob: vi.fn(),
   getSentenceBankBlob: vi.fn(),
   getMedia: vi.fn(),
 }));
+
+vi.mock('../db/record.js', () => ({
+  getRecordingBlobsBatch: (...args: unknown[]) => mockGetRecordingBlobsBatch(...args),
+}));
+
+vi.mock('../db/sentence-bank.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../db/sentence-bank.js')>();
+  return {
+    ...actual,
+    getSentenceBankBlobsBatch: (...args: unknown[]) => mockGetSentenceBankBlobsBatch(...args),
+  };
+});
 
 function makeRecord(overrides: Partial<PracticeRecord> = {}): PracticeRecord {
   return {
@@ -115,6 +130,22 @@ describe('exportRecording', () => {
 
     const { exportRecording } = await import('./export-content.js');
     await expect(exportRecording(makeRecord())).rejects.toThrow('录音文件未找到');
+  });
+});
+
+describe('exportRecordingsBatch', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('returns failed count when a blob is missing', async () => {
+    mockGetRecordingBlobsBatch.mockResolvedValue(new Map([['rec-1', undefined]]));
+
+    const { exportRecordingsBatch } = await import('./export-content.js');
+    const result = await exportRecordingsBatch([makeRecord()]);
+
+    expect(result.failedCount).toBe(1);
+    expect(mockGetRecordingBlobsBatch).toHaveBeenCalledWith(['rec-1']);
   });
 });
 

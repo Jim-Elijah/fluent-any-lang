@@ -47,29 +47,66 @@ export async function countSentenceBankEntries(): Promise<number> {
 
 /** Soft-delete: mark removed, keep clipped audio for re-add. */
 export async function deleteSentenceBankEntry(id: string): Promise<void> {
-  const db = await getDB();
-  const existing = await db.get(STORE_SENTENCE_BANK, id);
-  if (!existing || existing.removed) {
-    return;
-  }
-  await db.put(STORE_SENTENCE_BANK, { ...existing, removed: true });
+  await deleteSentenceBankEntriesBatch([id]);
 }
 
-export async function markSentenceBankSourceUnavailable(mediaId: string): Promise<void> {
-  const db = await getDB();
-  const entries = await db.getAllFromIndex(STORE_SENTENCE_BANK, 'bySourceMediaId', mediaId);
-  if (entries.length === 0) {
-    return;
-  }
+export async function deleteSentenceBankEntriesBatch(ids: string[]): Promise<void> {
+  const uniqueIds = [...new Set(ids.filter(Boolean))];
+  if (uniqueIds.length === 0) return;
 
+  const db = await getDB();
   const tx = db.transaction(STORE_SENTENCE_BANK, 'readwrite');
   const store = tx.objectStore(STORE_SENTENCE_BANK);
-  for (const entry of entries) {
-    if (entry.sourceAvailable) {
-      await store.put({ ...entry, sourceAvailable: false });
+  for (const id of uniqueIds) {
+    const existing = await store.get(id);
+    if (!existing || existing.removed) {
+      continue;
+    }
+    await store.put({ ...existing, removed: true });
+  }
+  await tx.done;
+}
+
+export async function getSentenceBankBlobsBatch(
+  entryIds: string[],
+): Promise<Map<string, SentenceBankBlob | undefined>> {
+  const uniqueIds = [...new Set(entryIds.filter(Boolean))];
+  const result = new Map<string, SentenceBankBlob | undefined>();
+  if (uniqueIds.length === 0) return result;
+
+  const db = await getDB();
+  const tx = db.transaction(STORE_SENTENCE_BANK_BLOB, 'readonly');
+  const store = tx.objectStore(STORE_SENTENCE_BANK_BLOB);
+  for (const id of uniqueIds) {
+    result.set(id, await store.get(id));
+  }
+  await tx.done;
+  return result;
+}
+
+export async function markSentenceBankSourceUnavailableBatch(mediaIds: string[]): Promise<void> {
+  const uniqueIds = [...new Set(mediaIds.filter(Boolean))];
+  if (uniqueIds.length === 0) return;
+
+  const db = await getDB();
+  const tx = db.transaction(STORE_SENTENCE_BANK, 'readwrite');
+  const store = tx.objectStore(STORE_SENTENCE_BANK);
+  const index = store.index('bySourceMediaId');
+  for (const mediaId of uniqueIds) {
+    let cursor = await index.openCursor(mediaId);
+    while (cursor) {
+      const entry = cursor.value;
+      if (entry.sourceAvailable) {
+        await cursor.update({ ...entry, sourceAvailable: false });
+      }
+      cursor = await cursor.continue();
     }
   }
   await tx.done;
+}
+
+export async function markSentenceBankSourceUnavailable(mediaId: string): Promise<void> {
+  await markSentenceBankSourceUnavailableBatch([mediaId]);
 }
 
 export async function markSentenceBankSourceAvailable(mediaId: string): Promise<void> {

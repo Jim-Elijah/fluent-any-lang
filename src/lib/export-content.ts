@@ -4,6 +4,10 @@ import { getAppSettings } from './app-settings.js';
 import { formatDate } from './playback-utils.js';
 import type { PracticeRecord, SentenceBankEntry } from '../types/models.js';
 import { getMedia, getRecordingBlob, getSentenceBankBlob } from '../db/service.js';
+import { getRecordingBlobsBatch } from '../db/record.js';
+import { getSentenceBankBlobsBatch } from '../db/sentence-bank.js';
+
+export type BatchExportResult = { failedCount: number };
 
 /** Short prefix of UUID/hash ids so export filenames stay readable. */
 const ID_PREFIX_LEN = 8;
@@ -63,10 +67,49 @@ export async function exportRecording(recording: PracticeRecord): Promise<void> 
   downloadBlob(blob, formatRecordingFileName(recording, mediaItem?.title));
 }
 
+export async function exportRecordingsBatch(
+  recordings: PracticeRecord[],
+): Promise<BatchExportResult> {
+  if (recordings.length === 0) return { failedCount: 0 };
+
+  const blobs = await getRecordingBlobsBatch(recordings.map((r) => r.id));
+  let failedCount = 0;
+  for (const recording of recordings) {
+    try {
+      const blob = blobs.get(recording.id);
+      if (!blob) throw new Error(msg('录音文件未找到'));
+      const mediaItem = await getMedia(recording.mediaId);
+      downloadBlob(blob, formatRecordingFileName(recording, mediaItem?.title));
+    } catch {
+      failedCount += 1;
+    }
+  }
+  return { failedCount };
+}
+
 export async function exportSentenceBankEntry(entry: SentenceBankEntry): Promise<void> {
   const blobRecord = await getSentenceBankBlob(entry.id);
   if (!blobRecord) throw new Error(msg('句库音频未找到'));
   downloadBlob(blobRecord.blob, formatSentenceBankFileName(entry, blobRecord.mimeType));
+}
+
+export async function exportSentenceBankEntriesBatch(
+  entries: SentenceBankEntry[],
+): Promise<BatchExportResult> {
+  if (entries.length === 0) return { failedCount: 0 };
+
+  const blobs = await getSentenceBankBlobsBatch(entries.map((e) => e.id));
+  let failedCount = 0;
+  for (const entry of entries) {
+    try {
+      const blobRecord = blobs.get(entry.id);
+      if (!blobRecord) throw new Error(msg('句库音频未找到'));
+      downloadBlob(blobRecord.blob, formatSentenceBankFileName(entry, blobRecord.mimeType));
+    } catch {
+      failedCount += 1;
+    }
+  }
+  return { failedCount };
 }
 
 export async function estimateStorage() {

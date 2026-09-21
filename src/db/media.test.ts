@@ -70,4 +70,24 @@ describe('media db', () => {
     expect(await getMediaBlob(item.id)).toBeUndefined();
     expect(await countMedia()).toBe(0);
   });
+
+  it('deleteMediaBatch removes multiple media and marks playlists', async () => {
+    const { addMedia, deleteMediaBatch, getMedia, countMedia } = await import('./media.js');
+    const { addMediaToPlaylist, createPlaylist, getPlaylist } = await import('./playlist.js');
+    const a = makeMediaItem({ id: 'media-a', title: 'A' });
+    const b = makeMediaItem({ id: 'media-b', title: 'B', createdAt: 2_000 });
+    await addMedia(a, makeMediaBlob(a.id));
+    await addMedia(b, makeMediaBlob(b.id));
+    const playlist = await createPlaylist('Course');
+    await addMediaToPlaylist(playlist.id, a.id);
+    await addMediaToPlaylist(playlist.id, b.id);
+
+    await deleteMediaBatch([a.id, b.id]);
+
+    expect(await countMedia()).toBe(0);
+    expect(await getMedia(a.id)).toBeUndefined();
+    expect(await getMedia(b.id)).toBeUndefined();
+    const stored = await getPlaylist(playlist.id);
+    expect(stored?.entries.every((e) => e.removed)).toBe(true);
+  });
 });

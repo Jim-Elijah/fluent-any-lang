@@ -13,6 +13,7 @@ import { getDB } from './index.js';
 import { addMedia, deleteMedia } from './media.js';
 import {
   addToSentenceBank,
+  deleteSentenceBankEntriesBatch,
   getSentenceBankBlob,
   getSentenceBankEntry,
   getSentenceBankEntryByContentHash,
@@ -161,6 +162,40 @@ describe('sentence-bank', () => {
     expect(revived.entry.removed).toBe(false);
     expect(clipSpy).not.toHaveBeenCalled();
     expect(await getSentenceBankList()).toHaveLength(1);
+  });
+
+  it('deleteSentenceBankEntriesBatch soft-deletes multiple entries in one transaction', async () => {
+    const db = await getDB();
+    const entryA: SentenceBankEntry = {
+      id: 'entry-a',
+      contentHash: 'hash-a',
+      text: 'One',
+      sourceMediaId: 'media-1',
+      sourceSegmentId: 'seg-a',
+      sourceStartTime: 0,
+      sourceEndTime: 1,
+      sourceTitleSnapshot: 'Ep',
+      sourceMediaType: 'audio',
+      sourceAvailable: true,
+      removed: false,
+      createdAt: 1,
+    };
+    const entryB: SentenceBankEntry = {
+      ...entryA,
+      id: 'entry-b',
+      contentHash: 'hash-b',
+      text: 'Two',
+      sourceSegmentId: 'seg-b',
+      createdAt: 2,
+    };
+    await db.put(STORE_SENTENCE_BANK, entryA);
+    await db.put(STORE_SENTENCE_BANK, entryB);
+
+    await deleteSentenceBankEntriesBatch([entryA.id, entryB.id]);
+
+    expect(await getSentenceBankList()).toHaveLength(0);
+    expect((await getSentenceBankEntry(entryA.id))?.removed).toBe(true);
+    expect((await getSentenceBankEntry(entryB.id))?.removed).toBe(true);
   });
 
   it('hides soft-deleted entries from the active list', async () => {

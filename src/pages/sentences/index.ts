@@ -3,9 +3,13 @@ import { css, html, LitElement, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { navigator } from 'lit-element-router';
 
-import { deleteSentenceBankEntry, getSentenceBankList } from '../../db/service.js';
+import {
+  deleteSentenceBankEntry,
+  deleteSentenceBankEntriesBatch,
+  getSentenceBankList,
+} from '../../db/service.js';
 import { reportError } from '../../lib/error-reporter.js';
-import { exportSentenceBankEntry } from '../../lib/export-content.js';
+import { exportSentenceBankEntry, exportSentenceBankEntriesBatch } from '../../lib/export-content.js';
 import { COMPACT_VIEWPORT_MQ } from '../../lib/layout-compact.js';
 import { formatDate, formatTime } from '../../lib/playback-utils.js';
 import type { SentenceBankEntry, SortDirection } from '../../types/models.js';
@@ -447,11 +451,8 @@ export class SentencesPage extends NavigatorElement {
     if (toExport.length === 0) return;
     this._batchExporting = true;
     try {
-      const results = await Promise.allSettled(
-        toExport.map((item) => exportSentenceBankEntry(item)),
-      );
-      const failed = results.filter((r) => r.status === 'rejected').length;
-      if (failed > 0) {
+      const { failedCount } = await exportSentenceBankEntriesBatch(toExport);
+      if (failedCount > 0) {
         Message.error(msg('部分条目导出失败'));
       } else {
         Message.success(msg(str`已导出 ${toExport.length} 项`));
@@ -467,20 +468,16 @@ export class SentencesPage extends NavigatorElement {
     if (toDelete.length === 0) return;
     this._batchDeleting = true;
     try {
-      const results = await Promise.allSettled(
-        toDelete.map((id) => deleteSentenceBankEntry(id)),
-      );
-      const failed = results.filter((r) => r.status === 'rejected').length;
-      if (failed > 0) {
-        Message.error(msg('部分条目删除失败'));
-      } else {
+      try {
+        await deleteSentenceBankEntriesBatch(toDelete);
         Message.success(msg('批量删除完成'));
+        const deleted = new Set(toDelete);
+        this._entries = this._entries.filter((item) => !deleted.has(item.id));
+        this._selected = new Set([...this._selected].filter((id) => !deleted.has(id)));
+      } catch (error) {
+        void reportError(error, { where: 'sentences-page.batchDelete', count: toDelete.length });
+        Message.error(msg('部分条目删除失败'));
       }
-      const deleted = new Set(
-        toDelete.filter((_, index) => results[index]?.status === 'fulfilled'),
-      );
-      this._entries = this._entries.filter((item) => !deleted.has(item.id));
-      this._selected = new Set([...this._selected].filter((id) => !deleted.has(id)));
     } finally {
       this._batchDeleting = false;
     }

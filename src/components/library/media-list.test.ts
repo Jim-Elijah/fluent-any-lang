@@ -59,6 +59,7 @@ describe('media-list', () => {
     localStorage.clear();
     vi.spyOn(mediaDb, 'getMediaList').mockResolvedValue([]);
     vi.spyOn(mediaDb, 'deleteMedia').mockResolvedValue(undefined as never);
+    vi.spyOn(mediaDb, 'deleteMediaBatch').mockResolvedValue(undefined as never);
     vi.spyOn(subtitleDb, 'deleteSubtitle').mockResolvedValue(undefined as never);
     vi.spyOn(playlistDb, 'getPlaylistList').mockResolvedValue([
       {
@@ -90,6 +91,7 @@ describe('media-list', () => {
       updatedAt: 1,
     });
     vi.spyOn(playlistDb, 'addMediaToPlaylist').mockResolvedValue(null);
+    vi.spyOn(playlistDb, 'addMediaBatchToPlaylist').mockResolvedValue(null);
     vi.spyOn(playlistDb, 'createPlaylist').mockResolvedValue({
       id: 'playlist-new',
       name: 'New List',
@@ -275,7 +277,7 @@ describe('media-list', () => {
     await el.updateComplete;
 
     expect(playlistDb.createPlaylist).toHaveBeenCalledWith('Daily');
-    expect(playlistDb.addMediaToPlaylist).toHaveBeenCalledWith('playlist-new', 'media-1');
+    expect(playlistDb.addMediaBatchToPlaylist).toHaveBeenCalledWith('playlist-new', ['media-1']);
     expect(modal?.open).toBe(false);
   });
 
@@ -516,8 +518,10 @@ describe('media-list', () => {
     );
     await el.updateComplete;
 
-    expect(playlistDb.addMediaToPlaylist).toHaveBeenCalledWith('playlist-1', 'media-1');
-    expect(playlistDb.addMediaToPlaylist).toHaveBeenCalledWith('playlist-1', 'media-2');
+    expect(playlistDb.addMediaBatchToPlaylist).toHaveBeenCalledWith('playlist-1', [
+      'media-1',
+      'media-2',
+    ]);
     expect(changed).toHaveBeenCalled();
     expect(successSpy).toHaveBeenCalled();
   });
@@ -547,8 +551,10 @@ describe('media-list', () => {
     await el.updateComplete;
 
     expect(playlistDb.createPlaylist).toHaveBeenCalledWith('Course A');
-    expect(playlistDb.addMediaToPlaylist).toHaveBeenCalledWith('playlist-new', 'media-1');
-    expect(playlistDb.addMediaToPlaylist).toHaveBeenCalledWith('playlist-new', 'media-2');
+    expect(playlistDb.addMediaBatchToPlaylist).toHaveBeenCalledWith('playlist-new', [
+      'media-1',
+      'media-2',
+    ]);
   });
 
   it('shows batch add-to-playlist control in selection mode', async () => {
@@ -612,8 +618,10 @@ describe('media-list', () => {
     );
     await el.updateComplete;
 
-    expect(playlistDb.addMediaToPlaylist).toHaveBeenCalledWith(FAVORITES_PLAYLIST_ID, 'media-1');
-    expect(playlistDb.addMediaToPlaylist).toHaveBeenCalledWith(FAVORITES_PLAYLIST_ID, 'media-2');
+    expect(playlistDb.addMediaBatchToPlaylist).toHaveBeenCalledWith(FAVORITES_PLAYLIST_ID, [
+      'media-1',
+      'media-2',
+    ]);
   });
 
   it('uses fill-height layout for the virtual grid container', async () => {

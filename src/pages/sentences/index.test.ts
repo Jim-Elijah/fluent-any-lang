@@ -6,16 +6,22 @@ import { flushUpdates, mount } from '../../components/ui/test-utils.js';
 
 const mockGetSentenceBankList = vi.fn();
 const mockDeleteSentenceBankEntry = vi.fn();
+const mockDeleteSentenceBankEntriesBatch = vi.fn();
 const mockExportSentenceBankEntry = vi.fn();
+const mockExportSentenceBankEntriesBatch = vi.fn();
 const mockReportError = vi.fn().mockResolvedValue(undefined);
 
 vi.mock('../../db/service.js', () => ({
   getSentenceBankList: (...args: unknown[]) => mockGetSentenceBankList(...args),
   deleteSentenceBankEntry: (...args: unknown[]) => mockDeleteSentenceBankEntry(...args),
+  deleteSentenceBankEntriesBatch: (...args: unknown[]) =>
+    mockDeleteSentenceBankEntriesBatch(...args),
 }));
 
 vi.mock('../../lib/export-content.js', () => ({
   exportSentenceBankEntry: (...args: unknown[]) => mockExportSentenceBankEntry(...args),
+  exportSentenceBankEntriesBatch: (...args: unknown[]) =>
+    mockExportSentenceBankEntriesBatch(...args),
 }));
 
 vi.mock('../../lib/error-reporter.js', () => ({
@@ -67,7 +73,9 @@ describe('sentences-page', () => {
   beforeEach(() => {
     mockGetSentenceBankList.mockReset();
     mockDeleteSentenceBankEntry.mockReset();
+    mockDeleteSentenceBankEntriesBatch.mockReset();
     mockExportSentenceBankEntry.mockReset();
+    mockExportSentenceBankEntriesBatch.mockReset();
     mockReportError.mockClear();
     Message.closeAll();
     stubMatchMedia(false);
@@ -366,7 +374,7 @@ describe('sentences-page', () => {
     const first = makeEntry({ id: 'entry-1' });
     const second = makeEntry({ id: 'entry-2', text: 'Second', createdAt: 2 });
     mockGetSentenceBankList.mockResolvedValue([first, second]);
-    mockExportSentenceBankEntry.mockResolvedValue(undefined);
+    mockExportSentenceBankEntriesBatch.mockResolvedValue({ failedCount: 0 });
     const el = await renderPage();
     const page = el as unknown as {
       _selected: Set<string>;
@@ -380,8 +388,7 @@ describe('sentences-page', () => {
     await page._handleBatchExport();
     await flushUpdates();
 
-    expect(mockExportSentenceBankEntry).toHaveBeenCalledWith(first);
-    expect(mockExportSentenceBankEntry).toHaveBeenCalledWith(second);
+    expect(mockExportSentenceBankEntriesBatch).toHaveBeenCalledWith([first, second]);
     expect(successSpy).toHaveBeenCalledWith('已导出 2 项');
   });
 
@@ -390,7 +397,7 @@ describe('sentences-page', () => {
       makeEntry({ id: 'entry-1' }),
       makeEntry({ id: 'entry-2', text: 'Second', createdAt: 2 }),
     ]);
-    mockDeleteSentenceBankEntry.mockResolvedValue(undefined);
+    mockDeleteSentenceBankEntriesBatch.mockResolvedValue(undefined);
     const el = await renderPage();
     const page = el as unknown as {
       _selected: Set<string>;
@@ -404,8 +411,7 @@ describe('sentences-page', () => {
     await page._handleBatchDelete();
     await flushUpdates();
 
-    expect(mockDeleteSentenceBankEntry).toHaveBeenCalledWith('entry-1');
-    expect(mockDeleteSentenceBankEntry).toHaveBeenCalledWith('entry-2');
+    expect(mockDeleteSentenceBankEntriesBatch).toHaveBeenCalledWith(['entry-1', 'entry-2']);
     expect(successSpy).toHaveBeenCalledWith('批量删除完成');
     expect(el.shadowRoot?.querySelectorAll('.item').length).toBe(0);
   });

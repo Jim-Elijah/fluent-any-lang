@@ -5,12 +5,14 @@ import { keyed } from 'lit/directives/keyed.js';
 
 import {
   deleteMedia,
+  deleteMediaBatch,
   getMediaList,
   deleteSubtitle,
   toggleFavorites,
   getPlaylist,
   getPlaylistList,
   addMediaToPlaylist,
+  addMediaBatchToPlaylist,
   createPlaylist,
   isPlaylistNameConflictError,
 } from '../../db/service.js';
@@ -838,10 +840,12 @@ export class MediaList extends LitElement {
     this._createPlaylistBusy = true;
     try {
       const playlist = await createPlaylist(name);
-      const results = await Promise.allSettled(
-        mediaIds.map((mediaId) => addMediaToPlaylist(playlist.id, mediaId)),
-      );
-      const failed = results.filter((r) => r.status === 'rejected').length;
+      let failed = 0;
+      try {
+        await addMediaBatchToPlaylist(playlist.id, mediaIds);
+      } catch {
+        failed = mediaIds.length;
+      }
       const playlists = await getPlaylistList();
       this._playlists = playlists
         .filter((item) => item.kind === 'user')
@@ -921,15 +925,15 @@ export class MediaList extends LitElement {
 
     this._batchAddingToPlaylist = true;
     try {
-      const results = await Promise.allSettled(
-        mediaIds.map((mediaId) => addMediaToPlaylist(playlistId, mediaId)),
-      );
-      const failed = results.filter((r) => r.status === 'rejected').length;
-      if (playlistId === FAVORITES_PLAYLIST_ID) {
-        for (let i = 0; i < mediaIds.length; i++) {
-          if (results[i]?.status === 'fulfilled') {
-            this._favoriteStates.set(mediaIds[i]!, true);
-          }
+      let failed = 0;
+      try {
+        await addMediaBatchToPlaylist(playlistId, mediaIds);
+      } catch {
+        failed = mediaIds.length;
+      }
+      if (playlistId === FAVORITES_PLAYLIST_ID && failed === 0) {
+        for (const mediaId of mediaIds) {
+          this._favoriteStates.set(mediaId, true);
         }
         this.requestUpdate();
       }
@@ -1081,18 +1085,16 @@ export class MediaList extends LitElement {
     if (toDelete.length === 0) return;
     this._batchDeleting = true;
     try {
-      const results = await Promise.allSettled(
-        toDelete.map((id) => Promise.all([deleteMedia(id), deleteSubtitle(id)])),
-      );
-      const failed = results.filter((r) => r.status === 'rejected').length;
-      if (failed > 0) {
-        Message.error(msg('部分媒体删除失败'));
-      } else {
+      try {
+        await deleteMediaBatch(toDelete);
         Message.success(msg('批量删除完成'));
+        const deleted = new Set(toDelete);
+        this._selected = new Set([...this._selected].filter((id) => !deleted.has(id)));
+        await this.refresh();
+      } catch (error) {
+        void reportError(error, { where: 'media-list.batchDelete', count: toDelete.length });
+        Message.error(msg('部分媒体删除失败'));
       }
-      const deleted = new Set(toDelete);
-      this._selected = new Set([...this._selected].filter((id) => !deleted.has(id)));
-      await this.refresh();
     } finally {
       this._batchDeleting = false;
     }

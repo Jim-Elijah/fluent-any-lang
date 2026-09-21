@@ -37,10 +37,21 @@ export async function countNoise(): Promise<number> {
   return db.count(STORE_NOISE);
 }
 
-export async function deleteNoise(id: string): Promise<void> {
+export async function deleteNoiseBatch(ids: string[]): Promise<void> {
+  const uniqueIds = [...new Set(ids.filter(Boolean))];
+  if (uniqueIds.length === 0) return;
+
   const db = await getDB();
   const tx = db.transaction([STORE_NOISE, STORE_NOISE_BLOB], 'readwrite');
-  await tx.objectStore(STORE_NOISE).delete(id);
-  await tx.objectStore(STORE_NOISE_BLOB).delete(id);
+  const noiseStore = tx.objectStore(STORE_NOISE);
+  const blobStore = tx.objectStore(STORE_NOISE_BLOB);
+  for (const id of uniqueIds) {
+    await noiseStore.delete(id);
+    await blobStore.delete(id);
+  }
   await tx.done;
+}
+
+export async function deleteNoise(id: string): Promise<void> {
+  await deleteNoiseBatch([id]);
 }

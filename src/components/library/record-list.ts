@@ -6,6 +6,7 @@ import { getMediaBlob } from '../../db/media.js';
 import {
   findRecordings,
   deleteRecording,
+  deleteRecordingBatch,
   getRecordingList,
   getRecordingBlob,
   getSubtitle,
@@ -24,7 +25,8 @@ import {
 } from '../../lib/pronunciation-score/index.js';
 import { scoreBandStyles } from '../shared/score-band-styles.js';
 import { getAppSettings } from '../../lib/app-settings.js';
-import { exportRecording } from '../../lib/export-content.js';
+import { exportRecording, exportRecordingsBatch } from '../../lib/export-content.js';
+import { reportError } from '../../lib/error-reporter.js';
 import {
   dispatchRecordingPreviewClose,
   dispatchRecordingPreviewOpen,
@@ -964,9 +966,8 @@ export class RecordList extends LitElement {
     if (toExport.length === 0) return;
     this._batchExporting = true;
     try {
-      const results = await Promise.allSettled(toExport.map((item) => exportRecording(item)));
-      const failed = results.filter((r) => r.status === 'rejected').length;
-      if (failed > 0) {
+      const { failedCount } = await exportRecordingsBatch(toExport);
+      if (failedCount > 0) {
         Message.error(msg('部分录音导出失败'));
       } else {
         Message.success(msg(str`已导出 ${toExport.length} 项`));
@@ -982,17 +983,17 @@ export class RecordList extends LitElement {
     if (toDelete.length === 0) return;
     this._batchDeleting = true;
     try {
-      const results = await Promise.allSettled(toDelete.map((id) => deleteRecording(id)));
-      const failed = results.filter((r) => r.status === 'rejected').length;
-      if (failed > 0) {
-        Message.error(msg('部分录音删除失败'));
-      } else {
+      try {
+        await deleteRecordingBatch(toDelete);
         Message.success(msg('批量删除完成'));
+        const deleted = new Set(toDelete);
+        this._selected = new Set([...this._selected].filter((id) => !deleted.has(id)));
+        await this.refresh();
+        this._emitRecordingsChanged('batch-deleted');
+      } catch (error) {
+        void reportError(error, { where: 'record-list.batchDelete', count: toDelete.length });
+        Message.error(msg('部分录音删除失败'));
       }
-      const deleted = new Set(toDelete);
-      this._selected = new Set([...this._selected].filter((id) => !deleted.has(id)));
-      await this.refresh();
-      this._emitRecordingsChanged('batch-deleted');
     } finally {
       this._batchDeleting = false;
     }

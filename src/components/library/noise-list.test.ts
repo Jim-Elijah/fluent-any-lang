@@ -6,12 +6,14 @@ import { flushUpdates, mount } from '../ui/test-utils.js';
 
 const mockGetNoiseList = vi.fn();
 const mockDeleteNoise = vi.fn();
+const mockDeleteNoiseBatch = vi.fn();
 const mockImportNoiseFiles = vi.fn();
 const mockReportError = vi.fn().mockResolvedValue(undefined);
 
 vi.mock('../../db/noise.js', () => ({
   getNoiseList: (...args: unknown[]) => mockGetNoiseList(...args),
   deleteNoise: (...args: unknown[]) => mockDeleteNoise(...args),
+  deleteNoiseBatch: (...args: unknown[]) => mockDeleteNoiseBatch(...args),
 }));
 
 vi.mock('../../lib/import-noise.js', () => ({
@@ -224,7 +226,7 @@ describe('noise-list', () => {
         makeItem({ id: 'noise-2', title: 'Wind', createdAt: 200 }),
       ])
       .mockResolvedValue([]);
-    mockDeleteNoise.mockResolvedValue(undefined);
+    mockDeleteNoiseBatch.mockResolvedValue(undefined);
     const el = await renderList() as NoiseList & {
       _selected: Set<string>;
       _visibleIds: string[];
@@ -238,8 +240,7 @@ describe('noise-list', () => {
     await el._handleBatchDelete();
     await flushUpdates();
 
-    expect(mockDeleteNoise).toHaveBeenCalledWith('noise-1');
-    expect(mockDeleteNoise).toHaveBeenCalledWith('noise-2');
+    expect(mockDeleteNoiseBatch).toHaveBeenCalledWith(['noise-1', 'noise-2']);
     expect(successSpy).toHaveBeenCalledWith('批量删除完成');
   });
 });

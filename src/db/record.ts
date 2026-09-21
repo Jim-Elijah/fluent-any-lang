@@ -90,19 +90,50 @@ export async function findAllEchoRecordings(mediaId: string): Promise<PracticeRe
 
 // delete
 // delete recording and its blob
-export async function deleteRecording(id: string): Promise<void> {
+export async function deleteRecordingBatch(ids: string[]): Promise<void> {
+  const uniqueIds = [...new Set(ids.filter(Boolean))];
+  if (uniqueIds.length === 0) return;
+
   const db = await getDB();
   const tx = db.transaction(
     [STORE_RECORDING, STORE_RECORDING_BLOB, STORE_PRONUNCIATION_SCORE],
     'readwrite',
   );
+  const recordingStore = tx.objectStore(STORE_RECORDING);
+  const blobStore = tx.objectStore(STORE_RECORDING_BLOB);
+  const scoreStore = tx.objectStore(STORE_PRONUNCIATION_SCORE);
+  const scoreIndex = scoreStore.index('byRecordId');
 
-  const score = await tx.objectStore(STORE_PRONUNCIATION_SCORE).index('byRecordId').get(id);
-  await tx.objectStore(STORE_RECORDING).delete(id);
-  await tx.objectStore(STORE_RECORDING_BLOB).delete(id);
-  if (score) {
-    await tx.objectStore(STORE_PRONUNCIATION_SCORE).delete(score.id);
+  for (const id of uniqueIds) {
+    const score = await scoreIndex.get(id);
+    await recordingStore.delete(id);
+    await blobStore.delete(id);
+    if (score) {
+      await scoreStore.delete(score.id);
+    }
   }
 
   await tx.done;
+}
+
+export async function deleteRecording(id: string): Promise<void> {
+  await deleteRecordingBatch([id]);
+}
+
+export async function getRecordingBlobsBatch(
+  recordIds: string[],
+): Promise<Map<string, Blob | undefined>> {
+  const uniqueIds = [...new Set(recordIds.filter(Boolean))];
+  const result = new Map<string, Blob | undefined>();
+  if (uniqueIds.length === 0) return result;
+
+  const db = await getDB();
+  const tx = db.transaction(STORE_RECORDING_BLOB, 'readonly');
+  const store = tx.objectStore(STORE_RECORDING_BLOB);
+  for (const id of uniqueIds) {
+    const record = await store.get(id);
+    result.set(id, record?.blob);
+  }
+  await tx.done;
+  return result;
 }

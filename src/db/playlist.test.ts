@@ -6,6 +6,7 @@ import { FAVORITES_PLAYLIST_ID } from '../types/models.js';
 import type { Playlist, PlaylistEntry } from '../types/models.js';
 import {
   addMedia,
+  addMediaBatchToPlaylist,
   addMediaToPlaylist,
   createPlaylist,
   deleteMedia,
@@ -84,6 +85,25 @@ describe('playlist', () => {
     await expect(updatePlaylist(rock.id, { name: ' Rock ' })).resolves.toMatchObject({
       name: 'Rock',
     });
+  });
+
+  it('addMediaBatchToPlaylist adds multiple media in one write', async () => {
+    const m1 = makeMedia('m1', 'Song 1');
+    const m2 = makeMedia('m2', 'Song 2');
+    const m3 = makeMedia('m3', 'Song 3');
+    const blob: MediaBlob = { mediaId: 'x', blob: new Blob(['audio']) };
+    await addMedia(m1, { ...blob, mediaId: m1.id });
+    await addMedia(m2, { ...blob, mediaId: m2.id });
+    await addMedia(m3, { ...blob, mediaId: m3.id });
+
+    const playlist = await createPlaylist('Batch');
+    const updated = await addMediaBatchToPlaylist(playlist.id, [m1.id, m2.id, m3.id]);
+
+    expect(updated?.entries.filter((e) => !e.removed)).toHaveLength(3);
+    expect(updated?.entries.map((e) => e.mediaId).sort()).toEqual(['m1', 'm2', 'm3']);
+
+    const stored = await getPlaylist(playlist.id);
+    expect(stored?.entries.filter((e) => !e.removed)).toHaveLength(3);
   });
 
   it('adds media to playlist (upsert logic)', async () => {

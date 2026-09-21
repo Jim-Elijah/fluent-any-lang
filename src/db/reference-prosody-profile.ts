@@ -43,14 +43,25 @@ export async function deleteReferenceProsodyProfile(
   await db.delete(STORE_REFERENCE_PROSODY_PROFILE, referenceProsodyProfileId(mediaId, segmentId));
 }
 
-export async function deleteReferenceProsodyProfilesByMediaId(mediaId: string): Promise<void> {
+export async function deleteReferenceProsodyProfilesByMediaIdsBatch(
+  mediaIds: string[],
+): Promise<void> {
+  const uniqueIds = [...new Set(mediaIds.filter(Boolean))];
+  if (uniqueIds.length === 0) return;
+
   const db = await getDB();
   const tx = db.transaction(STORE_REFERENCE_PROSODY_PROFILE, 'readwrite');
   const index = tx.objectStore(STORE_REFERENCE_PROSODY_PROFILE).index('byMediaId');
-  let cursor = await index.openCursor(mediaId);
-  while (cursor) {
-    await cursor.delete();
-    cursor = await cursor.continue();
+  for (const mediaId of uniqueIds) {
+    let cursor = await index.openCursor(mediaId);
+    while (cursor) {
+      await cursor.delete();
+      cursor = await cursor.continue();
+    }
   }
   await tx.done;
+}
+
+export async function deleteReferenceProsodyProfilesByMediaId(mediaId: string): Promise<void> {
+  await deleteReferenceProsodyProfilesByMediaIdsBatch([mediaId]);
 }

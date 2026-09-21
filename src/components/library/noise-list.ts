@@ -2,7 +2,7 @@ import { msg, localized, str } from '@lit/localize';
 import { css, html, LitElement } from 'lit';
 import { customElement, property, query, state } from 'lit/decorators.js';
 
-import { deleteNoise, getNoiseList } from '../../db/noise.js';
+import { deleteNoise, deleteNoiseBatch, getNoiseList } from '../../db/noise.js';
 import { importNoiseFiles } from '../../lib/import-noise.js';
 import { estimateListNaturalHeight, type ListMetricsDetail } from '../../lib/split-list-heights.js';
 import { formatDate, formatTime } from '../../lib/playback-utils.js';
@@ -381,16 +381,16 @@ export class NoiseList extends LitElement {
     if (toDelete.length === 0) return;
     this._batchDeleting = true;
     try {
-      const results = await Promise.allSettled(toDelete.map((id) => deleteNoise(id)));
-      const failed = results.filter((r) => r.status === 'rejected').length;
-      if (failed > 0) {
-        Message.error(msg('部分噪音素材删除失败'));
-      } else {
+      try {
+        await deleteNoiseBatch(toDelete);
         Message.success(msg('批量删除完成'));
+        const deleted = new Set(toDelete);
+        this._selected = new Set([...this._selected].filter((id) => !deleted.has(id)));
+        await this.refresh();
+      } catch (error) {
+        void reportError(error, { where: 'noise-list.batchDelete', count: toDelete.length });
+        Message.error(msg('部分噪音素材删除失败'));
       }
-      const deleted = new Set(toDelete);
-      this._selected = new Set([...this._selected].filter((id) => !deleted.has(id)));
-      await this.refresh();
     } finally {
       this._batchDeleting = false;
     }

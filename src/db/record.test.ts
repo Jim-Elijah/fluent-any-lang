@@ -67,6 +67,19 @@ describe('record db', () => {
     expect(await getRecordingList()).toEqual([]);
   });
 
+  it('deleteRecordingBatch removes multiple recordings in one transaction', async () => {
+    const { saveRecording, deleteRecordingBatch, getRecordingList } = await import('./record.js');
+    const first = makeRecord({ id: 'rec-a', createdAt: 100 });
+    const second = makeRecord({ id: 'rec-b', createdAt: 200 });
+    const blob = new Blob(['audio'], { type: 'audio/webm' });
+    await saveRecording(first, blob);
+    await saveRecording(second, blob);
+
+    await deleteRecordingBatch([first.id, second.id]);
+
+    expect(await getRecordingList()).toEqual([]);
+  });
+
   it('filters echo recordings by segment', async () => {
     const { saveRecording, findEchoRecordings, countEchoRecordings, countShadowingRecordings } =
       await import('./record.js');

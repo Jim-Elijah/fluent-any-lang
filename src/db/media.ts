@@ -1,11 +1,11 @@
 import { getDB } from './index.js';
-import { STORE_MEDIA, STORE_MEDIA_BLOB } from './schema.js';
+import { STORE_MEDIA, STORE_MEDIA_BLOB, STORE_SUBTITLE } from './schema.js';
 import type { MediaBlob, MediaItem } from '../types/models.js';
-import { markMediaRemovedInAllPlaylists } from './playlist.js';
-import { deleteReferenceProsodyProfilesByMediaId } from './reference-prosody-profile.js';
+import { markMediaRemovedInAllPlaylistsBatch } from './playlist.js';
+import { deleteReferenceProsodyProfilesByMediaIdsBatch } from './reference-prosody-profile.js';
 import {
   markSentenceBankSourceAvailable,
-  markSentenceBankSourceUnavailable,
+  markSentenceBankSourceUnavailableBatch,
 } from './sentence-bank.js';
 
 // create/insert
@@ -60,17 +60,33 @@ export async function updateMedia(media: MediaItem) {
 
 // delete
 // delete media and its blob
-export async function deleteMedia(id: string): Promise<void> {
-  const db = await getDB();
-  const tx = db.transaction([STORE_MEDIA, STORE_MEDIA_BLOB], 'readwrite');
+export async function deleteMediaBatch(ids: string[]): Promise<void> {
+  const uniqueIds = [...new Set(ids.filter(Boolean))];
+  if (uniqueIds.length === 0) return;
 
-  await tx.objectStore(STORE_MEDIA).delete(id);
-  await tx.objectStore(STORE_MEDIA_BLOB).delete(id);
+  const db = await getDB();
+  const tx = db.transaction([STORE_MEDIA, STORE_MEDIA_BLOB, STORE_SUBTITLE], 'readwrite');
+  const mediaStore = tx.objectStore(STORE_MEDIA);
+  const blobStore = tx.objectStore(STORE_MEDIA_BLOB);
+  const subtitleStore = tx.objectStore(STORE_SUBTITLE);
+  const subtitleByMedia = subtitleStore.index('byMediaId');
+
+  for (const id of uniqueIds) {
+    await mediaStore.delete(id);
+    await blobStore.delete(id);
+    const subtitle = await subtitleByMedia.get(id);
+    if (subtitle) {
+      await subtitleStore.delete(subtitle.id);
+    }
+  }
 
   await tx.done;
 
-  // Mark removed in all playlists (soft-delete).
-  await markMediaRemovedInAllPlaylists(id);
-  await markSentenceBankSourceUnavailable(id);
-  await deleteReferenceProsodyProfilesByMediaId(id);
+  await markMediaRemovedInAllPlaylistsBatch(uniqueIds);
+  await markSentenceBankSourceUnavailableBatch(uniqueIds);
+  await deleteReferenceProsodyProfilesByMediaIdsBatch(uniqueIds);
+}
+
+export async function deleteMedia(id: string): Promise<void> {
+  await deleteMediaBatch([id]);
 }
