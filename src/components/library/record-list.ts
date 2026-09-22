@@ -542,28 +542,18 @@ export class RecordList extends LitElement {
           ? this.selectionMode
             ? html`<div class="selection-chrome">
                 <div class="header">
-                  <p class="selection-count">
-                    ${msg(str`已选 ${this._visibleSelected.size} 项`)}
-                  </p>
-                  <ui-button
-                    variant="secondary"
-                    size="small"
-                    @click=${() => this.exitSelectionMode()}
+                  <p class="selection-count">${msg(str`已选 ${this._visibleSelected.size} 项`)}</p>
+                  <ui-button variant="secondary" @click=${() => this.exitSelectionMode()}
                     >${msg('取消')}</ui-button
                   >
                 </div>
                 <div class="batch-controls">
-                  <ui-tooltip
-                    title="${allVisibleSelected ? msg('取消全选') : msg('全选')}"
-                  >
+                  <ui-tooltip title="${allVisibleSelected ? msg('取消全选') : msg('全选')}">
                     <ui-button
                       variant="secondary"
-                      size="small"
                       aria-label="${allVisibleSelected ? msg('取消全选') : msg('全选')}"
                       @click=${() =>
-                        allVisibleSelected
-                          ? this._clearSelection()
-                          : this._selectAll(visibleIds)}
+                        allVisibleSelected ? this._clearSelection() : this._selectAll(visibleIds)}
                     >
                       <ui-icon
                         name="${allVisibleSelected ? 'unselect-all' : 'select-all'}"
@@ -573,7 +563,6 @@ export class RecordList extends LitElement {
                   <ui-tooltip title="${msg('导出')}">
                     <ui-button
                       variant="secondary"
-                      size="small"
                       aria-label="${msg('导出')}"
                       ?disabled=${this._visibleSelected.size === 0 || this._batchExporting}
                       @click=${() => void this._handleBatchExport()}
@@ -590,7 +579,6 @@ export class RecordList extends LitElement {
                     <ui-tooltip title="${msg('删除')}">
                       <ui-button
                         variant="danger"
-                        size="small"
                         aria-label="${msg('删除')}"
                         ?disabled=${this._visibleSelected.size === 0 || this._batchDeleting}
                       >
@@ -607,7 +595,6 @@ export class RecordList extends LitElement {
                   ${renderedItems.length > 0
                     ? html`<ui-button
                         variant="secondary"
-                        size="small"
                         @click=${() => {
                           this.selectionMode = true;
                         }}

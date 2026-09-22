@@ -1043,7 +1043,6 @@ export class SubtitlePanel extends LitElement {
             ? html`<ui-tooltip title="${msg('更新字幕')}">
                 <ui-button
                   variant="ghost"
-                  size="small"
                   aria-label="${msg('更新字幕')}"
                   ?disabled="${this._importingSubtitle || !snapshot.currentItem}"
                   @click="${() => this._openSubtitlePicker(true)}"

@@ -1172,9 +1172,7 @@ export class MediaPlayer extends LitElement {
                     ? msg(str`将在 ${formatTime(snapshot.sleepRemainingSeconds)} 后暂停`)
                     : msg('将在当前集播放结束后暂停')}
                 </span>
-                <ui-button variant="ghost" size="small" @click="${this._cancelSleep}"
-                  >${msg('取消')}</ui-button
-                >
+                <ui-button variant="ghost" @click="${this._cancelSleep}">${msg('取消')}</ui-button>
               </div>
             `
           : null}

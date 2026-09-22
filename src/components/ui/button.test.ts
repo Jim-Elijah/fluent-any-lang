@@ -52,6 +52,20 @@ describe('ui-button', () => {
     expect(el.shadowRoot?.querySelector('button')?.type).toBe('submit');
   });
 
+  it('defaults to middle size without a size modifier class', async () => {
+    const el = await renderButton();
+    const button = el.shadowRoot?.querySelector('button');
+    expect(el.size).toBe('middle');
+    expect(button?.classList.contains('small')).toBe(false);
+    expect(button?.classList.contains('large')).toBe(false);
+  });
+
+  it.each(['small', 'large'] as const)('applies %s size class', async (size) => {
+    const el = await renderButton(html`<ui-button size=${size}>Sized</ui-button>`);
+    expect(el.getAttribute('size')).toBe(size);
+    expect(el.shadowRoot?.querySelector('button')?.classList.contains(size)).toBe(true);
+  });
+
   it('does not propagate host click when disabled', async () => {
     const el = await renderButton(html`<ui-button disabled>Disabled</ui-button>`);
     const hostHandler = vi.fn();

@@ -9,7 +9,10 @@ import {
   getSentenceBankList,
 } from '../../db/service.js';
 import { reportError } from '../../lib/error-reporter.js';
-import { exportSentenceBankEntry, exportSentenceBankEntriesBatch } from '../../lib/export-content.js';
+import {
+  exportSentenceBankEntry,
+  exportSentenceBankEntriesBatch,
+} from '../../lib/export-content.js';
 import { COMPACT_VIEWPORT_MQ } from '../../lib/layout-compact.js';
 import { formatDate, formatTime } from '../../lib/playback-utils.js';
 import type { SentenceBankEntry, SortDirection } from '../../types/models.js';
@@ -514,28 +517,18 @@ export class SentencesPage extends NavigatorElement {
           ${this.selectionMode
             ? html`<div class="selection-chrome">
                 <div class="header">
-                  <p class="selection-count">
-                    ${msg(str`已选 ${this._visibleSelected.size} 项`)}
-                  </p>
-                  <ui-button
-                    variant="secondary"
-                    size="small"
-                    @click=${() => this._exitSelectionMode()}
+                  <p class="selection-count">${msg(str`已选 ${this._visibleSelected.size} 项`)}</p>
+                  <ui-button variant="secondary" @click=${() => this._exitSelectionMode()}
                     >${msg('取消')}</ui-button
                   >
                 </div>
                 <div class="batch-controls">
-                  <ui-tooltip
-                    title="${allVisibleSelected ? msg('取消全选') : msg('全选')}"
-                  >
+                  <ui-tooltip title="${allVisibleSelected ? msg('取消全选') : msg('全选')}">
                     <ui-button
                       variant="secondary"
-                      size="small"
                       aria-label="${allVisibleSelected ? msg('取消全选') : msg('全选')}"
                       @click=${() =>
-                        allVisibleSelected
-                          ? this._clearSelection()
-                          : this._selectAll(visibleIds)}
+                        allVisibleSelected ? this._clearSelection() : this._selectAll(visibleIds)}
                     >
                       <ui-icon
                         name="${allVisibleSelected ? 'unselect-all' : 'select-all'}"
@@ -545,7 +538,6 @@ export class SentencesPage extends NavigatorElement {
                   <ui-tooltip title="${msg('导出')}">
                     <ui-button
                       variant="secondary"
-                      size="small"
                       aria-label="${msg('导出')}"
                       ?disabled=${this._visibleSelected.size === 0 || this._batchExporting}
                       @click=${() => void this._handleBatchExport()}
@@ -562,7 +554,6 @@ export class SentencesPage extends NavigatorElement {
                     <ui-tooltip title="${msg('删除')}">
                       <ui-button
                         variant="danger"
-                        size="small"
                         aria-label="${msg('删除')}"
                         ?disabled=${this._visibleSelected.size === 0 || this._batchDeleting}
                       >
@@ -579,7 +570,6 @@ export class SentencesPage extends NavigatorElement {
                   ${visibleEntries.length > 0
                     ? html`<ui-button
                         variant="secondary"
-                        size="small"
                         @click=${() => {
                           this.selectionMode = true;
                         }}
@@ -588,7 +578,6 @@ export class SentencesPage extends NavigatorElement {
                     : nothing}
                 </div>
               </div>`}
-
           ${this._loading
             ? html`<div class="empty">${msg('加载中…')}</div>`
             : visibleEntries.length === 0
@@ -614,10 +603,7 @@ export class SentencesPage extends NavigatorElement {
     const isVideo = entry.sourceMediaType === 'video';
 
     return html`
-      <li
-        class="item"
-        @click=${this.selectionMode ? () => this._toggleSelection(entry.id) : null}
-      >
+      <li class="item" @click=${this.selectionMode ? () => this._toggleSelection(entry.id) : null}>
         ${this.selectionMode
           ? html`<input
               type="checkbox"

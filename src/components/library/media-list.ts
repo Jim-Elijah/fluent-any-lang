@@ -507,32 +507,20 @@ export class MediaList extends LitElement {
         ${this.selectionMode
           ? html`<div class="selection-chrome">
               <div class="header">
-                <p class="selection-count">
-                  ${msg(str`已选 ${this._visibleSelected.size} 项`)}
-                </p>
-                <ui-button
-                  variant="secondary"
-                  size="small"
-                  @click=${() => this.exitSelectionMode()}
+                <p class="selection-count">${msg(str`已选 ${this._visibleSelected.size} 项`)}</p>
+                <ui-button variant="secondary" @click=${() => this.exitSelectionMode()}
                   >${msg('取消')}</ui-button
                 >
               </div>
               <div class="batch-controls">
-                <ui-tooltip
-                  title="${allVisibleSelected ? msg('取消全选') : msg('全选')}"
-                >
+                <ui-tooltip title="${allVisibleSelected ? msg('取消全选') : msg('全选')}">
                   <ui-button
                     variant="secondary"
-                    size="small"
                     aria-label="${allVisibleSelected ? msg('取消全选') : msg('全选')}"
                     @click=${() =>
-                      allVisibleSelected
-                        ? this._clearSelection()
-                        : this._selectAll(visibleIds)}
+                      allVisibleSelected ? this._clearSelection() : this._selectAll(visibleIds)}
                   >
-                    <ui-icon
-                      name="${allVisibleSelected ? 'unselect-all' : 'select-all'}"
-                    ></ui-icon>
+                    <ui-icon name="${allVisibleSelected ? 'unselect-all' : 'select-all'}"></ui-icon>
                   </ui-button>
                 </ui-tooltip>
                 <ui-dropdown
@@ -546,7 +534,6 @@ export class MediaList extends LitElement {
                   <ui-tooltip title="${msg('加入播放列表')}">
                     <ui-button
                       variant="secondary"
-                      size="small"
                       aria-label="${msg('加入播放列表')}"
                       ?disabled=${this._visibleSelected.size === 0 || this._batchAddingToPlaylist}
                     >
@@ -563,7 +550,6 @@ export class MediaList extends LitElement {
                   <ui-tooltip title="${msg('删除')}">
                     <ui-button
                       variant="danger"
-                      size="small"
                       aria-label="${msg('删除')}"
                       ?disabled=${this._visibleSelected.size === 0 || this._batchDeleting}
                     >
@@ -583,7 +569,6 @@ export class MediaList extends LitElement {
                 ${renderedItems.length > 0 && !this.hideManage
                   ? html`<ui-button
                       variant="secondary"
-                      size="small"
                       @click=${() => {
                         this.selectionMode = true;
                       }}
@@ -592,7 +577,6 @@ export class MediaList extends LitElement {
                   : null}
               </div>
             </div>`}
-
         ${this._error ? html`<ui-alert class="error" type="error">${this._error}</ui-alert>` : null}
         ${this._loading
           ? html`<div class="empty">${msg('加载中…')}</div>`
@@ -910,9 +894,7 @@ export class MediaList extends LitElement {
     }
   }
 
-  private async _handleBatchAddToPlaylist(
-    e: CustomEvent<DropdownMenuClickDetail>,
-  ): Promise<void> {
+  private async _handleBatchAddToPlaylist(e: CustomEvent<DropdownMenuClickDetail>): Promise<void> {
     const playlistId = e.detail.key;
     const mediaIds = [...this._visibleSelected];
     if (mediaIds.length === 0) return;
