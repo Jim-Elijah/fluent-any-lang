@@ -721,9 +721,8 @@ export class RecordingPreview extends LitElement {
         ${this._renderScorePanel()}
         <div class="subtitle-area">${this._renderSubtitle()}</div>
 
-        ${this._renderPlaybackNav()}
-
-        ${this._renderWordLayoutToggle(wordMarkers.length > 0)}
+        ${this._renderPlaybackNav()} ${this._renderWordLayoutToggle(wordMarkers.length > 0)}
+        ${this._renderAlignActions()}
 
         <waveform-player
           .controller=${this._controller}
@@ -775,15 +774,13 @@ export class RecordingPreview extends LitElement {
             : nothing}
         </div>
 
-        ${this._renderAlignActions()}
-
         ${this._playMode !== 'idle' ? html`<p class="status">${this._renderStatus()}</p>` : nothing}
       </div>
       <ui-modal
         title="${msg('上传说明')}"
         .zIndex=${Z_INDEX.MODAL + 80}
         ?open=${this._privacyOpen}
-        ok-text="${this._privacyAction === 'score' ? msg('同意并评分') : msg('同意并对齐')}"
+        ok-text="${this._privacyAction === 'score' ? msg('同意并评分') : msg('同意并生成')}"
         cancel-text="${msg('取消')}"
         width="420px"
         centered
@@ -1080,6 +1077,7 @@ export class RecordingPreview extends LitElement {
         <span class="word-layout-label">${msg('波形词条')}</span>
         <ui-tooltip title=${msg('标签宽度跟随发音时长')} .zIndex=${Z_INDEX.MODAL + 1}>
           <ui-button
+            size="small"
             variant=${layout === 'duration' ? 'primary' : 'secondary'}
             @click=${() => this._setWordMarkerLayout('duration')}
           >
@@ -1088,6 +1086,7 @@ export class RecordingPreview extends LitElement {
         </ui-tooltip>
         <ui-tooltip title=${msg('标签紧凑排列')} .zIndex=${Z_INDEX.MODAL + 1}>
           <ui-button
+            size="small"
             variant=${layout === 'compact' ? 'primary' : 'secondary'}
             @click=${() => this._setWordMarkerLayout('compact')}
           >
@@ -1266,16 +1265,22 @@ export class RecordingPreview extends LitElement {
     if (this._privacyAction === 'score') {
       return msg('评分会将录音上传到你配置的服务器以计算分数。服务端不保存音频。是否继续？');
     }
-    return msg('对齐会将原声片段上传到你配置的服务器以获取词级时间戳。服务端不保存音频。是否继续？');
+    return msg(
+      '生成原音词条会将原声片段上传到你配置的服务器以获取词级时间戳。服务端不保存音频。是否继续？',
+    );
   }
 
   private _renderAlignActions() {
+    if (this._playMode !== 'source') {
+      return nothing;
+    }
     if (!this.record || !this.sourceBlob || this.segments.length === 0) {
       return nothing;
     }
     if (!isSpeechAlignConfigured(getAppSettings())) {
       return nothing;
     }
+    const showAlignAll = this.segments.length > 1;
     const currentSegment = this.segments[this._syncSegmentIndex];
     const hasSegmentCache = Boolean(
       currentSegment && this._alignWordsBySegmentId.has(currentSegment.id),
@@ -1284,56 +1289,67 @@ export class RecordingPreview extends LitElement {
     const progress = this._alignProgress;
     const progressLabel =
       this._aligning && progress
-        ? msg(str`对齐中… ${progress.done}/${progress.total}`)
+        ? msg(str`生成中… ${progress.done}/${progress.total}`)
         : this._aligning
-          ? msg('对齐中…')
+          ? msg('生成中…')
           : nothing;
     const segmentAlignButton = hasSegmentCache
       ? html`
           <ui-tooltip
-            title=${msg('重新请求当前句原声的词级时间戳')}
+            title=${msg('重新生成当前句的原音词条')}
             placement="right"
             .zIndex=${Z_INDEX.MODAL + 1}
           >
             <ui-popconfirm
-              .title=${msg('已有对齐结果，是否重新请求？')}
+              .title=${msg('已有词条，是否重新生成？')}
               .zIndex=${Z_INDEX.MODAL + 2}
               ?disabled=${busy}
               placement="right"
               @confirm=${() => void this._handleAlignSegment(true)}
             >
-              <ui-button variant="secondary" ?disabled=${busy}>
-                ${msg('重新对齐')}
+              <ui-button size="small" variant="secondary" ?disabled=${busy}>
+                ${msg('重新生成')}
               </ui-button>
             </ui-popconfirm>
           </ui-tooltip>
         `
       : html`
-          <ui-tooltip title=${msg('对齐当前句原声的词级时间戳')} placement="right" .zIndex=${Z_INDEX.MODAL + 1}>
+          <ui-tooltip
+            title=${msg('为当前句生成原音词条')}
+            placement="right"
+            .zIndex=${Z_INDEX.MODAL + 1}
+          >
             <ui-button
+              size="small"
               variant="secondary"
               ?disabled=${busy}
               @click=${() => void this._handleAlignSegment()}
             >
-              ${msg('对齐本句')}
+              ${msg('生成本句')}
             </ui-button>
           </ui-tooltip>
         `;
     return html`
-      <div class="align-row">
+      <div class="align-row" role="group" aria-label=${msg('生成原音词条')}>
+        <span class="word-layout-label">${msg('生成原音词条')}</span>
         ${segmentAlignButton}
-        <ui-tooltip
-          title=${msg('按句批量对齐全部原声（已有缓存的句子会跳过）')}
-          .zIndex=${Z_INDEX.MODAL + 1}
-        >
-          <ui-button
-            variant="secondary"
-            ?disabled=${busy}
-            @click=${() => void this._handleAlignAll()}
-          >
-            ${msg('对齐全部原音')}
-          </ui-button>
-        </ui-tooltip>
+        ${showAlignAll
+          ? html`
+              <ui-tooltip
+                title=${msg('为全部句子生成原音词条（已有则跳过）')}
+                .zIndex=${Z_INDEX.MODAL + 1}
+              >
+                <ui-button
+                  size="small"
+                  variant="secondary"
+                  ?disabled=${busy}
+                  @click=${() => void this._handleAlignAll()}
+                >
+                  ${msg('全部原音')}
+                </ui-button>
+              </ui-tooltip>
+            `
+          : nothing}
         ${progressLabel ? html`<p class="align-progress">${progressLabel}</p>` : nothing}
       </div>
     `;
@@ -1423,7 +1439,7 @@ export class RecordingPreview extends LitElement {
         return;
       }
       this._rememberAlignment(segment.id, result.alignment.words);
-      Message.success(force ? msg('本句已重新对齐') : msg('本句对齐完成'));
+      Message.success(force ? msg('本句已重新生成') : msg('本句词条已生成'));
     } finally {
       this._aligning = false;
       this._alignProgress = null;
@@ -1466,7 +1482,7 @@ export class RecordingPreview extends LitElement {
       if (!result.ok && result.message) {
         Message.warning(result.message);
       } else {
-        Message.success(msg('全部原音对齐完成'));
+        Message.success(msg('全部原音词条已生成'));
       }
     } finally {
       this._aligning = false;

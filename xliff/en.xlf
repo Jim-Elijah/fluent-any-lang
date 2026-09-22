@@ -2585,9 +2585,6 @@
 <trans-unit id="s94cef0eb428fc572">
   <source>已导出 <x id="0" equiv-text="${toExport.length}"/> 项</source>
 </trans-unit>
-<trans-unit id="s8ba69feb86a105bf">
-  <source>同意并对齐</source>
-</trans-unit>
 <trans-unit id="s02f4e6a25feab868">
   <source>播放该词</source>
 </trans-unit>
@@ -2605,45 +2602,6 @@
 </trans-unit>
 <trans-unit id="sd06ce7085f313af5">
   <source>紧凑</source>
-</trans-unit>
-<trans-unit id="sf469b210ece47f4e">
-  <source>对齐会将原声片段上传到你配置的服务器以获取词级时间戳。服务端不保存音频。是否继续？</source>
-</trans-unit>
-<trans-unit id="sc29b17e4456f0154">
-  <source>对齐中… <x id="0" equiv-text="${progress.done}"/>/<x id="1" equiv-text="${progress.total}"/></source>
-</trans-unit>
-<trans-unit id="sed794703d364f44f">
-  <source>对齐中…</source>
-</trans-unit>
-<trans-unit id="sf3aead9830d34890">
-  <source>重新请求当前句原声的词级时间戳</source>
-</trans-unit>
-<trans-unit id="sc39f9c39d60f4b2c">
-  <source>已有对齐结果，是否重新请求？</source>
-</trans-unit>
-<trans-unit id="sec9660f35b7eb319">
-  <source>重新对齐</source>
-</trans-unit>
-<trans-unit id="s3dcfc3543a38a9a7">
-  <source>对齐当前句原声的词级时间戳</source>
-</trans-unit>
-<trans-unit id="s423b64041b3eadbf">
-  <source>对齐本句</source>
-</trans-unit>
-<trans-unit id="s4c7711ed10f480c1">
-  <source>按句批量对齐全部原声（已有缓存的句子会跳过）</source>
-</trans-unit>
-<trans-unit id="s3a864ec729b52c8e">
-  <source>对齐全部原音</source>
-</trans-unit>
-<trans-unit id="s7635378e81cddd14">
-  <source>本句已重新对齐</source>
-</trans-unit>
-<trans-unit id="s1e48462876534f1f">
-  <source>本句对齐完成</source>
-</trans-unit>
-<trans-unit id="s93964d5f40a312ca">
-  <source>全部原音对齐完成</source>
 </trans-unit>
 <trans-unit id="sddb73706dc3a8bcc">
   <source>按需将口语录音或原声片段发送到评分/对齐服务，结果保存在本设备。</source>
@@ -2713,6 +2671,51 @@
 </trans-unit>
 <trans-unit id="sf8fcb9f934cecc3e">
   <source>部分条目删除失败</source>
+</trans-unit>
+<trans-unit id="sfdd85bebe6edce49">
+  <source>同意并生成</source>
+</trans-unit>
+<trans-unit id="s2ebe608c55968bd8">
+  <source>生成原音词条会将原声片段上传到你配置的服务器以获取词级时间戳。服务端不保存音频。是否继续？</source>
+</trans-unit>
+<trans-unit id="sc5ea2d39c16d23fa">
+  <source>生成中… <x id="0" equiv-text="${progress.done}"/>/<x id="1" equiv-text="${progress.total}"/></source>
+</trans-unit>
+<trans-unit id="sbf3e1a3ba15fd5e9">
+  <source>生成中…</source>
+</trans-unit>
+<trans-unit id="scbd8a611337f7506">
+  <source>已有词条，是否重新生成？</source>
+</trans-unit>
+<trans-unit id="s3382e4f396f2824f">
+  <source>重新生成</source>
+</trans-unit>
+<trans-unit id="s2c626c038fd8a2cb">
+  <source>为当前句原声生成词级时间戳</source>
+</trans-unit>
+<trans-unit id="s4a423b3c17392c25">
+  <source>生成本句</source>
+</trans-unit>
+<trans-unit id="s0488738745e3729e">
+  <source>生成原音词条</source>
+</trans-unit>
+<trans-unit id="sc05c9d8125f39974">
+  <source>按句批量生成全部原音词条（已有缓存的句子会跳过）</source>
+</trans-unit>
+<trans-unit id="sfd9fb189b050b21f">
+  <source>全部原音</source>
+</trans-unit>
+<trans-unit id="sb598eb8eb70a6862">
+  <source>本句已重新生成</source>
+</trans-unit>
+<trans-unit id="s7d900454cc6d617d">
+  <source>本句词条已生成</source>
+</trans-unit>
+<trans-unit id="sba0002cb5887c43a">
+  <source>全部原音词条已生成</source>
+</trans-unit>
+<trans-unit id="s278a81223cc0837e">
+  <source>重新生成当前句的原音词条</source>
 </trans-unit>
 </body>
 </file>
