@@ -33,6 +33,11 @@ export class DualTrackPlayback {
   /** Continuous-compare anchors (first practice segment). */
   private _continuousAnchorSource = 0;
   private _continuousAnchorRecording = 0;
+  /**
+   * When true, hitting `_sourceEndTime` / `_recordingEndTime` is a word clip:
+   * soft-pause (Space resumes past the word) instead of end-of-mode `_finished`.
+   */
+  private _clipBoundary = false;
   private readonly onStateChange: (state: DualTrackPlaybackState) => void;
 
   constructor(
@@ -68,6 +73,21 @@ export class DualTrackPlayback {
     await this.sourceAudio.play();
   }
 
+  /**
+   * Play source from `start` until `end`, then soft-pause (Space resumes onward).
+   * Falls back to {@link playSourceAt} when the range is invalid.
+   */
+  async playSourceRange(start: number, end: number): Promise<void> {
+    if (!(Number.isFinite(start) && Number.isFinite(end) && end > start)) {
+      await this.playSourceAt(start);
+      return;
+    }
+    this._enterSourceAt(start, true);
+    this._sourceEndTime = end;
+    this._clipBoundary = true;
+    await this.sourceAudio.play();
+  }
+
   async playRecording(): Promise<void> {
     const start = this.segments.length > 0 ? this.segments[0].recordingStartTime : 0;
     await this.playRecordingAt(start);
@@ -76,6 +96,21 @@ export class DualTrackPlayback {
   /** Enter or continue recording mode from an absolute recording timeline time. */
   async playRecordingAt(time: number): Promise<void> {
     this._enterRecordingAt(time, true);
+    await this.recordingAudio.play();
+  }
+
+  /**
+   * Play recording from `start` until `end`, then soft-pause (Space resumes onward).
+   * Falls back to {@link playRecordingAt} when the range is invalid.
+   */
+  async playRecordingRange(start: number, end: number): Promise<void> {
+    if (!(Number.isFinite(start) && Number.isFinite(end) && end > start)) {
+      await this.playRecordingAt(start);
+      return;
+    }
+    this._enterRecordingAt(start, true);
+    this._recordingEndTime = end;
+    this._clipBoundary = true;
     await this.recordingAudio.play();
   }
 
@@ -135,6 +170,7 @@ export class DualTrackPlayback {
     this.mode = 'continuous';
     this.paused = false;
     this._finished = false;
+    this._clipBoundary = false;
     this._sourceEndTime = last.sourceEndTime;
     this._recordingEndTime = last.recordingEndTime;
     this.sourceAudio.currentTime = this._clampAudioTime(this.sourceAudio, sourceTime);
@@ -354,6 +390,7 @@ export class DualTrackPlayback {
     this.mode = 'idle';
     this.paused = false;
     this._finished = false;
+    this._clipBoundary = false;
     this._emitState();
   }
 
@@ -369,6 +406,28 @@ export class DualTrackPlayback {
     this.recordingAudio.pause();
     this.paused = true;
     this._finished = true;
+    this._clipBoundary = false;
+    this._emitState();
+  }
+
+  /** Word-clip end: pause in place; Space continues past the word. */
+  private _pauseAtClipEnd(): void {
+    if (this.mode === 'idle') {
+      return;
+    }
+    this.sourceAudio.pause();
+    this.recordingAudio.pause();
+    this.paused = true;
+    this._finished = false;
+    this._clipBoundary = false;
+    if (this.segments.length > 0) {
+      const last = this.segments[this.segments.length - 1]!;
+      if (this.mode === 'source') {
+        this._sourceEndTime = last.sourceEndTime;
+      } else if (this.mode === 'recording') {
+        this._recordingEndTime = last.recordingEndTime;
+      }
+    }
     this._emitState();
   }
 
@@ -394,6 +453,7 @@ export class DualTrackPlayback {
   private _enterSourceAt(time: number, play: boolean): void {
     this._stopSyncMonitor();
     this.recordingAudio.pause();
+    this._clipBoundary = false;
 
     if (this.segments.length > 0) {
       const last = this.segments[this.segments.length - 1];
@@ -415,6 +475,7 @@ export class DualTrackPlayback {
   private _enterRecordingAt(time: number, play: boolean): void {
     this._stopSyncMonitor();
     this.sourceAudio.pause();
+    this._clipBoundary = false;
 
     if (this.segments.length > 0) {
       const last = this.segments[this.segments.length - 1];
@@ -531,6 +592,7 @@ export class DualTrackPlayback {
     this.mode = 'sync';
     this.paused = false;
     this._finished = false;
+    this._clipBoundary = false;
     this.syncSegmentIndex = index;
     this._syncSegment = segment;
     this._syncSegmentIndex = index;
@@ -582,7 +644,11 @@ export class DualTrackPlayback {
     }
 
     if (this.sourceAudio.currentTime >= this._sourceEndTime - SYNC_END_EPSILON) {
-      this._pauseAtEnd();
+      if (this._clipBoundary) {
+        this._pauseAtClipEnd();
+      } else {
+        this._pauseAtEnd();
+      }
     }
   }
 
@@ -592,7 +658,11 @@ export class DualTrackPlayback {
     }
 
     if (this.recordingAudio.currentTime >= this._recordingEndTime - SYNC_END_EPSILON) {
-      this._pauseAtEnd();
+      if (this._clipBoundary) {
+        this._pauseAtClipEnd();
+      } else {
+        this._pauseAtEnd();
+      }
     }
   }
 

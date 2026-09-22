@@ -1007,7 +1007,7 @@ export class RecordingPreview extends LitElement {
       return html`<button
         type="button"
         class=${classes}
-        title=${msg('从该处播放录音')}
+        title=${msg('播放该词')}
         @click=${() => this._onMisreadHighlightClick(misread, index)}
       >
         ${text}
@@ -1040,7 +1040,7 @@ export class RecordingPreview extends LitElement {
       this._pairClearTimer = null;
       this._pairedMisreadIndex = null;
     }, PAIRED_MISREAD_MS);
-    void this._playWordAt(misread.start as number);
+    void this._playWordAt(misread.start as number, 'recording', misread.end);
   }
 
   private _clearPairedMisread(silent = false): void {
@@ -1214,43 +1214,39 @@ export class RecordingPreview extends LitElement {
     return viewRange;
   }
 
-  private _playScoredWord(word: Pick<PronunciationWordScore, 'word' | 'start'>): void {
+  private _playScoredWord(word: Pick<PronunciationWordScore, 'word' | 'start' | 'end'>): void {
     if (!Number.isFinite(word.start)) {
       return;
     }
-    void this._playWordAt(word.start, 'recording');
+    void this._playWordAt(word.start, 'recording', word.end);
   }
 
-  private _playAlignedWord(word: Pick<WordTiming, 'word' | 'start'>): void {
+  private _playAlignedWord(word: Pick<WordTiming, 'word' | 'start' | 'end'>): void {
     if (!Number.isFinite(word.start)) {
       return;
     }
-    void this._playWordAt(word.start, 'source');
+    void this._playWordAt(word.start, 'source', word.end);
   }
 
-  private async _playWordAt(start: number, axis: 'source' | 'recording' = 'recording'): Promise<void> {
+  private async _playWordAt(
+    start: number,
+    axis: 'source' | 'recording' = 'recording',
+    end?: number | null,
+  ): Promise<void> {
     if (!(await this._ensurePlayback()) || !this._playback) {
       return;
     }
 
     this._requestAudioFocus();
+    const hasEnd = typeof end === 'number' && Number.isFinite(end) && end > start;
     if (axis === 'source') {
       if (this._sourceTrackId) {
         this._controller.setActiveId(this._sourceTrackId);
       }
-      void this._playback.playSourceAt(start).catch(() => {
-        this._playback?.stop();
-      });
-      return;
-    }
-    if (this._playMode === 'continuous') {
-      void this._playback.playContinuousAt(start, 'recording').catch(() => {
-        this._playback?.stop();
-      });
-      return;
-    }
-    if (this._playMode === 'sync') {
-      void this._playback.playSyncAt(start, 'recording').catch(() => {
+      const play = hasEnd
+        ? this._playback.playSourceRange(start, end as number)
+        : this._playback.playSourceAt(start);
+      void play.catch(() => {
         this._playback?.stop();
       });
       return;
@@ -1258,7 +1254,10 @@ export class RecordingPreview extends LitElement {
     if (this._recordingTrackId) {
       this._controller.setActiveId(this._recordingTrackId);
     }
-    void this._playback.playRecordingAt(start).catch(() => {
+    const play = hasEnd
+      ? this._playback.playRecordingRange(start, end as number)
+      : this._playback.playRecordingAt(start);
+    void play.catch(() => {
       this._playback?.stop();
     });
   }

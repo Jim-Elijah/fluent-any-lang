@@ -125,6 +125,49 @@ describe('DualTrackPlayback', () => {
     expect(source.pause).toHaveBeenCalled();
   });
 
+  it('playRecordingRange soft-pauses at end without marking finished', async () => {
+    await controller.playRecordingRange(0.12, 0.45);
+    expect(controller.getState()).toEqual({
+      mode: 'recording',
+      syncSegmentIndex: 0,
+      paused: false,
+    });
+    expect(recording.currentTime).toBe(0.12);
+
+    recording.currentTime = 0.45;
+    recording.dispatchEvent(new Event('timeupdate'));
+    expect(controller.getState()).toEqual({
+      mode: 'recording',
+      syncSegmentIndex: 0,
+      paused: true,
+    });
+
+    vi.mocked(recording.play).mockClear();
+    await controller.resume();
+    expect(recording.play).toHaveBeenCalled();
+    expect(recording.currentTime).toBe(0.45);
+  });
+
+  it('playSourceRange soft-pauses at end without marking finished', async () => {
+    await controller.playSourceRange(1, 2.5);
+    expect(source.currentTime).toBe(1);
+
+    source.currentTime = 2.5;
+    source.dispatchEvent(new Event('timeupdate'));
+    expect(controller.getState()).toEqual({ mode: 'source', syncSegmentIndex: 0, paused: true });
+
+    vi.mocked(source.play).mockClear();
+    await controller.resume();
+    expect(source.play).toHaveBeenCalled();
+    expect(source.currentTime).toBe(2.5);
+  });
+
+  it('playRecordingRange falls back to playRecordingAt when end is invalid', async () => {
+    await controller.playRecordingRange(1, 1);
+    expect(recording.currentTime).toBe(1);
+    expect(recording.play).toHaveBeenCalled();
+  });
+
   it('playSyncAt maps mid-segment times with wall-clock elapsed', async () => {
     const ok = await controller.playSyncAt(2.5, 'source');
     expect(ok).toBe(true);

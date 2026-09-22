@@ -104,8 +104,10 @@ type RecordingPreviewInternals = HTMLElement & {
   _playback: {
     playSource: () => Promise<void>;
     playSourceAt: (time: number) => Promise<void>;
+    playSourceRange: (start: number, end: number) => Promise<void>;
     playRecording: () => Promise<void>;
     playRecordingAt: (time: number) => Promise<void>;
+    playRecordingRange: (start: number, end: number) => Promise<void>;
     playSync: () => Promise<void>;
     playSyncFromSegment: (index: number) => Promise<void>;
     playSyncAt: (time: number, axis: 'source' | 'recording') => Promise<boolean>;
@@ -422,8 +424,10 @@ describe('recording-preview', () => {
     return {
       playSource: vi.fn().mockResolvedValue(undefined),
       playSourceAt: vi.fn().mockResolvedValue(undefined),
+      playSourceRange: vi.fn().mockResolvedValue(undefined),
       playRecording: vi.fn().mockResolvedValue(undefined),
       playRecordingAt: vi.fn().mockResolvedValue(undefined),
+      playRecordingRange: vi.fn().mockResolvedValue(undefined),
       playSync: vi.fn().mockResolvedValue(undefined),
       playSyncFromSegment,
       playSyncAt: vi.fn().mockResolvedValue(true),
@@ -1757,7 +1761,7 @@ describe('recording-preview', () => {
     expect(el.shadowRoot?.querySelector('.word-chip')?.textContent?.trim()).toBe('hello');
   });
 
-  it('seeks recording playback to a clicked waveform word', async () => {
+  it('plays only the clicked waveform word then soft-pauses on recording', async () => {
     const el = await renderScoredPreview({
       word_scores: [{ word: 'hello', start: 0.12, end: 0.45, score: 90 }],
     });
@@ -1772,10 +1776,12 @@ describe('recording-preview', () => {
     marker?.click();
     await flushUpdates();
 
-    expect(playback.playRecordingAt).toHaveBeenCalledWith(0.12);
+    expect(playback.playRecordingRange).toHaveBeenCalledWith(0.12, 0.45);
+    expect(playback.playRecordingAt).not.toHaveBeenCalled();
+    expect(playback.playSyncAt).not.toHaveBeenCalled();
   });
 
-  it('seeks compare playback to a clicked waveform word on the recording axis', async () => {
+  it('plays only the clicked waveform word on recording even in compare mode', async () => {
     const el = await renderScoredPreview({
       word_scores: [{ word: 'hello', start: 0.12, end: 0.45, score: 90 }],
     });
@@ -1789,10 +1795,11 @@ describe('recording-preview', () => {
     marker?.click();
     await flushUpdates();
 
-    expect(playback.playSyncAt).toHaveBeenCalledWith(0.12, 'recording');
+    expect(playback.playRecordingRange).toHaveBeenCalledWith(0.12, 0.45);
+    expect(playback.playSyncAt).not.toHaveBeenCalled();
   });
 
-  it('seeks recording playback to a clicked score word chip', async () => {
+  it('plays only the clicked score word chip on recording', async () => {
     const el = await renderScoredPreview({
       word_scores: [{ word: 'hello', start: 0.12, end: 0.45, score: 90 }],
     });
@@ -1806,7 +1813,7 @@ describe('recording-preview', () => {
     chip?.click();
     await flushUpdates();
 
-    expect(playback.playRecordingAt).toHaveBeenCalledWith(0.12);
+    expect(playback.playRecordingRange).toHaveBeenCalledWith(0.12, 0.45);
   });
 
   it('switches from source playback to recording when a score word chip is clicked', async () => {
@@ -1823,7 +1830,7 @@ describe('recording-preview', () => {
     chip?.click();
     await flushUpdates();
 
-    expect(playback.playRecordingAt).toHaveBeenCalledWith(0.12);
+    expect(playback.playRecordingRange).toHaveBeenCalledWith(0.12, 0.45);
   });
 
   it('plays recording from a clickable misread highlight and pairs expected with actual', async () => {
@@ -1863,7 +1870,7 @@ describe('recording-preview', () => {
     button?.click();
     await flushUpdates();
 
-    expect(playback.playRecordingAt).toHaveBeenCalledWith(0.42);
+    expect(playback.playRecordingRange).toHaveBeenCalledWith(0.42, 0.7);
     // In-text expected/actual + 读错 list expected/actual
     expect(el.shadowRoot?.querySelectorAll('.score-hl--paired')).toHaveLength(4);
 
