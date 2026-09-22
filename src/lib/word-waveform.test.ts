@@ -4,6 +4,7 @@ import type { PracticeSegment, PronunciationWordScore } from '../types/models.js
 import {
   layoutWordMarkers,
   wordMarkersForPreview,
+  wordMarkersForSourcePreview,
   wordsInPracticeSegment,
 } from './word-waveform.js';
 
@@ -109,5 +110,24 @@ describe('wordMarkersForPreview', () => {
     expect(markers[0]).toMatchObject({ word: 'foo', start: 5, end: 5.4, score: 40 });
     expect(markers[0].leftPct).toBeCloseTo(11.11, 2);
     expect(markers[0].widthPct).toBeCloseTo(8.89, 2);
+  });
+});
+
+describe('wordMarkersForSourcePreview', () => {
+  it('layouts align words on the source view range without scores', () => {
+    const markers = wordMarkersForSourcePreview({
+      words: [
+        { word: 'hello', start: 0.12, end: 0.45 },
+        { word: 'world', start: 1, end: 1.5 },
+        { word: 'foo', start: 5, end: 5.4 },
+      ],
+      segments,
+      segmentIndex: 0,
+      sourceViewRange: { start: 0, end: 4 },
+    });
+    expect(markers).toEqual([
+      { word: 'hello', start: 0.12, end: 0.45, score: undefined, leftPct: 3, widthPct: 8.25 },
+      { word: 'world', start: 1, end: 1.5, score: undefined, leftPct: 25, widthPct: 12.5 },
+    ]);
   });
 });

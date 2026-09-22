@@ -300,6 +300,52 @@ export type StoredReferenceProsodyProfile = {
   updatedAt: number;
 };
 
+/** Word timing from POST `/api/v1/pronunciation/align` (no score). */
+export type WordTiming = {
+  word: string;
+  start: number;
+  end: number;
+};
+
+export type PronunciationAlignMeta = {
+  model: string;
+  device: string;
+  latency_ms: number;
+  language: string;
+};
+
+/** HTTP response from POST `/api/v1/pronunciation/align`. */
+export type PronunciationAlignResponse = {
+  reference_text: string;
+  words: WordTiming[];
+  duration_sec: number;
+  speech_span_sec: number | null;
+  reference_newline: 'lf';
+  meta: PronunciationAlignMeta;
+};
+
+/** How a cached Source Word Alignment row was written. */
+export type SourceWordAlignmentSource = 'segment' | 'batch';
+
+/**
+ * IndexedDB row for forced-aligned source word timings on a Subtitle Segment
+ * (Media absolute timeline). Not exported in backup.
+ */
+export type StoredSourceWordAlignment = {
+  /** `${mediaId}:${segmentId}` */
+  id: string;
+  mediaId: string;
+  segmentId: string;
+  /** Absolute Media source seconds (`clip.start + segment.sourceStartTime`). */
+  words: WordTiming[];
+  referenceText: string;
+  language: string;
+  /** `segment` wins over `batch` when both would write the same key. */
+  source: SourceWordAlignmentSource;
+  createdAt: number;
+  updatedAt: number;
+};
+
 /** Details payload aligned with POST /api/v2/pronunciation/score `details`. */
 export type PronunciationScoreDetails = {
   transcript: string;
@@ -493,6 +539,8 @@ export type AppSettings = {
   discrimination: DiscriminationSettings;
   /** Full POST URL for pronunciation scoring (`…/api/v2/pronunciation/score`). */
   speechScoreApiUrl: string;
+  /** Full POST URL for source word alignment (`…/api/v1/pronunciation/align`). */
+  speechAlignApiUrl: string;
   /** Pronunciation scoring API key (sent as X-API-Key). */
   speechScoreApiKey: string;
   /** Default BCP-47 language for scoring; `auto` lets the server detect. */
@@ -591,6 +639,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   lastPlayedMediaId: '',
   discrimination: { ...DEFAULT_DISCRIMINATION_SETTINGS, ladderRates: [1] },
   speechScoreApiUrl: '',
+  speechAlignApiUrl: '',
   speechScoreApiKey: '',
   speechScoreLanguage: 'auto',
   speechScoreProsodyBasis: 'naturalness',

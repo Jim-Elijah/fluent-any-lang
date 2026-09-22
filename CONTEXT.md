@@ -70,6 +70,10 @@ _Avoid_: Take (in formal language), recording (alone when the saved artifact is 
 An optional evaluation of a Practice Record (accuracy, fluency, completeness, prosody, overall). Stored on-device; computed by an external scoring service only when the learner requests it.
 _Avoid_: Practice Session, grade, assessment (as the canonical term)
 
+**Source Word Alignment**:
+On-demand word-level timestamps for a Subtitle Segment’s source audio (forced align of the reference script). Cached on-device per Media + segment; used to label the source waveform (e.g. recording preview). Not a Pronunciation Score.
+_Avoid_: Word score, ASR transcript, pronunciation grade
+
 ### Organization
 
 **Playlist**:

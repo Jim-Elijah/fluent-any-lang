@@ -4,6 +4,10 @@ import { msg, localized } from '@lit/localize';
 
 import { getAppSettings, setAppSettings } from '../../lib/app-settings.js';
 import { SCORE_API_PATH } from '../../lib/pronunciation-score/constants.js';
+import {
+  ALIGN_API_PATH,
+  suggestAlignApiUrlFromScoreUrl,
+} from '../../lib/pronunciation-align/constants.js';
 import type { AppSettings, SpeechScoreProsodyBasis } from '../../types/models.js';
 import { settingsCardStyles } from './settings-styles.js';
 import '../ui/input.js';
@@ -20,6 +24,7 @@ const LANGUAGE_OPTIONS = [
 ] as const;
 
 const SCORE_API_URL_PLACEHOLDER = `https://speech.example.com${SCORE_API_PATH}`;
+const ALIGN_API_URL_PLACEHOLDER = `https://speech.example.com${ALIGN_API_PATH}`;
 
 @customElement('settings-speech-score')
 @localized()
@@ -71,7 +76,17 @@ export class SettingsSpeechScore extends LitElement {
   private _onUrlChange(event: CustomEvent<InputChangeDetail>): void {
     const next = event.detail.value.trim();
     if (next === this._settings.speechScoreApiUrl) return;
-    this._commit({ speechScoreApiUrl: next });
+    const partial: Partial<AppSettings> = { speechScoreApiUrl: next };
+    if (!this._settings.speechAlignApiUrl.trim() && next) {
+      partial.speechAlignApiUrl = suggestAlignApiUrlFromScoreUrl(next);
+    }
+    this._commit(partial);
+  }
+
+  private _onAlignUrlChange(event: CustomEvent<InputChangeDetail>): void {
+    const next = event.detail.value.trim();
+    if (next === this._settings.speechAlignApiUrl) return;
+    this._commit({ speechAlignApiUrl: next });
   }
 
   private _onKeyChange(event: CustomEvent<InputChangeDetail>): void {
@@ -123,7 +138,7 @@ export class SettingsSpeechScore extends LitElement {
     return html`
       <section class="card" aria-labelledby="speech-score-heading">
         <h2 id="speech-score-heading">${msg('发音评分')}</h2>
-        <p class="desc">${msg('按需将口语录音发送到评分服务，结果保存在本设备。')}</p>
+        <p class="desc">${msg('按需将口语录音或原声片段发送到评分/对齐服务，结果保存在本设备。')}</p>
         <div class="fields">
           <div class="field">
             <span class="field-label">${msg('评分接口地址')}</span>
@@ -133,6 +148,18 @@ export class SettingsSpeechScore extends LitElement {
               autocomplete="url"
               @change=${this._onUrlChange}
             ></ui-input>
+          </div>
+          <div class="field">
+            <span class="field-label">${msg('对齐接口地址')}</span>
+            <ui-input
+              .value=${s.speechAlignApiUrl}
+              placeholder=${ALIGN_API_URL_PLACEHOLDER}
+              autocomplete="url"
+              @change=${this._onAlignUrlChange}
+            ></ui-input>
+            <p class="field-hint">
+              ${msg('用于原声词级时间戳（波形词条）。与评分共用 API Key；填写评分地址时可自动预填。')}
+            </p>
           </div>
           <div class="field">
             <span class="field-label">${msg('API Key')}</span>
@@ -161,7 +188,7 @@ export class SettingsSpeechScore extends LitElement {
           </div>
           <p class="privacy">
             ${msg(
-              '评分时会把录音上传到你配置的服务器以计算分数；选「像原声」时 Echo 还可能上传原声片段。服务端不保存音频；分数只保存在本设备。',
+              '评分或对齐时会把音频上传到你配置的服务器；选「像原声」时 Echo 还可能上传原声片段。服务端不保存音频；分数与词级时间戳只保存在本设备。',
             )}
           </p>
         </div>

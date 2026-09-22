@@ -21,12 +21,25 @@ import {
   WORD_MARKER_LAYOUT_VALUES,
 } from '../types/models.js';
 import { toScoreApiUrl } from './pronunciation-score/constants.js';
+import {
+  suggestAlignApiUrlFromScoreUrl,
+  toAlignApiUrl,
+} from './pronunciation-align/constants.js';
 
 export const APP_SETTINGS_STORAGE_KEY = 'fluent-any-lang:app-settings';
 
 function defaultSpeechScoreApiUrl(): string {
   const value = import.meta.env.VITE_SPEECH_SCORE_API_BASE_URL;
   return typeof value === 'string' ? toScoreApiUrl(value) : '';
+}
+
+function defaultSpeechAlignApiUrl(): string {
+  const fromScore = defaultSpeechScoreApiUrl();
+  if (fromScore) {
+    return suggestAlignApiUrlFromScoreUrl(fromScore);
+  }
+  const value = import.meta.env.VITE_SPEECH_SCORE_API_BASE_URL;
+  return typeof value === 'string' ? toAlignApiUrl(value) : '';
 }
 
 function parseSpeechScoreApiUrl(raw: Record<string, unknown>, fallback: string): string {
@@ -36,6 +49,20 @@ function parseSpeechScoreApiUrl(raw: Record<string, unknown>, fallback: string):
     return toScoreApiUrl(raw.speechScoreApiBaseUrl) || fallback;
   }
   if (next === '') return '';
+  return fallback;
+}
+
+function parseSpeechAlignApiUrl(
+  raw: Record<string, unknown>,
+  fallback: string,
+  scoreUrl: string,
+): string {
+  const next = typeof raw.speechAlignApiUrl === 'string' ? raw.speechAlignApiUrl.trim() : null;
+  if (next) return toAlignApiUrl(next);
+  if (next === '') return '';
+  if (scoreUrl) {
+    return suggestAlignApiUrlFromScoreUrl(scoreUrl) || fallback;
+  }
   return fallback;
 }
 
@@ -198,6 +225,7 @@ function parseAppSettings(raw: unknown): AppSettings {
         ladderRates: [...DEFAULT_DISCRIMINATION_SETTINGS.ladderRates],
       },
       speechScoreApiUrl: defaultSpeechScoreApiUrl() || DEFAULT_SETTINGS.speechScoreApiUrl,
+      speechAlignApiUrl: defaultSpeechAlignApiUrl() || DEFAULT_SETTINGS.speechAlignApiUrl,
     };
   }
 
@@ -209,6 +237,10 @@ function parseAppSettings(raw: unknown): AppSettings {
     playerLimits.maxPlaybackRate.min,
     playerLimits.maxPlaybackRate.max,
     playerLimits.maxPlaybackRate.step,
+  );
+  const speechScoreApiUrl = parseSpeechScoreApiUrl(
+    raw,
+    defaultSpeechScoreApiUrl() || DEFAULT_SETTINGS.speechScoreApiUrl,
   );
   return {
     maxRecordingsPerMedia: clampNumber(
@@ -295,9 +327,11 @@ function parseAppSettings(raw: unknown): AppSettings {
         ? raw.lastPlayedMediaId
         : DEFAULT_SETTINGS.lastPlayedMediaId,
     discrimination: normalizeDiscriminationSettings(raw.discrimination, maxPlaybackRate),
-    speechScoreApiUrl: parseSpeechScoreApiUrl(
+    speechScoreApiUrl,
+    speechAlignApiUrl: parseSpeechAlignApiUrl(
       raw,
-      defaultSpeechScoreApiUrl() || DEFAULT_SETTINGS.speechScoreApiUrl,
+      defaultSpeechAlignApiUrl() || DEFAULT_SETTINGS.speechAlignApiUrl,
+      speechScoreApiUrl,
     ),
     speechScoreApiKey: parseString(raw.speechScoreApiKey, DEFAULT_SETTINGS.speechScoreApiKey),
     speechScoreLanguage:

@@ -16,6 +16,7 @@ import {
   STORE_NOISE_BLOB,
   STORE_PRONUNCIATION_SCORE,
   STORE_REFERENCE_PROSODY_PROFILE,
+  STORE_SOURCE_WORD_ALIGNMENT,
   STORE_SUBTITLE,
   type AppDatabase,
   type FluentAnyLangDB,
@@ -186,6 +187,15 @@ export function getDB(): Promise<AppDatabase> {
             keyPath: 'id',
           });
           profileStore.createIndex('byMediaId', 'mediaId');
+        }
+
+        // Source Word Alignment cache (not included in backup).
+        // v16 briefly shipped in local builds without this store; v17 re-runs create.
+        if (!db.objectStoreNames.contains(STORE_SOURCE_WORD_ALIGNMENT)) {
+          const alignStore = db.createObjectStore(STORE_SOURCE_WORD_ALIGNMENT, {
+            keyPath: 'id',
+          });
+          alignStore.createIndex('byMediaId', 'mediaId');
         }
 
         // v3 briefly shipped without byMediaId for some upgrades; re-run through v4.

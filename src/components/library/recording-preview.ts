@@ -1,4 +1,4 @@
-import { msg, localized } from '@lit/localize';
+import { msg, str, localized } from '@lit/localize';
 import { css, html, LitElement, nothing, type TemplateResult } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { styleMap } from 'lit/directives/style-map.js';
@@ -57,14 +57,22 @@ import {
   scoreTooLongMessage,
   type ScoreTextHighlightSpan,
 } from '../../lib/pronunciation-score/index.js';
+import {
+  alignAllPracticeSegments,
+  alignPracticeSegment,
+  isSpeechAlignConfigured,
+} from '../../lib/pronunciation-align/index.js';
 import { scoreBandStyles } from '../shared/score-band-styles.js';
 import { getScoreByRecordId } from '../../db/pronunciation-score.js';
+import { getSourceWordAlignment } from '../../db/source-word-alignment.js';
 import { setLogicalVolume } from '../../lib/media-element-gain.js';
 import {
   wordMarkersForPreview,
+  wordMarkersForSourcePreview,
   WORD_RAIL_LANE_PX,
   type WordWaveformMarker,
 } from '../../lib/word-waveform.js';
+import type { WordTiming } from '../../types/models.js';
 import type { WaveformSeekRequestDetail } from '../player/waveform-player.js';
 import '../ui/alert.js';
 import '../ui/button.js';
@@ -72,6 +80,7 @@ import '../ui/dropdown.js';
 import '../ui/icon.js';
 import '../ui/icon-button.js';
 import '../ui/modal.js';
+import '../ui/popconfirm.js';
 import '../ui/slider.js';
 import '../ui/tooltip.js';
 import { Z_INDEX } from '../ui/internal/z-index.js';
@@ -484,6 +493,24 @@ export class RecordingPreview extends LitElement {
         padding: 0 4px;
       }
 
+      .word-marker.is-align {
+        background: rgba(0, 0, 0, 0.06);
+        color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
+      }
+
+      .align-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--space-sm, 8px);
+      }
+
+      .align-progress {
+        margin: 0;
+        font-size: 0.8125rem;
+        color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
+      }
+
       .score-skeleton {
         height: 12px;
         border-radius: 6px;
@@ -564,6 +591,21 @@ export class RecordingPreview extends LitElement {
   @state()
   private _privacyOpen = false;
 
+  /** Pending action after privacy ack (`score` | `align-segment` | `align-all`). */
+  private _privacyAction: 'score' | 'align-segment' | 'align-all' = 'score';
+
+  /** When privacy ack resumes `align-segment`, force overwrite cache. */
+  private _alignSegmentForce = false;
+
+  @state()
+  private _aligning = false;
+
+  @state()
+  private _alignProgress: { done: number; total: number } | null = null;
+
+  /** Cached Source Word Alignment words by Practice Segment id (Media absolute times). */
+  private _alignWordsBySegmentId = new Map<string, WordTiming[]>();
+
   /** Index into `details.misread_words` while expected↔actual are paired-emphasized. */
   @state()
   private _pairedMisreadIndex: number | null = null;
@@ -599,6 +641,8 @@ export class RecordingPreview extends LitElement {
       }
       this._enforceViewRangeBounds();
       this._refreshActiveSubtitle();
+      this._alignWordsBySegmentId.clear();
+      void this._loadAlignWordsForCurrentSegment();
     }
 
     if (changed.has('subtitleSegments')) {
@@ -606,7 +650,9 @@ export class RecordingPreview extends LitElement {
     }
 
     if (changed.has('record')) {
+      this._alignWordsBySegmentId.clear();
       void this._loadScore();
+      void this._loadAlignWordsForCurrentSegment();
     }
   }
 
@@ -729,13 +775,15 @@ export class RecordingPreview extends LitElement {
             : nothing}
         </div>
 
+        ${this._renderAlignActions()}
+
         ${this._playMode !== 'idle' ? html`<p class="status">${this._renderStatus()}</p>` : nothing}
       </div>
       <ui-modal
         title="${msg('上传说明')}"
         .zIndex=${Z_INDEX.MODAL + 80}
         ?open=${this._privacyOpen}
-        ok-text="${msg('同意并评分')}"
+        ok-text="${this._privacyAction === 'score' ? msg('同意并评分') : msg('同意并对齐')}"
         cancel-text="${msg('取消')}"
         width="420px"
         centered
@@ -748,7 +796,7 @@ export class RecordingPreview extends LitElement {
           if (!e.detail.open) this._privacyOpen = false;
         }}"
       >
-        <p>${msg('评分会将录音上传到你配置的服务器以计算分数。服务端不保存音频。是否继续？')}</p>
+        <p>${this._privacyModalBody()}</p>
       </ui-modal>
     `;
   }
@@ -1073,14 +1121,15 @@ export class RecordingPreview extends LitElement {
       return nothing;
     }
     const compact = this._wordMarkerLayout === 'compact';
+    const alignRail = this._playMode === 'source';
     return html`
       <div class="word-rail" slot="over-canvas">
         ${markers.map((marker) => {
+          const bandClass =
+            typeof marker.score === 'number' ? `score-band ${scoreBand(marker.score)}` : 'is-align';
           return html`<button
             type="button"
-            class="word-marker score-band ${scoreBand(marker.score)}${compact
-              ? ' is-compact'
-              : ''}"
+            class="word-marker ${bandClass}${compact ? ' is-compact' : ''}"
             style=${styleMap(
               compact
                 ? {
@@ -1095,7 +1144,8 @@ export class RecordingPreview extends LitElement {
                   },
             )}
             title=${marker.word}
-            @click=${() => this._playScoredWord(marker)}
+            @click=${() =>
+              alignRail ? this._playAlignedWord(marker) : this._playScoredWord(marker)}
           >
             ${marker.word}
           </button>`;
@@ -1105,12 +1155,32 @@ export class RecordingPreview extends LitElement {
   }
 
   private _wordRailVisible(): boolean {
-    return this._playMode !== 'source' && this._playMode !== 'idle';
+    return this._playMode !== 'idle';
   }
 
   private _wordMarkers() {
+    if (this.segments.length === 0) {
+      return [];
+    }
+    if (this._playMode === 'source') {
+      const segment = this.segments[this._syncSegmentIndex];
+      const words = segment ? (this._alignWordsBySegmentId.get(segment.id) ?? []) : [];
+      if (words.length === 0) {
+        return [];
+      }
+      return wordMarkersForSourcePreview({
+        words,
+        segments: this.segments,
+        segmentIndex: this._syncSegmentIndex,
+        sourceViewRange: this._sourceViewRange(),
+        layout: this._wordMarkerLayout,
+      });
+    }
+    if (this._playMode === 'idle') {
+      return [];
+    }
     const words = this._score?.status === 'success' ? (this._score.details?.word_scores ?? []) : [];
-    if (words.length === 0 || this.segments.length === 0) {
+    if (words.length === 0) {
       return [];
     }
     return wordMarkersForPreview({
@@ -1133,19 +1203,46 @@ export class RecordingPreview extends LitElement {
     return mapPracticeViewRange(viewRange, 'source', 'recording', this.segments);
   }
 
+  private _sourceViewRange(): ViewRange | null {
+    const viewRange = this._controller.viewRange;
+    if (!viewRange || this.segments.length === 0) {
+      return viewRange;
+    }
+    if (this._usesRecordingTimeline()) {
+      return mapPracticeViewRange(viewRange, 'recording', 'source', this.segments);
+    }
+    return viewRange;
+  }
+
   private _playScoredWord(word: Pick<PronunciationWordScore, 'word' | 'start'>): void {
     if (!Number.isFinite(word.start)) {
       return;
     }
-    void this._playWordAt(word.start);
+    void this._playWordAt(word.start, 'recording');
   }
 
-  private async _playWordAt(start: number): Promise<void> {
+  private _playAlignedWord(word: Pick<WordTiming, 'word' | 'start'>): void {
+    if (!Number.isFinite(word.start)) {
+      return;
+    }
+    void this._playWordAt(word.start, 'source');
+  }
+
+  private async _playWordAt(start: number, axis: 'source' | 'recording' = 'recording'): Promise<void> {
     if (!(await this._ensurePlayback()) || !this._playback) {
       return;
     }
 
     this._requestAudioFocus();
+    if (axis === 'source') {
+      if (this._sourceTrackId) {
+        this._controller.setActiveId(this._sourceTrackId);
+      }
+      void this._playback.playSourceAt(start).catch(() => {
+        this._playback?.stop();
+      });
+      return;
+    }
     if (this._playMode === 'continuous') {
       void this._playback.playContinuousAt(start, 'recording').catch(() => {
         this._playback?.stop();
@@ -1166,6 +1263,218 @@ export class RecordingPreview extends LitElement {
     });
   }
 
+  private _privacyModalBody(): string {
+    if (this._privacyAction === 'score') {
+      return msg('评分会将录音上传到你配置的服务器以计算分数。服务端不保存音频。是否继续？');
+    }
+    return msg('对齐会将原声片段上传到你配置的服务器以获取词级时间戳。服务端不保存音频。是否继续？');
+  }
+
+  private _renderAlignActions() {
+    if (!this.record || !this.sourceBlob || this.segments.length === 0) {
+      return nothing;
+    }
+    if (!isSpeechAlignConfigured(getAppSettings())) {
+      return nothing;
+    }
+    const currentSegment = this.segments[this._syncSegmentIndex];
+    const hasSegmentCache = Boolean(
+      currentSegment && this._alignWordsBySegmentId.has(currentSegment.id),
+    );
+    const busy = this._aligning || this._scoring;
+    const progress = this._alignProgress;
+    const progressLabel =
+      this._aligning && progress
+        ? msg(str`对齐中… ${progress.done}/${progress.total}`)
+        : this._aligning
+          ? msg('对齐中…')
+          : nothing;
+    const segmentAlignButton = hasSegmentCache
+      ? html`
+          <ui-tooltip
+            title=${msg('重新请求当前句原声的词级时间戳')}
+            placement="right"
+            .zIndex=${Z_INDEX.MODAL + 1}
+          >
+            <ui-popconfirm
+              .title=${msg('已有对齐结果，是否重新请求？')}
+              .zIndex=${Z_INDEX.MODAL + 2}
+              ?disabled=${busy}
+              placement="right"
+              @confirm=${() => void this._handleAlignSegment(true)}
+            >
+              <ui-button variant="secondary" ?disabled=${busy}>
+                ${msg('重新对齐')}
+              </ui-button>
+            </ui-popconfirm>
+          </ui-tooltip>
+        `
+      : html`
+          <ui-tooltip title=${msg('对齐当前句原声的词级时间戳')} placement="right" .zIndex=${Z_INDEX.MODAL + 1}>
+            <ui-button
+              variant="secondary"
+              ?disabled=${busy}
+              @click=${() => void this._handleAlignSegment()}
+            >
+              ${msg('对齐本句')}
+            </ui-button>
+          </ui-tooltip>
+        `;
+    return html`
+      <div class="align-row">
+        ${segmentAlignButton}
+        <ui-tooltip
+          title=${msg('按句批量对齐全部原声（已有缓存的句子会跳过）')}
+          .zIndex=${Z_INDEX.MODAL + 1}
+        >
+          <ui-button
+            variant="secondary"
+            ?disabled=${busy}
+            @click=${() => void this._handleAlignAll()}
+          >
+            ${msg('对齐全部原音')}
+          </ui-button>
+        </ui-tooltip>
+        ${progressLabel ? html`<p class="align-progress">${progressLabel}</p>` : nothing}
+      </div>
+    `;
+  }
+
+  private async _loadAlignWordsForCurrentSegment(): Promise<void> {
+    const record = this.record;
+    const segment = this.segments[this._syncSegmentIndex];
+    if (!record || !segment) {
+      this.requestUpdate();
+      return;
+    }
+    if (this._alignWordsBySegmentId.has(segment.id)) {
+      this.requestUpdate();
+      return;
+    }
+    try {
+      const stored = await getSourceWordAlignment(record.mediaId, segment.id);
+      if (stored) {
+        this._alignWordsBySegmentId.set(segment.id, stored.words);
+      }
+    } catch {
+      // Ignore cache read errors; UI stays without markers.
+    }
+    this.requestUpdate();
+  }
+
+  private _rememberAlignment(segmentId: string, words: WordTiming[]): void {
+    this._alignWordsBySegmentId.set(segmentId, words);
+    this.requestUpdate();
+  }
+
+  private async _handleAlignSegment(force = false): Promise<void> {
+    if (!this.record || this._aligning) {
+      return;
+    }
+    if (!isSpeechAlignConfigured(getAppSettings())) {
+      Message.warning(msg('请先在设置中填写对齐接口地址和 API Key'));
+      return;
+    }
+    if (!hasSpeechScorePrivacyAck()) {
+      this._privacyAction = 'align-segment';
+      this._alignSegmentForce = force;
+      this._privacyOpen = true;
+      return;
+    }
+    await this._runAlignSegment(force);
+  }
+
+  private async _handleAlignAll(): Promise<void> {
+    if (!this.record || this._aligning) {
+      return;
+    }
+    if (!isSpeechAlignConfigured(getAppSettings())) {
+      Message.warning(msg('请先在设置中填写对齐接口地址和 API Key'));
+      return;
+    }
+    if (!hasSpeechScorePrivacyAck()) {
+      this._privacyAction = 'align-all';
+      this._privacyOpen = true;
+      return;
+    }
+    await this._runAlignAll();
+  }
+
+  private async _runAlignSegment(force = false): Promise<void> {
+    const record = this.record;
+    const segment = this.segments[this._syncSegmentIndex];
+    if (!record || !segment) {
+      return;
+    }
+    this._aligning = true;
+    this._alignProgress = { done: 0, total: 1 };
+    try {
+      const result = await alignPracticeSegment({
+        mediaId: record.mediaId,
+        segment,
+        subtitleSegments: this.subtitleSegments,
+        options: { source: 'segment', skipIfCached: !force },
+      });
+      if (!result.ok) {
+        if (result.reason === 'not_configured') {
+          Message.warning(result.message);
+        } else {
+          Message.error(result.message);
+        }
+        return;
+      }
+      this._rememberAlignment(segment.id, result.alignment.words);
+      Message.success(force ? msg('本句已重新对齐') : msg('本句对齐完成'));
+    } finally {
+      this._aligning = false;
+      this._alignProgress = null;
+    }
+  }
+
+  private async _runAlignAll(): Promise<void> {
+    const record = this.record;
+    if (!record) {
+      return;
+    }
+    this._aligning = true;
+    this._alignProgress = { done: 0, total: this.segments.length };
+    try {
+      const result = await alignAllPracticeSegments({
+        mediaId: record.mediaId,
+        segments: this.segments,
+        subtitleSegments: this.subtitleSegments,
+        options: {
+          onProgress: (progress) => {
+            this._alignProgress = { done: progress.done, total: progress.total };
+          },
+        },
+      });
+      // Refresh in-memory cache from IDB for all segments.
+      this._alignWordsBySegmentId.clear();
+      await Promise.all(
+        this.segments.map(async (segment) => {
+          try {
+            const stored = await getSourceWordAlignment(record.mediaId, segment.id);
+            if (stored) {
+              this._alignWordsBySegmentId.set(segment.id, stored.words);
+            }
+          } catch {
+            // ignore
+          }
+        }),
+      );
+      this.requestUpdate();
+      if (!result.ok && result.message) {
+        Message.warning(result.message);
+      } else {
+        Message.success(msg('全部原音对齐完成'));
+      }
+    } finally {
+      this._aligning = false;
+      this._alignProgress = null;
+    }
+  }
+
   private async _handleScore(): Promise<void> {
     const record = this.record;
     if (!record || this._scoring || this._scoreTooLong() || !this._hasReferenceText()) {
@@ -1176,6 +1485,7 @@ export class RecordingPreview extends LitElement {
       return;
     }
     if (!hasSpeechScorePrivacyAck()) {
+      this._privacyAction = 'score';
       this._privacyOpen = true;
       return;
     }
@@ -1185,6 +1495,17 @@ export class RecordingPreview extends LitElement {
   private async _confirmPrivacy(): Promise<void> {
     ackSpeechScorePrivacy();
     this._privacyOpen = false;
+    const action = this._privacyAction;
+    if (action === 'align-segment') {
+      const force = this._alignSegmentForce;
+      this._alignSegmentForce = false;
+      await this._runAlignSegment(force);
+      return;
+    }
+    if (action === 'align-all') {
+      await this._runAlignAll();
+      return;
+    }
     if (this.record) {
       await this._runScore(this.record);
     }
@@ -1974,6 +2295,9 @@ export class RecordingPreview extends LitElement {
       this._playbackPaused = state.paused;
       this._syncSegmentIndex = state.syncSegmentIndex;
       this._refreshActiveSubtitle();
+      if (state.syncSegmentIndex !== previousSegmentIndex) {
+        void this._loadAlignWordsForCurrentSegment();
+      }
 
       if (state.mode === 'idle') {
         this._resetPreviewContextAfterStop();

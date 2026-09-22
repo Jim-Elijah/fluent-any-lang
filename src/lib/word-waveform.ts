@@ -1,16 +1,15 @@
-import { findPracticeSegmentIndex } from './playback-utils.js';
-import type {
-  PracticeSegment,
-  PronunciationWordScore,
-  WordMarkerLayout,
-} from '../types/models.js';
+import { findPracticeSegmentIndex, type PracticeTimeAxis } from './playback-utils.js';
+import type { PracticeSegment, WordMarkerLayout, WordTiming } from '../types/models.js';
 
 export type TimeRange = { start: number; end: number };
 
 /** CSS pixel height reserved at the top of the waveform canvas for word labels. */
 export const WORD_RAIL_LANE_PX = 22;
 
-export type WordWaveformMarker = PronunciationWordScore & {
+/** Word with optional Pronunciation Score (align timings have no score). */
+export type TimedWord = WordTiming & { score?: number };
+
+export type WordWaveformMarker = TimedWord & {
   leftPct: number;
   /**
    * Rail percentage used as `width` (duration layout) or `max-width` (compact layout).
@@ -19,24 +18,25 @@ export type WordWaveformMarker = PronunciationWordScore & {
   widthPct: number;
 };
 
-/** Words whose midpoint falls on this Practice Segment's recording axis. */
+/** Words whose midpoint falls on this Practice Segment's chosen axis. */
 export function wordsInPracticeSegment(
-  words: PronunciationWordScore[],
+  words: TimedWord[],
   segments: PracticeSegment[],
   segmentIndex: number,
-): PronunciationWordScore[] {
+  axis: PracticeTimeAxis = 'recording',
+): TimedWord[] {
   if (segmentIndex < 0 || segmentIndex >= segments.length) {
     return [];
   }
   return words.filter((word) => {
     const midpoint = (word.start + word.end) / 2;
-    return findPracticeSegmentIndex(segments, midpoint, 'recording') === segmentIndex;
+    return findPracticeSegmentIndex(segments, midpoint, axis) === segmentIndex;
   });
 }
 
-/** Place recording-axis words onto a recording view range. Omits words fully outside. */
+/** Place timed words onto a view range. Omits words fully outside. */
 export function layoutWordMarkers(
-  words: PronunciationWordScore[],
+  words: TimedWord[],
   viewRange: TimeRange,
   layout: WordMarkerLayout = 'duration',
 ): WordWaveformMarker[] {
@@ -99,17 +99,41 @@ export function layoutWordMarkers(
 }
 
 export function wordMarkersForPreview(input: {
-  words: PronunciationWordScore[];
+  words: TimedWord[];
   segments: PracticeSegment[];
   segmentIndex: number;
   recordingViewRange: TimeRange | null;
   layout?: WordMarkerLayout;
 }): WordWaveformMarker[] {
-  const words = wordsInPracticeSegment(input.words, input.segments, input.segmentIndex);
+  const words = wordsInPracticeSegment(
+    input.words,
+    input.segments,
+    input.segmentIndex,
+    'recording',
+  );
   const segment = input.segments[input.segmentIndex];
   const viewRange =
     input.recordingViewRange ??
     (segment ? { start: segment.recordingStartTime, end: segment.recordingEndTime } : null);
+  if (!viewRange) {
+    return [];
+  }
+  return layoutWordMarkers(words, viewRange, input.layout ?? 'duration');
+}
+
+/** Source-axis word markers for the current Practice Segment (align timings). */
+export function wordMarkersForSourcePreview(input: {
+  words: TimedWord[];
+  segments: PracticeSegment[];
+  segmentIndex: number;
+  sourceViewRange: TimeRange | null;
+  layout?: WordMarkerLayout;
+}): WordWaveformMarker[] {
+  const words = wordsInPracticeSegment(input.words, input.segments, input.segmentIndex, 'source');
+  const segment = input.segments[input.segmentIndex];
+  const viewRange =
+    input.sourceViewRange ??
+    (segment ? { start: segment.sourceStartTime, end: segment.sourceEndTime } : null);
   if (!viewRange) {
     return [];
   }

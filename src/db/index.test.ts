@@ -13,6 +13,7 @@ import {
   STORE_RECORDING,
   STORE_RECORDING_BLOB,
   STORE_REFERENCE_PROSODY_PROFILE,
+  STORE_SOURCE_WORD_ALIGNMENT,
   STORE_SUBTITLE,
 } from './schema.js';
 
@@ -62,6 +63,7 @@ describe('getDB', () => {
         STORE_ERROR_LOG,
         STORE_PRONUNCIATION_SCORE,
         STORE_REFERENCE_PROSODY_PROFILE,
+        STORE_SOURCE_WORD_ALIGNMENT,
       ]),
     );
 
@@ -249,5 +251,114 @@ describe('referenceProsodyProfile store migration', () => {
         .transaction(STORE_REFERENCE_PROSODY_PROFILE)
         .objectStore(STORE_REFERENCE_PROSODY_PROFILE).indexNames,
     ]).toContain('byMediaId');
+  });
+});
+
+describe('sourceWordAlignment store migration', () => {
+  beforeEach(async () => {
+    await resetDatabase();
+  });
+
+  it('adds sourceWordAlignment store when upgrading from v15', async () => {
+    const v15 = await openDB(DB_NAME, 15, {
+      upgrade(db) {
+        createLegacyStores(db, { withByMediaId: true });
+        const scoreStore = db.createObjectStore(STORE_PRONUNCIATION_SCORE, { keyPath: 'id' });
+        scoreStore.createIndex('byRecordId', 'recordId', { unique: true });
+        scoreStore.createIndex('byCreatedAt', 'createdAt');
+        const profileStore = db.createObjectStore(STORE_REFERENCE_PROSODY_PROFILE, {
+          keyPath: 'id',
+        });
+        profileStore.createIndex('byMediaId', 'mediaId');
+      },
+    });
+    expect([...v15.objectStoreNames]).not.toContain(STORE_SOURCE_WORD_ALIGNMENT);
+    v15.close();
+
+    const { getDB } = await import('./index.js');
+    const db = await getDB();
+
+    expect(db.version).toBe(DB_VERSION);
+    expect([...db.objectStoreNames]).toContain(STORE_SOURCE_WORD_ALIGNMENT);
+
+    // Symptom the UI hits after align API success: put/get on this store.
+    await expect(
+      db.put(STORE_SOURCE_WORD_ALIGNMENT, {
+        id: 'media-1:seg-a',
+        mediaId: 'media-1',
+        segmentId: 'seg-a',
+        words: [{ word: 'hi', start: 0, end: 0.2 }],
+        referenceText: 'hi',
+        language: 'en',
+        source: 'segment',
+        createdAt: 1,
+        updatedAt: 1,
+      }),
+    ).resolves.toBeDefined();
+    expect([
+      ...db
+        .transaction(STORE_SOURCE_WORD_ALIGNMENT)
+        .objectStore(STORE_SOURCE_WORD_ALIGNMENT).indexNames,
+    ]).toContain('byMediaId');
+  });
+
+  it('repairs a stuck DB already at current version but missing the store', async () => {
+    // v15 with full stores, then empty bump to 16 — version rises without the store
+    // (local builds briefly did this). getDB at 17 must create it.
+    const v15 = await openDB(DB_NAME, 15, {
+      upgrade(db) {
+        createLegacyStores(db, { withByMediaId: true });
+        const errorLogStore = db.createObjectStore(STORE_ERROR_LOG, { keyPath: 'id' });
+        errorLogStore.createIndex('byCreatedAt', 'createdAt');
+        const playlistStore = db.createObjectStore('playlist', { keyPath: 'id' });
+        playlistStore.createIndex('bySortOrder', 'sortOrder');
+        const sentenceStore = db.createObjectStore('sentenceBank', { keyPath: 'id' });
+        sentenceStore.createIndex('byContentHash', 'contentHash', { unique: true });
+        sentenceStore.createIndex('byCreatedAt', 'createdAt');
+        sentenceStore.createIndex('bySourceMediaId', 'sourceMediaId');
+        db.createObjectStore('sentenceBankBlob', { keyPath: 'entryId' });
+        const noiseStore = db.createObjectStore('noise', { keyPath: 'id' });
+        noiseStore.createIndex('byCreatedAt', 'createdAt');
+        noiseStore.createIndex('byContentHash', 'contentHash', { unique: true });
+        db.createObjectStore('noiseBlob', { keyPath: 'noiseId' });
+        const scoreStore = db.createObjectStore(STORE_PRONUNCIATION_SCORE, { keyPath: 'id' });
+        scoreStore.createIndex('byRecordId', 'recordId', { unique: true });
+        scoreStore.createIndex('byCreatedAt', 'createdAt');
+        const profileStore = db.createObjectStore(STORE_REFERENCE_PROSODY_PROFILE, {
+          keyPath: 'id',
+        });
+        profileStore.createIndex('byMediaId', 'mediaId');
+      },
+    });
+    v15.close();
+
+    const stuckAt16 = await openDB(DB_NAME, 16, {
+      upgrade() {
+        // Empty upgrade: version rises, sourceWordAlignment is still missing.
+      },
+    });
+    expect([...stuckAt16.objectStoreNames]).not.toContain(STORE_SOURCE_WORD_ALIGNMENT);
+    stuckAt16.close();
+
+    const { getDB } = await import('./index.js');
+    const db = await getDB();
+
+    expect(db.version).toBe(DB_VERSION);
+    expect([...db.objectStoreNames]).toContain(STORE_SOURCE_WORD_ALIGNMENT);
+
+    // Exact UI failure after align API success when the store is missing.
+    await expect(
+      db.put(STORE_SOURCE_WORD_ALIGNMENT, {
+        id: 'media-1:seg-a',
+        mediaId: 'media-1',
+        segmentId: 'seg-a',
+        words: [{ word: 'hi', start: 0, end: 0.2 }],
+        referenceText: 'hi',
+        language: 'en',
+        source: 'segment',
+        createdAt: 1,
+        updatedAt: 1,
+      }),
+    ).resolves.toBeDefined();
   });
 });
