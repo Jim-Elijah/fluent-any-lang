@@ -17,6 +17,8 @@ import {
   type LoopMode,
   type ShadowingGapPolicy,
   type SpeechScoreProsodyBasis,
+  type WordMarkerLayout,
+  WORD_MARKER_LAYOUT_VALUES,
 } from '../types/models.js';
 import { toScoreApiUrl } from './pronunciation-score/constants.js';
 
@@ -76,6 +78,13 @@ function parseSpeechScoreProsodyBasis(
   return typeof value === 'string' &&
     (SPEECH_SCORE_PROSODY_BASIS_VALUES as readonly string[]).includes(value)
     ? (value as SpeechScoreProsodyBasis)
+    : fallback;
+}
+
+function parseWordMarkerLayout(value: unknown, fallback: WordMarkerLayout): WordMarkerLayout {
+  return typeof value === 'string' &&
+    (WORD_MARKER_LAYOUT_VALUES as readonly string[]).includes(value)
+    ? (value as WordMarkerLayout)
     : fallback;
 }
 
@@ -297,6 +306,10 @@ function parseAppSettings(raw: unknown): AppSettings {
     speechScoreProsodyBasis: parseSpeechScoreProsodyBasis(
       raw.speechScoreProsodyBasis,
       DEFAULT_SETTINGS.speechScoreProsodyBasis,
+    ),
+    wordMarkerLayout: parseWordMarkerLayout(
+      raw.wordMarkerLayout,
+      DEFAULT_SETTINGS.wordMarkerLayout,
     ),
   };
 }

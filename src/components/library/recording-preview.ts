@@ -38,8 +38,9 @@ import type {
   PracticeSegment,
   ShadowingGapPolicy,
   SubtitleSegment,
+  WordMarkerLayout,
 } from '../../types/models.js';
-import { getAppSettings, getMaxVolumeBoost } from '../../lib/app-settings.js';
+import { getAppSettings, getMaxVolumeBoost, setAppSettings } from '../../lib/app-settings.js';
 import { getLocale } from '../../i18n/localization.js';
 import {
   ackSpeechScorePrivacy,
@@ -258,6 +259,19 @@ export class RecordingPreview extends LitElement {
         white-space: nowrap;
       }
 
+      .word-layout-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--space-sm);
+      }
+
+      .word-layout-label {
+        font-size: 0.8125rem;
+        color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
+        white-space: nowrap;
+      }
+
       .status {
         margin: 0;
         color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
@@ -450,8 +464,8 @@ export class RecordingPreview extends LitElement {
         position: absolute;
         top: 0;
         height: 100%;
-        width: auto;
-        padding: 0 4px;
+        box-sizing: border-box;
+        padding: 0 2px;
         border: none;
         border-radius: 3px;
         overflow: hidden;
@@ -463,6 +477,11 @@ export class RecordingPreview extends LitElement {
         text-align: center;
         cursor: pointer;
         pointer-events: auto;
+      }
+
+      .word-marker.is-compact {
+        width: auto;
+        padding: 0 4px;
       }
 
       .score-skeleton {
@@ -532,6 +551,9 @@ export class RecordingPreview extends LitElement {
 
   @state()
   private _recordingVolume = 1;
+
+  @state()
+  private _wordMarkerLayout: WordMarkerLayout = getAppSettings().wordMarkerLayout;
 
   @state()
   private _score: PronunciationScore | null = null;
@@ -654,6 +676,8 @@ export class RecordingPreview extends LitElement {
         <div class="subtitle-area">${this._renderSubtitle()}</div>
 
         ${this._renderPlaybackNav()}
+
+        ${this._renderWordLayoutToggle(wordMarkers.length > 0)}
 
         <waveform-player
           .controller=${this._controller}
@@ -998,6 +1022,41 @@ export class RecordingPreview extends LitElement {
     `;
   }
 
+  private _renderWordLayoutToggle(visible: boolean) {
+    if (!visible) {
+      return nothing;
+    }
+    const layout = this._wordMarkerLayout;
+    return html`
+      <div class="word-layout-row" role="group" aria-label=${msg('波形词条')}>
+        <span class="word-layout-label">${msg('波形词条')}</span>
+        <ui-tooltip title=${msg('标签宽度跟随发音时长')} .zIndex=${Z_INDEX.MODAL + 1}>
+          <ui-button
+            variant=${layout === 'duration' ? 'primary' : 'secondary'}
+            @click=${() => this._setWordMarkerLayout('duration')}
+          >
+            ${msg('时长')}
+          </ui-button>
+        </ui-tooltip>
+        <ui-tooltip title=${msg('标签紧凑排列')} .zIndex=${Z_INDEX.MODAL + 1}>
+          <ui-button
+            variant=${layout === 'compact' ? 'primary' : 'secondary'}
+            @click=${() => this._setWordMarkerLayout('compact')}
+          >
+            ${msg('紧凑')}
+          </ui-button>
+        </ui-tooltip>
+      </div>
+    `;
+  }
+
+  private _setWordMarkerLayout(layout: WordMarkerLayout): void {
+    if (layout === this._wordMarkerLayout) {
+      return;
+    }
+    this._wordMarkerLayout = setAppSettings({ wordMarkerLayout: layout }).wordMarkerLayout;
+  }
+
   private _renderWordChip(word: PronunciationWordScore) {
     return html`<button
       type="button"
@@ -1013,16 +1072,28 @@ export class RecordingPreview extends LitElement {
     if (markers.length === 0) {
       return nothing;
     }
+    const compact = this._wordMarkerLayout === 'compact';
     return html`
       <div class="word-rail" slot="over-canvas">
         ${markers.map((marker) => {
           return html`<button
             type="button"
-            class="word-marker score-band ${scoreBand(marker.score)}"
-            style=${styleMap({
-              left: `${marker.leftPct}%`,
-              'max-width': `calc(${marker.maxWidthPct}% - 4px)`,
-            })}
+            class="word-marker score-band ${scoreBand(marker.score)}${compact
+              ? ' is-compact'
+              : ''}"
+            style=${styleMap(
+              compact
+                ? {
+                    left: `${marker.leftPct}%`,
+                    width: 'auto',
+                    'max-width': `calc(${marker.widthPct}% - 4px)`,
+                  }
+                : {
+                    left: `${marker.leftPct}%`,
+                    width: `${marker.widthPct}%`,
+                    'max-width': 'none',
+                  },
+            )}
             title=${marker.word}
             @click=${() => this._playScoredWord(marker)}
           >
@@ -1047,6 +1118,7 @@ export class RecordingPreview extends LitElement {
       segments: this.segments,
       segmentIndex: this._syncSegmentIndex,
       recordingViewRange: this._recordingViewRange(),
+      layout: this._wordMarkerLayout,
     });
   }
 

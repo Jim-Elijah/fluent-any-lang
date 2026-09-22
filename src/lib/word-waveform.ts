@@ -1,5 +1,9 @@
 import { findPracticeSegmentIndex } from './playback-utils.js';
-import type { PracticeSegment, PronunciationWordScore } from '../types/models.js';
+import type {
+  PracticeSegment,
+  PronunciationWordScore,
+  WordMarkerLayout,
+} from '../types/models.js';
 
 export type TimeRange = { start: number; end: number };
 
@@ -8,8 +12,11 @@ export const WORD_RAIL_LANE_PX = 22;
 
 export type WordWaveformMarker = PronunciationWordScore & {
   leftPct: number;
-  /** Maximum width as a percentage of the rail, preventing overlap with the next marker. */
-  maxWidthPct: number;
+  /**
+   * Rail percentage used as `width` (duration layout) or `max-width` (compact layout).
+   * Duration: clipped pronunciation span. Compact: gap until the next marker (or rail end).
+   */
+  widthPct: number;
 };
 
 /** Words whose midpoint falls on this Practice Segment's recording axis. */
@@ -31,30 +38,60 @@ export function wordsInPracticeSegment(
 export function layoutWordMarkers(
   words: PronunciationWordScore[],
   viewRange: TimeRange,
+  layout: WordMarkerLayout = 'duration',
 ): WordWaveformMarker[] {
   const duration = viewRange.end - viewRange.start;
   if (duration <= 0) {
     return [];
   }
 
-  const visible = words.filter((w) => w.end > viewRange.start && w.start < viewRange.end);
+  const visible = words
+    .filter((w) => w.end > viewRange.start && w.start < viewRange.end)
+    .slice()
+    .sort((a, b) => a.start - b.start || a.end - b.end);
+
+  if (layout === 'compact') {
+    const markers: WordWaveformMarker[] = visible.map((word) => {
+      const left = ((word.start - viewRange.start) / duration) * 100;
+      return {
+        word: word.word,
+        start: word.start,
+        end: word.end,
+        score: word.score,
+        leftPct: Math.max(0, left),
+        widthPct: 100,
+      };
+    });
+    for (let i = 0; i < markers.length - 1; i++) {
+      const gap = markers[i + 1].leftPct - markers[i].leftPct;
+      if (gap > 0) {
+        markers[i].widthPct = gap;
+      }
+    }
+    return markers;
+  }
 
   const markers: WordWaveformMarker[] = visible.map((word) => {
-    const left = ((word.start - viewRange.start) / duration) * 100;
+    const clippedStart = Math.max(word.start, viewRange.start);
+    const clippedEnd = Math.min(word.end, viewRange.end);
+    const left = ((clippedStart - viewRange.start) / duration) * 100;
+    const width = ((clippedEnd - clippedStart) / duration) * 100;
     return {
       word: word.word,
       start: word.start,
       end: word.end,
       score: word.score,
       leftPct: Math.max(0, left),
-      maxWidthPct: 100,
+      widthPct: Math.max(0, width),
     };
   });
 
-  for (let i = 0; i < markers.length - 1; i++) {
-    const gap = markers[i + 1].leftPct - markers[i].leftPct;
-    if (gap > 0) {
-      markers[i].maxWidthPct = gap;
+  for (let i = 0; i < markers.length; i++) {
+    const marker = markers[i];
+    const nextLeft = i < markers.length - 1 ? markers[i + 1].leftPct : 100;
+    const maxWidth = nextLeft - marker.leftPct;
+    if (maxWidth < marker.widthPct) {
+      marker.widthPct = Math.max(0, maxWidth);
     }
   }
 
@@ -66,6 +103,7 @@ export function wordMarkersForPreview(input: {
   segments: PracticeSegment[];
   segmentIndex: number;
   recordingViewRange: TimeRange | null;
+  layout?: WordMarkerLayout;
 }): WordWaveformMarker[] {
   const words = wordsInPracticeSegment(input.words, input.segments, input.segmentIndex);
   const segment = input.segments[input.segmentIndex];
@@ -75,5 +113,5 @@ export function wordMarkersForPreview(input: {
   if (!viewRange) {
     return [];
   }
-  return layoutWordMarkers(words, viewRange);
+  return layoutWordMarkers(words, viewRange, input.layout ?? 'duration');
 }

@@ -77,6 +77,18 @@ export const SPEECH_SCORE_PROSODY_BASIS_VALUES: readonly SpeechScoreProsodyBasis
   'match',
 ] as const;
 
+/**
+ * Recording-preview waveform word-marker width:
+ * - duration: bar width tracks pronunciation span (end − start)
+ * - compact: text-sized chip capped before the next word
+ */
+export type WordMarkerLayout = 'duration' | 'compact';
+
+export const WORD_MARKER_LAYOUT_VALUES: readonly WordMarkerLayout[] = [
+  'duration',
+  'compact',
+] as const;
+
 /** compress 策略下句间固定等待（毫秒） */
 export const SHADOWING_COMPRESS_GAP_MS = 1000;
 
@@ -491,6 +503,11 @@ export type AppSettings = {
    * - `match`: Echo may send clipped reference audio or a cached prosody profile.
    */
   speechScoreProsodyBasis: SpeechScoreProsodyBasis;
+  /**
+   * Waveform word-marker layout in recording preview (toggled in preview UI, not settings page).
+   * Default `duration`.
+   */
+  wordMarkerLayout: WordMarkerLayout;
 };
 
 export const FAVORITES_PLAYLIST_ID =
@@ -577,6 +594,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   speechScoreApiKey: '',
   speechScoreLanguage: 'auto',
   speechScoreProsodyBasis: 'naturalness',
+  wordMarkerLayout: 'duration',
 };
 
 /** Allowed ranges for persisted storage / quota numeric fields. */

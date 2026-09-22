@@ -1669,8 +1669,35 @@ describe('recording-preview', () => {
     const rail = el.shadowRoot?.querySelector('.word-rail');
     expect(rail?.getAttribute('slot')).toBe('over-canvas');
     const marker = el.shadowRoot?.querySelector('.word-marker') as HTMLElement | null;
-    expect(marker?.style.width).toBe('');
     expect(marker?.style.left).toBeTruthy();
+    expect(marker?.style.width).toBeTruthy();
+    expect(el.shadowRoot?.querySelector('.word-layout-row')).not.toBeNull();
+  });
+
+  it('toggles waveform word markers between duration and compact layout', async () => {
+    const el = await renderScoredPreview({
+      word_scores: [
+        { word: 'hello', start: 0.12, end: 0.45, score: 90 },
+        { word: 'world', start: 1, end: 1.5, score: 70 },
+      ],
+    });
+    el._playMode = 'recording';
+    el._syncSegmentIndex = 0;
+    el._controller.setViewRange({ start: 0, end: 4 });
+    await el.updateComplete;
+
+    const buttons = [
+      ...(el.shadowRoot?.querySelectorAll('.word-layout-row ui-button') ?? []),
+    ] as Array<{ click: () => void }>;
+    expect(buttons).toHaveLength(2);
+    buttons[1]!.click();
+    await el.updateComplete;
+
+    const marker = el.shadowRoot?.querySelector('.word-marker') as HTMLElement | null;
+    expect(marker?.classList.contains('is-compact')).toBe(true);
+    expect(marker?.style.maxWidth).toBeTruthy();
+    expect(marker?.style.width).toBe('auto');
+    expect(el._wordMarkerLayout).toBe('compact');
   });
 
   it('switches waveform words when the current Practice Segment changes', async () => {

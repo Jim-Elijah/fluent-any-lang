@@ -173,6 +173,20 @@ describe('app-settings', () => {
     expect(getAppSettings().speechScoreProsodyBasis).toBe('naturalness');
   });
 
+  it('defaults wordMarkerLayout to duration and rejects unknown values', () => {
+    expect(getAppSettings().wordMarkerLayout).toBe('duration');
+    setAppSettings({ wordMarkerLayout: 'compact' });
+    expect(getAppSettings().wordMarkerLayout).toBe('compact');
+    localStorage.setItem(
+      APP_SETTINGS_STORAGE_KEY,
+      JSON.stringify({
+        ...DEFAULT_SETTINGS,
+        wordMarkerLayout: 'not-a-layout',
+      }),
+    );
+    expect(getAppSettings().wordMarkerLayout).toBe('duration');
+  });
+
   it('migrates legacy speechScoreApiBaseUrl to the full v2 score path', () => {
     localStorage.setItem(
       APP_SETTINGS_STORAGE_KEY,

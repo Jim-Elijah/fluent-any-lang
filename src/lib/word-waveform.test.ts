@@ -48,9 +48,9 @@ describe('wordsInPracticeSegment', () => {
 });
 
 describe('layoutWordMarkers', () => {
-  it('places a word at its start as a percentage of the recording view range', () => {
+  it('places a word at its start with width matching pronunciation duration', () => {
     expect(layoutWordMarkers([world], { start: 0, end: 4 })).toEqual([
-      { word: 'world', start: 1, end: 1.5, score: 70, leftPct: 25, maxWidthPct: 100 },
+      { word: 'world', start: 1, end: 1.5, score: 70, leftPct: 25, widthPct: 12.5 },
     ]);
   });
 
@@ -58,7 +58,23 @@ describe('layoutWordMarkers', () => {
     const early: PronunciationWordScore = { word: 'a', start: 0.5, end: 1.5, score: 80 };
     const late: PronunciationWordScore = { word: 'z', start: 8, end: 9, score: 80 };
     expect(layoutWordMarkers([early, late], { start: 1, end: 3 })).toEqual([
-      { word: 'a', start: 0.5, end: 1.5, score: 80, leftPct: 0, maxWidthPct: 100 },
+      { word: 'a', start: 0.5, end: 1.5, score: 80, leftPct: 0, widthPct: 25 },
+    ]);
+  });
+
+  it('shrinks a word that overlaps the next marker start', () => {
+    const a: PronunciationWordScore = { word: 'a', start: 0, end: 2, score: 80 };
+    const b: PronunciationWordScore = { word: 'b', start: 1, end: 1.5, score: 70 };
+    expect(layoutWordMarkers([a, b], { start: 0, end: 4 })).toEqual([
+      { word: 'a', start: 0, end: 2, score: 80, leftPct: 0, widthPct: 25 },
+      { word: 'b', start: 1, end: 1.5, score: 70, leftPct: 25, widthPct: 12.5 },
+    ]);
+  });
+
+  it('uses gap-to-next as width in compact layout', () => {
+    expect(layoutWordMarkers([hello, world], { start: 0, end: 4 }, 'compact')).toEqual([
+      { word: 'hello', start: 0.12, end: 0.45, score: 90, leftPct: 3, widthPct: 22 },
+      { word: 'world', start: 1, end: 1.5, score: 70, leftPct: 25, widthPct: 100 },
     ]);
   });
 
@@ -77,8 +93,8 @@ describe('wordMarkersForPreview', () => {
         recordingViewRange: { start: 0, end: 4 },
       }),
     ).toEqual([
-      { word: 'hello', start: 0.12, end: 0.45, score: 90, leftPct: 3, maxWidthPct: 22 },
-      { word: 'world', start: 1, end: 1.5, score: 70, leftPct: 25, maxWidthPct: 100 },
+      { word: 'hello', start: 0.12, end: 0.45, score: 90, leftPct: 3, widthPct: 8.25 },
+      { word: 'world', start: 1, end: 1.5, score: 70, leftPct: 25, widthPct: 12.5 },
     ]);
   });
 
@@ -92,5 +108,6 @@ describe('wordMarkersForPreview', () => {
     expect(markers).toHaveLength(1);
     expect(markers[0]).toMatchObject({ word: 'foo', start: 5, end: 5.4, score: 40 });
     expect(markers[0].leftPct).toBeCloseTo(11.11, 2);
+    expect(markers[0].widthPct).toBeCloseTo(8.89, 2);
   });
 });
