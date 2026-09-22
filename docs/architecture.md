@@ -93,7 +93,7 @@ Native `HTMLMediaElement.loop` keeps the main Media (and Noise) wrapping when th
 
 ## Invariants
 
-1. Subtitle Track is **1:1** with Media (`byMediaId`).
+1. Subtitle Track is **1:1** with Media (`byMediaId`). `Media.hasSubtitles` is a denormalized list cache for library/playlist badges; Subtitle Track (segments) is the source of truth. `addSubtitle` / `deleteSubtitle` keep the flag in sync; open-time migration and `loadMediaForPlayback` heal stale rows.
 2. Subtitle Segment IDs are **deterministic** (`lib/segment-id.ts`); Echo records and Sentence Bank depend on stability.
 3. **Noise ≠ Media** — separate stores; never a playlist or main practice track.
 4. Practice Session = **active** practice time; drop sessions under `MIN_ACTIVE_MS`; tracker must not change playback/recording logic.

@@ -72,7 +72,7 @@ const TIMEUPDATE_THROTTLE_MS = 250;
 const DEFAULT_PLAYER_SETTINGS = {
   playbackRate: 1,
   volume: 1,
-  subtitlesVisible: true,
+  subtitlesVisible: false,
   sleepMode: 'off' as SleepMode,
   pauseMode: 'off' as PauseMode,
   pauseSeconds: 1,

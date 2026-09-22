@@ -6,6 +6,7 @@ import {
   getPlaylist,
   getSentenceBankBlob,
   getSentenceBankEntry,
+  updateMedia,
 } from '../db/service.js';
 import type { MediaItem, SentenceBankEntry, SubtitleSegment } from '../types/models.js';
 
@@ -34,11 +35,14 @@ export async function loadMediaForPlayback(id: string): Promise<LoadedMedia | nu
   }
 
   const subtitleTrack = await getSubtitle(item.id);
-  return {
-    item,
-    blob,
-    segments: subtitleTrack?.segments ?? [],
-  };
+  const segments = subtitleTrack?.segments ?? [];
+  const hasSubtitles = segments.length > 0;
+  if (item.hasSubtitles !== hasSubtitles) {
+    const healed = { ...item, hasSubtitles };
+    await updateMedia(healed);
+    return { item: healed, blob, segments };
+  }
+  return { item, blob, segments };
 }
 
 /**

@@ -29,6 +29,55 @@ describe('subtitle db', () => {
     expect(await getSubtitle('media-1')).toEqual(track);
   });
 
+  it('sets Media.hasSubtitles when adding a Subtitle Track with segments', async () => {
+    const { addMedia, getMedia } = await import('./media.js');
+    const { addSubtitle } = await import('./subtitle.js');
+
+    await addMedia(
+      {
+        id: 'media-1',
+        title: 'Lesson 1',
+        filename: 'lesson-1.mp3',
+        size: 10,
+        type: 'audio',
+        mimeType: 'audio/mpeg',
+        duration: 1,
+        createdAt: 1,
+        contentHash: 'hash',
+        hasSubtitles: false,
+      },
+      { mediaId: 'media-1', blob: new Blob(['a']) },
+    );
+
+    await addSubtitle(makeSubtitle());
+    expect((await getMedia('media-1'))?.hasSubtitles).toBe(true);
+  });
+
+  it('clears Media.hasSubtitles when deleting the Subtitle Track', async () => {
+    const { addMedia, getMedia } = await import('./media.js');
+    const { addSubtitle, deleteSubtitle } = await import('./subtitle.js');
+
+    await addMedia(
+      {
+        id: 'media-1',
+        title: 'Lesson 1',
+        filename: 'lesson-1.mp3',
+        size: 10,
+        type: 'audio',
+        mimeType: 'audio/mpeg',
+        duration: 1,
+        createdAt: 1,
+        contentHash: 'hash',
+        hasSubtitles: false,
+      },
+      { mediaId: 'media-1', blob: new Blob(['a']) },
+    );
+    await addSubtitle(makeSubtitle());
+    await deleteSubtitle('media-1');
+
+    expect((await getMedia('media-1'))?.hasSubtitles).toBe(false);
+  });
+
   it('deletes subtitle by mediaId', async () => {
     const { addSubtitle, deleteSubtitle, getSubtitle } = await import('./subtitle.js');
     const track = makeSubtitle();

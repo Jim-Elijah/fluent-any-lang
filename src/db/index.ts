@@ -22,6 +22,7 @@ import {
 } from './schema.js';
 import type { MediaItem, Playlist, SubtitleTrack } from '../types/models.js';
 import { FAVORITES_PLAYLIST_ID } from '../types/models.js';
+import { migrateMediaHasSubtitles } from './migrate-media-has-subtitles.js';
 import { migratePracticeSessionListeningToFree } from './migrate-practice-session-mode.js';
 import { migrateSegmentIdsToDeterministic } from './migrate-segment-ids.js';
 import { migrateSentenceBankRemoved } from './migrate-sentence-bank-removed.js';
@@ -221,6 +222,7 @@ export function getDB(): Promise<AppDatabase> {
         await migrateSegmentIdsToDeterministic(db);
         await migrateSentenceBankSourceMediaType(db);
         await migrateSentenceBankRemoved(db);
+        await migrateMediaHasSubtitles(db);
 
         return db;
       })

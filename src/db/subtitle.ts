@@ -1,11 +1,21 @@
 import { getDB } from './index.js';
+import { getMedia, updateMedia } from './media.js';
 import { STORE_SUBTITLE } from './schema.js';
 import type { SubtitleTrack } from '../types/models.js';
+
+async function syncMediaHasSubtitles(mediaId: string, hasSubtitles: boolean): Promise<void> {
+  const media = await getMedia(mediaId);
+  if (!media || media.hasSubtitles === hasSubtitles) {
+    return;
+  }
+  await updateMedia({ ...media, hasSubtitles });
+}
 
 // create/insert
 export async function addSubtitle(subtitles: SubtitleTrack): Promise<void> {
   const db = await getDB();
   await db.put(STORE_SUBTITLE, subtitles);
+  await syncMediaHasSubtitles(subtitles.mediaId, subtitles.segments.length > 0);
 }
 
 // read by mediaId
@@ -30,5 +40,6 @@ export async function deleteSubtitle(mediaId: string): Promise<void> {
   const subtitle = await getSubtitle(mediaId);
   if (subtitle) {
     await db.delete(STORE_SUBTITLE, subtitle.id);
+    await syncMediaHasSubtitles(mediaId, false);
   }
 }

@@ -24,6 +24,7 @@ import {
   saveRecording,
   normalizePlaylistName,
 } from '../../db/service.js';
+import { migrateMediaHasSubtitles } from '../../db/migrate-media-has-subtitles.js';
 import type {
   MediaItem,
   NoiseItem,
@@ -412,6 +413,8 @@ export async function importBackup(file: File): Promise<BackupImportResult> {
       );
     }
   }
+
+  await migrateMediaHasSubtitles(await getDB());
 
   return result;
 }

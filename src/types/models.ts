@@ -24,7 +24,7 @@ export type MediaItem = {
   createdAt: number;
   /** 文件内容 SHA-256，用于导入判重 */
   contentHash: string;
-  /** 该 mediaId 下是否已有字幕 segments */
+  /** Denormalized: true when this mediaId has a Subtitle Track with segments (list/badge cache). */
   hasSubtitles: boolean;
   cover?: string; // 封面图片url
 };

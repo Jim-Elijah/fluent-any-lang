@@ -61,11 +61,37 @@ describe('media-loader', () => {
     const { loadMediaForPlayback, loadPlaylistForPlayback } = await import('./media-loader.js');
     const loaded = await loadMediaForPlayback(item.id);
 
-    expect(loaded?.item).toEqual(item);
+    expect(loaded?.item).toEqual({ ...item, hasSubtitles: true });
     expect(loaded?.segments).toHaveLength(1);
 
     // Playlist loader should return empty (no favorites entries).
     expect(await loadPlaylistForPlayback(FAVORITES_PLAYLIST_ID)).toHaveLength(0);
+  });
+
+  it('heals Media.hasSubtitles when Subtitle Track exists but flag is stale', async () => {
+    const { getDB } = await import('../db/index.js');
+    const db = await getDB();
+    const item = makeMediaItem({ hasSubtitles: false });
+    await db.put('media', item);
+    await db.put('mediaBlob', {
+      mediaId: item.id,
+      blob: new Blob(['audio'], { type: 'audio/mpeg' }),
+    });
+    await db.put('subtitle', {
+      id: 'sub-stale',
+      mediaId: item.id,
+      title: item.title,
+      filename: 'lesson-1.srt',
+      type: 'srt',
+      contentHash: 'sub-hash',
+      segments: [{ id: 's1', startTime: 0, endTime: 2, text: 'hello' }],
+    });
+
+    const { loadMediaForPlayback } = await import('./media-loader.js');
+    const loaded = await loadMediaForPlayback(item.id);
+
+    expect(loaded?.item.hasSubtitles).toBe(true);
+    expect((await db.get('media', item.id))?.hasSubtitles).toBe(true);
   });
 
   it('loads playlist with removed entries filtered out', async () => {
