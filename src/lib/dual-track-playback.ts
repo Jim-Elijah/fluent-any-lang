@@ -172,7 +172,7 @@ export class DualTrackPlayback {
     this._finished = false;
     this._clipBoundary = false;
     this._sourceEndTime = last.sourceEndTime;
-    this._recordingEndTime = last.recordingEndTime;
+    this._recordingEndTime = this._effectiveLastRecordingEnd(last.recordingEndTime);
     this.sourceAudio.currentTime = this._clampAudioTime(this.sourceAudio, sourceTime);
     this.recordingAudio.currentTime = this._clampAudioTime(this.recordingAudio, recordingTime);
     this._updateContinuousSegmentIndex();
@@ -246,10 +246,7 @@ export class DualTrackPlayback {
       segment.recordingStartTime,
       Math.min(recStart, segment.recordingEndTime),
     );
-    const recordingEnd = Math.max(
-      recordingStart,
-      Math.min(recEnd, segment.recordingEndTime),
-    );
+    const recordingEnd = Math.max(recordingStart, Math.min(recEnd, segment.recordingEndTime));
     const sourceStart = Math.min(
       segment.sourceStartTime + (recordingStart - segment.recordingStartTime),
       segment.sourceEndTime,
@@ -292,10 +289,7 @@ export class DualTrackPlayback {
       first.recordingStartTime,
       Math.min(recStart, last.recordingEndTime),
     );
-    const recordingEnd = Math.max(
-      recordingStart,
-      Math.min(recEnd, last.recordingEndTime),
-    );
+    const recordingEnd = Math.max(recordingStart, Math.min(recEnd, last.recordingEndTime));
     const sourceStart = this._mapContinuousRecordingToSource(recordingStart);
     const sourceEnd = this._mapContinuousRecordingToSource(recordingEnd);
 
@@ -460,7 +454,11 @@ export class DualTrackPlayback {
     if (this.sourceAudio.currentTime < segment.sourceEndTime - SYNC_END_EPSILON) {
       await this.sourceAudio.play();
     }
-    if (this.recordingAudio.currentTime < segment.recordingEndTime - SYNC_END_EPSILON) {
+    const isLastSegment = this._syncSegmentIndex === this.segments.length - 1;
+    const effectiveRecEnd = isLastSegment
+      ? this._effectiveLastRecordingEnd(segment.recordingEndTime)
+      : segment.recordingEndTime;
+    if (this.recordingAudio.currentTime < effectiveRecEnd - SYNC_END_EPSILON) {
       await this.recordingAudio.play();
     }
   }
@@ -519,10 +517,10 @@ export class DualTrackPlayback {
       if (this.mode === 'source') {
         this._sourceEndTime = last.sourceEndTime;
       } else if (this.mode === 'recording') {
-        this._recordingEndTime = last.recordingEndTime;
+        this._recordingEndTime = this._effectiveLastRecordingEnd(last.recordingEndTime);
       } else if (this.mode === 'continuous') {
         this._sourceEndTime = last.sourceEndTime;
-        this._recordingEndTime = last.recordingEndTime;
+        this._recordingEndTime = this._effectiveLastRecordingEnd(last.recordingEndTime);
       }
     }
     this._emitState();
@@ -576,7 +574,7 @@ export class DualTrackPlayback {
 
     if (this.segments.length > 0) {
       const last = this.segments[this.segments.length - 1];
-      this._recordingEndTime = last.recordingEndTime;
+      this._recordingEndTime = this._effectiveLastRecordingEnd(last.recordingEndTime);
       const index = findPracticeSegmentIndex(this.segments, time, 'recording');
       this.syncSegmentIndex = index >= 0 ? index : 0;
     } else {
@@ -603,13 +601,21 @@ export class DualTrackPlayback {
   }
 
   private _handleSourceEnded = (): void => {
-    if (this.mode === 'source' || this.mode === 'continuous') {
+    if (this.mode === 'source') {
+      this._pauseAtEnd();
+      return;
+    }
+    if (this.mode === 'continuous' && this._isRecordingAtEnd()) {
       this._pauseAtEnd();
     }
   };
 
   private _handleRecordingEnded = (): void => {
-    if (this.mode === 'recording' || this.mode === 'continuous') {
+    if (this.mode === 'recording') {
+      this._pauseAtEnd();
+      return;
+    }
+    if (this.mode === 'continuous' && this._isSourceAtEnd()) {
       this._pauseAtEnd();
     }
   };
@@ -739,8 +745,12 @@ export class DualTrackPlayback {
     this.recordingAudio.currentTime = recordingTime;
     this._emitState();
 
+    const isLastSegment = index === this.segments.length - 1;
     const sourceRemaining = segment.sourceEndTime - sourceTime > SYNC_END_EPSILON;
-    const recordingRemaining = segment.recordingEndTime - recordingTime > SYNC_END_EPSILON;
+    const effectiveRecEnd = isLastSegment
+      ? this._effectiveLastRecordingEnd(segment.recordingEndTime)
+      : segment.recordingEndTime;
+    const recordingRemaining = effectiveRecEnd - recordingTime > SYNC_END_EPSILON;
     if (sourceRemaining) {
       await this.sourceAudio.play();
     }
@@ -826,11 +836,7 @@ export class DualTrackPlayback {
     const sourceTime = this.sourceAudio.currentTime;
     const recordingTime = this.recordingAudio.currentTime;
 
-    if (
-      this._clipBoundary &&
-      this._sourceEndTime !== null &&
-      this._recordingEndTime !== null
-    ) {
+    if (this._clipBoundary && this._sourceEndTime !== null && this._recordingEndTime !== null) {
       const sourceAtClip = sourceTime >= this._sourceEndTime - SYNC_END_EPSILON;
       const recordingAtClip = recordingTime >= this._recordingEndTime - SYNC_END_EPSILON;
       if (sourceAtClip && !this.sourceAudio.paused) {
@@ -847,9 +853,13 @@ export class DualTrackPlayback {
 
     const segment = this._syncSegment;
     const index = this._syncSegmentIndex;
+    const isLastSegment = index === this.segments.length - 1;
 
     const sourceAtEnd = sourceTime >= segment.sourceEndTime - SYNC_END_EPSILON;
-    const recordingAtEnd = recordingTime >= segment.recordingEndTime - SYNC_END_EPSILON;
+    const effectiveRecEnd = isLastSegment
+      ? this._effectiveLastRecordingEnd(segment.recordingEndTime)
+      : segment.recordingEndTime;
+    const recordingAtEnd = recordingTime >= effectiveRecEnd - SYNC_END_EPSILON;
 
     if (sourceAtEnd && !this.sourceAudio.paused) {
       this.sourceAudio.pause();
@@ -937,17 +947,21 @@ export class DualTrackPlayback {
       return;
     }
 
-    if (
+    const sourceAtEnd =
       this._sourceEndTime !== null &&
-      this.sourceAudio.currentTime >= this._sourceEndTime - SYNC_END_EPSILON
-    ) {
-      this._pauseAtEnd();
-      return;
-    }
-    if (
+      this.sourceAudio.currentTime >= this._sourceEndTime - SYNC_END_EPSILON;
+    const recordingAtEnd =
       this._recordingEndTime !== null &&
-      this.recordingAudio.currentTime >= this._recordingEndTime - SYNC_END_EPSILON
-    ) {
+      this.recordingAudio.currentTime >= this._recordingEndTime - SYNC_END_EPSILON;
+
+    if (sourceAtEnd && !this.sourceAudio.paused) {
+      this.sourceAudio.pause();
+    }
+    if (recordingAtEnd && !this.recordingAudio.paused) {
+      this.recordingAudio.pause();
+    }
+
+    if (sourceAtEnd && recordingAtEnd) {
       this._pauseAtEnd();
     }
   }
@@ -971,6 +985,31 @@ export class DualTrackPlayback {
         expectedRecording,
       );
     }
+  }
+
+  /**
+   * The last practice segment's recording end may be slightly shorter than the
+   * actual audio blob (tail-pad timing). Use the audio element's duration when
+   * it is finite and exceeds the segment boundary so the final words are not
+   * clipped during playback.
+   */
+  private _effectiveLastRecordingEnd(segmentEnd: number): number {
+    const dur = this.recordingAudio.duration;
+    return Number.isFinite(dur) && dur > segmentEnd ? dur : segmentEnd;
+  }
+
+  private _isSourceAtEnd(): boolean {
+    return (
+      this._sourceEndTime !== null &&
+      this.sourceAudio.currentTime >= this._sourceEndTime - SYNC_END_EPSILON
+    );
+  }
+
+  private _isRecordingAtEnd(): boolean {
+    return (
+      this._recordingEndTime !== null &&
+      this.recordingAudio.currentTime >= this._recordingEndTime - SYNC_END_EPSILON
+    );
   }
 
   private _stopSyncMonitor(): void {

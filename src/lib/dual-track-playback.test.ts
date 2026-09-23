@@ -649,4 +649,170 @@ describe('DualTrackPlayback', () => {
     expect(recording.currentTime).toBe(0.5);
     vi.useRealTimers();
   });
+
+  // --- Bug-fix tests: continuous mode must wait for both tracks ---
+
+  it('continuous mode keeps playing when source reaches end but recording has not', async () => {
+    const asymmetric: PracticeSegment[] = [
+      {
+        id: 'a0',
+        sourceStartTime: 0,
+        sourceEndTime: 3,
+        recordingStartTime: 0,
+        recordingEndTime: 5,
+      },
+    ];
+    controller.setSegments(asymmetric);
+    await controller.playContinuous();
+    Object.defineProperty(source, 'paused', { configurable: true, value: false });
+    Object.defineProperty(recording, 'paused', { configurable: true, value: false });
+    vi.mocked(source.pause).mockClear();
+    vi.mocked(recording.pause).mockClear();
+
+    // Source reaches its end time
+    source.currentTime = 3;
+    source.dispatchEvent(new Event('timeupdate'));
+
+    // Source should be individually paused, but mode should NOT end
+    expect(source.pause).toHaveBeenCalled();
+    expect(controller.getState().mode).toBe('continuous');
+    expect(controller.getState().paused).toBe(false);
+
+    // Recording reaches its end time
+    recording.currentTime = 5;
+    recording.dispatchEvent(new Event('timeupdate'));
+
+    // Now both done — mode ends
+    expect(controller.getState()).toEqual({
+      mode: 'continuous',
+      syncSegmentIndex: 0,
+      paused: true,
+    });
+  });
+
+  it('continuous mode does not end when source ended event fires but recording still playing', async () => {
+    const asymmetric: PracticeSegment[] = [
+      {
+        id: 'a0',
+        sourceStartTime: 0,
+        sourceEndTime: 3,
+        recordingStartTime: 0,
+        recordingEndTime: 5,
+      },
+    ];
+    controller.setSegments(asymmetric);
+    await controller.playContinuous();
+    Object.defineProperty(recording, 'paused', { configurable: true, value: false });
+
+    recording.currentTime = 2;
+    source.dispatchEvent(new Event('ended'));
+
+    // Should NOT have ended the mode — recording still has content
+    expect(controller.getState().mode).toBe('continuous');
+    expect(controller.getState().paused).toBe(false);
+  });
+
+  it('continuous mode does not end when recording ended event fires but source still playing', async () => {
+    const asymmetric: PracticeSegment[] = [
+      {
+        id: 'a0',
+        sourceStartTime: 0,
+        sourceEndTime: 5,
+        recordingStartTime: 0,
+        recordingEndTime: 3,
+      },
+    ];
+    controller.setSegments(asymmetric);
+    await controller.playContinuous();
+    Object.defineProperty(source, 'paused', { configurable: true, value: false });
+
+    source.currentTime = 2;
+    recording.dispatchEvent(new Event('ended'));
+
+    expect(controller.getState().mode).toBe('continuous');
+    expect(controller.getState().paused).toBe(false);
+  });
+
+  // --- Bug-fix tests: recording end boundary extended to audio.duration ---
+
+  it('recording mode plays to audio duration when it exceeds last segment end', async () => {
+    Object.defineProperty(recording, 'duration', { configurable: true, value: 10 });
+    await controller.playRecording();
+
+    // At last segment recordingEndTime (9) — should NOT stop because duration is 10
+    recording.currentTime = 9;
+    recording.dispatchEvent(new Event('timeupdate'));
+    expect(controller.getState().mode).toBe('recording');
+    expect(controller.getState().paused).toBe(false);
+
+    // At audio duration — should stop
+    recording.currentTime = 10;
+    recording.dispatchEvent(new Event('timeupdate'));
+    expect(controller.getState()).toEqual({
+      mode: 'recording',
+      syncSegmentIndex: 1,
+      paused: true,
+    });
+  });
+
+  it('sync last segment waits for recording to reach audio duration when it exceeds segment end', async () => {
+    const segs: PracticeSegment[] = [
+      {
+        id: 'last-only',
+        sourceStartTime: 0,
+        sourceEndTime: 3,
+        recordingStartTime: 0,
+        recordingEndTime: 2.5,
+      },
+    ];
+    Object.defineProperty(recording, 'duration', { configurable: true, value: 3.2 });
+    controller.setSegments(segs);
+    await controller.playSyncFromSegment(0);
+    Object.defineProperty(source, 'paused', { configurable: true, value: false });
+    Object.defineProperty(recording, 'paused', { configurable: true, value: false });
+    vi.mocked(source.pause).mockClear();
+    vi.mocked(recording.pause).mockClear();
+
+    // Source at end, recording at segment end (2.5) but NOT at audio duration (3.2)
+    source.currentTime = 3;
+    recording.currentTime = 2.5;
+    source.dispatchEvent(new Event('timeupdate'));
+
+    // Source pauses individually, but mode should NOT end
+    expect(source.pause).toHaveBeenCalled();
+    expect(controller.getState().mode).toBe('sync');
+    expect(controller.getState().paused).toBe(false);
+
+    // Recording reaches audio duration
+    recording.currentTime = 3.2;
+    recording.dispatchEvent(new Event('timeupdate'));
+
+    expect(controller.getState()).toEqual({
+      mode: 'sync',
+      syncSegmentIndex: 0,
+      paused: true,
+    });
+  });
+
+  it('continuous mode uses audio duration for recording end when it exceeds last segment', async () => {
+    Object.defineProperty(recording, 'duration', { configurable: true, value: 10 });
+    const segs: PracticeSegment[] = [
+      {
+        id: 'c0',
+        sourceStartTime: 0,
+        sourceEndTime: 10,
+        recordingStartTime: 0,
+        recordingEndTime: 8.5,
+      },
+    ];
+    controller.setSegments(segs);
+    await controller.playContinuous();
+
+    // Recording at segment end (8.5) but audio has more — should NOT stop
+    source.currentTime = 8.5;
+    recording.currentTime = 8.5;
+    source.dispatchEvent(new Event('timeupdate'));
+    expect(controller.getState().mode).toBe('continuous');
+    expect(controller.getState().paused).toBe(false);
+  });
 });
