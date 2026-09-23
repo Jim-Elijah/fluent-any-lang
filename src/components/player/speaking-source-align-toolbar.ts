@@ -688,7 +688,7 @@ export class SpeakingSourceAlignToolbar extends LitElement {
             `
           : nothing}
       </div>
-      ${this._railOpen
+      ${this._railOpen && markers.length > 0
         ? html`
             <div class="word-layout-row" role="group" aria-label=${msg('波形词条')}>
               <span class="word-layout-label">${msg('波形词条')}</span>
@@ -715,7 +715,7 @@ export class SpeakingSourceAlignToolbar extends LitElement {
             }
           }}
         >
-          ${this._railOpen ? msg('隐藏词轨') : msg('显示词轨')}
+          ${this._railOpen ? msg('隐藏原音波形') : msg('显示原音波形')}
         </ui-button>
       </div>
       ${this._railOpen

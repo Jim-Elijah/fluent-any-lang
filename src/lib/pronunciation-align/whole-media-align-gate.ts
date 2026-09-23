@@ -22,7 +22,7 @@ export type WholeMediaAlignGateInput = {
   sourceBlob?: Blob | null;
 };
 
-/** Tooltip when「全部原音」is blocked; `null` when align-all is allowed. */
+/** Tooltip when「生成全部词条」is blocked; `null` when align-all is allowed. */
 export async function resolveWholeMediaAlignBlockedTip(
   input: WholeMediaAlignGateInput,
 ): Promise<string | null> {

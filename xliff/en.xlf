@@ -2678,20 +2678,8 @@
 <trans-unit id="s2ebe608c55968bd8">
   <source>生成原音词条会将原声片段上传到你配置的服务器以获取词级时间戳。服务端不保存音频。是否继续？</source>
 </trans-unit>
-<trans-unit id="scbd8a611337f7506">
-  <source>已有词条，是否重新生成？</source>
-</trans-unit>
-<trans-unit id="s3382e4f396f2824f">
-  <source>重新生成</source>
-</trans-unit>
-<trans-unit id="s4a423b3c17392c25">
-  <source>生成本句</source>
-</trans-unit>
 <trans-unit id="s0488738745e3729e">
   <source>生成原音词条</source>
-</trans-unit>
-<trans-unit id="sfd9fb189b050b21f">
-  <source>全部原音</source>
 </trans-unit>
 <trans-unit id="sb598eb8eb70a6862">
   <source>本句已重新生成</source>
@@ -2702,29 +2690,56 @@
 <trans-unit id="sba0002cb5887c43a">
   <source>全部原音词条已生成</source>
 </trans-unit>
-<trans-unit id="s278a81223cc0837e">
-  <source>重新生成当前句的原音词条</source>
-</trans-unit>
 <trans-unit id="s7f017de17e729f8f">
   <source>全部原音词条已重新生成</source>
 </trans-unit>
-<trans-unit id="sf49a1aff4f5e48cd">
-  <source>隐藏词轨</source>
-</trans-unit>
-<trans-unit id="s529b3ff5f0e76984">
-  <source>显示词轨</source>
-</trans-unit>
 <trans-unit id="scbf3ddbef5db906f">
   <source>为当前句生成原音词条</source>
+  <target>Generate source word timings for the current sentence</target>
 </trans-unit>
 <trans-unit id="s7ee5ac119156da90">
   <source>重新为全部句子生成原音词条（整段原音重新对齐）</source>
+  <target>Regenerate source word timings for all sentences (re-align full source audio)</target>
 </trans-unit>
 <trans-unit id="sd00266e0aa2bb007">
   <source>为全部句子生成原音词条（整段原音一次对齐，已有则跳过）</source>
+  <target>Generate source word timings for all sentences (one full-source align; skip existing)</target>
 </trans-unit>
-<trans-unit id="s7632234bd6231a83">
-  <source>已有整段原音词条，是否重新生成？</source>
+<trans-unit id="s8f53a91191b0fe5e">
+  <source>隐藏原音波形</source>
+  <target>Hide source waveform</target>
+</trans-unit>
+<trans-unit id="s43d65a55980d436b">
+  <source>显示原音波形</source>
+  <target>Show source waveform</target>
+</trans-unit>
+<trans-unit id="s923decc258bdf1d4">
+  <source>重新生成本句</source>
+  <target>Regenerate this sentence</target>
+</trans-unit>
+<trans-unit id="s061184ab27ac8f3b">
+  <source>生成本句词条</source>
+  <target>Generate sentence words</target>
+</trans-unit>
+<trans-unit id="s5408c9c223afc6f7">
+  <source>重新生成全部</source>
+  <target>Regenerate all</target>
+</trans-unit>
+<trans-unit id="s677b0258053e1a5c">
+  <source>生成全部词条</source>
+  <target>Generate all words</target>
+</trans-unit>
+<trans-unit id="sf3fdba8e1c169339">
+  <source>已有本句词条，是否重新生成？</source>
+  <target>Words exist for this sentence. Regenerate?</target>
+</trans-unit>
+<trans-unit id="sc770b5671a5ebdc6">
+  <source>已有全部词条，是否重新生成？</source>
+  <target>Words exist for all sentences. Regenerate?</target>
+</trans-unit>
+<trans-unit id="s4dcc8c1386fcf52c">
+  <source>重新生成本句的原音词条</source>
+  <target>Regenerate source word timings for this sentence</target>
 </trans-unit>
 </body>
 </file>

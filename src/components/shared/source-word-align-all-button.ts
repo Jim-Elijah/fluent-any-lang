@@ -1,8 +1,13 @@
-import { msg, localized } from '@lit/localize';
+import { localized } from '@lit/localize';
 import { css, html, LitElement } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 
 import { Z_INDEX } from '../ui/internal/z-index.js';
+import {
+  sourceWordAlignButtonLabel,
+  sourceWordAlignPopconfirmTitle,
+  sourceWordAlignTooltip,
+} from './source-word-align-labels.js';
 import '../ui/button.js';
 import '../ui/popconfirm.js';
 import '../ui/tooltip.js';
@@ -46,32 +51,29 @@ export class SourceWordAlignAllButton extends LitElement {
     );
   }
 
-  private _defaultTooltip(): string {
-    return this.hasWholeMediaCache
-      ? msg('重新为全部句子生成原音词条（整段原音重新对齐）')
-      : msg('为全部句子生成原音词条（整段原音一次对齐，已有则跳过）');
-  }
-
   render() {
     const busy = this.disabled;
     const buttonDisabled = busy || this.blocked;
+    const hasCache = this.hasWholeMediaCache;
+    const label = sourceWordAlignButtonLabel('whole', hasCache);
+    const tooltip = this.blockedTip ?? sourceWordAlignTooltip('whole', hasCache);
 
-    if (this.hasWholeMediaCache) {
+    if (hasCache) {
       return html`
         <ui-tooltip
-          title=${this.blockedTip ?? this._defaultTooltip()}
+          title=${tooltip}
           placement=${this.tooltipPlacement}
           .zIndex=${Z_INDEX.MODAL + 1}
         >
           <ui-popconfirm
-            .title=${msg('已有整段原音词条，是否重新生成？')}
+            .title=${sourceWordAlignPopconfirmTitle('whole')}
             .zIndex=${Z_INDEX.MODAL + 2}
             ?disabled=${buttonDisabled}
             placement=${this.tooltipPlacement}
             @confirm=${() => this._emit(true)}
           >
             <ui-button size="small" variant="secondary" ?disabled=${buttonDisabled}>
-              ${msg('重新生成')}
+              ${label}
             </ui-button>
           </ui-popconfirm>
         </ui-tooltip>
@@ -80,7 +82,7 @@ export class SourceWordAlignAllButton extends LitElement {
 
     return html`
       <ui-tooltip
-        title=${this.blockedTip ?? this._defaultTooltip()}
+        title=${tooltip}
         placement=${this.tooltipPlacement}
         .zIndex=${Z_INDEX.MODAL + 1}
       >
@@ -90,7 +92,7 @@ export class SourceWordAlignAllButton extends LitElement {
           ?disabled=${buttonDisabled}
           @click=${() => this._emit(false)}
         >
-          ${msg('全部原音')}
+          ${label}
         </ui-button>
       </ui-tooltip>
     `;

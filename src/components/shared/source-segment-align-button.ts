@@ -1,8 +1,13 @@
-import { msg, localized } from '@lit/localize';
+import { localized } from '@lit/localize';
 import { css, html, LitElement } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 
 import { Z_INDEX } from '../ui/internal/z-index.js';
+import {
+  sourceWordAlignButtonLabel,
+  sourceWordAlignPopconfirmTitle,
+  sourceWordAlignTooltip,
+} from './source-word-align-labels.js';
 import '../ui/button.js';
 import '../ui/popconfirm.js';
 import '../ui/tooltip.js';
@@ -41,22 +46,25 @@ export class SourceSegmentAlignButton extends LitElement {
   }
 
   render() {
+    const label = sourceWordAlignButtonLabel('segment', this.hasCache);
+    const tooltip = sourceWordAlignTooltip('segment', this.hasCache);
+
     if (this.hasCache) {
       return html`
         <ui-tooltip
-          title=${msg('重新生成当前句的原音词条')}
+          title=${tooltip}
           placement=${this.tooltipPlacement}
           .zIndex=${Z_INDEX.MODAL + 1}
         >
           <ui-popconfirm
-            .title=${msg('已有词条，是否重新生成？')}
+            .title=${sourceWordAlignPopconfirmTitle('segment')}
             .zIndex=${Z_INDEX.MODAL + 2}
             ?disabled=${this.disabled}
             placement=${this.tooltipPlacement}
             @confirm=${() => this._emit(true)}
           >
             <ui-button size="small" variant="secondary" ?disabled=${this.disabled}>
-              ${msg('重新生成')}
+              ${label}
             </ui-button>
           </ui-popconfirm>
         </ui-tooltip>
@@ -65,7 +73,7 @@ export class SourceSegmentAlignButton extends LitElement {
 
     return html`
       <ui-tooltip
-        title=${msg('为当前句生成原音词条')}
+        title=${tooltip}
         placement=${this.tooltipPlacement}
         .zIndex=${Z_INDEX.MODAL + 1}
       >
@@ -75,7 +83,7 @@ export class SourceSegmentAlignButton extends LitElement {
           ?disabled=${this.disabled}
           @click=${() => this._emit(false)}
         >
-          ${msg('生成本句')}
+          ${label}
         </ui-button>
       </ui-tooltip>
     `;

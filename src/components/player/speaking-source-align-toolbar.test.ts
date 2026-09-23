@@ -87,7 +87,7 @@ function makeDecodedBuffer(duration = 5, length = 100): AudioBuffer {
 
 function railToggleButton(el: SpeakingSourceAlignToolbar): HTMLElement | undefined {
   return Array.from(el.shadowRoot?.querySelectorAll('ui-button') ?? []).find((b) =>
-    /显示词轨|隐藏词轨/.test(b.textContent ?? ''),
+    /显示原音波形|隐藏原音波形/.test(b.textContent ?? ''),
   ) as HTMLElement | undefined;
 }
 
@@ -175,7 +175,7 @@ describe('speaking-source-align-toolbar', () => {
       await el.updateComplete;
       const toggle = railToggleButton(el) as { disabled?: boolean } | undefined;
       expect(toggle?.disabled).toBe(false);
-      expect(toggle?.textContent).toContain('显示词轨');
+      expect(toggle?.textContent).toContain('显示原音波形');
     });
   });
 
@@ -203,7 +203,7 @@ describe('speaking-source-align-toolbar', () => {
     await vi.waitFor(async () => {
       await el.updateComplete;
       expect(el.shadowRoot?.querySelector('waveform-player')).toBeTruthy();
-      expect(railToggleButton(el)?.textContent).toContain('隐藏词轨');
+      expect(railToggleButton(el)?.textContent).toContain('隐藏原音波形');
     });
     const player = el.shadowRoot?.querySelector('waveform-player') as WaveformPlayer | null;
     expect(player?.interactive).toBe(false);
