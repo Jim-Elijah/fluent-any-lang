@@ -15,13 +15,14 @@ import {
   STORE_SENTENCE_BANK,
   STORE_SENTENCE_BANK_BLOB,
   STORE_SOURCE_WORD_ALIGNMENT,
+  STORE_MEDIA_SOURCE_WORD_ALIGNMENT,
   STORE_SUBTITLE,
 } from './schema.js';
 
 describe('db schema constants', () => {
   it('defines stable database identity', () => {
     expect(DB_NAME).toBe('fluent-any-lang');
-    expect(DB_VERSION).toBe(17);
+    expect(DB_VERSION).toBe(18);
   });
 
   it('defines all object store names', () => {
@@ -39,6 +40,7 @@ describe('db schema constants', () => {
       STORE_PRONUNCIATION_SCORE,
       STORE_REFERENCE_PROSODY_PROFILE,
       STORE_SOURCE_WORD_ALIGNMENT,
+      STORE_MEDIA_SOURCE_WORD_ALIGNMENT,
     }).toEqual({
       STORE_MEDIA: 'media',
       STORE_MEDIA_BLOB: 'mediaBlob',
@@ -53,6 +55,7 @@ describe('db schema constants', () => {
       STORE_PRONUNCIATION_SCORE: 'pronunciationScore',
       STORE_REFERENCE_PROSODY_PROFILE: 'referenceProsodyProfile',
       STORE_SOURCE_WORD_ALIGNMENT: 'sourceWordAlignment',
+      STORE_MEDIA_SOURCE_WORD_ALIGNMENT: 'mediaSourceWordAlignment',
     });
   });
 });

@@ -346,6 +346,24 @@ export type StoredSourceWordAlignment = {
   updatedAt: number;
 };
 
+/**
+ * IndexedDB row for forced-aligned word timings on an entire Media file (absolute
+ * Media timeline). Segment views project from this row or use per-segment overrides.
+ * Not exported in backup.
+ */
+export type StoredMediaSourceWordAlignment = {
+  /** Same as `mediaId`. */
+  id: string;
+  mediaId: string;
+  words: WordTiming[];
+  referenceText: string;
+  language: string;
+  /** Subtitle Track `contentHash` at write time; mismatch invalidates projection. */
+  subtitleContentHash: string;
+  createdAt: number;
+  updatedAt: number;
+};
+
 /** Details payload aligned with POST /api/v2/pronunciation/score `details`. */
 export type PronunciationScoreDetails = {
   transcript: string;

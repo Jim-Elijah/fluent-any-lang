@@ -14,11 +14,21 @@ export {
   mapAlignFetchFailure,
   mapAlignHttpStatus,
 } from './client.js';
+export { canAlignWholeMedia } from './can-align-whole-media.js';
+export {
+  resolveSubtitleAlignWindow,
+  subtitleAlignWindowDurationSec,
+  type SubtitleAlignWindow,
+} from './subtitle-align-window.js';
+export { buildSubtitleTrackReferenceText, buildSubtitleSegmentsReferenceText } from './reference-text.js';
+export { projectWordsToSourceRange } from './project-words.js';
+export { resolveSegmentSourceWords } from './resolve-segment-words.js';
 export {
   alignAllPracticeSegments,
+  alignMediaSource,
   alignPracticeSegment,
   type AlignAllOptions,
-  type AlignAllProgress,
+  type AlignMediaOutcome,
   type AlignSegmentOptions,
   type AlignSegmentOutcome,
 } from './service.js';

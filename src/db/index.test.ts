@@ -14,6 +14,7 @@ import {
   STORE_RECORDING_BLOB,
   STORE_REFERENCE_PROSODY_PROFILE,
   STORE_SOURCE_WORD_ALIGNMENT,
+  STORE_MEDIA_SOURCE_WORD_ALIGNMENT,
   STORE_SUBTITLE,
 } from './schema.js';
 
@@ -360,5 +361,29 @@ describe('sourceWordAlignment store migration', () => {
         updatedAt: 1,
       }),
     ).resolves.toBeDefined();
+  });
+});
+
+describe('mediaSourceWordAlignment store migration', () => {
+  beforeEach(async () => {
+    await resetDatabase();
+  });
+
+  it('adds mediaSourceWordAlignment store when upgrading from v17', async () => {
+    const v17 = await openDB(DB_NAME, 17, {
+      upgrade(db) {
+        createLegacyStores(db, { withByMediaId: true });
+        const alignStore = db.createObjectStore(STORE_SOURCE_WORD_ALIGNMENT, { keyPath: 'id' });
+        alignStore.createIndex('byMediaId', 'mediaId');
+      },
+    });
+    expect([...v17.objectStoreNames]).not.toContain(STORE_MEDIA_SOURCE_WORD_ALIGNMENT);
+    v17.close();
+
+    const { getDB } = await import('./index.js');
+    const db = await getDB();
+
+    expect(db.version).toBe(DB_VERSION);
+    expect([...db.objectStoreNames]).toContain(STORE_MEDIA_SOURCE_WORD_ALIGNMENT);
   });
 });

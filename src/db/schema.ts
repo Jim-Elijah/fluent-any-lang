@@ -13,13 +13,14 @@ import type {
   SentenceBankBlob,
   SentenceBankEntry,
   StoredReferenceProsodyProfile,
+  StoredMediaSourceWordAlignment,
   StoredSourceWordAlignment,
   SubtitleTrack,
   PracticeRecordBlob,
 } from '../types/models.js';
 
 export const DB_NAME = 'fluent-any-lang';
-export const DB_VERSION = 17;
+export const DB_VERSION = 18;
 
 export const STORE_MEDIA = 'media';
 export const STORE_MEDIA_BLOB = 'mediaBlob';
@@ -36,6 +37,7 @@ export const STORE_NOISE_BLOB = 'noiseBlob';
 export const STORE_PRONUNCIATION_SCORE = 'pronunciationScore';
 export const STORE_REFERENCE_PROSODY_PROFILE = 'referenceProsodyProfile';
 export const STORE_SOURCE_WORD_ALIGNMENT = 'sourceWordAlignment';
+export const STORE_MEDIA_SOURCE_WORD_ALIGNMENT = 'mediaSourceWordAlignment';
 
 /** Max retained error log entries (oldest dropped first). */
 export const ERROR_LOG_MAX_ENTRIES = 200;
@@ -120,6 +122,10 @@ export interface FluentAnyLangDB {
     key: string;
     value: StoredSourceWordAlignment;
     indexes: { byMediaId: string };
+  };
+  [STORE_MEDIA_SOURCE_WORD_ALIGNMENT]: {
+    key: string;
+    value: StoredMediaSourceWordAlignment;
   };
 }
 

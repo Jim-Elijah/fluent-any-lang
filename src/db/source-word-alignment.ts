@@ -88,3 +88,17 @@ export async function deleteSourceWordAlignmentsByMediaIdsBatch(
 export async function deleteSourceWordAlignmentsByMediaId(mediaId: string): Promise<void> {
   await deleteSourceWordAlignmentsByMediaIdsBatch([mediaId]);
 }
+
+/** Removes batch-written rows only; preserves single-segment (`segment`) overrides. */
+export async function deleteBatchSourceWordAlignmentsByMediaId(mediaId: string): Promise<void> {
+  const db = await getDB();
+  const tx = db.transaction(STORE_SOURCE_WORD_ALIGNMENT, 'readwrite');
+  const store = tx.objectStore(STORE_SOURCE_WORD_ALIGNMENT);
+  const rows = await store.index('byMediaId').getAll(mediaId);
+  for (const row of rows) {
+    if (row.source === 'batch') {
+      await store.delete(row.id);
+    }
+  }
+  await tx.done;
+}

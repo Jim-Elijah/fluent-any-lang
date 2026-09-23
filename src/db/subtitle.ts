@@ -1,3 +1,4 @@
+import { invalidateAlignCachesOnSubtitleChange } from '../lib/pronunciation-align/invalidate-subtitle-align.js';
 import { getDB } from './index.js';
 import { getMedia, updateMedia } from './media.js';
 import { STORE_SUBTITLE } from './schema.js';
@@ -13,8 +14,12 @@ async function syncMediaHasSubtitles(mediaId: string, hasSubtitles: boolean): Pr
 
 // create/insert
 export async function addSubtitle(subtitles: SubtitleTrack): Promise<void> {
+  const previous = await getSubtitle(subtitles.mediaId);
   const db = await getDB();
   await db.put(STORE_SUBTITLE, subtitles);
+  if (previous && previous.contentHash !== subtitles.contentHash) {
+    await invalidateAlignCachesOnSubtitleChange(subtitles.mediaId);
+  }
   await syncMediaHasSubtitles(subtitles.mediaId, subtitles.segments.length > 0);
 }
 
@@ -39,6 +44,7 @@ export async function deleteSubtitle(mediaId: string): Promise<void> {
   const db = await getDB();
   const subtitle = await getSubtitle(mediaId);
   if (subtitle) {
+    await invalidateAlignCachesOnSubtitleChange(mediaId);
     await db.delete(STORE_SUBTITLE, subtitle.id);
     await syncMediaHasSubtitles(mediaId, false);
   }

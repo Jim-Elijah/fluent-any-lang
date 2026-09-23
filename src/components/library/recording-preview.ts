@@ -1,4 +1,4 @@
-import { msg, str, localized } from '@lit/localize';
+import { msg, localized } from '@lit/localize';
 import { css, html, LitElement, nothing, type TemplateResult } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { styleMap } from 'lit/directives/style-map.js';
@@ -58,13 +58,23 @@ import {
   type ScoreTextHighlightSpan,
 } from '../../lib/pronunciation-score/index.js';
 import {
+  ALIGN_MAX_BYTES,
+  ALIGN_MAX_DURATION_SEC,
   alignAllPracticeSegments,
   alignPracticeSegment,
+  alignTooLargeMessage,
+  alignTooLongMessage,
+  buildSubtitleSegmentsReferenceText,
+  canAlignWholeMedia,
+  resolveSubtitleAlignWindow,
+  subtitleAlignWindowDurationSec,
   isSpeechAlignConfigured,
+  resolveSegmentSourceWords,
 } from '../../lib/pronunciation-align/index.js';
 import { scoreBandStyles } from '../shared/score-band-styles.js';
 import { getScoreByRecordId } from '../../db/pronunciation-score.js';
-import { getSourceWordAlignment } from '../../db/source-word-alignment.js';
+import { getMedia } from '../../db/media.js';
+import { getSubtitle } from '../../db/subtitle.js';
 import { setLogicalVolume } from '../../lib/media-element-gain.js';
 import {
   wordMarkersForPreview,
@@ -505,12 +515,6 @@ export class RecordingPreview extends LitElement {
         gap: var(--space-sm, 8px);
       }
 
-      .align-progress {
-        margin: 0;
-        font-size: 0.8125rem;
-        color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
-      }
-
       .score-skeleton {
         height: 12px;
         border-radius: 6px;
@@ -600,11 +604,12 @@ export class RecordingPreview extends LitElement {
   @state()
   private _aligning = false;
 
-  @state()
-  private _alignProgress: { done: number; total: number } | null = null;
-
   /** Cached Source Word Alignment words by Practice Segment id (Media absolute times). */
   private _alignWordsBySegmentId = new Map<string, WordTiming[]>();
+
+  /** When set, whole-Media align is blocked (same 60s/10MB gate as score). */
+  @state()
+  private _alignMediaBlockedTip: string | null = null;
 
   /** Index into `details.misread_words` while expected↔actual are paired-emphasized. */
   @state()
@@ -633,6 +638,7 @@ export class RecordingPreview extends LitElement {
   protected updated(changed: Map<PropertyKey, unknown>): void {
     if (changed.has('sourceBlob') || changed.has('recordingBlob')) {
       void this._loadTracks();
+      void this._refreshAlignMediaBlockedTip();
     }
 
     if (changed.has('segments')) {
@@ -647,12 +653,14 @@ export class RecordingPreview extends LitElement {
 
     if (changed.has('subtitleSegments')) {
       this._refreshActiveSubtitle();
+      void this._refreshAlignMediaBlockedTip();
     }
 
     if (changed.has('record')) {
       this._alignWordsBySegmentId.clear();
       void this._loadScore();
       void this._loadAlignWordsForCurrentSegment();
+      void this._refreshAlignMediaBlockedTip();
     }
   }
 
@@ -1286,13 +1294,7 @@ export class RecordingPreview extends LitElement {
       currentSegment && this._alignWordsBySegmentId.has(currentSegment.id),
     );
     const busy = this._aligning || this._scoring;
-    const progress = this._alignProgress;
-    const progressLabel =
-      this._aligning && progress
-        ? msg(str`生成中… ${progress.done}/${progress.total}`)
-        : this._aligning
-          ? msg('生成中…')
-          : nothing;
+    const alignAllBlocked = Boolean(this._alignMediaBlockedTip);
     const segmentAlignButton = hasSegmentCache
       ? html`
           <ui-tooltip
@@ -1336,13 +1338,14 @@ export class RecordingPreview extends LitElement {
         ${showAlignAll
           ? html`
               <ui-tooltip
-                title=${msg('为全部句子生成原音词条（已有则跳过）')}
+                title=${this._alignMediaBlockedTip ??
+                msg('为全部句子生成原音词条（整段原音一次对齐，已有则跳过）')}
                 .zIndex=${Z_INDEX.MODAL + 1}
               >
                 <ui-button
                   size="small"
                   variant="secondary"
-                  ?disabled=${busy}
+                  ?disabled=${busy || alignAllBlocked}
                   @click=${() => void this._handleAlignAll()}
                 >
                   ${msg('全部原音')}
@@ -1350,9 +1353,54 @@ export class RecordingPreview extends LitElement {
               </ui-tooltip>
             `
           : nothing}
-        ${progressLabel ? html`<p class="align-progress">${progressLabel}</p>` : nothing}
       </div>
     `;
+  }
+
+  private async _refreshAlignMediaBlockedTip(): Promise<void> {
+    const record = this.record;
+    const blob = this.sourceBlob;
+    if (!record || !blob) {
+      this._alignMediaBlockedTip = null;
+      return;
+    }
+    try {
+      const media = await getMedia(record.mediaId);
+      if (!media) {
+        this._alignMediaBlockedTip = null;
+        return;
+      }
+      const referenceText = buildSubtitleSegmentsReferenceText(this.subtitleSegments);
+      if (this.subtitleSegments.length > 0) {
+        const window = resolveSubtitleAlignWindow(this.subtitleSegments);
+        const alignDurationSec = window ? subtitleAlignWindowDurationSec(window) : 0;
+        if (
+          !canAlignWholeMedia({
+            alignDurationSec,
+            referenceText,
+          })
+        ) {
+          this._alignMediaBlockedTip =
+            alignDurationSec > ALIGN_MAX_DURATION_SEC
+              ? alignTooLongMessage()
+              : msg('需要对照原稿才能对齐');
+          return;
+        }
+      } else {
+        const blobSizeBytes = blob.size > 0 ? blob.size : media.size;
+        if (media.duration > ALIGN_MAX_DURATION_SEC) {
+          this._alignMediaBlockedTip = alignTooLongMessage();
+          return;
+        }
+        if (blobSizeBytes > ALIGN_MAX_BYTES) {
+          this._alignMediaBlockedTip = alignTooLargeMessage();
+          return;
+        }
+      }
+      this._alignMediaBlockedTip = null;
+    } catch {
+      this._alignMediaBlockedTip = null;
+    }
   }
 
   private async _loadAlignWordsForCurrentSegment(): Promise<void> {
@@ -1367,9 +1415,14 @@ export class RecordingPreview extends LitElement {
       return;
     }
     try {
-      const stored = await getSourceWordAlignment(record.mediaId, segment.id);
-      if (stored) {
-        this._alignWordsBySegmentId.set(segment.id, stored.words);
+      const subtitleTrack = await getSubtitle(record.mediaId);
+      const words = await resolveSegmentSourceWords({
+        mediaId: record.mediaId,
+        segment,
+        subtitleTrack,
+      });
+      if (words.length > 0) {
+        this._alignWordsBySegmentId.set(segment.id, words);
       }
     } catch {
       // Ignore cache read errors; UI stays without markers.
@@ -1422,7 +1475,6 @@ export class RecordingPreview extends LitElement {
       return;
     }
     this._aligning = true;
-    this._alignProgress = { done: 0, total: 1 };
     try {
       const result = await alignPracticeSegment({
         mediaId: record.mediaId,
@@ -1442,7 +1494,6 @@ export class RecordingPreview extends LitElement {
       Message.success(force ? msg('本句已重新生成') : msg('本句词条已生成'));
     } finally {
       this._aligning = false;
-      this._alignProgress = null;
     }
   }
 
@@ -1452,26 +1503,25 @@ export class RecordingPreview extends LitElement {
       return;
     }
     this._aligning = true;
-    this._alignProgress = { done: 0, total: this.segments.length };
     try {
       const result = await alignAllPracticeSegments({
         mediaId: record.mediaId,
         segments: this.segments,
         subtitleSegments: this.subtitleSegments,
-        options: {
-          onProgress: (progress) => {
-            this._alignProgress = { done: progress.done, total: progress.total };
-          },
-        },
       });
       // Refresh in-memory cache from IDB for all segments.
       this._alignWordsBySegmentId.clear();
+      const subtitleTrack = await getSubtitle(record.mediaId);
       await Promise.all(
         this.segments.map(async (segment) => {
           try {
-            const stored = await getSourceWordAlignment(record.mediaId, segment.id);
-            if (stored) {
-              this._alignWordsBySegmentId.set(segment.id, stored.words);
+            const words = await resolveSegmentSourceWords({
+              mediaId: record.mediaId,
+              segment,
+              subtitleTrack,
+            });
+            if (words.length > 0) {
+              this._alignWordsBySegmentId.set(segment.id, words);
             }
           } catch {
             // ignore
@@ -1486,7 +1536,6 @@ export class RecordingPreview extends LitElement {
       }
     } finally {
       this._aligning = false;
-      this._alignProgress = null;
     }
   }
 

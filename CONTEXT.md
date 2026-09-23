@@ -71,7 +71,7 @@ An optional evaluation of a Practice Record (accuracy, fluency, completeness, pr
 _Avoid_: Practice Session, grade, assessment (as the canonical term)
 
 **Source Word Alignment**:
-On-demand word-level timestamps for a Subtitle Segment’s source audio (forced align of the reference script). Cached on-device per Media + segment; used to label the source waveform (e.g. recording preview). Not a Pronunciation Score.
+On-demand word-level timestamps for a Subtitle Segment’s source audio (forced align of the reference script). Cached on-device per Media + segment; used to label the source waveform (e.g. recording preview). Not a Pronunciation Score. Short Media may keep one Media-level canonical alignment; each segment view is projection from that row or a per-segment override.
 _Avoid_: Word score, ASR transcript, pronunciation grade
 
 ### Organization

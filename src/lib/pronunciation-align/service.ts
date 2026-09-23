@@ -1,19 +1,28 @@
 import { msg, str } from '@lit/localize';
 import { getAppSettings } from '../app-settings.js';
 import { clipAudioBlob } from '../audio-clip.js';
-import { getMediaBlob } from '../../db/media.js';
+import { getMedia, getMediaBlob } from '../../db/media.js';
+import {
+  getMediaSourceWordAlignment,
+  putMediaSourceWordAlignment,
+} from '../../db/media-source-word-alignment.js';
+import { getSubtitle } from '../../db/subtitle.js';
 import {
   getSourceWordAlignment,
   putSourceWordAlignment,
+  sourceWordAlignmentId,
 } from '../../db/source-word-alignment.js';
 import type {
   PracticeSegment,
   SourceWordAlignmentSource,
+  StoredMediaSourceWordAlignment,
   StoredSourceWordAlignment,
   SubtitleSegment,
+  SubtitleTrack,
   WordTiming,
 } from '../../types/models.js';
 import { normalizeNewlines } from '../pronunciation-score/normalize.js';
+import { canAlignWholeMedia } from './can-align-whole-media.js';
 import { PronunciationAlignHttpError, alignPronunciation } from './client.js';
 import {
   ALIGN_MAX_BYTES,
@@ -22,6 +31,14 @@ import {
   alignTooLongMessage,
   isSpeechAlignConfigured,
 } from './constants.js';
+import { buildSubtitleTrackReferenceText } from './reference-text.js';
+import { projectWordsToSourceRange } from './project-words.js';
+import { resolveSegmentSourceWords } from './resolve-segment-words.js';
+import {
+  resolveSubtitleAlignWindow,
+  subtitleAlignWindowDurationSec,
+  type SubtitleAlignWindow,
+} from './subtitle-align-window.js';
 
 export {
   ALIGN_MAX_BYTES,
@@ -37,6 +54,10 @@ export type AlignSegmentOutcome =
   | { ok: true; alignment: StoredSourceWordAlignment }
   | { ok: false; reason: AlignSegmentReason; message: string };
 
+export type AlignMediaOutcome =
+  | { ok: true; alignment: StoredMediaSourceWordAlignment }
+  | { ok: false; reason: AlignSegmentReason; message: string };
+
 export type AlignSegmentOptions = {
   signal?: AbortSignal;
   /** `segment` always overwrites; `batch` skips rows already written by `segment`. */
@@ -49,15 +70,8 @@ export type AlignSegmentOptions = {
   skipIfCached?: boolean;
 };
 
-export type AlignAllProgress = {
-  done: number;
-  total: number;
-  segmentId: string;
-};
-
 export type AlignAllOptions = {
   signal?: AbortSignal;
-  onProgress?: (progress: AlignAllProgress) => void;
 };
 
 function notConfigured() {
@@ -99,6 +113,205 @@ function subtitleTextById(
   return new Map(subtitleSegments.map((segment) => [segment.id, segment.text]));
 }
 
+function isMediaAlignmentValid(
+  row: StoredMediaSourceWordAlignment | undefined,
+  track: SubtitleTrack | undefined,
+): row is StoredMediaSourceWordAlignment {
+  return Boolean(row && track && row.subtitleContentHash === track.contentHash);
+}
+
+async function prepareSubtitleWindowAlignAudio(input: {
+  mediaBlob: Blob;
+  window: SubtitleAlignWindow;
+}): Promise<{ ok: true; blob: Blob } | { ok: false; message: string }> {
+  const durationSec = subtitleAlignWindowDurationSec(input.window);
+  if (durationSec > ALIGN_MAX_DURATION_SEC) {
+    return { ok: false, message: alignTooLongMessage() };
+  }
+  let clipped: { blob: Blob };
+  try {
+    clipped = await clipAudioBlob(
+      input.mediaBlob,
+      input.window.startTime,
+      input.window.endTime,
+    );
+  } catch {
+    return { ok: false, message: msg('无法裁剪原声片段') };
+  }
+  if (clipped.blob.size > ALIGN_MAX_BYTES) {
+    return { ok: false, message: alignTooLargeMessage() };
+  }
+  return { ok: true, blob: clipped.blob };
+}
+
+function wholeMediaAlignFailureMessage(input: {
+  referenceText: string;
+  window: SubtitleAlignWindow | null;
+}): string {
+  if (!input.referenceText) {
+    return noReferenceText();
+  }
+  if (!input.window) {
+    return noReferenceText();
+  }
+  if (subtitleAlignWindowDurationSec(input.window) > ALIGN_MAX_DURATION_SEC) {
+    return alignTooLongMessage();
+  }
+  return noReferenceText();
+}
+
+async function cachedSegmentAlignment(input: {
+  mediaId: string;
+  segment: PracticeSegment;
+  subtitleTrack?: SubtitleTrack;
+  subtitleById: Map<string, string>;
+}): Promise<StoredSourceWordAlignment | null> {
+  const existing = await getSourceWordAlignment(input.mediaId, input.segment.id);
+  if (existing) {
+    return existing;
+  }
+
+  const words = await resolveSegmentSourceWords({
+    mediaId: input.mediaId,
+    segment: input.segment,
+    subtitleTrack: input.subtitleTrack,
+  });
+  if (words.length === 0) {
+    return null;
+  }
+
+  const referenceText = resolveSegmentReferenceText(input.segment, input.subtitleById);
+  if (!referenceText) {
+    return null;
+  }
+
+  const mediaRow = await getMediaSourceWordAlignment(input.mediaId);
+  const now = Date.now();
+  return {
+    id: sourceWordAlignmentId(input.mediaId, input.segment.id),
+    mediaId: input.mediaId,
+    segmentId: input.segment.id,
+    words,
+    referenceText,
+    language: mediaRow?.language ?? (getAppSettings().speechScoreLanguage || 'auto'),
+    source: 'batch',
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+async function materializeBatchSegmentRows(input: {
+  mediaId: string;
+  segments: PracticeSegment[];
+  mediaWords: WordTiming[];
+  language: string;
+  subtitleById: Map<string, string>;
+}): Promise<void> {
+  for (const segment of input.segments) {
+    const existing = await getSourceWordAlignment(input.mediaId, segment.id);
+    if (existing) {
+      continue;
+    }
+    const referenceText = resolveSegmentReferenceText(segment, input.subtitleById);
+    if (!referenceText) {
+      continue;
+    }
+    const words = projectWordsToSourceRange(
+      input.mediaWords,
+      segment.sourceStartTime,
+      segment.sourceEndTime,
+    );
+    if (words.length === 0) {
+      continue;
+    }
+    await putSourceWordAlignment({
+      mediaId: input.mediaId,
+      segmentId: segment.id,
+      words,
+      referenceText,
+      language: input.language,
+      source: 'batch',
+    });
+  }
+}
+
+/**
+ * Forced-align subtitle-span of a Media file when within API limits; cache absolute Media timings.
+ */
+export async function alignMediaSource(input: {
+  mediaId: string;
+  signal?: AbortSignal;
+}): Promise<AlignMediaOutcome> {
+  const settings = getAppSettings();
+  if (!isSpeechAlignConfigured(settings)) {
+    return { ok: false, reason: 'not_configured', message: notConfigured() };
+  }
+
+  const subtitleTrack = await getSubtitle(input.mediaId);
+  const referenceText = subtitleTrack ? buildSubtitleTrackReferenceText(subtitleTrack) : '';
+  const window = subtitleTrack
+    ? resolveSubtitleAlignWindow(subtitleTrack.segments)
+    : null;
+  if (
+    !canAlignWholeMedia({
+      alignDurationSec: window ? subtitleAlignWindowDurationSec(window) : 0,
+      referenceText,
+    })
+  ) {
+    return {
+      ok: false,
+      reason: 'validation',
+      message: wholeMediaAlignFailureMessage({ referenceText, window }),
+    };
+  }
+
+  const mediaBlob = await getMediaBlob(input.mediaId);
+  if (!mediaBlob) {
+    return { ok: false, reason: 'validation', message: missingMedia() };
+  }
+
+  const prepared = await prepareSubtitleWindowAlignAudio({ mediaBlob, window: window! });
+  if (!prepared.ok) {
+    return { ok: false, reason: 'validation', message: prepared.message };
+  }
+
+  try {
+    const response = await alignPronunciation({
+      url: settings.speechAlignApiUrl,
+      apiKey: settings.speechScoreApiKey,
+      audio: prepared.blob,
+      referenceText,
+      language: settings.speechScoreLanguage || 'auto',
+      signal: input.signal,
+    });
+
+    const words = toAbsoluteWords(response.words ?? [], window!.startTime);
+    const alignment = await putMediaSourceWordAlignment({
+      mediaId: input.mediaId,
+      words,
+      referenceText,
+      language: response.meta?.language || settings.speechScoreLanguage || 'auto',
+      subtitleContentHash: subtitleTrack!.contentHash,
+    });
+
+    return { ok: true, alignment };
+  } catch (error) {
+    if (error instanceof PronunciationAlignHttpError) {
+      return { ok: false, reason: 'api', message: error.message };
+    }
+    const aborted = error instanceof DOMException && error.name === 'AbortError';
+    return {
+      ok: false,
+      reason: 'api',
+      message: aborted
+        ? msg('对齐已取消')
+        : error instanceof Error
+          ? error.message
+          : msg('对齐失败，请重试'),
+    };
+  }
+}
+
 /**
  * Forced-align one Practice Segment’s source clip; cache absolute Media timings.
  */
@@ -116,15 +329,21 @@ export async function alignPracticeSegment(input: {
 
   const source = input.options?.source ?? 'segment';
   const skipIfCached = input.options?.skipIfCached ?? false;
+  const byId = subtitleTextById(input.subtitleSegments ?? []);
+  const subtitleTrack = await getSubtitle(input.mediaId);
 
   if (skipIfCached) {
-    const existing = await getSourceWordAlignment(input.mediaId, input.segment.id);
-    if (existing) {
-      return { ok: true, alignment: existing };
+    const cached = await cachedSegmentAlignment({
+      mediaId: input.mediaId,
+      segment: input.segment,
+      subtitleTrack,
+      subtitleById: byId,
+    });
+    if (cached) {
+      return { ok: true, alignment: cached };
     }
   }
 
-  const byId = subtitleTextById(input.subtitleSegments ?? []);
   const referenceText = resolveSegmentReferenceText(input.segment, byId);
   if (!referenceText) {
     return { ok: false, reason: 'validation', message: noReferenceText() };
@@ -206,8 +425,8 @@ export async function alignPracticeSegment(input: {
 }
 
 /**
- * Batch-align every Practice Segment with reference text (sequential HTTP).
- * Skips segments that already have a cache row; does not overwrite `segment` rows.
+ * Batch-align every Practice Segment with reference text via one whole-Media `/align`.
+ * Over-limit Media is rejected locally (no HTTP), same as score.
  */
 export async function alignAllPracticeSegments(input: {
   mediaId: string;
@@ -239,58 +458,94 @@ export async function alignAllPracticeSegments(input: {
     };
   }
 
-  let succeeded = 0;
-  let failed = 0;
-  let skipped = 0;
+  const subtitleTrack = await getSubtitle(input.mediaId);
+  const referenceText = subtitleTrack
+    ? buildSubtitleTrackReferenceText(subtitleTrack)
+    : '';
+  if (!referenceText) {
+    return {
+      ok: false,
+      succeeded: 0,
+      failed: 0,
+      skipped: 0,
+      message: noReferenceText(),
+    };
+  }
 
-  for (let i = 0; i < targets.length; i += 1) {
-    if (input.options?.signal?.aborted) {
-      return {
-        ok: false,
-        succeeded,
-        failed,
-        skipped,
-        message: msg('对齐已取消'),
-      };
-    }
+  const mediaBlob = await getMediaBlob(input.mediaId);
+  const alignWindow = subtitleTrack
+    ? resolveSubtitleAlignWindow(subtitleTrack.segments)
+    : null;
+  let mediaRow = await getMediaSourceWordAlignment(input.mediaId);
+  const mediaValid = isMediaAlignmentValid(mediaRow, subtitleTrack);
 
-    const segment = targets[i]!;
-    input.options?.onProgress?.({ done: i, total, segmentId: segment.id });
-
-    const existing = await getSourceWordAlignment(input.mediaId, segment.id);
-    if (existing) {
-      skipped += 1;
-      succeeded += 1;
-      continue;
-    }
-
-    const result = await alignPracticeSegment({
-      mediaId: input.mediaId,
-      segment,
-      subtitleSegments: input.subtitleSegments,
-      options: {
-        signal: input.options?.signal,
-        source: 'batch',
-        skipIfCached: true,
-      },
+  const eligible =
+    Boolean(mediaBlob) &&
+    canAlignWholeMedia({
+      alignDurationSec: alignWindow ? subtitleAlignWindowDurationSec(alignWindow) : 0,
+      referenceText,
     });
 
-    if (result.ok) {
-      succeeded += 1;
-    } else if (result.reason === 'skipped') {
-      skipped += 1;
-      succeeded += 1;
-    } else {
-      failed += 1;
+  if (!eligible && !mediaValid) {
+    if (!mediaBlob) {
+      return {
+        ok: false,
+        succeeded: 0,
+        failed: total,
+        skipped: 0,
+        message: missingMedia(),
+      };
+    }
+    return {
+      ok: false,
+      succeeded: 0,
+      failed: total,
+      skipped: 0,
+      message: wholeMediaAlignFailureMessage({ referenceText, window: alignWindow }),
+    };
+  }
+
+  const preExistingIds = new Set<string>();
+  for (const segment of targets) {
+    if (await getSourceWordAlignment(input.mediaId, segment.id)) {
+      preExistingIds.add(segment.id);
     }
   }
 
-  input.options?.onProgress?.({
-    done: total,
-    total,
-    segmentId: targets[targets.length - 1]?.id ?? '',
+  if (eligible && !mediaValid) {
+    const aligned = await alignMediaSource({
+      mediaId: input.mediaId,
+      signal: input.options?.signal,
+    });
+    if (!aligned.ok) {
+      return {
+        ok: false,
+        succeeded: 0,
+        failed: total,
+        skipped: 0,
+        message: aligned.message,
+      };
+    }
+    mediaRow = aligned.alignment;
+  }
+
+  await materializeBatchSegmentRows({
+    mediaId: input.mediaId,
+    segments: targets,
+    mediaWords: mediaRow!.words,
+    language: mediaRow!.language,
+    subtitleById: byId,
   });
 
+  let succeeded = 0;
+  for (const segment of targets) {
+    if (await getSourceWordAlignment(input.mediaId, segment.id)) {
+      succeeded += 1;
+    }
+  }
+
+  const failed = total - succeeded;
+  const skipped = preExistingIds.size;
   return {
     ok: failed === 0,
     succeeded,

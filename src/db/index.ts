@@ -17,6 +17,7 @@ import {
   STORE_PRONUNCIATION_SCORE,
   STORE_REFERENCE_PROSODY_PROFILE,
   STORE_SOURCE_WORD_ALIGNMENT,
+  STORE_MEDIA_SOURCE_WORD_ALIGNMENT,
   STORE_SUBTITLE,
   type AppDatabase,
   type FluentAnyLangDB,
@@ -196,6 +197,10 @@ export function getDB(): Promise<AppDatabase> {
             keyPath: 'id',
           });
           alignStore.createIndex('byMediaId', 'mediaId');
+        }
+
+        if (!db.objectStoreNames.contains(STORE_MEDIA_SOURCE_WORD_ALIGNMENT)) {
+          db.createObjectStore(STORE_MEDIA_SOURCE_WORD_ALIGNMENT, { keyPath: 'id' });
         }
 
         // v3 briefly shipped without byMediaId for some upgrades; re-run through v4.

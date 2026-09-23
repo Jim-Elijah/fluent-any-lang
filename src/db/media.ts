@@ -3,6 +3,7 @@ import { STORE_MEDIA, STORE_MEDIA_BLOB, STORE_SUBTITLE } from './schema.js';
 import type { MediaBlob, MediaItem } from '../types/models.js';
 import { markMediaRemovedInAllPlaylistsBatch } from './playlist.js';
 import { deleteReferenceProsodyProfilesByMediaIdsBatch } from './reference-prosody-profile.js';
+import { deleteMediaSourceWordAlignmentsByMediaIdsBatch } from './media-source-word-alignment.js';
 import { deleteSourceWordAlignmentsByMediaIdsBatch } from './source-word-alignment.js';
 import {
   markSentenceBankSourceAvailable,
@@ -87,6 +88,7 @@ export async function deleteMediaBatch(ids: string[]): Promise<void> {
   await markSentenceBankSourceUnavailableBatch(uniqueIds);
   await deleteReferenceProsodyProfilesByMediaIdsBatch(uniqueIds);
   await deleteSourceWordAlignmentsByMediaIdsBatch(uniqueIds);
+  await deleteMediaSourceWordAlignmentsByMediaIdsBatch(uniqueIds);
 }
 
 export async function deleteMedia(id: string): Promise<void> {
