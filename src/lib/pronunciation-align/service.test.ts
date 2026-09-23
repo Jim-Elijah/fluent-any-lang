@@ -236,6 +236,28 @@ describe('pronunciation-align service', () => {
     expect(await getSourceWordAlignment('media-long', 'seg-a')).toBeDefined();
   });
 
+  it('alignAll force re-runs HTTP when valid media canonical exists', async () => {
+    await seedShortMedia();
+    const { putMediaSourceWordAlignment } = await import('../../db/media-source-word-alignment.js');
+    await putMediaSourceWordAlignment({
+      mediaId: 'media-1',
+      words: [{ word: 'Hello', start: 0.1, end: 0.5 }],
+      referenceText: 'Hello\nWorld',
+      language: 'en',
+      subtitleContentHash: 'hash-1',
+    });
+
+    const segments = [makeSegment('seg-a', 0, 2)];
+    await alignAllPracticeSegments({
+      mediaId: 'media-1',
+      segments,
+      subtitleSegments: subtitleTrack.segments,
+      options: { force: true },
+    });
+
+    expect(alignPronunciation).toHaveBeenCalledTimes(1);
+  });
+
   it('alignAll skips HTTP when valid media canonical exists', async () => {
     await seedShortMedia();
     const { putMediaSourceWordAlignment } = await import('../../db/media-source-word-alignment.js');

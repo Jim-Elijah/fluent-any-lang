@@ -78,6 +78,7 @@ import '../ui/modal.js';
 import './media-player.js';
 import './subtitle-panel.js';
 import './audio-recorder.js';
+import './speaking-source-align-toolbar.js';
 import './echo-session-dock.js';
 import './discrimination-panel.js';
 import './practice-tips-modal.js';
@@ -163,6 +164,9 @@ export class PracticeView extends NavigatorElement {
 
   @state()
   private _mediaId = '';
+
+  @state()
+  private _subtitleRevision = 0;
 
   @state()
   private _practiceType: PracticeType = 'listening';
@@ -680,6 +684,7 @@ export class PracticeView extends NavigatorElement {
   }
 
   private _onSubtitleImported = (): void => {
+    this._subtitleRevision += 1;
     this.requestUpdate();
   };
 
@@ -920,6 +925,15 @@ export class PracticeView extends NavigatorElement {
               </div>
             `
           : null}
+
+        ${isSpeaking && hasSubtitles
+          ? html`<speaking-source-align-toolbar
+              .controller=${this._controller}
+              .mediaId=${this._mediaId}
+              .sessionLocked=${sessionActive}
+              .subtitleRevision=${this._subtitleRevision}
+            ></speaking-source-align-toolbar>`
+          : nothing}
 
         <div class="layout">
           <media-player

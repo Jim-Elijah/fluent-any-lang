@@ -58,22 +58,21 @@ import {
   type ScoreTextHighlightSpan,
 } from '../../lib/pronunciation-score/index.js';
 import {
-  ALIGN_MAX_BYTES,
-  ALIGN_MAX_DURATION_SEC,
   alignAllPracticeSegments,
   alignPracticeSegment,
-  alignTooLargeMessage,
-  alignTooLongMessage,
-  buildSubtitleSegmentsReferenceText,
-  canAlignWholeMedia,
-  resolveSubtitleAlignWindow,
-  subtitleAlignWindowDurationSec,
+  hasCurrentMediaSourceWordAlignment,
   isSpeechAlignConfigured,
   resolveSegmentSourceWords,
+  resolveWholeMediaAlignBlockedTip,
 } from '../../lib/pronunciation-align/index.js';
+import type { SourceSegmentAlignDetail } from '../shared/source-segment-align-button.js';
+import type { SourceWordAlignAllDetail } from '../shared/source-word-align-all-button.js';
+import type { WordMarkerLayoutToggleDetail } from '../shared/word-marker-layout-toggle.js';
 import { scoreBandStyles } from '../shared/score-band-styles.js';
+import '../shared/source-segment-align-button.js';
+import '../shared/source-word-align-all-button.js';
+import '../shared/word-marker-layout-toggle.js';
 import { getScoreByRecordId } from '../../db/pronunciation-score.js';
-import { getMedia } from '../../db/media.js';
 import { getSubtitle } from '../../db/subtitle.js';
 import { setLogicalVolume } from '../../lib/media-element-gain.js';
 import {
@@ -84,6 +83,7 @@ import {
 } from '../../lib/word-waveform.js';
 import type { WordTiming } from '../../types/models.js';
 import type { WaveformSeekRequestDetail } from '../player/waveform-player.js';
+import { wordRailStyles } from '../player/word-rail-styles.js';
 import '../ui/alert.js';
 import '../ui/button.js';
 import '../ui/dropdown.js';
@@ -206,6 +206,7 @@ export function resolvePreviewSubtitle(input: PreviewSubtitleLookup): SubtitleSe
 export class RecordingPreview extends LitElement {
   static styles = [
     scoreBandStyles,
+    wordRailStyles,
     css`
       :host {
         display: block;
@@ -473,41 +474,6 @@ export class RecordingPreview extends LitElement {
         cursor: pointer;
       }
 
-      .word-rail {
-        position: relative;
-        height: 100%;
-        pointer-events: none;
-      }
-
-      .word-marker {
-        position: absolute;
-        top: 0;
-        height: 100%;
-        box-sizing: border-box;
-        padding: 0 2px;
-        border: none;
-        border-radius: 3px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        font: inherit;
-        font-size: 0.6875rem;
-        line-height: ${WORD_RAIL_LANE_PX}px;
-        text-align: center;
-        cursor: pointer;
-        pointer-events: auto;
-      }
-
-      .word-marker.is-compact {
-        width: auto;
-        padding: 0 4px;
-      }
-
-      .word-marker.is-align {
-        background: rgba(0, 0, 0, 0.06);
-        color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
-      }
-
       .align-row {
         display: flex;
         flex-wrap: wrap;
@@ -601,6 +567,9 @@ export class RecordingPreview extends LitElement {
   /** When privacy ack resumes `align-segment`, force overwrite cache. */
   private _alignSegmentForce = false;
 
+  /** When privacy ack resumes `align-all`, force overwrite whole-Media cache. */
+  private _alignAllForce = false;
+
   @state()
   private _aligning = false;
 
@@ -610,6 +579,9 @@ export class RecordingPreview extends LitElement {
   /** When set, whole-Media align is blocked (same 60s/10MB gate as score). */
   @state()
   private _alignMediaBlockedTip: string | null = null;
+
+  @state()
+  private _hasWholeMediaAlign = false;
 
   /** Index into `details.misread_words` while expected↔actual are paired-emphasized. */
   @state()
@@ -795,10 +767,16 @@ export class RecordingPreview extends LitElement {
         @ok=${() => this._confirmPrivacy()}
         @cancel=${() => {
           this._privacyOpen = false;
+          this._alignSegmentForce = false;
+          this._alignAllForce = false;
         }}
         @update:open="${(e: CustomEvent<{ open: boolean }>) => {
           if (e.target !== e.currentTarget) return;
-          if (!e.detail.open) this._privacyOpen = false;
+          if (!e.detail.open) {
+            this._privacyOpen = false;
+            this._alignSegmentForce = false;
+            this._alignAllForce = false;
+          }
         }}"
       >
         <p>${this._privacyModalBody()}</p>
@@ -1076,34 +1054,19 @@ export class RecordingPreview extends LitElement {
   }
 
   private _renderWordLayoutToggle(visible: boolean) {
-    if (!visible) {
-      return nothing;
-    }
-    const layout = this._wordMarkerLayout;
     return html`
-      <div class="word-layout-row" role="group" aria-label=${msg('波形词条')}>
-        <span class="word-layout-label">${msg('波形词条')}</span>
-        <ui-tooltip title=${msg('标签宽度跟随发音时长')} .zIndex=${Z_INDEX.MODAL + 1}>
-          <ui-button
-            size="small"
-            variant=${layout === 'duration' ? 'primary' : 'secondary'}
-            @click=${() => this._setWordMarkerLayout('duration')}
-          >
-            ${msg('时长')}
-          </ui-button>
-        </ui-tooltip>
-        <ui-tooltip title=${msg('标签紧凑排列')} .zIndex=${Z_INDEX.MODAL + 1}>
-          <ui-button
-            size="small"
-            variant=${layout === 'compact' ? 'primary' : 'secondary'}
-            @click=${() => this._setWordMarkerLayout('compact')}
-          >
-            ${msg('紧凑')}
-          </ui-button>
-        </ui-tooltip>
-      </div>
+      <word-marker-layout-toggle
+        ?visible=${visible}
+        .layout=${this._wordMarkerLayout}
+        @layout-change=${this._onWordLayoutChange}
+      ></word-marker-layout-toggle>
     `;
   }
+
+  private _onWordLayoutChange = (event: CustomEvent<WordMarkerLayoutToggleDetail>): void => {
+    event.stopPropagation();
+    this._setWordMarkerLayout(event.detail.layout);
+  };
 
   private _setWordMarkerLayout(layout: WordMarkerLayout): void {
     if (layout === this._wordMarkerLayout) {
@@ -1295,112 +1258,59 @@ export class RecordingPreview extends LitElement {
     );
     const busy = this._aligning || this._scoring;
     const alignAllBlocked = Boolean(this._alignMediaBlockedTip);
-    const segmentAlignButton = hasSegmentCache
-      ? html`
-          <ui-tooltip
-            title=${msg('重新生成当前句的原音词条')}
-            placement="right"
-            .zIndex=${Z_INDEX.MODAL + 1}
-          >
-            <ui-popconfirm
-              .title=${msg('已有词条，是否重新生成？')}
-              .zIndex=${Z_INDEX.MODAL + 2}
-              ?disabled=${busy}
-              placement="right"
-              @confirm=${() => void this._handleAlignSegment(true)}
-            >
-              <ui-button size="small" variant="secondary" ?disabled=${busy}>
-                ${msg('重新生成')}
-              </ui-button>
-            </ui-popconfirm>
-          </ui-tooltip>
-        `
-      : html`
-          <ui-tooltip
-            title=${msg('为当前句生成原音词条')}
-            placement="right"
-            .zIndex=${Z_INDEX.MODAL + 1}
-          >
-            <ui-button
-              size="small"
-              variant="secondary"
-              ?disabled=${busy}
-              @click=${() => void this._handleAlignSegment()}
-            >
-              ${msg('生成本句')}
-            </ui-button>
-          </ui-tooltip>
-        `;
     return html`
       <div class="align-row" role="group" aria-label=${msg('生成原音词条')}>
         <span class="word-layout-label">${msg('生成原音词条')}</span>
-        ${segmentAlignButton}
+        <source-segment-align-button
+          .hasCache=${hasSegmentCache}
+          ?disabled=${busy}
+          tooltipPlacement="right"
+          @align-segment=${this._onAlignSegmentRequest}
+        ></source-segment-align-button>
         ${showAlignAll
           ? html`
-              <ui-tooltip
-                title=${this._alignMediaBlockedTip ??
-                msg('为全部句子生成原音词条（整段原音一次对齐，已有则跳过）')}
-                .zIndex=${Z_INDEX.MODAL + 1}
-              >
-                <ui-button
-                  size="small"
-                  variant="secondary"
-                  ?disabled=${busy || alignAllBlocked}
-                  @click=${() => void this._handleAlignAll()}
-                >
-                  ${msg('全部原音')}
-                </ui-button>
-              </ui-tooltip>
+              <source-word-align-all-button
+                .hasWholeMediaCache=${this._hasWholeMediaAlign}
+                .blockedTip=${this._alignMediaBlockedTip}
+                .blocked=${alignAllBlocked}
+                ?disabled=${busy}
+                tooltipPlacement="right"
+                @align-all=${this._onAlignAllRequest}
+              ></source-word-align-all-button>
             `
           : nothing}
       </div>
     `;
   }
 
+  private _onAlignSegmentRequest = (event: CustomEvent<SourceSegmentAlignDetail>): void => {
+    event.stopPropagation();
+    void this._handleAlignSegment(event.detail.force);
+  };
+
+  private _onAlignAllRequest = (event: CustomEvent<SourceWordAlignAllDetail>): void => {
+    event.stopPropagation();
+    void this._handleAlignAll(event.detail.force);
+  };
+
   private async _refreshAlignMediaBlockedTip(): Promise<void> {
     const record = this.record;
     const blob = this.sourceBlob;
     if (!record || !blob) {
       this._alignMediaBlockedTip = null;
+      this._hasWholeMediaAlign = false;
       return;
     }
-    try {
-      const media = await getMedia(record.mediaId);
-      if (!media) {
-        this._alignMediaBlockedTip = null;
-        return;
-      }
-      const referenceText = buildSubtitleSegmentsReferenceText(this.subtitleSegments);
-      if (this.subtitleSegments.length > 0) {
-        const window = resolveSubtitleAlignWindow(this.subtitleSegments);
-        const alignDurationSec = window ? subtitleAlignWindowDurationSec(window) : 0;
-        if (
-          !canAlignWholeMedia({
-            alignDurationSec,
-            referenceText,
-          })
-        ) {
-          this._alignMediaBlockedTip =
-            alignDurationSec > ALIGN_MAX_DURATION_SEC
-              ? alignTooLongMessage()
-              : msg('需要对照原稿才能对齐');
-          return;
-        }
-      } else {
-        const blobSizeBytes = blob.size > 0 ? blob.size : media.size;
-        if (media.duration > ALIGN_MAX_DURATION_SEC) {
-          this._alignMediaBlockedTip = alignTooLongMessage();
-          return;
-        }
-        if (blobSizeBytes > ALIGN_MAX_BYTES) {
-          this._alignMediaBlockedTip = alignTooLargeMessage();
-          return;
-        }
-      }
-      this._alignMediaBlockedTip = null;
-    } catch {
-      this._alignMediaBlockedTip = null;
-    }
+    const [blockedTip, hasWholeMediaAlign] = await Promise.all([
+      resolveWholeMediaAlignBlockedTip({
+        mediaId: record.mediaId,
+        subtitleSegments: this.subtitleSegments,
+        sourceBlob: blob,
+      }),
+      hasCurrentMediaSourceWordAlignment(record.mediaId),
+    ]);
+    this._alignMediaBlockedTip = blockedTip;
+    this._hasWholeMediaAlign = hasWholeMediaAlign;
   }
 
   private async _loadAlignWordsForCurrentSegment(): Promise<void> {
@@ -1452,7 +1362,7 @@ export class RecordingPreview extends LitElement {
     await this._runAlignSegment(force);
   }
 
-  private async _handleAlignAll(): Promise<void> {
+  private async _handleAlignAll(force = false): Promise<void> {
     if (!this.record || this._aligning) {
       return;
     }
@@ -1462,10 +1372,11 @@ export class RecordingPreview extends LitElement {
     }
     if (!hasSpeechScorePrivacyAck()) {
       this._privacyAction = 'align-all';
+      this._alignAllForce = force;
       this._privacyOpen = true;
       return;
     }
-    await this._runAlignAll();
+    await this._runAlignAll(force);
   }
 
   private async _runAlignSegment(force = false): Promise<void> {
@@ -1497,7 +1408,7 @@ export class RecordingPreview extends LitElement {
     }
   }
 
-  private async _runAlignAll(): Promise<void> {
+  private async _runAlignAll(force = false): Promise<void> {
     const record = this.record;
     if (!record) {
       return;
@@ -1508,6 +1419,7 @@ export class RecordingPreview extends LitElement {
         mediaId: record.mediaId,
         segments: this.segments,
         subtitleSegments: this.subtitleSegments,
+        options: { force },
       });
       // Refresh in-memory cache from IDB for all segments.
       this._alignWordsBySegmentId.clear();
@@ -1528,11 +1440,14 @@ export class RecordingPreview extends LitElement {
           }
         }),
       );
+      void this._refreshAlignMediaBlockedTip();
       this.requestUpdate();
       if (!result.ok && result.message) {
         Message.warning(result.message);
       } else {
-        Message.success(msg('全部原音词条已生成'));
+        Message.success(
+          force ? msg('全部原音词条已重新生成') : msg('全部原音词条已生成'),
+        );
       }
     } finally {
       this._aligning = false;
@@ -1567,7 +1482,9 @@ export class RecordingPreview extends LitElement {
       return;
     }
     if (action === 'align-all') {
-      await this._runAlignAll();
+      const force = this._alignAllForce;
+      this._alignAllForce = false;
+      await this._runAlignAll(force);
       return;
     }
     if (this.record) {

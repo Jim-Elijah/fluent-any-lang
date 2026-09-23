@@ -2644,29 +2644,17 @@
 <trans-unit id="s2ebe608c55968bd8">
   <source>生成原音词条会将原声片段上传到你配置的服务器以获取词级时间戳。服务端不保存音频。是否继续？</source>
 </trans-unit>
-<trans-unit id="sc5ea2d39c16d23fa">
-  <source>生成中… <x id="0" equiv-text="${progress.done}"/>/<x id="1" equiv-text="${progress.total}"/></source>
-</trans-unit>
-<trans-unit id="sbf3e1a3ba15fd5e9">
-  <source>生成中…</source>
-</trans-unit>
 <trans-unit id="scbd8a611337f7506">
   <source>已有词条，是否重新生成？</source>
 </trans-unit>
 <trans-unit id="s3382e4f396f2824f">
   <source>重新生成</source>
 </trans-unit>
-<trans-unit id="s2c626c038fd8a2cb">
-  <source>为当前句原声生成词级时间戳</source>
-</trans-unit>
 <trans-unit id="s4a423b3c17392c25">
   <source>生成本句</source>
 </trans-unit>
 <trans-unit id="s0488738745e3729e">
   <source>生成原音词条</source>
-</trans-unit>
-<trans-unit id="sc05c9d8125f39974">
-  <source>按句批量生成全部原音词条（已有缓存的句子会跳过）</source>
 </trans-unit>
 <trans-unit id="sfd9fb189b050b21f">
   <source>全部原音</source>
@@ -2682,6 +2670,27 @@
 </trans-unit>
 <trans-unit id="s278a81223cc0837e">
   <source>重新生成当前句的原音词条</source>
+</trans-unit>
+<trans-unit id="s7f017de17e729f8f">
+  <source>全部原音词条已重新生成</source>
+</trans-unit>
+<trans-unit id="sf49a1aff4f5e48cd">
+  <source>隐藏词轨</source>
+</trans-unit>
+<trans-unit id="s529b3ff5f0e76984">
+  <source>显示词轨</source>
+</trans-unit>
+<trans-unit id="scbf3ddbef5db906f">
+  <source>为当前句生成原音词条</source>
+</trans-unit>
+<trans-unit id="s7ee5ac119156da90">
+  <source>重新为全部句子生成原音词条（整段原音重新对齐）</source>
+</trans-unit>
+<trans-unit id="sd00266e0aa2bb007">
+  <source>为全部句子生成原音词条（整段原音一次对齐，已有则跳过）</source>
+</trans-unit>
+<trans-unit id="s7632234bd6231a83">
+  <source>已有整段原音词条，是否重新生成？</source>
 </trans-unit>
 </body>
 </file>

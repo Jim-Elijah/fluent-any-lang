@@ -222,6 +222,42 @@ export function getPracticeSegmentViewRange(
   return { start, end };
 }
 
+/**
+ * Waveform view range for one Subtitle Segment, including the trailing gap until
+ * the next segment starts (last segment ends at its own end time).
+ */
+export function getSubtitleSegmentViewRange(
+  segments: SubtitleSegment[],
+  segmentIndex: number,
+): { start: number; end: number } | null {
+  const segment = segments[segmentIndex];
+  if (!segment) {
+    return null;
+  }
+
+  const start = segment.startTime;
+  const segmentEnd = segment.endTime;
+  const next = segments[segmentIndex + 1];
+  const end = next ? Math.max(segmentEnd, next.startTime) : segmentEnd;
+  if (end <= start) {
+    return { start, end: Math.max(start, segmentEnd) };
+  }
+  return { start, end };
+}
+
+/** Subtitle segments as Practice Segment targets for batch source align (recording axis unused). */
+export function subtitleSegmentsToAlignTargets(segments: SubtitleSegment[]): PracticeSegment[] {
+  return segments.map((segment) => ({
+    id: segment.id,
+    sourceStartTime: segment.startTime,
+    sourceEndTime: segment.endTime,
+    recordingStartTime: 0,
+    recordingEndTime: 0,
+    text: segment.text,
+    translation: segment.translation,
+  }));
+}
+
 /** Map a timestamp from one practice axis to the other via segment alignment. */
 export function mapPracticeTime(
   time: number,

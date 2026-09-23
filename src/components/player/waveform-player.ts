@@ -59,6 +59,8 @@ export class WaveformPlayer extends LitElement {
       overflow: hidden;
       pointer-events: none;
       border-radius: var(--radius-md, 8px) var(--radius-md, 8px) 0 0;
+      /* Match canvas top so word markers read as inside the frame, not floating on peaks. */
+      background: var(--color-surface, #fff);
     }
 
     canvas.interactive {

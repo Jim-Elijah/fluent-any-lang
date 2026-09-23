@@ -443,6 +443,8 @@ describe('practice-view', () => {
     speakingButton?.click();
     await el.updateComplete;
 
+    expect(el.shadowRoot?.querySelector('speaking-source-align-toolbar')).toBeTruthy();
+
     expect(el._speakingMode).toBe('echo');
     const modeTabs = el.shadowRoot!.querySelector('.speaking-mode-tabs');
     const labels = Array.from(modeTabs?.querySelectorAll('ui-button') ?? []).map((button) =>

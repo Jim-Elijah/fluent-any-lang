@@ -11,6 +11,8 @@ import {
   getLongerPracticeAxis,
   getPracticeSegmentDuration,
   getPracticeSegmentViewRange,
+  getSubtitleSegmentViewRange,
+  subtitleSegmentsToAlignTargets,
   getPracticeSourceDuration,
   getPracticeSourceSpan,
   getPracticeRecordingSpan,
@@ -248,6 +250,47 @@ describe('getLongerPracticeAxis', () => {
       recordingEndTime: 2,
     };
     expect(getLongerPracticeAxis(segment)).toBe('recording');
+  });
+});
+
+describe('getSubtitleSegmentViewRange', () => {
+  const subtitleSegments: SubtitleSegment[] = [
+    { id: 's0', startTime: 0, endTime: 5, text: 'a' },
+    { id: 's1', startTime: 5, endTime: 10, text: 'b' },
+    { id: 's2', startTime: 12, endTime: 15, text: 'c' },
+  ];
+
+  it('includes the trailing gap until the next segment starts', () => {
+    expect(getSubtitleSegmentViewRange(subtitleSegments, 1)).toEqual({
+      start: 5,
+      end: 12,
+    });
+  });
+
+  it('ends at the segment end for the last segment', () => {
+    expect(getSubtitleSegmentViewRange(subtitleSegments, 2)).toEqual({
+      start: 12,
+      end: 15,
+    });
+  });
+});
+
+describe('subtitleSegmentsToAlignTargets', () => {
+  it('maps subtitle times onto the source axis with recording placeholders', () => {
+    const segments: SubtitleSegment[] = [
+      { id: 's0', startTime: 1, endTime: 4, text: 'hi', translation: '你好' },
+    ];
+    expect(subtitleSegmentsToAlignTargets(segments)).toEqual([
+      {
+        id: 's0',
+        sourceStartTime: 1,
+        sourceEndTime: 4,
+        recordingStartTime: 0,
+        recordingEndTime: 0,
+        text: 'hi',
+        translation: '你好',
+      },
+    ]);
   });
 });
 

@@ -1,5 +1,11 @@
 import { findPracticeSegmentIndex, type PracticeTimeAxis } from './playback-utils.js';
-import type { PracticeSegment, WordMarkerLayout, WordTiming } from '../types/models.js';
+import { projectWordsToSourceRange } from './pronunciation-align/project-words.js';
+import type {
+  PracticeSegment,
+  SubtitleSegment,
+  WordMarkerLayout,
+  WordTiming,
+} from '../types/models.js';
 
 export type TimeRange = { start: number; end: number };
 
@@ -137,5 +143,28 @@ export function wordMarkersForSourcePreview(input: {
   if (!viewRange) {
     return [];
   }
+  return layoutWordMarkers(words, viewRange, input.layout ?? 'duration');
+}
+
+/** Source-axis word markers for the current Subtitle Segment (align timings). */
+export function wordMarkersForSourceSubtitle(input: {
+  words: TimedWord[];
+  segments: SubtitleSegment[];
+  segmentIndex: number;
+  sourceViewRange: TimeRange | null;
+  layout?: WordMarkerLayout;
+}): WordWaveformMarker[] {
+  const segment = input.segments[input.segmentIndex];
+  if (!segment) {
+    return [];
+  }
+  const words = projectWordsToSourceRange(
+    input.words,
+    segment.startTime,
+    segment.endTime,
+  );
+  const viewRange =
+    input.sourceViewRange ??
+    ({ start: segment.startTime, end: segment.endTime } satisfies TimeRange);
   return layoutWordMarkers(words, viewRange, input.layout ?? 'duration');
 }

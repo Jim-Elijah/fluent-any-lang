@@ -33,6 +33,7 @@ import {
 } from './constants.js';
 import { buildSubtitleTrackReferenceText } from './reference-text.js';
 import { projectWordsToSourceRange } from './project-words.js';
+import { isMediaSourceWordAlignmentCurrent } from './media-alignment-current.js';
 import { resolveSegmentSourceWords } from './resolve-segment-words.js';
 import {
   resolveSubtitleAlignWindow,
@@ -72,6 +73,8 @@ export type AlignSegmentOptions = {
 
 export type AlignAllOptions = {
   signal?: AbortSignal;
+  /** Re-run whole-Media `/align` and overwrite batch segment rows. */
+  force?: boolean;
 };
 
 function notConfigured() {
@@ -111,13 +114,6 @@ function subtitleTextById(
   subtitleSegments: ReadonlyArray<Pick<SubtitleSegment, 'id' | 'text'>>,
 ): Map<string, string> {
   return new Map(subtitleSegments.map((segment) => [segment.id, segment.text]));
-}
-
-function isMediaAlignmentValid(
-  row: StoredMediaSourceWordAlignment | undefined,
-  track: SubtitleTrack | undefined,
-): row is StoredMediaSourceWordAlignment {
-  return Boolean(row && track && row.subtitleContentHash === track.contentHash);
 }
 
 async function prepareSubtitleWindowAlignAudio(input: {
@@ -206,10 +202,11 @@ async function materializeBatchSegmentRows(input: {
   mediaWords: WordTiming[];
   language: string;
   subtitleById: Map<string, string>;
+  overwriteExisting?: boolean;
 }): Promise<void> {
   for (const segment of input.segments) {
     const existing = await getSourceWordAlignment(input.mediaId, segment.id);
-    if (existing) {
+    if (existing && !input.overwriteExisting) {
       continue;
     }
     const referenceText = resolveSegmentReferenceText(segment, input.subtitleById);
@@ -476,8 +473,9 @@ export async function alignAllPracticeSegments(input: {
   const alignWindow = subtitleTrack
     ? resolveSubtitleAlignWindow(subtitleTrack.segments)
     : null;
+  const force = input.options?.force ?? false;
   let mediaRow = await getMediaSourceWordAlignment(input.mediaId);
-  const mediaValid = isMediaAlignmentValid(mediaRow, subtitleTrack);
+  const mediaValid = isMediaSourceWordAlignmentCurrent(mediaRow, subtitleTrack);
 
   const eligible =
     Boolean(mediaBlob) &&
@@ -512,7 +510,7 @@ export async function alignAllPracticeSegments(input: {
     }
   }
 
-  if (eligible && !mediaValid) {
+  if (eligible && (force || !mediaValid)) {
     const aligned = await alignMediaSource({
       mediaId: input.mediaId,
       signal: input.options?.signal,
@@ -535,6 +533,7 @@ export async function alignAllPracticeSegments(input: {
     mediaWords: mediaRow!.words,
     language: mediaRow!.language,
     subtitleById: byId,
+    overwriteExisting: force,
   });
 
   let succeeded = 0;

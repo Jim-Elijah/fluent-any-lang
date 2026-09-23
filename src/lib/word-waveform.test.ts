@@ -5,6 +5,7 @@ import {
   layoutWordMarkers,
   wordMarkersForPreview,
   wordMarkersForSourcePreview,
+  wordMarkersForSourceSubtitle,
   wordsInPracticeSegment,
 } from './word-waveform.js';
 
@@ -110,6 +111,27 @@ describe('wordMarkersForPreview', () => {
     expect(markers[0]).toMatchObject({ word: 'foo', start: 5, end: 5.4, score: 40 });
     expect(markers[0].leftPct).toBeCloseTo(11.11, 2);
     expect(markers[0].widthPct).toBeCloseTo(8.89, 2);
+  });
+});
+
+const subtitleSegments = [
+  { id: 's0', startTime: 0, endTime: 4, text: 'one' },
+  { id: 's1', startTime: 5, endTime: 9, text: 'two' },
+];
+
+describe('wordMarkersForSourceSubtitle', () => {
+  it('filters words to the subtitle segment and lays them out on the view range', () => {
+    const markers = wordMarkersForSourceSubtitle({
+      words: [
+        { word: 'hello', start: 0.12, end: 0.45 },
+        { word: 'world', start: 5, end: 5.4 },
+      ],
+      segments: subtitleSegments,
+      segmentIndex: 0,
+      sourceViewRange: { start: 0, end: 4 },
+    });
+    expect(markers).toHaveLength(1);
+    expect(markers[0]).toMatchObject({ word: 'hello', start: 0.12, end: 0.45 });
   });
 });
 
