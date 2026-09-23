@@ -108,6 +108,8 @@ type RecordingPreviewInternals = HTMLElement & {
     playRecording: () => Promise<void>;
     playRecordingAt: (time: number) => Promise<void>;
     playRecordingRange: (start: number, end: number) => Promise<void>;
+    playSyncRecordingRange: (start: number, end: number) => Promise<boolean>;
+    playContinuousRecordingRange: (start: number, end: number) => Promise<boolean>;
     playSync: () => Promise<void>;
     playSyncFromSegment: (index: number) => Promise<void>;
     playSyncAt: (time: number, axis: 'source' | 'recording') => Promise<boolean>;
@@ -428,6 +430,8 @@ describe('recording-preview', () => {
       playRecording: vi.fn().mockResolvedValue(undefined),
       playRecordingAt: vi.fn().mockResolvedValue(undefined),
       playRecordingRange: vi.fn().mockResolvedValue(undefined),
+      playSyncRecordingRange: vi.fn().mockResolvedValue(true),
+      playContinuousRecordingRange: vi.fn().mockResolvedValue(true),
       playSync: vi.fn().mockResolvedValue(undefined),
       playSyncFromSegment,
       playSyncAt: vi.fn().mockResolvedValue(true),
@@ -1781,7 +1785,7 @@ describe('recording-preview', () => {
     expect(playback.playSyncAt).not.toHaveBeenCalled();
   });
 
-  it('plays only the clicked waveform word on recording even in compare mode', async () => {
+  it('plays clicked waveform word in sync compare without leaving sync mode', async () => {
     const el = await renderScoredPreview({
       word_scores: [{ word: 'hello', start: 0.12, end: 0.45, score: 90 }],
     });
@@ -1795,8 +1799,74 @@ describe('recording-preview', () => {
     marker?.click();
     await flushUpdates();
 
-    expect(playback.playRecordingRange).toHaveBeenCalledWith(0.12, 0.45);
+    expect(playback.playSyncRecordingRange).toHaveBeenCalledWith(0.12, 0.45);
+    expect(playback.playRecordingRange).not.toHaveBeenCalled();
     expect(playback.playSyncAt).not.toHaveBeenCalled();
+  });
+
+  it('keeps segment zoom when clicking a waveform word during sync compare with source-focused waveform', async () => {
+    const el = await renderScoredPreview({
+      word_scores: [{ word: 'hello', start: 0.12, end: 0.45, score: 40 }],
+    });
+    const playback = createPlaybackMock();
+    el._playback = playback;
+    el._playMode = 'sync';
+    el._syncSegmentIndex = 0;
+    el._sourceTrackId = 'source-track';
+    el._recordingTrackId = 'rec-track';
+    el._controller.setActiveId('source-track');
+    el._controller.setViewRange({ start: 0, end: 5 });
+    await el.updateComplete;
+
+    const setActiveSpy = vi.spyOn(el._controller, 'setActiveId');
+    const marker = el.shadowRoot?.querySelector('.word-marker') as HTMLButtonElement | null;
+    marker?.click();
+    await flushUpdates();
+
+    expect(playback.playSyncRecordingRange).toHaveBeenCalledWith(0.12, 0.45);
+    expect(el._controller.getSnapshot().viewRange).toEqual({ start: 0, end: 5 });
+    expect(setActiveSpy).not.toHaveBeenCalled();
+  });
+
+  it('keeps segment zoom when clicking a waveform word during continuous compare with source-focused waveform', async () => {
+    const el = await renderScoredPreview({
+      word_scores: [{ word: 'hello', start: 0.12, end: 0.45, score: 40 }],
+    });
+    const playback = createPlaybackMock();
+    el._playback = playback;
+    el._playMode = 'continuous';
+    el._syncSegmentIndex = 0;
+    el._sourceTrackId = 'source-track';
+    el._recordingTrackId = 'rec-track';
+    el._controller.setActiveId('source-track');
+    el._controller.setViewRange({ start: 0, end: 5 });
+    await el.updateComplete;
+
+    const setActiveSpy = vi.spyOn(el._controller, 'setActiveId');
+    const marker = el.shadowRoot?.querySelector('.word-marker') as HTMLButtonElement | null;
+    marker?.click();
+    await flushUpdates();
+
+    expect(playback.playContinuousRecordingRange).toHaveBeenCalledWith(0.12, 0.45);
+    expect(el._controller.getSnapshot().viewRange).toEqual({ start: 0, end: 5 });
+    expect(setActiveSpy).not.toHaveBeenCalled();
+  });
+
+  it('plays clicked score word chip in continuous compare without leaving continuous mode', async () => {
+    const el = await renderScoredPreview({
+      word_scores: [{ word: 'hello', start: 0.12, end: 0.45, score: 90 }],
+    });
+    const playback = createPlaybackMock();
+    el._playback = playback;
+    el._playMode = 'continuous';
+    await el.updateComplete;
+
+    const chip = el.shadowRoot?.querySelector('.word-chip') as HTMLButtonElement | null;
+    chip?.click();
+    await flushUpdates();
+
+    expect(playback.playContinuousRecordingRange).toHaveBeenCalledWith(0.12, 0.45);
+    expect(playback.playRecordingRange).not.toHaveBeenCalled();
   });
 
   it('plays only the clicked score word chip on recording', async () => {

@@ -184,6 +184,48 @@ describe('DualTrackPlayback', () => {
     expect(controller.getState().mode).toBe('idle');
   });
 
+  it('playSyncRecordingRange maps recording span and soft-pauses in sync mode', async () => {
+    const ok = await controller.playSyncRecordingRange(0.12, 0.45);
+    expect(ok).toBe(true);
+    expect(controller.getState()).toEqual({ mode: 'sync', syncSegmentIndex: 0, paused: false });
+    expect(source.currentTime).toBe(0.12);
+    expect(recording.currentTime).toBe(0.12);
+    expect(source.play).toHaveBeenCalled();
+    expect(recording.play).toHaveBeenCalled();
+
+    recording.currentTime = 0.45;
+    source.currentTime = 0.45;
+    recording.dispatchEvent(new Event('timeupdate'));
+    expect(controller.getState()).toEqual({ mode: 'sync', syncSegmentIndex: 0, paused: true });
+
+    vi.mocked(source.play).mockClear();
+    vi.mocked(recording.play).mockClear();
+    await controller.resume();
+    expect(source.play).toHaveBeenCalled();
+    expect(recording.play).toHaveBeenCalled();
+  });
+
+  it('playContinuousRecordingRange soft-pauses at clip end in continuous mode', async () => {
+    await controller.playContinuous();
+    vi.mocked(source.play).mockClear();
+    vi.mocked(recording.play).mockClear();
+
+    const ok = await controller.playContinuousRecordingRange(0.12, 0.45);
+    expect(ok).toBe(true);
+    expect(controller.getState().mode).toBe('continuous');
+    expect(recording.currentTime).toBe(0.12);
+    expect(source.currentTime).toBe(0.12);
+
+    recording.currentTime = 0.45;
+    source.currentTime = 0.45;
+    source.dispatchEvent(new Event('timeupdate'));
+    expect(controller.getState()).toEqual({
+      mode: 'continuous',
+      syncSegmentIndex: 0,
+      paused: true,
+    });
+  });
+
   it('ignores out-of-range sync segment index', async () => {
     await controller.playSyncFromSegment(99);
     expect(controller.getState().mode).toBe('idle');

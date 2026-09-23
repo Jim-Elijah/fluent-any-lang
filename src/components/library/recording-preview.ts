@@ -1210,7 +1210,7 @@ export class RecordingPreview extends LitElement {
     this._requestAudioFocus();
     const hasEnd = typeof end === 'number' && Number.isFinite(end) && end > start;
     if (axis === 'source') {
-      if (this._sourceTrackId) {
+      if (this._sourceTrackId && !isComparePlayMode(this._playMode)) {
         this._controller.setActiveId(this._sourceTrackId);
       }
       const play = hasEnd
@@ -1221,12 +1221,24 @@ export class RecordingPreview extends LitElement {
       });
       return;
     }
-    if (this._recordingTrackId) {
+    if (this._recordingTrackId && !isComparePlayMode(this._playMode)) {
       this._controller.setActiveId(this._recordingTrackId);
     }
-    const play = hasEnd
-      ? this._playback.playRecordingRange(start, end as number)
-      : this._playback.playRecordingAt(start);
+    const play = (() => {
+      if (isComparePlayMode(this._playMode)) {
+        if (hasEnd) {
+          return this._playMode === 'continuous'
+            ? this._playback.playContinuousRecordingRange(start, end as number)
+            : this._playback.playSyncRecordingRange(start, end as number);
+        }
+        return this._playMode === 'continuous'
+          ? this._playback.playContinuousAt(start, 'recording')
+          : this._playback.playSyncAt(start, 'recording');
+      }
+      return hasEnd
+        ? this._playback.playRecordingRange(start, end as number)
+        : this._playback.playRecordingAt(start);
+    })();
     void play.catch(() => {
       this._playback?.stop();
     });
@@ -2129,6 +2141,9 @@ export class RecordingPreview extends LitElement {
   };
 
   private _handleTrackChange = (): void => {
+    if (isComparePlayMode(this._playMode)) {
+      return;
+    }
     this._setPracticeViewRange(null);
   };
 

@@ -224,6 +224,100 @@ export class DualTrackPlayback {
     return true;
   }
 
+  /**
+   * Sync compare: play a recording-axis word span with source mapped by wall-clock
+   * elapsed within the practice segment, then soft-pause (Space continues compare).
+   */
+  async playSyncRecordingRange(recStart: number, recEnd: number): Promise<boolean> {
+    if (this.segments.length === 0) {
+      return false;
+    }
+    if (!(Number.isFinite(recStart) && Number.isFinite(recEnd) && recEnd > recStart)) {
+      return this.playSyncAt(recStart, 'recording');
+    }
+
+    const segmentIndex = findPracticeSegmentIndex(this.segments, recStart, 'recording');
+    if (segmentIndex < 0) {
+      return false;
+    }
+
+    const segment = this.segments[segmentIndex]!;
+    const recordingStart = Math.max(
+      segment.recordingStartTime,
+      Math.min(recStart, segment.recordingEndTime),
+    );
+    const recordingEnd = Math.max(
+      recordingStart,
+      Math.min(recEnd, segment.recordingEndTime),
+    );
+    const sourceStart = Math.min(
+      segment.sourceStartTime + (recordingStart - segment.recordingStartTime),
+      segment.sourceEndTime,
+    );
+    const sourceEnd = Math.min(
+      segment.sourceStartTime + (recordingEnd - segment.recordingStartTime),
+      segment.sourceEndTime,
+    );
+
+    await this._playSyncClipAtTimes(
+      segmentIndex,
+      sourceStart,
+      recordingStart,
+      sourceEnd,
+      recordingEnd,
+    );
+    return true;
+  }
+
+  /**
+   * Continuous compare: play a recording-axis word span with source mapped from
+   * continuous anchors, then soft-pause (Space continues compare).
+   */
+  async playContinuousRecordingRange(recStart: number, recEnd: number): Promise<boolean> {
+    if (this.segments.length === 0) {
+      return false;
+    }
+    if (!(Number.isFinite(recStart) && Number.isFinite(recEnd) && recEnd > recStart)) {
+      return this.playContinuousAt(recStart, 'recording');
+    }
+
+    const first = this.segments[0]!;
+    const last = this.segments[this.segments.length - 1]!;
+    if (this.mode !== 'continuous') {
+      this._continuousAnchorSource = first.sourceStartTime;
+      this._continuousAnchorRecording = first.recordingStartTime;
+    }
+
+    const recordingStart = Math.max(
+      first.recordingStartTime,
+      Math.min(recStart, last.recordingEndTime),
+    );
+    const recordingEnd = Math.max(
+      recordingStart,
+      Math.min(recEnd, last.recordingEndTime),
+    );
+    const sourceStart = this._mapContinuousRecordingToSource(recordingStart);
+    const sourceEnd = this._mapContinuousRecordingToSource(recordingEnd);
+
+    this._stopSyncMonitor();
+    this.sourceAudio.pause();
+    this.recordingAudio.pause();
+    this.mode = 'continuous';
+    this.paused = false;
+    this._finished = false;
+    this._clipBoundary = true;
+    this._sourceEndTime = sourceEnd;
+    this._recordingEndTime = recordingEnd;
+    this.sourceAudio.currentTime = this._clampAudioTime(this.sourceAudio, sourceStart);
+    this.recordingAudio.currentTime = this._clampAudioTime(this.recordingAudio, recordingStart);
+    this._updateContinuousSegmentIndex();
+    this._emitState();
+
+    await this.sourceAudio.play();
+    await this.recordingAudio.play();
+    return true;
+  }
+
   /** Jump to a practice segment while keeping the current play mode and pause state. */
   async goToSegment(index: number): Promise<void> {
     if (index < 0 || index >= this.segments.length || this.mode === 'idle') {
@@ -426,6 +520,9 @@ export class DualTrackPlayback {
         this._sourceEndTime = last.sourceEndTime;
       } else if (this.mode === 'recording') {
         this._recordingEndTime = last.recordingEndTime;
+      } else if (this.mode === 'continuous') {
+        this._sourceEndTime = last.sourceEndTime;
+        this._recordingEndTime = last.recordingEndTime;
       }
     }
     this._emitState();
@@ -575,6 +672,48 @@ export class DualTrackPlayback {
     this._correctContinuousDrift();
   }, SYNC_DRIFT_THROTTLE_MS);
 
+  private async _playSyncClipAtTimes(
+    index: number,
+    sourceStart: number,
+    recordingStart: number,
+    sourceEnd: number,
+    recordingEnd: number,
+  ): Promise<void> {
+    const segment = this.segments[index];
+    if (!segment) {
+      this.stop();
+      return;
+    }
+
+    this._stopSingleTrackMonitor();
+    this.sourceAudio.pause();
+    this.recordingAudio.pause();
+    this.mode = 'sync';
+    this.paused = false;
+    this._finished = false;
+    this._clipBoundary = true;
+    this._sourceEndTime = sourceEnd;
+    this._recordingEndTime = recordingEnd;
+    this.syncSegmentIndex = index;
+    this._syncSegment = segment;
+    this._syncSegmentIndex = index;
+    this.sourceAudio.currentTime = sourceStart;
+    this.recordingAudio.currentTime = recordingStart;
+    this._emitState();
+
+    const sourceRemaining = sourceEnd - sourceStart > SYNC_END_EPSILON;
+    const recordingRemaining = recordingEnd - recordingStart > SYNC_END_EPSILON;
+    if (sourceRemaining) {
+      await this.sourceAudio.play();
+    }
+    if (recordingRemaining) {
+      await this.recordingAudio.play();
+    }
+    if (!sourceRemaining && !recordingRemaining) {
+      this._pauseAtClipEnd();
+    }
+  }
+
   private async _playSyncAtTimes(
     index: number,
     sourceTime: number,
@@ -684,10 +823,30 @@ export class DualTrackPlayback {
       return;
     }
 
-    const segment = this._syncSegment;
-    const index = this._syncSegmentIndex;
     const sourceTime = this.sourceAudio.currentTime;
     const recordingTime = this.recordingAudio.currentTime;
+
+    if (
+      this._clipBoundary &&
+      this._sourceEndTime !== null &&
+      this._recordingEndTime !== null
+    ) {
+      const sourceAtClip = sourceTime >= this._sourceEndTime - SYNC_END_EPSILON;
+      const recordingAtClip = recordingTime >= this._recordingEndTime - SYNC_END_EPSILON;
+      if (sourceAtClip && !this.sourceAudio.paused) {
+        this.sourceAudio.pause();
+      }
+      if (recordingAtClip && !this.recordingAudio.paused) {
+        this.recordingAudio.pause();
+      }
+      if (sourceAtClip && recordingAtClip) {
+        this._pauseAtClipEnd();
+      }
+      return;
+    }
+
+    const segment = this._syncSegment;
+    const index = this._syncSegmentIndex;
 
     const sourceAtEnd = sourceTime >= segment.sourceEndTime - SYNC_END_EPSILON;
     const recordingAtEnd = recordingTime >= segment.recordingEndTime - SYNC_END_EPSILON;
@@ -758,6 +917,26 @@ export class DualTrackPlayback {
     if (this.mode !== 'continuous') {
       return;
     }
+
+    if (this._clipBoundary) {
+      const sourceAtClip =
+        this._sourceEndTime !== null &&
+        this.sourceAudio.currentTime >= this._sourceEndTime - SYNC_END_EPSILON;
+      const recordingAtClip =
+        this._recordingEndTime !== null &&
+        this.recordingAudio.currentTime >= this._recordingEndTime - SYNC_END_EPSILON;
+      if (sourceAtClip && !this.sourceAudio.paused) {
+        this.sourceAudio.pause();
+      }
+      if (recordingAtClip && !this.recordingAudio.paused) {
+        this.recordingAudio.pause();
+      }
+      if (sourceAtClip && recordingAtClip) {
+        this._pauseAtClipEnd();
+      }
+      return;
+    }
+
     if (
       this._sourceEndTime !== null &&
       this.sourceAudio.currentTime >= this._sourceEndTime - SYNC_END_EPSILON

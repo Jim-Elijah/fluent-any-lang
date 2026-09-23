@@ -6,7 +6,11 @@ import { styleMap } from 'lit/directives/style-map.js';
 import { MediaControllerHost } from '../../controllers/media-controller-host.js';
 import type { MediaController } from '../../controllers/media-controller.js';
 import { WaveformControllerHost } from '../../controllers/waveform-controller-host.js';
-import { WaveformController } from '../../controllers/waveform-controller.js';
+import {
+  WaveformController,
+  WaveformEventType,
+  type ViewRange,
+} from '../../controllers/waveform-controller.js';
 import { getMediaBlob } from '../../db/media.js';
 import { getSubtitle } from '../../db/subtitle.js';
 import { getAppSettings, setAppSettings } from '../../lib/app-settings.js';
@@ -39,6 +43,8 @@ import {
   wordMarkersForSourceSubtitle,
   type WordWaveformMarker,
 } from '../../lib/word-waveform.js';
+import { dispatchAudioFocusRequest } from '../../lib/audio-focus.js';
+import { EchoClipPlayer } from '../../lib/echo-clip-player.js';
 import { Message } from '../ui/message.js';
 import { Z_INDEX } from '../ui/internal/z-index.js';
 import '../ui/button.js';
@@ -49,22 +55,8 @@ import { wordRailStyles } from './word-rail-styles.js';
 
 const SOURCE_WAVEFORM_CANVAS_HEIGHT = 140;
 
-function bindSoftPauseAt(controller: MediaController, endTime: number): () => void {
-  if (!Number.isFinite(endTime)) {
-    return () => {};
-  }
-  const handler = (): void => {
-    if (controller.currentTime >= endTime - 0.02) {
-      controller.pause();
-      cleanup();
-    }
-  };
-  const cleanup = (): void => {
-    controller.removeEventListener('state-change', handler);
-  };
-  controller.addEventListener('state-change', handler);
-  return cleanup;
-}
+/** Fallback clip length when a word timing has no valid end. */
+const WORD_PREVIEW_FALLBACK_DURATION_S = 0.5;
 
 @customElement('speaking-source-align-toolbar')
 @localized()
@@ -147,7 +139,7 @@ export class SpeakingSourceAlignToolbar extends LitElement {
   private _sourceTrackId = '';
 
   private _alignWordsBySegmentId = new Map<string, WordTiming[]>();
-  private _softPauseCleanup: (() => void) | null = null;
+  private readonly _wordClipPlayer = new EchoClipPlayer();
   private _loadMediaGeneration = 0;
   private _alignAllForce = false;
   private _alignSegmentForce = false;
@@ -155,6 +147,10 @@ export class SpeakingSourceAlignToolbar extends LitElement {
 
   connectedCallback(): void {
     super.connectedCallback();
+    this._waveformController.addEventListener(
+      WaveformEventType.VIEW_RANGE_CHANGE,
+      this._handleViewRangeChange,
+    );
     this._attachMediaController(this.controller);
     if (this.mediaId) {
       void this._loadSourceWaveform();
@@ -163,9 +159,12 @@ export class SpeakingSourceAlignToolbar extends LitElement {
   }
 
   disconnectedCallback(): void {
+    this._waveformController.removeEventListener(
+      WaveformEventType.VIEW_RANGE_CHANGE,
+      this._handleViewRangeChange,
+    );
     this._detachMediaController();
-    this._softPauseCleanup?.();
-    this._softPauseCleanup = null;
+    this._wordClipPlayer.dispose();
     this._waveformController.clearTracks();
     this._sourceTrackId = '';
     super.disconnectedCallback();
@@ -195,6 +194,10 @@ export class SpeakingSourceAlignToolbar extends LitElement {
       changed.has('controller')
     ) {
       void this._syncViewRangeAndWords();
+    }
+
+    if (changed.has('sessionLocked') && this.sessionLocked) {
+      this._wordClipPlayer.stop();
     }
   }
 
@@ -252,12 +255,17 @@ export class SpeakingSourceAlignToolbar extends LitElement {
     const generation = ++this._loadMediaGeneration;
     this._waveformController.clearTracks();
     this._sourceTrackId = '';
+    this._wordClipPlayer.dispose();
     if (!mediaId) {
       return;
     }
     try {
       const blob = await getMediaBlob(mediaId);
       if (generation !== this._loadMediaGeneration || !blob) {
+        return;
+      }
+      await this._wordClipPlayer.prepare(blob);
+      if (generation !== this._loadMediaGeneration) {
         return;
       }
       this._sourceTrackId = await this._waveformController.addFromBlob(blob, msg('原音'));
@@ -334,6 +342,48 @@ export class SpeakingSourceAlignToolbar extends LitElement {
     }
   }
 
+  private _getSourceTrackViewBounds(): ViewRange | null {
+    const track = this._waveformController
+      .getSnapshot()
+      .tracks.find((entry) => entry.id === this._sourceTrackId);
+    if (!track || !Number.isFinite(track.duration) || track.duration <= 0) {
+      return null;
+    }
+    return { start: 0, end: track.duration };
+  }
+
+  private _clampViewRangeToBounds(range: ViewRange, bounds: ViewRange): ViewRange {
+    const start = Math.max(bounds.start, Math.min(range.start, range.end));
+    const end = Math.min(bounds.end, Math.max(range.start, range.end));
+    if (end <= start) {
+      return { start: bounds.start, end: bounds.end };
+    }
+    return { start, end };
+  }
+
+  private _enforceViewRangeBounds(): void {
+    const bounds = this._getSourceTrackViewBounds();
+    if (!bounds) {
+      return;
+    }
+
+    const current = this._waveformController.viewRange;
+    if (!current) {
+      this._waveformController.setViewRange(bounds);
+      return;
+    }
+
+    const clamped = this._clampViewRangeToBounds(current, bounds);
+    if (clamped.start !== current.start || clamped.end !== current.end) {
+      this._waveformController.setViewRange(clamped);
+    }
+  }
+
+  private _handleViewRangeChange = (): void => {
+    this._enforceViewRangeBounds();
+    this.requestUpdate();
+  };
+
   private _wordMarkers(): WordWaveformMarker[] {
     const controller = this.controller;
     if (!controller || !this._railOpen) {
@@ -355,7 +405,7 @@ export class SpeakingSourceAlignToolbar extends LitElement {
       words,
       segments,
       segmentIndex: currentSegmentIndex,
-      sourceViewRange: getSubtitleSegmentViewRange(segments, currentSegmentIndex),
+      sourceViewRange: this._waveformController.viewRange,
       layout: this._wordMarkerLayout,
     });
   }
@@ -529,8 +579,7 @@ export class SpeakingSourceAlignToolbar extends LitElement {
       return;
     }
     event.preventDefault();
-    this._softPauseCleanup?.();
-    this._softPauseCleanup = null;
+    this._wordClipPlayer.stop();
     controller.seek(event.detail.time);
     void controller.play();
   }
@@ -543,12 +592,19 @@ export class SpeakingSourceAlignToolbar extends LitElement {
     if (!controller || !Number.isFinite(word.start)) {
       return;
     }
-    this._softPauseCleanup?.();
-    controller.seek(word.start);
-    void controller.play();
-    if (typeof word.end === 'number' && Number.isFinite(word.end) && word.end > word.start) {
-      this._softPauseCleanup = bindSoftPauseAt(controller, word.end);
-    }
+    const start = word.start;
+    const end =
+      typeof word.end === 'number' && Number.isFinite(word.end) && word.end > start
+        ? word.end
+        : start + WORD_PREVIEW_FALLBACK_DURATION_S;
+
+    dispatchAudioFocusRequest(this);
+    const { volume, playbackRate } = controller.getSnapshot();
+    void this._wordClipPlayer
+      .play({ startTime: start, endTime: end }, { volume, playbackRate })
+      .catch(() => {
+        this._wordClipPlayer.stop();
+      });
   }
 
   private _renderWordRail(markers: WordWaveformMarker[]) {
