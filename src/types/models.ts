@@ -289,11 +289,16 @@ export type ReferenceProsodyProfile = {
   energy_contour: number[];
 };
 
-/** IndexedDB row for a cached Echo reference prosody profile (not exported in backup). */
+/**
+ * IndexedDB row for a cached reference prosody profile (not exported in backup).
+ * Echo stores a single segment id as the cache suffix; Shadowing stores ordered
+ * segment ids joined with `|` (composite key). Both modes reuse the same IDB store.
+ */
 export type StoredReferenceProsodyProfile = {
-  /** `${mediaId}:${segmentId}` */
+  /** `${mediaId}:${segmentId}` where segmentId is the cache suffix (Echo single id or Shadowing composite). */
   id: string;
   mediaId: string;
+  /** Echo: single Subtitle Segment id. Shadowing: ordered segment ids joined with `|`. */
   segmentId: string;
   profile: ReferenceProsodyProfile;
   createdAt: number;

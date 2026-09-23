@@ -35,9 +35,10 @@ Local checks reject recordings over 60 s or 10 MB before the request. Never send
 | ----------------------- | ------------- |
 | **Echo** + `speechScoreProsodyBasis=naturalness` (default) | Text + duration only (no clip, no profile) |
 | **Echo** + `speechScoreProsodyBasis=match` | Prefer a valid cached `reference_prosody_profile` for `mediaId` + `segmentId`; else clip source Media for that segment and send `reference_audio` + `reference_audio_roles=prosody`; if clip/media unavailable, **silent degrade** to text + duration only |
-| **Shadowing** | Text + duration only (no clip, no profile); setting does not change this |
+| **Shadowing** + `speechScoreProsodyBasis=naturalness` (default) | Text + duration only (no clip, no profile) |
+| **Shadowing** + `speechScoreProsodyBasis=match` | Prefer a valid cached profile for `mediaId` + composite segment suffix (ordered segment ids joined with `\|`); else clip source Media from first segment start to last subtitle `endTime` and send `reference_audio` + `reference_audio_roles=prosody`; canonical `reference_duration` = sum of per-segment subtitle durations; clip wall-clock > 60 s → silent degrade; single-segment Shadowing reuses Echo-compatible `mediaId:segmentId` key |
 
-Profile cache validity (Echo, match basis only): reuse only when `|profile.reference_duration_sec − referenceDuration| ≤ 0.05` and `profile.reference_text` equals the resolved reference text. On **422** after sending a cached profile, delete that cache entry and do **not** retry in the same call (next tap can rebuild). Profiles are **not** included in backup export/import; `deleteMedia` clears profiles for that Media.
+Profile cache validity (Echo and Shadowing, match basis only): reuse only when `|profile.reference_duration_sec − referenceDuration| ≤ 0.05` and `profile.reference_text` equals the resolved reference text. Echo keys by `mediaId:segmentId`; Shadowing keys by `mediaId:<ordered segment ids joined with |>` (single-segment Shadowing uses the bare segment id, shared with Echo). On **422** after sending a cached profile, delete that cache entry and do **not** retry in the same call (next tap can rebuild). Profiles are **not** included in backup export/import; `deleteMedia` clears profiles for that Media.
 
 When `reference_duration` is provided, the server compares the learner's aligned word span (`speech_span_sec`) to compute `speed_ratio = reference_duration / speech_span_sec`. Ratios in [0.85, 1.15] do not reduce fluency; outside that band, fluency is penalized linearly (up to −30).
 
@@ -166,7 +167,7 @@ Prosody asks two different questions: **naturalness** (does the learner sound fl
 - `speechScoreApiUrl` — full scoring URL (legacy `speechScoreApiBaseUrl` is migrated by appending `/api/v2/pronunciation/score`)
 - `speechScoreApiKey` — sent as `X-API-Key`
 - `speechScoreLanguage` — form `language`; default `auto`
-- `speechScoreProsodyBasis` — `naturalness` (default) or `match`. Only affects **Echo** scoring: `match` may upload reference audio or reuse a cached profile; `naturalness` stays text + duration. Shadowing is always text + duration.
+- `speechScoreProsodyBasis` — `naturalness` (default) or `match`. Affects **Echo** and **Shadowing** scoring: `match` may upload reference audio or reuse a cached profile; `naturalness` stays text + duration for both modes.
 - Optional env default: `VITE_SPEECH_SCORE_API_BASE_URL` (host or full URL; host is completed to the canonical v2 path)
 
 Scores are stored on-device (`pronunciationScore`). The service must not persist learner audio.

@@ -196,7 +196,6 @@
 's3f6816ff7765d412': `3. If you can't keep up with the original, set playback speed and sentence pause before tapping Mic.`,
 's3f7ba346c1cbdccb': `Failed to load. Please try again.`,
 's3fd93394e75f5977': str`Recordings for this sentence have reached the limit (${0}). Delete older ones to continue.`,
-'s4036f99291b6ebad': `For Echo, scores rhythm and intonation against the reference clip, and may also upload that clip (less data when a cache exists). Falls back to naturalness if unavailable. Shadowing always uses naturalness only—this setting does not affect it.`,
 's4098449d5cb66c1e': `Scoring service is not ready. Try again later.`,
 's40bcf3e75ea60dea': `Stress match`,
 's413822c9e049f976': `Some media failed to delete`,
@@ -366,7 +365,6 @@
 's8c13fdf3a710c143': `No recording for continuous compare`,
 's8c7b418b4125a88f': `Failed to read media duration`,
 's8cd6aec22f2a1414': `Pause after this track`,
-'s8cdbbc504f126631': `Echo scoring basis`,
 's8d3e52b04da1faf3': str`Failed to import media: ${0}`,
 's8d5d6b80846fdcd5': `Already at the first sentence`,
 's8e06f84a23f626f6': `Removed from playlist`,
@@ -725,9 +723,11 @@
 's94cef0eb428fc572': str`已导出 ${0} 项`,
 's39e0bd3b3e70e584': `部分条目导出失败`,
 'sf8fcb9f934cecc3e': `部分条目删除失败`,
+'sb8973aa963ed1e45': `Echo 与 Shadowing 均会对照示范音频的节奏与语调打分，可能额外上传原声片段（已有缓存时流量更少）；取不到原声时改按自然度评。`,
 'sddb73706dc3a8bcc': `按需将口语录音或原声片段发送到评分/对齐服务，结果保存在本设备。`,
 's6896f627bd4d8628': `对齐接口地址`,
 's69eeb4c242f535a1': `用于原声词级时间戳（波形词条）。与评分共用 API Key；填写评分地址时可自动预填。`,
-'s06d780725db9ef15': `评分或对齐时会把音频上传到你配置的服务器；选「像原声」时 Echo 还可能上传原声片段。服务端不保存音频；分数与词级时间戳只保存在本设备。`,
+'se0bb96cbb734c790': `口语评分依据`,
+'s7f0c90cba584ba1f': `评分或对齐时会把音频上传到你配置的服务器；选「像原声」时 Echo 与 Shadowing 还可能上传原声片段。服务端不保存音频；分数与词级时间戳只保存在本设备。`,
     };
   

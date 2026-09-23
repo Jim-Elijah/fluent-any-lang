@@ -26,6 +26,11 @@ import {
   scoreTooLongMessage,
 } from './constants.js';
 import { normalizeNewlines } from './normalize.js';
+import {
+  isShadowingMatchReferenceWithinLimits,
+  resolveShadowingMatchBounds,
+  shadowingProfileCacheSuffix,
+} from './shadowing-match-reference.js';
 
 export {
   isSpeechScoreConfigured,
@@ -49,12 +54,14 @@ export type RequestScoreOptions = {
   onStatus?: (score: PronunciationScore) => void;
 };
 
-type EchoReferenceExtras = {
+type ReferenceMatchExtras = {
   referenceAudio?: Blob;
   referenceAudioRoles?: string;
   referenceProsodyProfile?: ReferenceProsodyProfile;
-  /** When set, a 422 response should drop this cached profile. */
-  cachedProfileSegmentId?: string;
+  /** When set, a 422 response should drop this cached profile (Echo segment id or Shadowing composite suffix). */
+  cachedProfileKeySuffix?: string;
+  /** When set, use this duration for the match request instead of the naturalness sum. */
+  matchReferenceDuration?: number;
 };
 
 function noReferenceText() {
@@ -167,19 +174,56 @@ function echoSegmentId(record: PracticeRecord): string | undefined {
 }
 
 /**
- * Echo-only when prosody basis is `match`: prefer a valid cached profile, else clip source Media,
- * else degrade to text-only. `naturalness` and Shadowing never attach audio/profile.
+ * Cache key suffix for profile put on success.
+ * Echo: single segment id. Shadowing: composite suffix from segment ids.
  */
-export async function resolveEchoReferenceExtras(
+function profileCacheKeySuffix(record: PracticeRecord): string | undefined {
+  if (record.mode === 'echo') {
+    return echoSegmentId(record);
+  }
+  if (record.mode === 'shadowing') {
+    return shadowingProfileCacheSuffix(record) ?? undefined;
+  }
+  return undefined;
+}
+
+/**
+ * Resolve reference match extras for Echo or Shadowing when prosody basis is `match`.
+ *
+ * - **Echo + match**: prefer a valid cached profile keyed by `mediaId:segmentId`,
+ *   else clip source Media for that segment, else silent degrade.
+ * - **Shadowing + match**: prefer a valid cached profile keyed by the composite
+ *   segment suffix, else clip source Media from first segment start to last
+ *   subtitle end, else silent degrade.
+ * - **naturalness** (either mode): no audio/profile attached.
+ */
+export async function resolveReferenceMatchExtras(
   record: PracticeRecord,
+  subtitleTrack: { segments: ReadonlyArray<{ id: string; text: string; startTime: number; endTime: number }> } | undefined,
   referenceText: string,
   referenceDuration: number,
   prosodyBasis: SpeechScoreProsodyBasis = 'naturalness',
-): Promise<EchoReferenceExtras> {
-  if (record.mode !== 'echo' || prosodyBasis !== 'match') {
+): Promise<ReferenceMatchExtras> {
+  if (prosodyBasis !== 'match') {
     return {};
   }
 
+  if (record.mode === 'echo') {
+    return resolveEchoMatchExtras(record, referenceText, referenceDuration);
+  }
+
+  if (record.mode === 'shadowing') {
+    return resolveShadowingMatchExtras(record, subtitleTrack, referenceText);
+  }
+
+  return {};
+}
+
+async function resolveEchoMatchExtras(
+  record: PracticeRecord,
+  referenceText: string,
+  referenceDuration: number,
+): Promise<ReferenceMatchExtras> {
   const segmentId = echoSegmentId(record);
   if (!segmentId) {
     return {};
@@ -189,7 +233,7 @@ export async function resolveEchoReferenceExtras(
   if (cached && isCachedProfileValid(cached.profile, referenceText, referenceDuration)) {
     return {
       referenceProsodyProfile: cached.profile,
-      cachedProfileSegmentId: segmentId,
+      cachedProfileKeySuffix: segmentId,
     };
   }
 
@@ -208,7 +252,50 @@ export async function resolveEchoReferenceExtras(
       referenceAudioRoles: 'prosody',
     };
   } catch {
-    // Silent degrade: score with text + duration only.
+    return {};
+  }
+}
+
+async function resolveShadowingMatchExtras(
+  record: PracticeRecord,
+  subtitleTrack: { segments: ReadonlyArray<{ id: string; text: string; startTime: number; endTime: number }> } | undefined,
+  referenceText: string,
+): Promise<ReferenceMatchExtras> {
+  const cacheSuffix = shadowingProfileCacheSuffix(record);
+  if (!cacheSuffix) {
+    return {};
+  }
+
+  const bounds = resolveShadowingMatchBounds(record, subtitleTrack);
+  if (!bounds) {
+    return {};
+  }
+
+  if (!isShadowingMatchReferenceWithinLimits(bounds)) {
+    return {};
+  }
+
+  const cached = await getReferenceProsodyProfile(record.mediaId, cacheSuffix);
+  if (cached && isCachedProfileValid(cached.profile, referenceText, bounds.referenceDuration)) {
+    return {
+      referenceProsodyProfile: cached.profile,
+      cachedProfileKeySuffix: cacheSuffix,
+      matchReferenceDuration: bounds.referenceDuration,
+    };
+  }
+
+  try {
+    const mediaBlob = await getMediaBlob(record.mediaId);
+    if (!mediaBlob) {
+      return {};
+    }
+    const clipped = await clipAudioBlob(mediaBlob, bounds.clipStart, bounds.clipEnd);
+    return {
+      referenceAudio: clipped.blob,
+      referenceAudioRoles: 'prosody',
+      matchReferenceDuration: bounds.referenceDuration,
+    };
+  } catch {
     return {};
   }
 }
@@ -288,8 +375,9 @@ export async function requestScore(
   });
   options.onStatus?.(pending);
 
-  const extras = await resolveEchoReferenceExtras(
+  const extras = await resolveReferenceMatchExtras(
     record,
+    subtitleTrack ?? undefined,
     referenceText,
     referenceDuration,
     settings.speechScoreProsodyBasis,
@@ -317,13 +405,15 @@ export async function requestScore(
     return { ok: false, reason: 'api', message, score };
   };
 
+  const effectiveDuration = extras.matchReferenceDuration ?? referenceDuration;
+
   try {
     const response = await scorePronunciation({
       url: settings.speechScoreApiUrl,
       apiKey: settings.speechScoreApiKey,
       audio: blob,
       referenceText,
-      referenceDuration,
+      referenceDuration: effectiveDuration,
       language: settings.speechScoreLanguage || 'auto',
       referenceAudio: extras.referenceAudio,
       referenceAudioRoles: extras.referenceAudioRoles,
@@ -348,9 +438,9 @@ export async function requestScore(
     });
 
     const newProfile = response.details?.reference_prosody_profile;
-    const segmentId = echoSegmentId(record);
-    if (record.mode === 'echo' && segmentId && newProfile) {
-      await putReferenceProsodyProfile(record.mediaId, segmentId, newProfile);
+    const profileKeySuffix = profileCacheKeySuffix(record);
+    if (profileKeySuffix && newProfile) {
+      await putReferenceProsodyProfile(record.mediaId, profileKeySuffix, newProfile);
     }
 
     options.onStatus?.(score);
@@ -359,9 +449,9 @@ export async function requestScore(
     if (
       error instanceof PronunciationScoreHttpError &&
       error.status === 422 &&
-      extras.cachedProfileSegmentId
+      extras.cachedProfileKeySuffix
     ) {
-      await deleteReferenceProsodyProfile(record.mediaId, extras.cachedProfileSegmentId);
+      await deleteReferenceProsodyProfile(record.mediaId, extras.cachedProfileKeySuffix);
     }
 
     if (error instanceof PronunciationScoreHttpError) {

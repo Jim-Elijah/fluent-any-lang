@@ -482,7 +482,7 @@ describe('requestScore', () => {
     expect(input?.referenceProsodyProfile).toBeUndefined();
   });
 
-  it('shadowing never sends reference audio or profile', async () => {
+  it('shadowing with naturalness basis does not send reference audio or profile', async () => {
     const record = makeRecord({
       mode: 'shadowing',
       segmentId: undefined,
@@ -522,6 +522,216 @@ describe('requestScore', () => {
     const input = vi.mocked(scorePronunciation).mock.calls[0]?.[0];
     expect(input?.referenceAudio).toBeUndefined();
     expect(input?.referenceProsodyProfile).toBeUndefined();
+  });
+
+  it('shadowing match without cache clips media and sends reference_audio', async () => {
+    setAppSettings({ speechScoreProsodyBasis: 'match' });
+    const record = makeRecord({
+      mode: 'shadowing',
+      segmentId: undefined,
+      segments: [
+        {
+          id: 'seg-a',
+          sourceStartTime: 0,
+          sourceEndTime: 2,
+          recordingStartTime: 0,
+          recordingEndTime: 2,
+        },
+        {
+          id: 'seg-b',
+          sourceStartTime: 2,
+          sourceEndTime: 4,
+          recordingStartTime: 2,
+          recordingEndTime: 4,
+        },
+      ],
+    });
+    await saveRecording(record, new Blob(['audio'], { type: 'audio/webm' }));
+    await addSubtitle(subtitleTrack);
+    await addMedia(
+      {
+        id: 'media-1',
+        title: 'Lesson',
+        filename: 'lesson.mp3',
+        size: 10,
+        type: 'audio',
+        mimeType: 'audio/mpeg',
+        duration: 10,
+        createdAt: 1,
+        hasSubtitles: true,
+        contentHash: 'h',
+      },
+      { mediaId: 'media-1', blob: new Blob(['source'], { type: 'audio/mpeg' }) },
+    );
+
+    const multiSegProfile: typeof sampleProfile = {
+      ...sampleProfile,
+      reference_duration_sec: 4,
+      reference_text: 'Hello there\nHow are you',
+    };
+    vi.mocked(scorePronunciation).mockResolvedValue(
+      successResponse({
+        details: {
+          transcript: 'Hello there How are you',
+          word_scores: [],
+          missing_words: [],
+          extra_words: [],
+          misread_words: [],
+          reference_prosody_profile: multiSegProfile,
+        },
+      }),
+    );
+
+    const result = await requestScore(record);
+
+    expect(result.ok).toBe(true);
+    expect(clipAudioBlob).toHaveBeenCalledOnce();
+    const clipArgs = vi.mocked(clipAudioBlob).mock.calls[0];
+    expect(clipArgs?.[1]).toBe(0);
+    expect(clipArgs?.[2]).toBe(4);
+    const input = vi.mocked(scorePronunciation).mock.calls[0]?.[0];
+    expect(input?.referenceAudio).toBeInstanceOf(Blob);
+    expect(input?.referenceAudioRoles).toBe('prosody');
+    expect(input?.referenceProsodyProfile).toBeUndefined();
+    expect(input?.referenceDuration).toBe(4);
+    const cached = await getReferenceProsodyProfile('media-1', 'seg-a|seg-b');
+    expect(cached).toMatchObject({
+      mediaId: 'media-1',
+      segmentId: 'seg-a|seg-b',
+      profile: multiSegProfile,
+    });
+  });
+
+  it('shadowing match with valid cache sends profile instead of audio', async () => {
+    setAppSettings({ speechScoreProsodyBasis: 'match' });
+    const record = makeRecord({
+      mode: 'shadowing',
+      segmentId: undefined,
+      segments: [
+        {
+          id: 'seg-a',
+          sourceStartTime: 0,
+          sourceEndTime: 2,
+          recordingStartTime: 0,
+          recordingEndTime: 2,
+        },
+        {
+          id: 'seg-b',
+          sourceStartTime: 2,
+          sourceEndTime: 4,
+          recordingStartTime: 2,
+          recordingEndTime: 4,
+        },
+      ],
+    });
+    await saveRecording(record, new Blob(['audio'], { type: 'audio/webm' }));
+    await addSubtitle(subtitleTrack);
+
+    const compositeProfile: typeof sampleProfile = {
+      ...sampleProfile,
+      reference_duration_sec: 4,
+      reference_text: 'Hello there\nHow are you',
+    };
+    await putReferenceProsodyProfile('media-1', 'seg-a|seg-b', compositeProfile);
+    vi.mocked(scorePronunciation).mockResolvedValue(successResponse());
+
+    await requestScore(record);
+
+    expect(clipAudioBlob).not.toHaveBeenCalled();
+    const input = vi.mocked(scorePronunciation).mock.calls[0]?.[0];
+    expect(input?.referenceProsodyProfile).toEqual(compositeProfile);
+    expect(input?.referenceAudio).toBeUndefined();
+    expect(input?.referenceDuration).toBe(4);
+  });
+
+  it('shadowing early stop uses shorter composite key and does not reuse full-read profile', async () => {
+    setAppSettings({ speechScoreProsodyBasis: 'match' });
+    const fullReadProfile: typeof sampleProfile = {
+      ...sampleProfile,
+      reference_duration_sec: 4,
+      reference_text: 'Hello there\nHow are you',
+    };
+    await putReferenceProsodyProfile('media-1', 'seg-a|seg-b', fullReadProfile);
+
+    const earlyStop = makeRecord({
+      mode: 'shadowing',
+      segmentId: undefined,
+      segments: [
+        {
+          id: 'seg-a',
+          sourceStartTime: 0,
+          sourceEndTime: 2,
+          recordingStartTime: 0,
+          recordingEndTime: 2,
+        },
+      ],
+    });
+    await saveRecording(earlyStop, new Blob(['audio'], { type: 'audio/webm' }));
+    await addSubtitle(subtitleTrack);
+    await addMedia(
+      {
+        id: 'media-1',
+        title: 'Lesson',
+        filename: 'lesson.mp3',
+        size: 10,
+        type: 'audio',
+        mimeType: 'audio/mpeg',
+        duration: 10,
+        createdAt: 1,
+        hasSubtitles: true,
+        contentHash: 'h',
+      },
+      { mediaId: 'media-1', blob: new Blob(['source'], { type: 'audio/mpeg' }) },
+    );
+    vi.mocked(scorePronunciation).mockResolvedValue(successResponse());
+
+    await requestScore(earlyStop);
+
+    expect(clipAudioBlob).toHaveBeenCalledOnce();
+    const clipArgs = vi.mocked(clipAudioBlob).mock.calls[0];
+    expect(clipArgs?.[1]).toBe(0);
+    expect(clipArgs?.[2]).toBe(2);
+  });
+
+  it('shadowing match 422 deletes composite cache key', async () => {
+    setAppSettings({ speechScoreProsodyBasis: 'match' });
+    const record = makeRecord({
+      mode: 'shadowing',
+      segmentId: undefined,
+      segments: [
+        {
+          id: 'seg-a',
+          sourceStartTime: 0,
+          sourceEndTime: 2,
+          recordingStartTime: 0,
+          recordingEndTime: 2,
+        },
+        {
+          id: 'seg-b',
+          sourceStartTime: 2,
+          sourceEndTime: 4,
+          recordingStartTime: 2,
+          recordingEndTime: 4,
+        },
+      ],
+    });
+    await saveRecording(record, new Blob(['audio'], { type: 'audio/webm' }));
+    await addSubtitle(subtitleTrack);
+    const compositeProfile: typeof sampleProfile = {
+      ...sampleProfile,
+      reference_duration_sec: 4,
+      reference_text: 'Hello there\nHow are you',
+    };
+    await putReferenceProsodyProfile('media-1', 'seg-a|seg-b', compositeProfile);
+    vi.mocked(scorePronunciation).mockRejectedValue(
+      new PronunciationScoreHttpError(422, 'invalid', '评分参数无效，请确认参考文本后重试'),
+    );
+
+    const result = await requestScore(record);
+
+    expect(result.ok).toBe(false);
+    expect(scorePronunciation).toHaveBeenCalledOnce();
+    expect(await getReferenceProsodyProfile('media-1', 'seg-a|seg-b')).toBeUndefined();
   });
 
   it('deletes a cached profile on 422 and does not retry', async () => {

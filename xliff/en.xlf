@@ -2459,10 +2459,6 @@
   <source>像原声</source>
   <target>Match reference</target>
 </trans-unit>
-<trans-unit id="s8cdbbc504f126631">
-  <source>Echo 评分依据</source>
-  <target>Echo scoring basis</target>
-</trans-unit>
 <trans-unit id="s80263a081b2554b3">
   <source>数据</source>
   <target>Data</target>
@@ -2482,10 +2478,6 @@
 <trans-unit id="s1979ca282a2e1502">
   <source>评分会将录音上传到你配置的服务器以计算分数。服务端不保存音频。是否继续？</source>
   <target>Scoring uploads your recording to the server you configured to compute a score. The server does not keep audio. Continue?</target>
-</trans-unit>
-<trans-unit id="s4036f99291b6ebad">
-  <source>Echo 会对照示范音频的节奏与语调打分，可能额外上传原声片段（已有缓存时流量更少）；取不到原声时改按自然度评。Shadowing 始终只评自然度，不受此选项影响。</source>
-  <target>For Echo, scores rhythm and intonation against the reference clip, and may also upload that clip (less data when a cache exists). Falls back to naturalness if unavailable. Shadowing always uses naturalness only—this setting does not affect it.</target>
 </trans-unit>
 <trans-unit id="se4067cfc3b0b5cf8">
   <source>只根据你的录音评语速、节奏是否自然。Echo 与 Shadowing 都只上传录音，不上传原声，更省流量。</source>
@@ -2612,9 +2604,6 @@
 <trans-unit id="s69eeb4c242f535a1">
   <source>用于原声词级时间戳（波形词条）。与评分共用 API Key；填写评分地址时可自动预填。</source>
 </trans-unit>
-<trans-unit id="s06d780725db9ef15">
-  <source>评分或对齐时会把音频上传到你配置的服务器；选「像原声」时 Echo 还可能上传原声片段。服务端不保存音频；分数与词级时间戳只保存在本设备。</source>
-</trans-unit>
 <trans-unit id="s601e91defb681c04">
   <source>对齐已取消</source>
 </trans-unit>
@@ -2740,6 +2729,15 @@
 <trans-unit id="s4dcc8c1386fcf52c">
   <source>重新生成本句的原音词条</source>
   <target>Regenerate source word timings for this sentence</target>
+</trans-unit>
+<trans-unit id="sb8973aa963ed1e45">
+  <source>Echo 与 Shadowing 均会对照示范音频的节奏与语调打分，可能额外上传原声片段（已有缓存时流量更少）；取不到原声时改按自然度评。</source>
+</trans-unit>
+<trans-unit id="se0bb96cbb734c790">
+  <source>口语评分依据</source>
+</trans-unit>
+<trans-unit id="s7f0c90cba584ba1f">
+  <source>评分或对齐时会把音频上传到你配置的服务器；选「像原声」时 Echo 与 Shadowing 还可能上传原声片段。服务端不保存音频；分数与词级时间戳只保存在本设备。</source>
 </trans-unit>
 </body>
 </file>
