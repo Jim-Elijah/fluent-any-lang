@@ -32,6 +32,7 @@ import {
   alignTooLongMessage,
   isSpeechAlignConfigured,
 } from './constants.js';
+import { buildSubtitleAlignRequestPayload } from './reference-segments.js';
 import { buildSubtitleTrackReferenceText } from './reference-text.js';
 import { wordsAssignedToSegmentIndex } from './project-words.js';
 import { isMediaSourceWordAlignmentCurrent } from './media-alignment-current.js';
@@ -57,7 +58,12 @@ export type AlignSegmentOutcome =
   | { ok: false; reason: AlignSegmentReason; message: string };
 
 export type AlignMediaOutcome =
-  | { ok: true; alignment: StoredMediaSourceWordAlignment }
+  | {
+      ok: true;
+      alignment: StoredMediaSourceWordAlignment;
+      /** Absolute Media-axis words per Subtitle Segment id when align returned `segments`. */
+      segmentWordsById?: ReadonlyMap<string, WordTiming[]>;
+    }
   | { ok: false; reason: AlignSegmentReason; message: string };
 
 export type AlignSegmentOptions = {
@@ -199,12 +205,27 @@ async function cachedSegmentAlignment(input: {
   };
 }
 
+function segmentWordsFromAlignResponse(
+  response: { segments?: { id: string; words: WordTiming[] }[] | null },
+  clipStartTime: number,
+): Map<string, WordTiming[]> {
+  const map = new Map<string, WordTiming[]>();
+  if (!response.segments?.length) {
+    return map;
+  }
+  for (const segment of response.segments) {
+    map.set(segment.id, toAbsoluteWords(segment.words ?? [], clipStartTime));
+  }
+  return map;
+}
+
 async function materializeBatchSegmentRows(input: {
   mediaId: string;
   segments: PracticeSegment[];
   mediaWords: WordTiming[];
   language: string;
   subtitleById: Map<string, string>;
+  segmentWordsById?: ReadonlyMap<string, WordTiming[]>;
   overwriteExisting?: boolean;
 }): Promise<void> {
   const bounds = input.segments.map((segment) => ({
@@ -221,7 +242,11 @@ async function materializeBatchSegmentRows(input: {
     if (!referenceText) {
       continue;
     }
-    const words = wordsAssignedToSegmentIndex(input.mediaWords, bounds, segmentIndex);
+    const directWords = input.segmentWordsById?.get(segment.id);
+    const words =
+      directWords && directWords.length > 0
+        ? directWords
+        : wordsAssignedToSegmentIndex(input.mediaWords, bounds, segmentIndex);
     if (words.length === 0) {
       continue;
     }
@@ -276,26 +301,38 @@ export async function alignMediaSource(input: {
     return { ok: false, reason: 'validation', message: prepared.message };
   }
 
+  const clipStart = window!.startTime;
+  const alignPayload = buildSubtitleAlignRequestPayload(subtitleTrack!.segments, clipStart);
+  if (!alignPayload) {
+    return { ok: false, reason: 'validation', message: noReferenceText() };
+  }
+
   try {
     const response = await alignPronunciation({
       url: settings.speechAlignApiUrl,
       apiKey: settings.speechScoreApiKey,
       audio: prepared.blob,
-      referenceText,
+      referenceText: alignPayload.referenceText,
+      referenceSegments: alignPayload.referenceSegments,
       language: settings.speechScoreLanguage || 'auto',
       signal: input.signal,
     });
 
-    const words = toAbsoluteWords(response.words ?? [], window!.startTime);
+    const words = toAbsoluteWords(response.words ?? [], clipStart);
+    const segmentWordsById = segmentWordsFromAlignResponse(response, clipStart);
     const alignment = await putMediaSourceWordAlignment({
       mediaId: input.mediaId,
       words,
-      referenceText,
+      referenceText: alignPayload.referenceText,
       language: response.meta?.language || settings.speechScoreLanguage || 'auto',
       subtitleContentHash: subtitleTrack!.contentHash,
     });
 
-    return { ok: true, alignment };
+    return {
+      ok: true,
+      alignment,
+      segmentWordsById: segmentWordsById.size > 0 ? segmentWordsById : undefined,
+    };
   } catch (error) {
     if (error instanceof PronunciationAlignHttpError) {
       return { ok: false, reason: 'api', message: error.message };
@@ -518,6 +555,7 @@ export async function alignAllPracticeSegments(input: {
     }
   }
 
+  let batchSegmentWords: ReadonlyMap<string, WordTiming[]> | undefined;
   if (eligible && (force || !mediaValid)) {
     const aligned = await alignMediaSource({
       mediaId: input.mediaId,
@@ -533,6 +571,7 @@ export async function alignAllPracticeSegments(input: {
       };
     }
     mediaRow = aligned.alignment;
+    batchSegmentWords = aligned.segmentWordsById;
   }
 
   await materializeBatchSegmentRows({
@@ -541,6 +580,7 @@ export async function alignAllPracticeSegments(input: {
     mediaWords: mediaRow!.words,
     language: mediaRow!.language,
     subtitleById: byId,
+    segmentWordsById: batchSegmentWords,
     overwriteExisting: force,
   });
 

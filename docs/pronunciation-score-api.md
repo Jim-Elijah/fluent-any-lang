@@ -6,6 +6,8 @@ The learner pastes the **full POST URL** in Settings (`speechScoreApiUrl`). The 
 
 Canonical path on the reference server: `POST /api/v2/pronunciation/score`. Legacy installs may still use `POST /api/v1/pronunciation/score` (full URL stored as-is; this app does **not** rewrite saved v1 URLs to v2).
 
+**HTTP contract unchanged for segment-aware alignment:** clients do **not** send `reference_segments` on score requests. Timings in `details.word_scores` (and reference-side word lists inside `reference_prosody_profile` when built from audio) MUST be produced by the same server module as [`POST /api/v1/pronunciation/align`](./pronunciation-align-api.md) — see [Alignment pipeline (server-side)](#alignment-pipeline-server-side).
+
 ## POST `/api/v2/pronunciation/score`
 
 v1 supersets with required `reference_duration`, optional reference audio / cached prosody profile for Echo match scoring.
@@ -28,6 +30,25 @@ v1 supersets with required `reference_duration`, optional reference audio / cach
 | `language` | string | no | BCP-47, e.g. `en`, `zh`, `ja`; default `auto` |
 
 Local checks reject recordings over 60 s or 10 MB before the request. Never send both a profile and reference audio with a `prosody` role.
+
+**Not accepted on score (align-only):** `reference_segments`. Timed subtitle lines are only passed on the align endpoint.
+
+### Alignment pipeline (server-side)
+
+Implement **one shared** forced-alignment entry point (used by `/align` and `/score`), matching [`pronunciation-align-api.md`](./pronunciation-align-api.md):
+
+| Caller | Audio | Reference | Segment windows |
+| ------ | ----- | --------- | ----------------- |
+| `POST …/align` | Source clip (e.g. subtitle span) | `reference_text` + optional `reference_segments` | Client-supplied `startTime`/`endTime` on clip axis when segment-aware |
+| `POST …/score` | Learner recording | `reference_text` (LF; may contain `\n`) | **Inferred server-side** from LF lines — no segment form field |
+
+**Score behavior:**
+
+1. **Learner `word_scores`:** Align learner `audio` to LF-normalized `reference_text`. When the reference has multiple LF-separated lines, run **segment-aware align** internally: split lines (same tokenization order as flat `reference_text`), align each line against the learner clip (full-clip or per-line strategy is server-defined; merged `word_scores` MUST match global `tokenize(reference_text)` order and char-index space used by `missing_words` / `misread_words` / `extra_words`).
+2. **Reference prosody (`reference_audio` / profile build):** When aligning reference audio to script, use the same module; if the server knows line boundaries (e.g. from duration metadata or parsed `\n` lines), prefer per-line windows on that reference clip analogous to align’s `reference_segments`.
+3. **Failure policy unchanged:** score may still apply documented fallbacks for learner timings on failure; align endpoint remains strict **422** with no synthetic times.
+
+Clients continue to send only `reference_text` (and optional reference audio/profile) on score — no score API version bump required for segment-aware align.
 
 ### Client behavior (this app)
 

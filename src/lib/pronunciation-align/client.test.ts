@@ -64,7 +64,38 @@ describe('pronunciation-align client', () => {
     expect(form.get('reference_text')).toBe('Hello world');
     expect(form.get('language')).toBe('en');
     expect(form.get('reference_duration')).toBeNull();
+    expect(form.get('reference_segments')).toBeNull();
     expect(form.get('audio')).toBeInstanceOf(Blob);
+  });
+
+  it('JSON-stringifies reference_segments when provided', async () => {
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify(successBody), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+    const audio = new Blob(['abc'], { type: 'audio/webm' });
+
+    await alignPronunciation({
+      url: `http://localhost:8000${ALIGN_API_PATH}`,
+      apiKey: 'test-key',
+      audio,
+      referenceText: 'Hello world\nHow are you',
+      referenceSegments: [
+        { id: 's1', startTime: 0, endTime: 1.2, text: 'Hello world' },
+        { id: 's2', startTime: 2.5, endTime: 4, text: 'How are you' },
+      ],
+      language: 'en',
+    });
+
+    const form = (fetchMock.mock.calls[0] as [string, RequestInit])[1].body as FormData;
+    expect(form.get('reference_segments')).toBe(
+      JSON.stringify([
+        { id: 's1', startTime: 0, endTime: 1.2, text: 'Hello world' },
+        { id: 's2', startTime: 2.5, endTime: 4, text: 'How are you' },
+      ]),
+    );
   });
 
   it('maps 422 to invalid', () => {

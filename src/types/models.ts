@@ -312,17 +312,33 @@ export type WordTiming = {
   end: number;
 };
 
+/** Timed line for optional segment-aware align (`reference_segments` JSON). */
+export type ReferenceSegmentInput = {
+  id: string;
+  startTime: number;
+  endTime: number;
+  text: string;
+};
+
+/** Per-subtitle-line word timings on the uploaded clip timeline. */
+export type AlignSegmentOutput = {
+  id: string;
+  words: WordTiming[];
+};
+
 export type PronunciationAlignMeta = {
   model: string;
   device: string;
   latency_ms: number;
   language: string;
+  align_mode?: 'full' | 'segments';
 };
 
 /** HTTP response from POST `/api/v1/pronunciation/align`. */
 export type PronunciationAlignResponse = {
   reference_text: string;
   words: WordTiming[];
+  segments?: AlignSegmentOutput[] | null;
   duration_sec: number;
   speech_span_sec: number | null;
   reference_newline: 'lf';

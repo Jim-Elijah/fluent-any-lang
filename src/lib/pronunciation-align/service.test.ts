@@ -105,6 +105,12 @@ describe('pronunciation-align service', () => {
 
     expect(result.ok).toBe(true);
     expect(alignPronunciation).toHaveBeenCalledTimes(1);
+    const alignCall = vi.mocked(alignPronunciation).mock.calls[0]![0];
+    expect(alignCall.referenceText).toBe('Hello\nWorld');
+    expect(alignCall.referenceSegments).toEqual([
+      { id: 'seg-a', startTime: 0, endTime: 2, text: 'Hello' },
+      { id: 'seg-b', startTime: 2, endTime: 4, text: 'World' },
+    ]);
     expect(await getMediaSourceWordAlignment('media-1')).toBeDefined();
     expect(await getSourceWordAlignment('media-1', 'seg-a')).toBeDefined();
   });
@@ -233,6 +239,8 @@ describe('pronunciation-align service', () => {
 
     expect(result.ok).toBe(true);
     expect(alignPronunciation).toHaveBeenCalledTimes(1);
+    const alignCall = vi.mocked(alignPronunciation).mock.calls[0]![0];
+    expect(alignCall.referenceSegments).toBeUndefined();
     expect(await getSourceWordAlignment('media-long', 'seg-a')).toBeDefined();
   });
 

@@ -23,6 +23,10 @@ export {
 } from './subtitle-align-window.js';
 export { buildSubtitleTrackReferenceText, buildSubtitleSegmentsReferenceText } from './reference-text.js';
 export {
+  buildSubtitleAlignRequestPayload,
+  type SubtitleAlignRequestPayload,
+} from './reference-segments.js';
+export {
   assignTimedWordToSegmentIndex,
   projectWordsToSourceRange,
   wordsAssignedToSegmentIndex,

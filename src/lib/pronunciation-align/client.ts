@@ -1,5 +1,8 @@
 import { msg, str } from '@lit/localize';
-import type { PronunciationAlignResponse } from '../../types/models.js';
+import type {
+  PronunciationAlignResponse,
+  ReferenceSegmentInput,
+} from '../../types/models.js';
 import { normalizeNewlines } from '../pronunciation-score/normalize.js';
 
 export type AlignHttpErrorCode =
@@ -58,7 +61,7 @@ function statusMessage(status: number): string {
     case 413:
       return msg('音频过大或过长，无法对齐');
     case 422:
-      return msg('无法对齐词级时间戳，请确认原文与音频后重试');
+      return msg('无法对齐词级时间戳，请检查原文、分段与语言设置后重试');
     case 429:
       return msg('对齐次数已达上限，请稍后再试');
     case 503:
@@ -91,6 +94,7 @@ export type AlignPronunciationInput = {
   apiKey: string;
   audio: Blob;
   referenceText: string;
+  referenceSegments?: ReferenceSegmentInput[];
   language: string;
   signal?: AbortSignal;
 };
@@ -101,6 +105,9 @@ export async function alignPronunciation(
   const form = new FormData();
   form.append('audio', input.audio, audioFileName(input.audio));
   form.append('reference_text', normalizeNewlines(input.referenceText).trim());
+  if (input.referenceSegments && input.referenceSegments.length > 0) {
+    form.append('reference_segments', JSON.stringify(input.referenceSegments));
+  }
   form.append('language', input.language);
 
   let response: Response;
