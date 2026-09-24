@@ -2541,75 +2541,99 @@
   </trans-unit>
 <trans-unit id="s5620b2a45ddbbbab">
   <source>加入「喜欢」</source>
+<target>Add to likes</target>
 </trans-unit>
 <trans-unit id="sa1a43e598366a931">
   <source>已选 <x id="0" equiv-text="${this._visibleSelected.size}"/> 项</source>
+<target>Selected <x id="0" equiv-text="${this._visibleSelected.size}"/> items</target>
 </trans-unit>
 <trans-unit id="sea208412a92f20d8">
   <source>取消全选</source>
+<target>Deselect all</target>
 </trans-unit>
 <trans-unit id="sf25a61e608ce63f6">
   <source>确定删除选中的 <x id="0" equiv-text="${this._visibleSelected.size}"/> 项吗？</source>
+<target>Delete the selected <x id="0" equiv-text="${this._visibleSelected.size}"/> items?</target>
 </trans-unit>
 <trans-unit id="s10dd45ca94011fa7">
   <source>已创建「<x id="0" equiv-text="${name}"/>」，但部分媒体添加失败</source>
+<target>Created "<x id="0" equiv-text="${name}"/>", but some media could not be added</target>
 </trans-unit>
 <trans-unit id="s508ec35aaf04e0af">
   <source>已创建「<x id="0" equiv-text="${name}"/>」并添加 <x id="1" equiv-text="${mediaIds.length}"/> 项</source>
+<target>Created "<x id="0" equiv-text="${name}"/>" and added <x id="1" equiv-text="${mediaIds.length}"/> items</target>
 </trans-unit>
 <trans-unit id="sb068cf7d5deb178b">
   <source>部分媒体未能加入「<x id="0" equiv-text="${playlistName}"/>」</source>
+<target>Some media could not be added to "<x id="0" equiv-text="${playlistName}"/>"</target>
 </trans-unit>
 <trans-unit id="sc951062c30278e0e">
   <source>已将 <x id="0" equiv-text="${mediaIds.length}"/> 项添加到「<x id="1" equiv-text="${playlistName}"/>」</source>
+<target>Added <x id="0" equiv-text="${mediaIds.length}"/> items to "<x id="1" equiv-text="${playlistName}"/>"</target>
 </trans-unit>
 <trans-unit id="s650bc868e22af32b">
   <source>部分录音导出失败</source>
+<target>Some recordings failed to export</target>
 </trans-unit>
 <trans-unit id="s94cef0eb428fc572">
   <source>已导出 <x id="0" equiv-text="${toExport.length}"/> 项</source>
+<target>Exported <x id="0" equiv-text="${toExport.length}"/> items</target>
 </trans-unit>
 <trans-unit id="s02f4e6a25feab868">
   <source>播放该词</source>
+<target>Play this word</target>
 </trans-unit>
 <trans-unit id="s08ececd57562babb">
   <source>波形词条</source>
+<target>Waveform words</target>
 </trans-unit>
 <trans-unit id="s56959c835eab7d5e">
   <source>标签宽度跟随发音时长</source>
+<target>Label width follows pronunciation duration</target>
 </trans-unit>
 <trans-unit id="s81e949081cb7f902">
   <source>时长</source>
+<target>Duration</target>
 </trans-unit>
 <trans-unit id="s2c4c21339f18300f">
   <source>标签紧凑排列</source>
+<target>Compact label layout</target>
 </trans-unit>
 <trans-unit id="sd06ce7085f313af5">
   <source>紧凑</source>
+<target>Compact</target>
 </trans-unit>
 <trans-unit id="s39e0bd3b3e70e584">
   <source>部分条目导出失败</source>
+<target>Some entries failed to export</target>
 </trans-unit>
 <trans-unit id="sf8fcb9f934cecc3e">
   <source>部分条目删除失败</source>
+<target>Some entries failed to delete</target>
 </trans-unit>
 <trans-unit id="sfdd85bebe6edce49">
   <source>同意并生成</source>
+<target>Agree and generate</target>
 </trans-unit>
 <trans-unit id="s0488738745e3729e">
   <source>生成原音词条</source>
+<target>Generate source words</target>
 </trans-unit>
 <trans-unit id="sb598eb8eb70a6862">
   <source>本句已重新生成</source>
+<target>This sentence was regenerated</target>
 </trans-unit>
 <trans-unit id="s7d900454cc6d617d">
   <source>本句词条已生成</source>
+<target>Sentence words generated</target>
 </trans-unit>
 <trans-unit id="sba0002cb5887c43a">
   <source>全部原音词条已生成</source>
+<target>All source words generated</target>
 </trans-unit>
 <trans-unit id="s7f017de17e729f8f">
   <source>全部原音词条已重新生成</source>
+<target>All source words regenerated</target>
 </trans-unit>
 <trans-unit id="scbf3ddbef5db906f">
   <source>为当前句生成原音词条</source>
@@ -2657,69 +2681,91 @@
 </trans-unit>
 <trans-unit id="sf2d8a83d19e723d3">
   <source>生成原音词条会将原音片段上传到你配置的服务器，以便在波形上标出每个词。服务端不保存音频。是否继续？</source>
+<target>Generating source words uploads a source clip to the server you configure so each word can be labeled on the waveform. The server does not keep audio. Continue?</target>
 </trans-unit>
 <trans-unit id="sb381ada36286ff3b">
   <source>按需将口语录音或原音片段发送到评分或原音词条服务，结果保存在本设备。</source>
+<target>Sends speaking recordings or source clips to the scoring or source-word service as needed. Results stay on this device.</target>
 </trans-unit>
 <trans-unit id="sfa45a0167e1c58b9">
   <source>原音词条接口地址</source>
+<target>Source word API URL</target>
 </trans-unit>
 <trans-unit id="s3524f5017efce539">
   <source>重新为全部句子生成原音词条（整段原音会重新上传）</source>
+<target>Regenerate source words for all sentences (the full source audio will be uploaded again)</target>
 </trans-unit>
 <trans-unit id="s7b488900b3a87306">
   <source>为全部句子生成原音词条（整段原音上传一次，已有则跳过）</source>
+<target>Generate source words for all sentences (uploads the full source audio once; skips existing)</target>
 </trans-unit>
 <trans-unit id="s12880f14f2ac5ae6">
   <source>生成已取消</source>
+<target>Generation canceled</target>
 </trans-unit>
 <trans-unit id="s61b67572720db74b">
   <source>网络不可用或原音词条服务未运行，请检查连接后重试</source>
+<target>Network unavailable or source-word service is not running. Check the connection and try again.</target>
 </trans-unit>
 <trans-unit id="s40c0c398fdf1f687">
   <source>音频过大或过长，无法生成原音词条</source>
+<target>Audio is too large or too long to generate source words</target>
 </trans-unit>
 <trans-unit id="s4d9163f4f931745c">
   <source>无法生成原音词条，请检查原文、分段与语言设置后重试</source>
+<target>Could not generate source words. Check the script, segments, and language settings, then try again.</target>
 </trans-unit>
 <trans-unit id="s2d85ebb22bd23e69">
   <source>生成次数已达上限，请稍后再试</source>
+<target>Generation rate limit reached. Try again later.</target>
 </trans-unit>
 <trans-unit id="se8d8b03a32a3ac78">
   <source>原音词条服务未就绪，请稍后再试</source>
+<target>Source-word service is not ready. Try again later.</target>
 </trans-unit>
 <trans-unit id="sb15d46fce58032b2">
   <source>无法生成原音词条（<x id="0" equiv-text="${status}"/>）</source>
+<target>Could not generate source words (<x id="0" equiv-text="${status}"/>)</target>
 </trans-unit>
 <trans-unit id="sc6fab60bafcb24e3">
   <source>原音片段超过 <x id="0" equiv-text="${ALIGN_MAX_DURATION_SEC}"/> 秒，无法生成词条</source>
+<target>Source clip exceeds <x id="0" equiv-text="${ALIGN_MAX_DURATION_SEC}"/> seconds and cannot generate words</target>
 </trans-unit>
 <trans-unit id="s79e407819d206b3f">
   <source>原音文件超过 <x id="0" equiv-text="${formatAlignMaxMb(ALIGN_MAX_BYTES)}"/> MB，无法生成词条</source>
+<target>Source file exceeds <x id="0" equiv-text="${formatAlignMaxMb(ALIGN_MAX_BYTES)}"/> MB and cannot generate words</target>
 </trans-unit>
 <trans-unit id="s9b989dcba10a5340">
   <source>请先在设置中填写原音词条接口地址和 API Key</source>
+<target>Enter the source-word API URL and API Key in Settings first</target>
 </trans-unit>
 <trans-unit id="sb978c0f73b1543d5">
   <source>原音文件不存在</source>
+<target>Source file not found</target>
 </trans-unit>
 <trans-unit id="s1ce4a87c52fb7caf">
   <source>无法裁剪原音片段</source>
+<target>Could not clip the source audio</target>
 </trans-unit>
 <trans-unit id="sc6d5f8815d6dd766">
   <source>无法生成原音词条，请重试</source>
+<target>Could not generate source words. Please try again.</target>
 </trans-unit>
 <trans-unit id="s8015714d46761f64">
   <source>原音片段时长无效</source>
+<target>Source clip duration is invalid</target>
 </trans-unit>
 <trans-unit id="sb532d7dc8a3cf795">
   <source>原音词条未能保存</source>
+<target>Source words could not be saved</target>
 </trans-unit>
 <trans-unit id="s1a15ca8e46291e2b">
   <source><x id="0" equiv-text="${failed}"/>/<x id="1" equiv-text="${total}"/> 句未能生成词条</source>
+<target><x id="0" equiv-text="${failed}"/>/<x id="1" equiv-text="${total}"/> sentences failed to generate words</target>
 </trans-unit>
 <trans-unit id="s9f6efd86e7ffd6e1">
   <source>需要对照原稿才能生成原音词条</source>
+<target>A reference script is required to generate source words</target>
 </trans-unit>
 <trans-unit id="s8e5a7cc9fe9194f2">
   <source>只根据你的录音评语速、节奏是否自然。口语评分只上传录音，不上传原声，更省流量。</source>
@@ -2727,6 +2773,7 @@
 </trans-unit>
 <trans-unit id="s4a29367590e9b70f">
   <source>语音服务</source>
+<target>Speech services</target>
 </trans-unit>
 <trans-unit id="s49f53f6dfe85855f">
   <source>口语评分或生成原音词条会把音频上传到你配置的服务器。生成原音词条需上传原声片段；口语评分默认只上传你的录音，选「像原声」时还会上传原声片段（已有缓存时更少流量）。服务端不保存音频；分数与原音词条只保存在本设备。</source>
@@ -2734,6 +2781,7 @@
 </trans-unit>
 <trans-unit id="sd8b002e4217ebd63">
   <source>口语评分时会对照示范音频的节奏与语调打分，会额外上传原声片段（已有缓存时更少流量）；取不到原声时改按自然度评。</source>
+<target>When scoring speech, rhythm and intonation are compared to the reference audio, which uploads extra source clips (less data when cached). If source audio is unavailable, scoring falls back to naturalness.</target>
 </trans-unit>
 </body>
 </file>

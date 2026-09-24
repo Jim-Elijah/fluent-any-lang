@@ -2507,105 +2507,139 @@
   </trans-unit>
 <trans-unit id="s5620b2a45ddbbbab">
   <source>加入「喜欢」</source>
+<target>「お気に入り」に追加</target>
 </trans-unit>
 <trans-unit id="sa1a43e598366a931">
   <source>已选 <x id="0" equiv-text="${this._visibleSelected.size}"/> 项</source>
+<target><x id="0" equiv-text="${this._visibleSelected.size}"/> 件選択中</target>
 </trans-unit>
 <trans-unit id="sea208412a92f20d8">
   <source>取消全选</source>
+<target>選択をすべて解除</target>
 </trans-unit>
 <trans-unit id="sf25a61e608ce63f6">
   <source>确定删除选中的 <x id="0" equiv-text="${this._visibleSelected.size}"/> 项吗？</source>
+<target>選択した <x id="0" equiv-text="${this._visibleSelected.size}"/> 件を削除しますか？</target>
 </trans-unit>
 <trans-unit id="s10dd45ca94011fa7">
   <source>已创建「<x id="0" equiv-text="${name}"/>」，但部分媒体添加失败</source>
+<target>「<x id="0" equiv-text="${name}"/>」を作成しましたが、一部のメディアを追加できませんでした</target>
 </trans-unit>
 <trans-unit id="s508ec35aaf04e0af">
   <source>已创建「<x id="0" equiv-text="${name}"/>」并添加 <x id="1" equiv-text="${mediaIds.length}"/> 项</source>
+<target>「<x id="0" equiv-text="${name}"/>」を作成し、<x id="1" equiv-text="${mediaIds.length}"/> 件を追加しました</target>
 </trans-unit>
 <trans-unit id="sb068cf7d5deb178b">
   <source>部分媒体未能加入「<x id="0" equiv-text="${playlistName}"/>」</source>
+<target>一部のメディアを「<x id="0" equiv-text="${playlistName}"/>」に追加できませんでした</target>
 </trans-unit>
 <trans-unit id="sc951062c30278e0e">
   <source>已将 <x id="0" equiv-text="${mediaIds.length}"/> 项添加到「<x id="1" equiv-text="${playlistName}"/>」</source>
+<target><x id="0" equiv-text="${mediaIds.length}"/> 件を「<x id="1" equiv-text="${playlistName}"/>」に追加しました</target>
 </trans-unit>
 <trans-unit id="s650bc868e22af32b">
   <source>部分录音导出失败</source>
+<target>一部の録音のエクスポートに失敗しました</target>
 </trans-unit>
 <trans-unit id="s94cef0eb428fc572">
   <source>已导出 <x id="0" equiv-text="${toExport.length}"/> 项</source>
+<target><x id="0" equiv-text="${toExport.length}"/> 件をエクスポートしました</target>
 </trans-unit>
 <trans-unit id="s02f4e6a25feab868">
   <source>播放该词</source>
+<target>この単語を再生</target>
 </trans-unit>
 <trans-unit id="s08ececd57562babb">
   <source>波形词条</source>
+<target>波形の単語</target>
 </trans-unit>
 <trans-unit id="s56959c835eab7d5e">
   <source>标签宽度跟随发音时长</source>
+<target>ラベル幅を発音の長さに合わせる</target>
 </trans-unit>
 <trans-unit id="s81e949081cb7f902">
   <source>时长</source>
+<target>長さ</target>
 </trans-unit>
 <trans-unit id="s2c4c21339f18300f">
   <source>标签紧凑排列</source>
+<target>ラベルを詰めて並べる</target>
 </trans-unit>
 <trans-unit id="sd06ce7085f313af5">
   <source>紧凑</source>
+<target>コンパクト</target>
 </trans-unit>
 <trans-unit id="s39e0bd3b3e70e584">
   <source>部分条目导出失败</source>
+<target>一部の項目のエクスポートに失敗しました</target>
 </trans-unit>
 <trans-unit id="sf8fcb9f934cecc3e">
   <source>部分条目删除失败</source>
+<target>一部の項目の削除に失敗しました</target>
 </trans-unit>
 <trans-unit id="sfdd85bebe6edce49">
   <source>同意并生成</source>
+<target>同意して生成</target>
 </trans-unit>
 <trans-unit id="s0488738745e3729e">
   <source>生成原音词条</source>
+<target>原音単語を生成</target>
 </trans-unit>
 <trans-unit id="sb598eb8eb70a6862">
   <source>本句已重新生成</source>
+<target>この文を再生成しました</target>
 </trans-unit>
 <trans-unit id="s7d900454cc6d617d">
   <source>本句词条已生成</source>
+<target>この文の単語を生成しました</target>
 </trans-unit>
 <trans-unit id="sba0002cb5887c43a">
   <source>全部原音词条已生成</source>
+<target>すべての原音単語を生成しました</target>
 </trans-unit>
 <trans-unit id="s7f017de17e729f8f">
   <source>全部原音词条已重新生成</source>
+<target>すべての原音単語を再生成しました</target>
 </trans-unit>
 <trans-unit id="scbf3ddbef5db906f">
   <source>为当前句生成原音词条</source>
+<target>現在の文の原音単語を生成</target>
 </trans-unit>
 <trans-unit id="s8f53a91191b0fe5e">
   <source>隐藏原音波形</source>
+<target>原音波形を隠す</target>
 </trans-unit>
 <trans-unit id="s43d65a55980d436b">
   <source>显示原音波形</source>
+<target>原音波形を表示</target>
 </trans-unit>
 <trans-unit id="s923decc258bdf1d4">
   <source>重新生成本句</source>
+<target>この文を再生成</target>
 </trans-unit>
 <trans-unit id="s061184ab27ac8f3b">
   <source>生成本句词条</source>
+<target>この文の単語を生成</target>
 </trans-unit>
 <trans-unit id="s5408c9c223afc6f7">
   <source>重新生成全部</source>
+<target>すべて再生成</target>
 </trans-unit>
 <trans-unit id="s677b0258053e1a5c">
   <source>生成全部词条</source>
+<target>すべての単語を生成</target>
 </trans-unit>
 <trans-unit id="sf3fdba8e1c169339">
   <source>已有本句词条，是否重新生成？</source>
+<target>この文の単語は既にあります。再生成しますか？</target>
 </trans-unit>
 <trans-unit id="sc770b5671a5ebdc6">
   <source>已有全部词条，是否重新生成？</source>
+<target>すべての単語は既にあります。再生成しますか？</target>
 </trans-unit>
 <trans-unit id="s4dcc8c1386fcf52c">
   <source>重新生成本句的原音词条</source>
+<target>この文の原音単語を再生成</target>
 </trans-unit>
 <trans-unit id="se0bb96cbb734c790">
   <source>口语评分依据</source>
@@ -2613,69 +2647,91 @@
 </trans-unit>
 <trans-unit id="sf2d8a83d19e723d3">
   <source>生成原音词条会将原音片段上传到你配置的服务器，以便在波形上标出每个词。服务端不保存音频。是否继续？</source>
+<target>原音単語の生成では、波形に各単語を表示するため、設定したサーバーへ原音セグメントをアップロードします。サーバーは音声を保存しません。続行しますか？</target>
 </trans-unit>
 <trans-unit id="sb381ada36286ff3b">
   <source>按需将口语录音或原音片段发送到评分或原音词条服务，结果保存在本设备。</source>
+<target>必要に応じて口語録音または原音セグメントを採点・原音単語サービスへ送ります。結果はこの端末に保存されます。</target>
 </trans-unit>
 <trans-unit id="sfa45a0167e1c58b9">
   <source>原音词条接口地址</source>
+<target>原音単語 API URL</target>
 </trans-unit>
 <trans-unit id="s3524f5017efce539">
   <source>重新为全部句子生成原音词条（整段原音会重新上传）</source>
+<target>すべての文の原音単語を再生成（原音全体を再度アップロードします）</target>
 </trans-unit>
 <trans-unit id="s7b488900b3a87306">
   <source>为全部句子生成原音词条（整段原音上传一次，已有则跳过）</source>
+<target>すべての文の原音単語を生成（原音全体を一度アップロードし、既存はスキップ）</target>
 </trans-unit>
 <trans-unit id="s12880f14f2ac5ae6">
   <source>生成已取消</source>
+<target>生成をキャンセルしました</target>
 </trans-unit>
 <trans-unit id="s61b67572720db74b">
   <source>网络不可用或原音词条服务未运行，请检查连接后重试</source>
+<target>ネットワークが利用できないか、原音単語サービスが稼働していません。接続を確認してから再試行してください。</target>
 </trans-unit>
 <trans-unit id="s40c0c398fdf1f687">
   <source>音频过大或过长，无法生成原音词条</source>
+<target>音声が大きすぎるか長すぎるため原音単語を生成できません</target>
 </trans-unit>
 <trans-unit id="s4d9163f4f931745c">
   <source>无法生成原音词条，请检查原文、分段与语言设置后重试</source>
+<target>原音単語を生成できません。原文・セグメント・言語設定を確認して再試行してください。</target>
 </trans-unit>
 <trans-unit id="s2d85ebb22bd23e69">
   <source>生成次数已达上限，请稍后再试</source>
+<target>生成回数の上限に達しました。しばらくしてから再試行してください。</target>
 </trans-unit>
 <trans-unit id="se8d8b03a32a3ac78">
   <source>原音词条服务未就绪，请稍后再试</source>
+<target>原音単語サービスが準備できていません。しばらくしてから再試行してください。</target>
 </trans-unit>
 <trans-unit id="sb15d46fce58032b2">
   <source>无法生成原音词条（<x id="0" equiv-text="${status}"/>）</source>
+<target>原音単語を生成できません（<x id="0" equiv-text="${status}"/>）</target>
 </trans-unit>
 <trans-unit id="sc6fab60bafcb24e3">
   <source>原音片段超过 <x id="0" equiv-text="${ALIGN_MAX_DURATION_SEC}"/> 秒，无法生成词条</source>
+<target>原音セグメントが <x id="0" equiv-text="${ALIGN_MAX_DURATION_SEC}"/> 秒を超えているため単語を生成できません</target>
 </trans-unit>
 <trans-unit id="s79e407819d206b3f">
   <source>原音文件超过 <x id="0" equiv-text="${formatAlignMaxMb(ALIGN_MAX_BYTES)}"/> MB，无法生成词条</source>
+<target>原音ファイルが <x id="0" equiv-text="${formatAlignMaxMb(ALIGN_MAX_BYTES)}"/> MB を超えているため単語を生成できません</target>
 </trans-unit>
 <trans-unit id="s9b989dcba10a5340">
   <source>请先在设置中填写原音词条接口地址和 API Key</source>
+<target>先に設定で原音単語 API URL と API Key を入力してください</target>
 </trans-unit>
 <trans-unit id="sb978c0f73b1543d5">
   <source>原音文件不存在</source>
+<target>原音ファイルが存在しません</target>
 </trans-unit>
 <trans-unit id="s1ce4a87c52fb7caf">
   <source>无法裁剪原音片段</source>
+<target>原音セグメントを切り出せません</target>
 </trans-unit>
 <trans-unit id="sc6d5f8815d6dd766">
   <source>无法生成原音词条，请重试</source>
+<target>原音単語を生成できません。再試行してください。</target>
 </trans-unit>
 <trans-unit id="s8015714d46761f64">
   <source>原音片段时长无效</source>
+<target>原音セグメントの長さが無効です</target>
 </trans-unit>
 <trans-unit id="sb532d7dc8a3cf795">
   <source>原音词条未能保存</source>
+<target>原音単語を保存できませんでした</target>
 </trans-unit>
 <trans-unit id="s1a15ca8e46291e2b">
   <source><x id="0" equiv-text="${failed}"/>/<x id="1" equiv-text="${total}"/> 句未能生成词条</source>
+<target><x id="0" equiv-text="${failed}"/>/<x id="1" equiv-text="${total}"/> 文の単語を生成できませんでした</target>
 </trans-unit>
 <trans-unit id="s9f6efd86e7ffd6e1">
   <source>需要对照原稿才能生成原音词条</source>
+<target>原音単語の生成には参照原稿が必要です</target>
 </trans-unit>
 <trans-unit id="s8e5a7cc9fe9194f2">
   <source>只根据你的录音评语速、节奏是否自然。口语评分只上传录音，不上传原声，更省流量。</source>
@@ -2683,6 +2739,7 @@
 </trans-unit>
 <trans-unit id="s4a29367590e9b70f">
   <source>语音服务</source>
+<target>音声サービス</target>
 </trans-unit>
 <trans-unit id="s49f53f6dfe85855f">
   <source>口语评分或生成原音词条会把音频上传到你配置的服务器。生成原音词条需上传原声片段；口语评分默认只上传你的录音，选「像原声」时还会上传原声片段（已有缓存时更少流量）。服务端不保存音频；分数与原音词条只保存在本设备。</source>
@@ -2690,6 +2747,7 @@
 </trans-unit>
 <trans-unit id="sd8b002e4217ebd63">
   <source>口语评分时会对照示范音频的节奏与语调打分，会额外上传原声片段（已有缓存时更少流量）；取不到原声时改按自然度评。</source>
+<target>口語スコアではお手本音声のリズムとイントネーションを照合して採点するため、原声音声セグメントを追加でアップロードします（キャッシュ済みなら通信量は少なめ）。原声が取れない場合は自然さで評価します。</target>
 </trans-unit>
 </body>
 </file>
