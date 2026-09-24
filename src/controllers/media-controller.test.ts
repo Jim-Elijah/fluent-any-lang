@@ -1258,7 +1258,7 @@ describe('MediaController', () => {
     const snapshot = controller.getSnapshot();
     expect(snapshot.volume).toBe(1);
     expect(snapshot.playbackRate).toBe(1);
-    expect(snapshot.subtitlesVisible).toBe(true);
+    expect(snapshot.subtitlesVisible).toBe(false);
     expect(snapshot.sleepMode).toBe('off');
     expect(audio.playbackRate).toBe(1);
   });

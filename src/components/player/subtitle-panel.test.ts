@@ -61,6 +61,8 @@ describe('subtitle-panel', () => {
       defaultFullscreen?: boolean;
       showFullscreenIcon?: boolean;
       seekDisabled?: boolean;
+      /** Product default is hidden; set true when exercising visible subtitle UI. */
+      subtitlesVisible?: boolean;
     } = {},
   ) {
     controller = new MediaController();
@@ -69,6 +71,9 @@ describe('subtitle-panel', () => {
       { id: 's2', startTime: 2, endTime: 4, text: 'world' },
     ];
     await controller.loadTracks([makeTrack('a', 'Track A', segments)]);
+    if (options.subtitlesVisible) {
+      controller.setSubtitlesVisible(true);
+    }
 
     const result = mount(html`
       <subtitle-panel
@@ -100,7 +105,7 @@ describe('subtitle-panel', () => {
   }
 
   it('opens fullscreen portal in uncontrolled mode', async () => {
-    const el = await renderPanel();
+    const el = await renderPanel({ subtitlesVisible: true });
     expect(el.shadowRoot?.querySelectorAll('ui-button').length).toBeGreaterThan(1);
     clickShadowButtonByLabel(el, '全屏');
     await el.updateComplete;
@@ -146,7 +151,7 @@ describe('subtitle-panel', () => {
   });
 
   it('emits update:fullscreen when toggled in uncontrolled mode', async () => {
-    const el = await renderPanel();
+    const el = await renderPanel({ subtitlesVisible: true });
     const handler = vi.fn();
     el.addEventListener('update:fullscreen', handler);
 
@@ -175,7 +180,7 @@ describe('subtitle-panel', () => {
   });
 
   it('exits fullscreen when subtitles are hidden', async () => {
-    const el = await renderPanel({ defaultFullscreen: true });
+    const el = await renderPanel({ defaultFullscreen: true, subtitlesVisible: true });
     const handler = vi.fn();
     el.addEventListener('update:fullscreen', handler);
 
@@ -204,6 +209,10 @@ describe('subtitle-panel', () => {
     const result = mount(html`<subtitle-panel .controller=${controller}></subtitle-panel>`);
     cleanup = result.cleanup;
     const el = result.container.querySelector('subtitle-panel') as SubtitlePanel;
+    await el.updateComplete;
+    await flushUpdates();
+
+    controller.setSubtitlesVisible(true);
     await el.updateComplete;
     await flushUpdates();
 
@@ -241,7 +250,7 @@ describe('subtitle-panel', () => {
   });
 
   it('shows echo manage button disabled when segment has no recordings', async () => {
-    const el = await renderPanel();
+    const el = await renderPanel({ subtitlesVisible: true });
     el.echoMode = true;
     await el.updateComplete;
     await flushUpdates();
@@ -255,7 +264,7 @@ describe('subtitle-panel', () => {
   });
 
   it('shows an overall badge inside segment text when a score is present', async () => {
-    const el = await renderPanel();
+    const el = await renderPanel({ subtitlesVisible: true });
     el.echoMode = true;
     el.echoLatestScoreBySegmentId = { s1: 84.2 };
     await el.updateComplete;
@@ -267,7 +276,7 @@ describe('subtitle-panel', () => {
   });
 
   it('requests echo manage recordings when manage button is clicked', async () => {
-    const el = await renderPanel();
+    const el = await renderPanel({ subtitlesVisible: true });
     el.echoMode = true;
     el.echoRecordingsBySegmentId = {
       s1: [
@@ -329,7 +338,7 @@ describe('subtitle-panel', () => {
   });
 
   it('shows echo manage button disabled when seekDisabled during session', async () => {
-    const el = await renderPanel({ seekDisabled: true });
+    const el = await renderPanel({ seekDisabled: true, subtitlesVisible: true });
     el.echoMode = true;
     el.echoRecordingsBySegmentId = {
       s1: [
@@ -359,7 +368,7 @@ describe('subtitle-panel', () => {
   });
 
   it('does not seek when seekDisabled and marks list as navigation-locked', async () => {
-    const el = await renderPanel({ seekDisabled: true });
+    const el = await renderPanel({ seekDisabled: true, subtitlesVisible: true });
     const seekSpy = vi.spyOn(controller, 'seekToSegment');
 
     expect(el.shadowRoot?.querySelector('ul.list')?.classList.contains('navigation-locked')).toBe(
@@ -376,7 +385,7 @@ describe('subtitle-panel', () => {
   });
 
   it('seeks on segment click when seek is enabled', async () => {
-    const el = await renderPanel();
+    const el = await renderPanel({ subtitlesVisible: true });
     const seekSpy = vi.spyOn(controller, 'seekToSegment');
 
     expect(el.shadowRoot?.querySelector('ul.list')?.classList.contains('navigation-locked')).toBe(
@@ -399,6 +408,7 @@ describe('subtitle-panel', () => {
       { id: 's2', startTime: 2, endTime: 4, text: 'world', translation: '世界' },
     ];
     await controller.loadTracks([makeTrack('a', 'Track A', segments)]);
+    controller.setSubtitlesVisible(true);
 
     const result = mount(html`<subtitle-panel .controller=${controller}></subtitle-panel>`);
     cleanup = result.cleanup;
@@ -419,7 +429,7 @@ describe('subtitle-panel', () => {
   });
 
   it('shows hidden note when subtitles are toggled off', async () => {
-    const el = await renderPanel();
+    const el = await renderPanel({ subtitlesVisible: true });
     clickShadowButtonByLabel(el, '隐藏字幕');
     await el.updateComplete;
     await flushUpdates();
@@ -428,7 +438,7 @@ describe('subtitle-panel', () => {
   });
 
   it('dispatches sentence-bank-add when segment is not saved', async () => {
-    const el = await renderPanel();
+    const el = await renderPanel({ subtitlesVisible: true });
     const added = vi.fn();
     el.addEventListener('sentence-bank-add', added);
 
@@ -444,7 +454,7 @@ describe('subtitle-panel', () => {
   });
 
   it('dispatches sentence-bank-remove when segment is already saved', async () => {
-    const el = await renderPanel();
+    const el = await renderPanel({ subtitlesVisible: true });
     el.sentenceBankSegmentIds = ['s1'];
     await el.updateComplete;
     await flushUpdates();
@@ -462,7 +472,7 @@ describe('subtitle-panel', () => {
   });
 
   it('ignores sentence bank toggle while busy', async () => {
-    const el = await renderPanel();
+    const el = await renderPanel({ subtitlesVisible: true });
     el.sentenceBankBusy = true;
     await el.updateComplete;
 
@@ -639,7 +649,7 @@ describe('subtitle-panel', () => {
   });
 
   it('requests echo recording from segment row in echo mode', async () => {
-    const el = await renderPanel();
+    const el = await renderPanel({ subtitlesVisible: true });
     el.echoMode = true;
     await el.updateComplete;
     await flushUpdates();
@@ -658,7 +668,7 @@ describe('subtitle-panel', () => {
   });
 
   it('shows delete tip on disabled echo record button when segment at limit', async () => {
-    const el = await renderPanel();
+    const el = await renderPanel({ subtitlesVisible: true });
     el.echoMode = true;
     el.echoLimitPerSegment = 1;
     el.echoRecordingsBySegmentId = {
@@ -694,7 +704,7 @@ describe('subtitle-panel', () => {
   });
 
   it('stops echo recording when active row record button is clicked', async () => {
-    const el = await renderPanel();
+    const el = await renderPanel({ subtitlesVisible: true });
     el.echoMode = true;
     el.echoRecordingSegmentIndex = 0;
     await el.updateComplete;
