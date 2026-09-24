@@ -342,7 +342,7 @@ describe('recording-preview', () => {
     expect(setViewRangeSpy).toHaveBeenCalledWith({ start: 0, end: 4.5 });
   });
 
-  it('zooms practice segment view range through the trailing gap to the next segment', async () => {
+  it('zooms practice segment view range to the speech window only (no trailing gap)', async () => {
     const el = await renderPreview();
     const gapped: PracticeSegment[] = [
       {
@@ -370,7 +370,7 @@ describe('recording-preview', () => {
     const setViewRangeSpy = vi.spyOn(el._controller, 'setViewRange');
     el._zoomToPracticeSegment(0);
 
-    expect(setViewRangeSpy).toHaveBeenCalledWith({ start: 0, end: 8 });
+    expect(setViewRangeSpy).toHaveBeenCalledWith({ start: 0, end: 4 });
   });
 
   it('sets view range to full practice span after loading shadowing tracks', async () => {

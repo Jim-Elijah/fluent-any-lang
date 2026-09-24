@@ -10,6 +10,7 @@ import {
   formatTime,
   getLongerPracticeAxis,
   getPracticeSegmentDuration,
+  getPracticeSegmentSpeechRange,
   getPracticeSegmentViewRange,
   getSubtitleSegmentSpeechRange,
   getSubtitleSegmentViewRange,
@@ -337,6 +338,19 @@ describe('getPracticeSegmentViewRange', () => {
     expect(getPracticeSegmentViewRange(samplePracticeSegments, 0, 'source')).toEqual({
       start: 0,
       end: 5,
+    });
+  });
+});
+
+describe('getPracticeSegmentSpeechRange', () => {
+  it('uses segment end time only (no trailing gap to the next segment)', () => {
+    expect(getPracticeSegmentSpeechRange(samplePracticeSegments, 1, 'source')).toEqual({
+      start: 5,
+      end: 10,
+    });
+    expect(getPracticeSegmentSpeechRange(samplePracticeSegments, 1, 'recording')).toEqual({
+      start: 4.5,
+      end: 9,
     });
   });
 });

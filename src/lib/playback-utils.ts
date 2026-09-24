@@ -223,6 +223,24 @@ export function getPracticeSegmentViewRange(
 }
 
 /**
+ * Practice segment bounds on the chosen axis (speech window only, no trailing gap).
+ * Use for recording-preview waveform zoom so word markers match segment speech.
+ */
+export function getPracticeSegmentSpeechRange(
+  segments: PracticeSegment[],
+  segmentIndex: number,
+  axis: PracticeTimeAxis,
+): { start: number; end: number } | null {
+  const segment = segments[segmentIndex];
+  if (!segment) {
+    return null;
+  }
+  const startKey = axis === 'source' ? 'sourceStartTime' : 'recordingStartTime';
+  const endKey = axis === 'source' ? 'sourceEndTime' : 'recordingEndTime';
+  return { start: segment[startKey], end: segment[endKey] };
+}
+
+/**
  * Waveform view range for one Subtitle Segment, including the trailing gap until
  * the next segment starts (last segment ends at its own end time).
  */
