@@ -4,7 +4,7 @@
 
 导入自己的音视频——任意语言、任意素材——按句练习听说。数据默认只保存在本机：无需账号，不会上传（启用实验性录音评分除外）。
 
-**[在线体验](https://fal.jimelijah.com/)** · [GitHub](https://github.com/Jim-Elijah/fluent-any-lang)
+**[在线体验](https://fal.jimelijah.com/)** · [GitHub](https://github.com/Jim-Elijah/fluent-any-lang) · [常见问题](./docs/faq.md)
 
 ## 为什么选 FluentAnyLang？
 

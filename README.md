@@ -4,7 +4,7 @@
 
 Bring your own audio or video — any language, any material — and practice listening and speaking **sentence by sentence**. Everything stays on your device by default: no account, no cloud upload (unless you opt into experimental pronunciation scoring).
 
-**[Live Demo](https://fal.jimelijah.com/)** · [GitHub](https://github.com/Jim-Elijah/fluent-any-lang)
+**[Live Demo](https://fal.jimelijah.com/)** · [GitHub](https://github.com/Jim-Elijah/fluent-any-lang) · [FAQ (中文)](./docs/faq.md)
 
 ## Why FluentAnyLang?
 
