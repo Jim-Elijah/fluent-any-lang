@@ -1,3 +1,36 @@
+## [0.5.0](https://github.com/Jim-Elijah/fluent-any-lang/compare/v0.4.3...v0.5.0) (2026-09-24)
+
+### Features
+
+* **library:** turn Library into a hub with collection sub-routes ([a712073](https://github.com/Jim-Elijah/fluent-any-lang/commit/a712073b9d254b69e5a2cd258c951f783da330f0))
+* **library:** unify batch selection and batch actions ([7671d1f](https://github.com/Jim-Elijah/fluent-any-lang/commit/7671d1fe96a3374a84d1846d6e001584e19b57d0))
+* **practice:** add duration and compact layouts for score word markers ([7dd16b7](https://github.com/Jim-Elijah/fluent-any-lang/commit/7dd16b71e77d761d7e36fddc9cbaab55ea81c1e2))
+* **practice:** add Speaking source word rail and align-all toolbar ([8d5d37c](https://github.com/Jim-Elijah/fluent-any-lang/commit/8d5d37c77d01daa08334aa1265be75efb6c40bb0))
+* **practice:** batch source word align via one subtitle-span clip ([d13d057](https://github.com/Jim-Elijah/fluent-any-lang/commit/d13d0572cb0fc3d0e7620c07794ac03a0f2f2554))
+* **practice:** clarify Source Word Alignment and source waveform labels ([9f1d9f6](https://github.com/Jim-Elijah/fluent-any-lang/commit/9f1d9f6b34130603b618dd1aacd308ee7b1586ba))
+* **practice:** keep compare mode for word-span playback ([f346be7](https://github.com/Jim-Elijah/fluent-any-lang/commit/f346be70758edd0018578ed18ebe1386fa32ed5c))
+* **practice:** overlay Source Word Alignment on the source waveform ([7fc3034](https://github.com/Jim-Elijah/fluent-any-lang/commit/7fc30346eba6a125ae9df6c8b8d52f23c314a684))
+* **practice:** play only the clicked word span then soft-pause ([3b6fd29](https://github.com/Jim-Elijah/fluent-any-lang/commit/3b6fd29b1831505f93373769d801c578a3d0348a))
+* **practice:** show Source Word Alignment actions only in source mode ([9bc5ba5](https://github.com/Jim-Elijah/fluent-any-lang/commit/9bc5ba5c6fb7f481f07d7afa890d42afd5dae2a7))
+* **pronunciation-align:** send reference_segments for multi-line source align ([51dcc7c](https://github.com/Jim-Elijah/fluent-any-lang/commit/51dcc7c4264a2c0d0916f2288bdb697669685a24))
+* **settings:** split speech services settings and standardize 原音词条 copy ([909ed6f](https://github.com/Jim-Elijah/fluent-any-lang/commit/909ed6fe58cc6eaafd00f8319f67f9caf6799713))
+* **ui:** add small, middle, and large sizes to ui-button ([40f8305](https://github.com/Jim-Elijah/fluent-any-lang/commit/40f8305f2c7a9cc2a933f71423c44ae8a59a2fae))
+
+### Bug Fixes
+
+* **playback:** drop segment loop when Media has no Subtitle Track ([5d73f09](https://github.com/Jim-Elijah/fluent-any-lang/commit/5d73f092304180060e0a7b717ae245e47e8830f5))
+* **practice:** avoid stale take waveform and lock player while recording ([27bef92](https://github.com/Jim-Elijah/fluent-any-lang/commit/27bef929864b92812d49019c64c9172a1452320e))
+* **practice:** fix recording preview last-segment playback truncation ([5c47534](https://github.com/Jim-Elijah/fluent-any-lang/commit/5c47534b4806da1a990df6d79fb0cf4257efad18))
+* **practice:** honor segment tail playback and exclusive source word assignment ([5157f57](https://github.com/Jim-Elijah/fluent-any-lang/commit/5157f57cbb4fa755cd37c5ee4b29815e25d7ae07))
+* **practice:** keep audio-only Shadowing takes by duration ([9cf96c3](https://github.com/Jim-Elijah/fluent-any-lang/commit/9cf96c366fbf79c8cddeee4e99e4f441880dac95))
+* **practice:** zoom recording preview waveform to segment speech bounds ([e5b7348](https://github.com/Jim-Elijah/fluent-any-lang/commit/e5b7348ab21bbd6f5b7da10c08043c5c083f8755))
+* **subtitle:** keep Media.hasSubtitles aligned with Subtitle Track ([cc9d7df](https://github.com/Jim-Elijah/fluent-any-lang/commit/cc9d7df18021b85e439ee1fb557b836b5782b895))
+* **subtitle:** keep speaker dialogue in text instead of as translation ([be4d0f5](https://github.com/Jim-Elijah/fluent-any-lang/commit/be4d0f5ad0ce120552286e502df2df6359355f3b))
+
+### Performance Improvements
+
+* **library:** batch IndexedDB ops for multi-select delete and export ([8826bde](https://github.com/Jim-Elijah/fluent-any-lang/commit/8826bde81286a18427af076ec9c0e3a2f29aac27))
+
 ## [0.4.3](https://github.com/Jim-Elijah/fluent-any-lang/compare/v0.4.2...v0.4.3) (2026-09-05)
 
 ### Features

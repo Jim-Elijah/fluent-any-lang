@@ -1,33 +1,89 @@
 {
-  "version": "0.4.3",
+  "version": "0.5.0",
   "highlights": {
     "zh-CN": [
-      "practice: 回声跟读听完原音后再开麦，避免回声消除把片段消音",
-      "playback: 锁屏循环与暂停后的片段循环可更快恢复，无需等待定位完成",
-      "sentences: 导出句库音频时使用可与回声录音配对的文件名",
-      "app: 页面切换时的加载状态保持正常响应",
-      "settings: 新增「减少外放回声」麦克风偏好"
+      {
+        "category": "features",
+        "label": "新功能",
+        "items": [
+          "library: 资料库改为枢纽式入口，各合集独立子页面，批量选择与操作统一可用",
+          "practice: 原音频波形支持原音词条对齐—批量对齐、点击词条播放并软暂停、评分词条标记与更清晰标签",
+          "settings: 语音服务相关设置独立分组，「原音词条」文案统一",
+          "ui: 按钮新增小、中、大三种尺寸"
+        ]
+      },
+      {
+        "category": "bugFixes",
+        "label": "问题修复",
+        "items": [
+          "playback: 媒体无字幕轨时不再启用片段循环",
+          "practice: 录音预览波形、片段播放、Shadowing 纯音频保留与录音时控件锁定更可靠",
+          "subtitle: 字幕有无状态与字幕轨保持一致；说话人台词保留在正文中而非译文字段"
+        ]
+      }
     ],
     "en": [
-      "practice: open Echo mic after listen so AEC does not mute the clip",
-      "playback: resume loops without waiting for seeked on lock screen; resume segment loop after pause without waiting for seeked",
-      "sentences: export sentence-bank audio with pairable echo filenames",
-      "app: keep route loading reactive under Vite Oxc class fields",
-      "settings: add reduce-speaker-echo mic preference"
+      {
+        "category": "features",
+        "label": "Features",
+        "items": [
+          "library: Library hub with collection pages and unified batch selection and actions",
+          "practice: Source Word Alignment on the source waveform—batch align, word-span playback, score markers, and clearer labels",
+          "settings: Speech service settings in their own section, with consistent 原音词条 wording",
+          "ui: Buttons available in small, medium, and large sizes"
+        ]
+      },
+      {
+        "category": "bugFixes",
+        "label": "Bug Fixes",
+        "items": [
+          "playback: Segment loop disables when media has no subtitle track",
+          "practice: More reliable recording preview, segment playback, Shadowing clips, and locked controls while recording",
+          "subtitle: Subtitle availability stays in sync; speaker dialogue stays in the main text"
+        ]
+      }
     ],
     "ja": [
-      "practice: エコーシャドーイングは原音再生後にマイクを開き、AECでクリップが無音になるのを防ぐ",
-      "playback: ロック画面のループと一時停止後のセグメントループが、シーク完了を待たずに再開しやすく",
-      "sentences: 文庫音声のエクスポートで、エコー録音と対応しやすいファイル名を使用",
-      "app: 画面切り替え時の読み込み状態が正しく反応し続ける",
-      "settings: 「スピーカーのエコーを軽減」マイク設定を追加"
+      {
+        "category": "features",
+        "label": "新機能",
+        "items": [
+          "library: ライブラリをハブ化し、コレクション別の画面と統一された一括選択・操作に対応",
+          "practice: 原音波形でソース語アライメント—一括アライメント、語句タップ再生とソフト一時停止、スコア語マーカーと分かりやすいラベル",
+          "settings: 音声サービス設定を独立したセクションに整理し、「原音词条」の表記を統一",
+          "ui: ボタンに小・中・大のサイズを追加"
+        ]
+      },
+      {
+        "category": "bugFixes",
+        "label": "不具合修正",
+        "items": [
+          "playback: 字幕トラックがないメディアではセグメントループを使わない",
+          "practice: 録音プレビューの波形・セグメント再生、Shadowing の音声のみ保持、録音中の操作ロックを改善",
+          "subtitle: 字幕の有無が字幕トラックと一致；話者のセリフを訳文ではなく本文に保持"
+        ]
+      }
     ],
     "zh-TW": [
-      "practice: 回聲跟讀聽完原音後再開麥，避免回聲消除把片段消音",
-      "playback: 鎖屏循環與暫停後的片段循環可更快恢復，無需等待定位完成",
-      "sentences: 匯出句庫音訊時使用可與回聲錄音配對的檔名",
-      "app: 頁面切換時的載入狀態保持正常回應",
-      "settings: 新增「減少外放回聲」麥克風偏好"
+      {
+        "category": "features",
+        "label": "新功能",
+        "items": [
+          "library: 資料庫改為樞紐式入口，各合集獨立子頁面，批次選取與操作統一可用",
+          "practice: 原音訊波形支援原音詞條對齊—批次對齊、點擊詞條播放並軟暫停、評分詞條標記與更清楚標籤",
+          "settings: 語音服務相關設定獨立分組，「原音詞條」文案統一",
+          "ui: 按鈕新增小、中、大三種尺寸"
+        ]
+      },
+      {
+        "category": "bugFixes",
+        "label": "問題修復",
+        "items": [
+          "playback: 媒體無字幕軌時不再啟用片段循環",
+          "practice: 錄音預覽波形、片段播放、Shadowing 純音訊保留與錄音時控制項鎖定更可靠",
+          "subtitle: 字幕有無狀態與字幕軌保持一致；說話人台詞保留在正文中而非譯文字段"
+        ]
+      }
     ]
   }
 }
