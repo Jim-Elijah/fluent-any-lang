@@ -279,7 +279,9 @@ export function getSubtitleSegmentSpeechRange(
 }
 
 /** Subtitle segments as Practice Segment targets for batch source align (recording axis unused). */
-export function subtitleSegmentsToAlignTargets(segments: SubtitleSegment[]): PracticeSegment[] {
+export function subtitleSegmentsToAlignTargets(
+  segments: readonly SubtitleSegment[],
+): PracticeSegment[] {
   return segments.map((segment) => ({
     id: segment.id,
     sourceStartTime: segment.startTime,

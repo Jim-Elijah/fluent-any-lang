@@ -11,7 +11,8 @@ import {
 } from '../../lib/pwa.js';
 import {
   fetchReleaseNotes,
-  highlightsForLocale,
+  hasReleaseHighlights,
+  highlightSectionsForLocale,
   type ReleaseNotes,
 } from '../../lib/release-notes.js';
 import { reportError } from '../../lib/error-reporter.js';
@@ -40,12 +41,25 @@ export class SettingsPwa extends LitElement {
       .highlights-wrap {
         display: flex;
         flex-direction: column;
-        gap: 0.35rem;
+        gap: 0.5rem;
       }
 
       .highlights-title {
         margin: 0;
         font-size: 0.875rem;
+        color: var(--color-text, rgba(0, 0, 0, 0.88));
+      }
+
+      .notes-sections {
+        display: flex;
+        flex-direction: column;
+        gap: 0.65rem;
+      }
+
+      .section-label {
+        margin: 0 0 0.2rem;
+        font-size: 0.8125rem;
+        font-weight: 600;
         color: var(--color-text, rgba(0, 0, 0, 0.88));
       }
 
@@ -146,7 +160,9 @@ export class SettingsPwa extends LitElement {
   }
 
   render() {
-    const highlights = this._needRefresh && this._notes ? highlightsForLocale(this._notes) : [];
+    const sections =
+      this._needRefresh && this._notes ? highlightSectionsForLocale(this._notes) : [];
+    const showNotes = this._needRefresh && this._notes ? hasReleaseHighlights(this._notes) : false;
 
     return html`
       <section class="card" aria-labelledby="pwa-heading">
@@ -170,13 +186,22 @@ export class SettingsPwa extends LitElement {
             : nothing}
         </ul>
 
-        ${highlights.length > 0
+        ${showNotes
           ? html`
               <div class="highlights-wrap">
                 <p class="highlights-title">${msg('更新内容')}</p>
-                <ul class="highlights">
-                  ${highlights.map((item) => html`<li>${item}</li>`)}
-                </ul>
+                <div class="notes-sections">
+                  ${sections.map(
+                    (section) => html`
+                      <section>
+                        <h3 class="section-label">${section.label}</h3>
+                        <ul class="highlights">
+                          ${section.items.map((item) => html`<li>${item}</li>`)}
+                        </ul>
+                      </section>
+                    `,
+                  )}
+                </div>
               </div>
             `
           : nothing}

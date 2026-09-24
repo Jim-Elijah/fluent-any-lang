@@ -1,8 +1,16 @@
 import { getLocale } from '../i18n/localization.js';
 
+export type ReleaseNotesCategory = 'features' | 'bugFixes';
+
+export type ReleaseNotesSection = {
+  category: ReleaseNotesCategory;
+  label: string;
+  items: string[];
+};
+
 export type ReleaseNotes = {
   version: string;
-  highlights: Record<string, string[]>;
+  highlights: Record<string, ReleaseNotesSection[]>;
 };
 
 /** Matches scripts/release-notes-lib.mjs CHANGELOG_LOCALE — CHANGELOG.md is English. */
@@ -24,15 +32,41 @@ export async function fetchReleaseNotes(
   }
 }
 
-export function highlightsForLocale(notes: ReleaseNotes, locale?: string): string[] {
+export function highlightSectionsForLocale(
+  notes: ReleaseNotes,
+  locale?: string,
+): ReleaseNotesSection[] {
   const resolved = locale ?? getLocale();
   const direct = notes.highlights[resolved];
-  if (Array.isArray(direct) && direct.length > 0) return direct;
+  if (localeHighlightsFilled(direct)) return direct;
 
   const fallback = notes.highlights[RELEASE_NOTES_FALLBACK_LOCALE];
-  if (Array.isArray(fallback) && fallback.length > 0) return fallback;
+  if (localeHighlightsFilled(fallback)) return fallback;
 
   return [];
+}
+
+export function hasReleaseHighlights(notes: ReleaseNotes, locale?: string): boolean {
+  return highlightSectionsForLocale(notes, locale).length > 0;
+}
+
+function localeHighlightsFilled(sections: ReleaseNotesSection[] | undefined): sections is ReleaseNotesSection[] {
+  if (!Array.isArray(sections) || sections.length === 0) return false;
+  return sections.some(
+    (section) =>
+      section.items.length > 0 &&
+      section.items.every((item) => typeof item === 'string' && item.trim().length > 0),
+  );
+}
+
+function isReleaseNotesSection(value: unknown): value is ReleaseNotesSection {
+  if (!value || typeof value !== 'object') return false;
+  const section = value as Record<string, unknown>;
+  if (typeof section.category !== 'string' || !section.category) return false;
+  if (typeof section.label !== 'string' || !section.label.trim()) return false;
+  const items = section.items;
+  if (!Array.isArray(items) || items.length === 0) return false;
+  return items.every((item) => typeof item === 'string' && item.trim().length > 0);
 }
 
 function isReleaseNotes(value: unknown): value is ReleaseNotes {

@@ -1,7 +1,7 @@
 import { msg, str } from '@lit/localize';
 import { getAppSettings } from '../app-settings.js';
 import { clipAudioBlob } from '../audio-clip.js';
-import { getMedia, getMediaBlob } from '../../db/media.js';
+import { getMediaBlob } from '../../db/media.js';
 import {
   getMediaSourceWordAlignment,
   putMediaSourceWordAlignment,
@@ -356,8 +356,8 @@ export async function alignMediaSource(input: {
 export async function alignPracticeSegment(input: {
   mediaId: string;
   segment: PracticeSegment;
-  /** Live Subtitle Track texts (fallback when Practice Segment has no snapshot). */
-  subtitleSegments?: ReadonlyArray<Pick<SubtitleSegment, 'id' | 'text'>>;
+  /** Live Subtitle Track (text fallback and source-axis bounds for cache projection). */
+  subtitleSegments?: readonly SubtitleSegment[];
   options?: AlignSegmentOptions;
 }): Promise<AlignSegmentOutcome> {
   const settings = getAppSettings();

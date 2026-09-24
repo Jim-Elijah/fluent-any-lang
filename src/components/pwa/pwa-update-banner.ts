@@ -10,7 +10,8 @@ import {
 } from '../../lib/pwa.js';
 import {
   fetchReleaseNotes,
-  highlightsForLocale,
+  hasReleaseHighlights,
+  highlightSectionsForLocale,
   type ReleaseNotes,
 } from '../../lib/release-notes.js';
 import { Message } from '../ui/message.js';
@@ -72,18 +73,32 @@ export class PwaUpdateBanner extends LitElement {
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
     }
 
-    .highlights {
+    .notes-sections {
       box-sizing: border-box;
       width: 100%;
       max-width: 36rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+      line-height: 1.45;
+      opacity: 0.95;
+    }
+
+    .section-label {
+      margin: 0 0 0.25rem;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      opacity: 0.92;
+    }
+
+    .highlights {
       margin: 0;
       padding: 0;
       list-style: none;
       display: flex;
       flex-direction: column;
       gap: 0.4rem;
-      line-height: 1.45;
-      opacity: 0.95;
     }
 
     .highlights li {
@@ -185,7 +200,8 @@ export class PwaUpdateBanner extends LitElement {
   render() {
     if (!this._needRefresh) return nothing;
 
-    const highlights = this._notes ? highlightsForLocale(this._notes) : [];
+    const sections = this._notes ? highlightSectionsForLocale(this._notes) : [];
+    const showNotes = this._notes ? hasReleaseHighlights(this._notes) : false;
     const title = this._notes?.version
       ? msg(str`有新版本可用（${this._notes.version}）`)
       : msg('有新版本可用');
@@ -194,7 +210,7 @@ export class PwaUpdateBanner extends LitElement {
       <div class="banner" role="status">
         <div class="content">
           <p class="text">${title}</p>
-          ${highlights.length > 0
+          ${showNotes
             ? html`
                 <ui-button variant="ghost" @click=${this._onToggleNotes}>
                   ${this._notesExpanded ? msg('收起') : msg('查看更新')}
@@ -206,12 +222,21 @@ export class PwaUpdateBanner extends LitElement {
           <ui-button variant="secondary" @click=${this._onUpdate}>${msg('立即更新')}</ui-button>
           <ui-button variant="ghost" @click=${this._onDismiss}>${msg('稍后')}</ui-button>
         </div>
-        ${this._notesExpanded && highlights.length > 0
+        ${this._notesExpanded && showNotes
           ? html`
               <div class="notes-panel">
-                <ul class="highlights">
-                  ${highlights.map((item) => html`<li>${item}</li>`)}
-                </ul>
+                <div class="notes-sections">
+                  ${sections.map(
+                    (section) => html`
+                      <section>
+                        <h3 class="section-label">${section.label}</h3>
+                        <ul class="highlights">
+                          ${section.items.map((item) => html`<li>${item}</li>`)}
+                        </ul>
+                      </section>
+                    `,
+                  )}
+                </div>
               </div>
             `
           : nothing}

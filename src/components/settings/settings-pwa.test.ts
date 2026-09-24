@@ -118,7 +118,9 @@ describe('settings-pwa', () => {
     fetchMock.mockResolvedValue(
       Response.json({
         version: '0.4.0',
-        highlights: { 'zh-CN': ['新功能'] },
+        highlights: {
+          'zh-CN': [{ category: 'features', label: '新功能', items: ['新功能要点'] }],
+        },
       }),
     );
 
@@ -127,7 +129,7 @@ describe('settings-pwa', () => {
     await vi.waitFor(() => {
       expect(el.shadowRoot?.textContent).toContain('0.4.0');
       expect(el.shadowRoot?.textContent).toContain('更新内容');
-      expect(el.shadowRoot?.textContent).toContain('新功能');
+      expect(el.shadowRoot?.textContent).toContain('新功能要点');
     });
   });
 

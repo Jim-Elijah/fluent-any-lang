@@ -8,19 +8,29 @@ alwaysApply: false
 
 When asked to translate `public/release-notes.json`:
 
-1. Source of truth is `highlights.en`. Translate into `zh-CN`, `ja`, and `zh-TW`.
-2. Keep the same structure: **`module:`** + one user-facing sentence (e.g. `pwa: …`, `practice: …`, `ui: …`).
-3. Keep module tags as-is (`practice` / `pwa` / `ui`); translate only the sentence after `:`.
+1. Source of truth is `highlights.en` (array of **sections**). Mirror the same `category` values and section order in `zh-CN`, `ja`, and `zh-TW`.
+2. Translate each section’s **`label`** (e.g. `Features` → `新功能`, `Bug Fixes` → `问题修复`). Keep **`category`** unchanged (`features` / `bugFixes`).
+3. Each bullet stays **`module:`** + one user-facing sentence (e.g. `playback: …`, `practice: …`). Keep module tags as-is; translate only the sentence after `:`.
 4. Write what the user gains, not what code changed.
-5. Keep 3–7 bullets; merge related items if needed.
-6. Match tone to a product update dialog: clear, concise, no jargon.
-7. Do not invent features not present in the English source.
-8. Fill empty locale arrays; leave `en` unchanged unless merging for consistency.
+5. **Merge same module within a section** when several English bullets describe one user-visible improvement (e.g. two `playback:` lines about resuming loops → one bullet). Apply merging in every locale, including `en` when polishing for the dialog. Do not merge across sections (Features vs Bug Fixes) or across different modules.
+6. After merging, keep **3–7 bullets total** across all sections; drop nothing the user would care about.
+7. Match tone to a product update dialog: clear, concise, no jargon.
+8. Do not invent features not present in the English source.
+9. Fill empty locale arrays; refine `en` only for merging/clarity, not new scope.
 
 ## Example
 
 ```json
-"en": ["pwa: Expand the update banner to read what's new"]
+"en": [
+  {
+    "category": "bugFixes",
+    "label": "Bug Fixes",
+    "items": [
+      "playback: resume loops without waiting for seeked on lock screen",
+      "playback: resume segment loop after pause without waiting for seeked"
+    ]
+  }
+]
 ```
 
-→ fill the other locales, e.g. `"zh-CN": ["pwa: 更新提示可展开查看本版更新说明"]`.
+→ merge playback in all locales, e.g. `"zh-CN": [{ "category": "bugFixes", "label": "问题修复", "items": ["playback: 锁屏循环与暂停后的片段循环可更快恢复，无需等待定位完成"] }]`.

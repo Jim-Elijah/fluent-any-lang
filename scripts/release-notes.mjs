@@ -5,6 +5,7 @@ import {
   CHANGELOG_LOCALE,
   ROOT_DIR,
   generateReleaseNotes,
+  localeHighlightsFilled,
   readLocales,
   writeReleaseNotes,
 } from './release-notes-lib.mjs';
@@ -18,12 +19,15 @@ function main() {
   const { locales } = readLocales(ROOT_DIR);
 
   const pending = locales.filter(
-    (locale) => locale !== CHANGELOG_LOCALE && (notes.highlights[locale]?.length ?? 0) === 0,
+    (locale) => locale !== CHANGELOG_LOCALE && !localeHighlightsFilled(notes.highlights[locale]),
   );
+
+  const enSections = notes.highlights[CHANGELOG_LOCALE] ?? [];
+  const enBulletCount = enSections.reduce((n, section) => n + section.items.length, 0);
 
   console.log(`Wrote ${path} (version ${notes.version})`);
   console.log(
-    `Changelog locale "${CHANGELOG_LOCALE}": ${notes.highlights[CHANGELOG_LOCALE]?.length ?? 0} highlight(s)`,
+    `Changelog locale "${CHANGELOG_LOCALE}": ${enSections.length} section(s), ${enBulletCount} bullet(s)`,
   );
 
   if (pending.length > 0) {

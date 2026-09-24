@@ -2,7 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   fetchReleaseNotes,
-  highlightsForLocale,
+  hasReleaseHighlights,
+  highlightSectionsForLocale,
   RELEASE_NOTES_FALLBACK_LOCALE,
   type ReleaseNotes,
 } from './release-notes.js';
@@ -10,22 +11,47 @@ import {
 const sample: ReleaseNotes = {
   version: '0.4.0',
   highlights: {
-    'zh-CN': ['中文要点'],
-    en: ['English tip'],
+    'zh-CN': [
+      {
+        category: 'features',
+        label: '新功能',
+        items: ['中文要点'],
+      },
+    ],
+    en: [
+      {
+        category: 'features',
+        label: 'Features',
+        items: ['English tip'],
+      },
+    ],
     ja: [],
     'zh-TW': [],
   },
 };
 
-describe('highlightsForLocale', () => {
+describe('highlightSectionsForLocale', () => {
   it('returns the requested locale when present', () => {
-    expect(highlightsForLocale(sample, 'en')).toEqual(['English tip']);
+    expect(highlightSectionsForLocale(sample, 'en')).toEqual(sample.highlights.en);
   });
 
   it('falls back to English when locale is missing or empty', () => {
-    expect(highlightsForLocale(sample, 'ja')).toEqual(['English tip']);
-    expect(highlightsForLocale(sample, 'fr')).toEqual(['English tip']);
+    expect(highlightSectionsForLocale(sample, 'ja')).toEqual(sample.highlights.en);
+    expect(highlightSectionsForLocale(sample, 'fr')).toEqual(sample.highlights.en);
     expect(RELEASE_NOTES_FALLBACK_LOCALE).toBe('en');
+  });
+});
+
+describe('hasReleaseHighlights', () => {
+  it('reflects whether a locale has section items', () => {
+    expect(hasReleaseHighlights(sample, 'en')).toBe(true);
+    expect(hasReleaseHighlights(sample, 'ja')).toBe(true);
+    expect(
+      hasReleaseHighlights({
+        version: '0.0.0',
+        highlights: { en: [] },
+      }),
+    ).toBe(false);
   });
 });
 

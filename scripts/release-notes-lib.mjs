@@ -8,6 +8,17 @@ export const ROOT_DIR = resolve(__dirname, '..');
 /** CHANGELOG.md is English; release-notes highlights are keyed by this locale first. */
 export const CHANGELOG_LOCALE = 'en';
 
+/** Conventional-changelog `###` headings we surface in release notes (user-facing). */
+export const CHANGELOG_SECTIONS = {
+  Features: { category: 'features', label: 'Features' },
+  'Bug Fixes': { category: 'bugFixes', label: 'Bug Fixes' },
+};
+
+/**
+ * @typedef {{ category: string, label: string, items: string[] }} ReleaseNotesSection
+ * @typedef {{ version: string, highlights: Record<string, ReleaseNotesSection[]> }} ReleaseNotesFile
+ */
+
 /**
  * @param {string} [rootDir]
  * @returns {{ locales: string[] }}
@@ -56,15 +67,30 @@ export function cleanChangelogBullet(line) {
 }
 
 /**
- * Parse the latest `## [x.y.z]` / `## x.y.z` section into bullet highlights.
+ * @param {ReleaseNotesSection[] | undefined | null} sections
+ * @returns {boolean}
+ */
+export function localeHighlightsFilled(sections) {
+  if (!Array.isArray(sections) || sections.length === 0) return false;
+  return sections.some(
+    (section) =>
+      section &&
+      typeof section === 'object' &&
+      Array.isArray(section.items) &&
+      section.items.some((item) => typeof item === 'string' && item.trim().length > 0),
+  );
+}
+
+/**
+ * Parse the latest `## [x.y.z]` / `## x.y.z` section into grouped highlights.
  * @param {string} markdown
- * @returns {{ version: string | null, highlights: string[] }}
+ * @returns {{ version: string | null, sections: ReleaseNotesSection[] }}
  */
 export function parseLatestChangelogSection(markdown) {
   const headingRe = /^##\s+(?:\[([^\]]+)\]|([0-9]+\.[0-9]+\.[0-9][^\s]*))/gm;
   const matches = [...markdown.matchAll(headingRe)];
   if (matches.length === 0) {
-    return { version: null, highlights: [] };
+    return { version: null, sections: [] };
   }
 
   const first = matches[0];
@@ -73,26 +99,41 @@ export function parseLatestChangelogSection(markdown) {
   const end = matches[1]?.index ?? markdown.length;
   const body = markdown.slice(start, end);
 
-  const highlights = [];
+  /** @type {ReleaseNotesSection[]} */
+  const sections = [];
+  /** @type {ReleaseNotesSection | null} */
+  let current = null;
+
   for (const line of body.split('\n')) {
-    if (!/^\s*[-*]\s+/.test(line)) continue;
+    const heading = line.match(/^###\s+(.+?)\s*$/);
+    if (heading) {
+      const meta = CHANGELOG_SECTIONS[heading[1].trim()];
+      if (meta) {
+        current = { category: meta.category, label: meta.label, items: [] };
+        sections.push(current);
+      } else {
+        current = null;
+      }
+      continue;
+    }
+
+    if (!current || !/^\s*[-*]\s+/.test(line)) continue;
     const cleaned = cleanChangelogBullet(line);
-    if (cleaned) highlights.push(cleaned);
+    if (cleaned) current.items.push(cleaned);
   }
 
-  return { version, highlights };
+  return {
+    version,
+    sections: sections.filter((section) => section.items.length > 0),
+  };
 }
-
-/**
- * @typedef {{ version: string, highlights: Record<string, string[]> }} ReleaseNotesFile
- */
 
 /**
  * @param {object} opts
  * @param {string} opts.version
  * @param {string} [opts.changelogLocale]
  * @param {string[]} opts.locales
- * @param {string[]} opts.sourceHighlights
+ * @param {ReleaseNotesSection[]} opts.sourceSections
  * @param {ReleaseNotesFile | null} [opts.existing]
  * @returns {ReleaseNotesFile}
  */
@@ -100,23 +141,48 @@ export function buildReleaseNotes({
   version,
   changelogLocale = CHANGELOG_LOCALE,
   locales,
-  sourceHighlights,
+  sourceSections,
   existing = null,
 }) {
-  /** @type {Record<string, string[]>} */
+  /** @type {Record<string, ReleaseNotesSection[]>} */
   const highlights = {};
   const sameVersion = existing?.version === version;
 
   for (const locale of locales) {
     if (locale === changelogLocale) {
-      highlights[locale] = [...sourceHighlights];
+      highlights[locale] = sourceSections.map((section) => ({
+        category: section.category,
+        label: section.label,
+        items: [...section.items],
+      }));
       continue;
     }
     const prev = sameVersion ? existing?.highlights?.[locale] : undefined;
-    highlights[locale] = Array.isArray(prev) && prev.length > 0 ? [...prev] : [];
+    highlights[locale] =
+      localeHighlightsFilled(prev) && Array.isArray(prev)
+        ? prev.map((section) => ({
+            category: section.category,
+            label: section.label,
+            items: [...section.items],
+          }))
+        : [];
   }
 
   return { version, highlights };
+}
+
+/**
+ * @param {unknown} value
+ * @returns {value is ReleaseNotesSection}
+ */
+function isReleaseNotesSection(value) {
+  if (!value || typeof value !== 'object') return false;
+  const section = /** @type {Record<string, unknown>} */ (value);
+  if (typeof section.category !== 'string' || !section.category.trim()) return false;
+  if (typeof section.label !== 'string' || !section.label.trim()) return false;
+  const items = section.items;
+  if (!Array.isArray(items) || items.length === 0) return false;
+  return items.every((item) => typeof item === 'string' && item.trim().length > 0);
 }
 
 /**
@@ -147,17 +213,19 @@ export function checkReleaseNotes(notes, expected) {
 
   const map = /** @type {Record<string, unknown>} */ (highlights);
   for (const locale of expected.locales) {
-    const items = map[locale];
-    if (!Array.isArray(items)) {
-      errors.push(`highlights["${locale}"] must be an array`);
+    const sections = map[locale];
+    if (!Array.isArray(sections)) {
+      errors.push(`highlights["${locale}"] must be an array of sections`);
       continue;
     }
-    if (items.length === 0) {
+    if (!localeHighlightsFilled(sections)) {
       errors.push(`highlights["${locale}"] is empty — fill translations before release:commit`);
       continue;
     }
-    if (!items.every((item) => typeof item === 'string' && item.trim().length > 0)) {
-      errors.push(`highlights["${locale}"] must contain non-empty strings`);
+    if (!sections.every((section) => isReleaseNotesSection(section))) {
+      errors.push(
+        `highlights["${locale}"] sections need category, label, and non-empty items[] strings`,
+      );
     }
   }
 
@@ -196,14 +264,14 @@ export function generateReleaseNotes(rootDir = ROOT_DIR) {
   const { locales } = readLocales(rootDir);
   const version = readPackageVersion(rootDir);
   const changelog = readFileSync(resolve(rootDir, 'CHANGELOG.md'), 'utf8');
-  const { highlights: sourceHighlights } = parseLatestChangelogSection(changelog);
+  const { sections: sourceSections } = parseLatestChangelogSection(changelog);
   const existing = readExistingReleaseNotes(rootDir);
 
   return buildReleaseNotes({
     version,
     changelogLocale: CHANGELOG_LOCALE,
     locales,
-    sourceHighlights,
+    sourceSections,
     existing,
   });
 }

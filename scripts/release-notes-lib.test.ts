@@ -4,6 +4,7 @@ import {
   buildReleaseNotes,
   checkReleaseNotes,
   cleanChangelogBullet,
+  localeHighlightsFilled,
   parseLatestChangelogSection,
 } from './release-notes-lib.mjs';
 
@@ -35,50 +36,82 @@ describe('cleanChangelogBullet', () => {
 });
 
 describe('parseLatestChangelogSection', () => {
-  it('parses the latest section only and cleans bullets', () => {
-    const { version, highlights } = parseLatestChangelogSection(SAMPLE_CHANGELOG);
+  it('parses the latest section into Features / Bug Fixes groups', () => {
+    const { version, sections } = parseLatestChangelogSection(SAMPLE_CHANGELOG);
     expect(version).toBe('0.4.0');
-    expect(highlights).toEqual([
-      'pwa: show release notes on update',
-      'settings: add player defaults',
-      'fix locale fallback',
+    expect(sections).toEqual([
+      {
+        category: 'features',
+        label: 'Features',
+        items: ['pwa: show release notes on update', 'settings: add player defaults'],
+      },
+      {
+        category: 'bugFixes',
+        label: 'Bug Fixes',
+        items: ['fix locale fallback'],
+      },
     ]);
-    expect(highlights.join('')).not.toContain('old feature');
+    expect(JSON.stringify(sections)).not.toContain('old feature');
   });
 
-  it('supports unbracketed headings', () => {
-    const { version, highlights } = parseLatestChangelogSection(
+  it('supports unbracketed headings without ### groups', () => {
+    const { version, sections } = parseLatestChangelogSection(
       '## 0.1.0 (2026-07-12)\n\n* add router ([97a7f5d](https://x/97a7f5d))\n',
     );
     expect(version).toBe('0.1.0');
-    expect(highlights).toEqual(['add router']);
+    expect(sections).toEqual([]);
+  });
+});
+
+describe('localeHighlightsFilled', () => {
+  it('is true when any section has items', () => {
+    expect(
+      localeHighlightsFilled([
+        { category: 'features', label: 'Features', items: ['pwa: one'] },
+      ]),
+    ).toBe(true);
+    expect(localeHighlightsFilled([])).toBe(false);
+    expect(localeHighlightsFilled([{ category: 'features', label: 'Features', items: [] }])).toBe(
+      false,
+    );
   });
 });
 
 describe('buildReleaseNotes', () => {
   const locales = ['zh-CN', 'en', 'ja', 'zh-TW'];
+  const sourceSections = [
+    {
+      category: 'features',
+      label: 'Features',
+      items: ['Highlight A', 'Highlight B'],
+    },
+  ];
 
   it('overwrites changelog locale (en) and keeps same-version translations', () => {
     const notes = buildReleaseNotes({
       version: '0.4.0',
       changelogLocale: 'en',
       locales,
-      sourceHighlights: ['Highlight A', 'Highlight B'],
+      sourceSections,
       existing: {
         version: '0.4.0',
         highlights: {
-          'zh-CN': ['既有简中'],
-          en: ['Old EN'],
+          'zh-CN': [{ category: 'features', label: '新功能', items: ['既有简中'] }],
+          en: [{ category: 'features', label: 'Features', items: ['Old EN'] }],
           ja: [],
-          'zh-TW': ['既有繁中'],
+          'zh-TW': [{ category: 'features', label: '新功能', items: ['既有繁中'] }],
         },
       },
     });
 
-    expect(notes.highlights.en).toEqual(['Highlight A', 'Highlight B']);
-    expect(notes.highlights['zh-CN']).toEqual(['既有简中']);
+    expect(notes.highlights.en).toEqual(sourceSections);
+    expect(notes.highlights['zh-CN']).toEqual([
+      { category: 'features', label: '新功能', items: ['既有简中'] },
+    ]);
     expect(notes.highlights.ja).toEqual([]);
-    expect(notes.highlights['zh-TW']).toEqual(['既有繁中']);
+    expect(notes.highlights['zh-TW']).toEqual([
+      { category: 'features', label: '新功能', items: ['既有繁中'] },
+    ]);
   });
 
   it('drops other-locale text when version changes', () => {
@@ -86,19 +119,21 @@ describe('buildReleaseNotes', () => {
       version: '0.5.0',
       changelogLocale: 'en',
       locales,
-      sourceHighlights: ['Next release'],
+      sourceSections: [{ category: 'features', label: 'Features', items: ['Next release'] }],
       existing: {
         version: '0.4.0',
         highlights: {
-          'zh-CN': ['旧'],
-          en: ['Old EN'],
-          ja: ['旧日'],
-          'zh-TW': ['舊繁'],
+          'zh-CN': [{ category: 'features', label: '新功能', items: ['旧'] }],
+          en: [{ category: 'features', label: 'Features', items: ['Old EN'] }],
+          ja: [{ category: 'features', label: '新機能', items: ['旧日'] }],
+          'zh-TW': [{ category: 'features', label: '新功能', items: ['舊繁'] }],
         },
       },
     });
 
-    expect(notes.highlights.en).toEqual(['Next release']);
+    expect(notes.highlights.en).toEqual([
+      { category: 'features', label: 'Features', items: ['Next release'] },
+    ]);
     expect(notes.highlights['zh-CN']).toEqual([]);
     expect(notes.highlights.ja).toEqual([]);
     expect(notes.highlights['zh-TW']).toEqual([]);
@@ -107,16 +142,21 @@ describe('buildReleaseNotes', () => {
 
 describe('checkReleaseNotes', () => {
   const expected = { version: '0.4.0', locales: ['zh-CN', 'en', 'ja', 'zh-TW'] };
+  const filledSection = {
+    category: 'features',
+    label: 'Features',
+    items: ['one'],
+  };
 
   it('passes when version matches and every locale is non-empty', () => {
     const result = checkReleaseNotes(
       {
         version: '0.4.0',
         highlights: {
-          'zh-CN': ['一'],
-          en: ['one'],
-          ja: ['いち'],
-          'zh-TW': ['一'],
+          'zh-CN': [{ ...filledSection, label: '新功能', items: ['一'] }],
+          en: [filledSection],
+          ja: [{ ...filledSection, label: '新機能', items: ['いち'] }],
+          'zh-TW': [{ ...filledSection, label: '新功能', items: ['一'] }],
         },
       },
       expected,
@@ -129,10 +169,10 @@ describe('checkReleaseNotes', () => {
       {
         version: '0.3.0',
         highlights: {
-          'zh-CN': ['一'],
-          en: ['one'],
-          ja: ['いち'],
-          'zh-TW': ['一'],
+          'zh-CN': [filledSection],
+          en: [filledSection],
+          ja: [filledSection],
+          'zh-TW': [filledSection],
         },
       },
       expected,
@@ -148,10 +188,10 @@ describe('checkReleaseNotes', () => {
       {
         version: '0.4.0',
         highlights: {
-          'zh-CN': ['一'],
+          'zh-CN': [filledSection],
           en: [],
-          ja: ['いち'],
-          'zh-TW': ['一'],
+          ja: [filledSection],
+          'zh-TW': [filledSection],
         },
       },
       expected,

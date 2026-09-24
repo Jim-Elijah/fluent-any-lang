@@ -109,7 +109,10 @@ describe('pwa-update-banner', () => {
     fetchMock.mockResolvedValue(
       Response.json({
         version: '0.4.0',
-        highlights: { 'zh-CN': ['要点一'], en: ['Tip one'] },
+        highlights: {
+          'zh-CN': [{ category: 'features', label: '新功能', items: ['要点一'] }],
+          en: [{ category: 'features', label: 'Features', items: ['Tip one'] }],
+        },
       }),
     );
 
@@ -129,7 +132,10 @@ describe('pwa-update-banner', () => {
     fetchMock.mockResolvedValue(
       Response.json({
         version: '0.4.0',
-        highlights: { 'zh-CN': ['要点一'], en: ['Tip one'] },
+        highlights: {
+          'zh-CN': [{ category: 'features', label: '新功能', items: ['要点一'] }],
+          en: [{ category: 'features', label: 'Features', items: ['Tip one'] }],
+        },
       }),
     );
 
