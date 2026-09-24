@@ -11,6 +11,7 @@ import {
   getLongerPracticeAxis,
   getPracticeSegmentDuration,
   getPracticeSegmentViewRange,
+  getSubtitleSegmentSpeechRange,
   getSubtitleSegmentViewRange,
   subtitleSegmentsToAlignTargets,
   getPracticeSourceDuration,
@@ -271,6 +272,20 @@ describe('getSubtitleSegmentViewRange', () => {
     expect(getSubtitleSegmentViewRange(subtitleSegments, 2)).toEqual({
       start: 12,
       end: 15,
+    });
+  });
+});
+
+describe('getSubtitleSegmentSpeechRange', () => {
+  const subtitleSegments: SubtitleSegment[] = [
+    { id: 's0', startTime: 0, endTime: 5, text: 'a' },
+    { id: 's1', startTime: 8, endTime: 10, text: 'b' },
+  ];
+
+  it('uses segment end time only (no trailing gap to the next segment)', () => {
+    expect(getSubtitleSegmentSpeechRange(subtitleSegments, 0)).toEqual({
+      start: 0,
+      end: 5,
     });
   });
 });

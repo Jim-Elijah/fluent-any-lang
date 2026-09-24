@@ -77,7 +77,7 @@ import { getSubtitle } from '../../db/subtitle.js';
 import { setLogicalVolume } from '../../lib/media-element-gain.js';
 import {
   wordMarkersForPreview,
-  wordMarkersForSourcePreview,
+  wordMarkersForSourceSubtitle,
   WORD_RAIL_LANE_PX,
   type WordWaveformMarker,
 } from '../../lib/word-waveform.js';
@@ -155,6 +155,21 @@ function resolveLineForPractice(
   return (
     subtitleSegments.find((segment) => segment.id === practice.id) ??
     subtitleFromPracticeSegment(practice)
+  );
+}
+
+/** Subtitle bounds for source word rail (live subtitles or Practice Segment times). */
+function sourceSubtitleLineForWordRail(
+  segment: PracticeSegment,
+  subtitleSegments: SubtitleSegment[],
+): SubtitleSegment {
+  return (
+    resolveLineForPractice(segment, subtitleSegments) ?? {
+      id: segment.id,
+      startTime: segment.sourceStartTime,
+      endTime: segment.sourceEndTime,
+      text: '',
+    }
   );
 }
 
@@ -1138,10 +1153,11 @@ export class RecordingPreview extends LitElement {
       if (words.length === 0) {
         return [];
       }
-      return wordMarkersForSourcePreview({
+      const subtitleLine = sourceSubtitleLineForWordRail(segment, this.subtitleSegments);
+      return wordMarkersForSourceSubtitle({
         words,
-        segments: this.segments,
-        segmentIndex: this._syncSegmentIndex,
+        segments: [subtitleLine],
+        segmentIndex: 0,
         sourceViewRange: this._sourceViewRange(),
         layout: this._wordMarkerLayout,
       });
@@ -1224,24 +1240,35 @@ export class RecordingPreview extends LitElement {
     if (this._recordingTrackId && !isComparePlayMode(this._playMode)) {
       this._controller.setActiveId(this._recordingTrackId);
     }
-    const play = (() => {
+    try {
       if (isComparePlayMode(this._playMode)) {
-        if (hasEnd) {
-          return this._playMode === 'continuous'
-            ? this._playback.playContinuousRecordingRange(start, end as number)
-            : this._playback.playSyncRecordingRange(start, end as number);
+        if (this._playMode === 'sync') {
+          const ok = hasEnd
+            ? await this._playback.playSyncRecordingRange(start, end as number)
+            : await this._playback.playSyncAt(start, 'recording');
+          if (!ok) {
+            if (hasEnd) {
+              await this._playback.playRecordingRange(start, end as number);
+            } else {
+              await this._playback.playRecordingAt(start);
+            }
+          }
+          return;
         }
-        return this._playMode === 'continuous'
-          ? this._playback.playContinuousAt(start, 'recording')
-          : this._playback.playSyncAt(start, 'recording');
+        const play = hasEnd
+          ? this._playback.playContinuousRecordingRange(start, end as number)
+          : this._playback.playContinuousAt(start, 'recording');
+        await play;
+        return;
       }
-      return hasEnd
-        ? this._playback.playRecordingRange(start, end as number)
-        : this._playback.playRecordingAt(start);
-    })();
-    void play.catch(() => {
+      if (hasEnd) {
+        await this._playback.playRecordingRange(start, end as number);
+      } else {
+        await this._playback.playRecordingAt(start);
+      }
+    } catch {
       this._playback?.stop();
-    });
+    }
   }
 
   private _privacyModalBody(): string {
@@ -1341,6 +1368,7 @@ export class RecordingPreview extends LitElement {
       const words = await resolveSegmentSourceWords({
         mediaId: record.mediaId,
         segment,
+        allSegments: this.segments,
         subtitleTrack,
       });
       if (words.length > 0) {
@@ -1442,6 +1470,7 @@ export class RecordingPreview extends LitElement {
             const words = await resolveSegmentSourceWords({
               mediaId: record.mediaId,
               segment,
+              allSegments: this.segments,
               subtitleTrack,
             });
             if (words.length > 0) {

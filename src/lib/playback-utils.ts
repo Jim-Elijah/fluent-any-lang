@@ -245,6 +245,21 @@ export function getSubtitleSegmentViewRange(
   return { start, end };
 }
 
+/**
+ * Subtitle segment bounds on the Media source axis (speech window only, no trailing gap).
+ * Use for Source Word Alignment waveform zoom so word markers match segment speech.
+ */
+export function getSubtitleSegmentSpeechRange(
+  segments: SubtitleSegment[],
+  segmentIndex: number,
+): { start: number; end: number } | null {
+  const segment = segments[segmentIndex];
+  if (!segment) {
+    return null;
+  }
+  return { start: segment.startTime, end: segment.endTime };
+}
+
 /** Subtitle segments as Practice Segment targets for batch source align (recording axis unused). */
 export function subtitleSegmentsToAlignTargets(segments: SubtitleSegment[]): PracticeSegment[] {
   return segments.map((segment) => ({

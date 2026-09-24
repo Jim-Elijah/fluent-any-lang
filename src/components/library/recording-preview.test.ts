@@ -1679,7 +1679,7 @@ describe('recording-preview', () => {
     const marker = el.shadowRoot?.querySelector('.word-marker') as HTMLElement | null;
     expect(marker?.style.left).toBeTruthy();
     expect(marker?.style.width).toBeTruthy();
-    expect(el.shadowRoot?.querySelector('.word-layout-row')).not.toBeNull();
+    expect(el.shadowRoot?.querySelector('word-marker-layout-toggle')).not.toBeNull();
   });
 
   it('toggles waveform word markers between duration and compact layout', async () => {
@@ -1694,8 +1694,9 @@ describe('recording-preview', () => {
     el._controller.setViewRange({ start: 0, end: 4 });
     await el.updateComplete;
 
+    const layoutToggle = el.shadowRoot?.querySelector('word-marker-layout-toggle');
     const buttons = [
-      ...(el.shadowRoot?.querySelectorAll('.word-layout-row ui-button') ?? []),
+      ...(layoutToggle?.shadowRoot?.querySelectorAll('ui-button') ?? []),
     ] as Array<{ click: () => void }>;
     expect(buttons).toHaveLength(2);
     buttons[1]!.click();
@@ -1802,6 +1803,25 @@ describe('recording-preview', () => {
     expect(playback.playSyncRecordingRange).toHaveBeenCalledWith(0.12, 0.45);
     expect(playback.playRecordingRange).not.toHaveBeenCalled();
     expect(playback.playSyncAt).not.toHaveBeenCalled();
+  });
+
+  it('falls back to recording-only word clip when sync word mapping fails', async () => {
+    const el = await renderScoredPreview({
+      word_scores: [{ word: 'hello', start: 0.12, end: 0.45, score: 90 }],
+    });
+    const playback = createPlaybackMock();
+    playback.playSyncRecordingRange = vi.fn().mockResolvedValue(false);
+    el._playback = playback;
+    el._playMode = 'sync';
+    el._controller.setViewRange({ start: 0, end: 4.5 });
+    await el.updateComplete;
+
+    const marker = el.shadowRoot?.querySelector('.word-marker') as HTMLButtonElement | null;
+    marker?.click();
+    await flushUpdates();
+
+    expect(playback.playSyncRecordingRange).toHaveBeenCalledWith(0.12, 0.45);
+    expect(playback.playRecordingRange).toHaveBeenCalledWith(0.12, 0.45);
   });
 
   it('keeps segment zoom when clicking a waveform word during sync compare with source-focused waveform', async () => {

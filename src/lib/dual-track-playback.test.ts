@@ -184,7 +184,45 @@ describe('DualTrackPlayback', () => {
     expect(controller.getState().mode).toBe('idle');
   });
 
+  it('playSyncRecordingRange plays words in a recording gap between practice segments', async () => {
+    const gapped: PracticeSegment[] = [
+      {
+        id: 'g0',
+        sourceStartTime: 0,
+        sourceEndTime: 3,
+        recordingStartTime: 0.5,
+        recordingEndTime: 2.5,
+      },
+      {
+        id: 'g1',
+        sourceStartTime: 10,
+        sourceEndTime: 12,
+        recordingStartTime: 9.5,
+        recordingEndTime: 11.5,
+      },
+    ];
+    controller.setSegments(gapped);
+    vi.mocked(source.play).mockClear();
+    vi.mocked(recording.play).mockClear();
+
+    const ok = await controller.playSyncRecordingRange(5, 5.3);
+    expect(ok).toBe(true);
+    expect(recording.currentTime).toBe(5);
+    expect(recording.play).toHaveBeenCalled();
+    expect(controller.getState().syncSegmentIndex).toBe(0);
+  });
+
+  it('playSyncRecordingRange plays words in the last-segment recording tail', async () => {
+    Object.defineProperty(recording, 'duration', { value: 10, configurable: true });
+    const ok = await controller.playSyncRecordingRange(9.2, 9.6);
+    expect(ok).toBe(true);
+    expect(recording.currentTime).toBe(9.2);
+    expect(recording.play).toHaveBeenCalled();
+    expect(controller.getState().syncSegmentIndex).toBe(1);
+  });
+
   it('playSyncRecordingRange maps recording span and soft-pauses in sync mode', async () => {
+    controller.setSegments(segments);
     const ok = await controller.playSyncRecordingRange(0.12, 0.45);
     expect(ok).toBe(true);
     expect(controller.getState()).toEqual({ mode: 'sync', syncSegmentIndex: 0, paused: false });
@@ -380,10 +418,11 @@ describe('DualTrackPlayback', () => {
     recording.currentTime = 1;
     recording.dispatchEvent(new Event('timeupdate'));
     expect(controller.getState().mode).toBe('sync');
-    expect(recording.pause).toHaveBeenCalled();
+    expect(recording.pause).not.toHaveBeenCalled();
     expect(source.pause).not.toHaveBeenCalled();
 
     source.currentTime = 2;
+    recording.currentTime = 2;
     source.dispatchEvent(new Event('timeupdate'));
     expect(controller.getState()).toEqual({ mode: 'sync', syncSegmentIndex: 0, paused: true });
   });
@@ -530,6 +569,7 @@ describe('DualTrackPlayback', () => {
 
   it('pauses when recording ends in recording mode while keeping mode', async () => {
     await controller.playRecording();
+    recording.currentTime = segments[1].recordingEndTime;
     recording.dispatchEvent(new Event('ended'));
     expect(controller.getState()).toEqual({
       mode: 'recording',
@@ -551,6 +591,7 @@ describe('DualTrackPlayback', () => {
 
   it('resume after natural end restarts from the mode start', async () => {
     await controller.playRecording();
+    recording.currentTime = segments[1].recordingEndTime;
     recording.dispatchEvent(new Event('ended'));
     vi.mocked(recording.play).mockClear();
 
@@ -735,6 +776,31 @@ describe('DualTrackPlayback', () => {
 
   // --- Bug-fix tests: recording end boundary extended to audio.duration ---
 
+  it('extends recording end boundary on resume when duration loads after selectPaused', async () => {
+    Object.defineProperty(recording, 'duration', {
+      configurable: true,
+      get: () => NaN,
+    });
+    controller.selectPaused('recording');
+    expect(controller.getState()).toEqual({
+      mode: 'recording',
+      syncSegmentIndex: 0,
+      paused: true,
+    });
+
+    Object.defineProperty(recording, 'duration', { configurable: true, value: 10 });
+    recording.dispatchEvent(new Event('loadedmetadata'));
+
+    await controller.resume();
+    recording.currentTime = 9;
+    recording.dispatchEvent(new Event('timeupdate'));
+    expect(controller.getState().paused).toBe(false);
+
+    recording.currentTime = 10;
+    recording.dispatchEvent(new Event('timeupdate'));
+    expect(controller.getState().paused).toBe(true);
+  });
+
   it('recording mode plays to audio duration when it exceeds last segment end', async () => {
     Object.defineProperty(recording, 'duration', { configurable: true, value: 10 });
     await controller.playRecording();
@@ -792,6 +858,41 @@ describe('DualTrackPlayback', () => {
       syncSegmentIndex: 0,
       paused: true,
     });
+  });
+
+  it('sync middle segment plays inter-segment tail before advancing', async () => {
+    const gapped: PracticeSegment[] = [
+      {
+        id: 'm0',
+        sourceStartTime: 0,
+        sourceEndTime: 2,
+        recordingStartTime: 0,
+        recordingEndTime: 1.7,
+      },
+      {
+        id: 'm1',
+        sourceStartTime: 2,
+        sourceEndTime: 4,
+        recordingStartTime: 2.2,
+        recordingEndTime: 4,
+      },
+    ];
+    controller.setSegments(gapped);
+    await controller.playSyncFromSegment(0);
+    Object.defineProperty(source, 'paused', { configurable: true, value: false });
+    Object.defineProperty(recording, 'paused', { configurable: true, value: false });
+    vi.mocked(source.pause).mockClear();
+    vi.mocked(recording.pause).mockClear();
+
+    source.currentTime = 2;
+    recording.currentTime = 1.7;
+    source.dispatchEvent(new Event('timeupdate'));
+    expect(recording.pause).not.toHaveBeenCalled();
+    expect(controller.getState().syncSegmentIndex).toBe(0);
+
+    recording.currentTime = 2.15;
+    source.dispatchEvent(new Event('timeupdate'));
+    expect(controller.getState()).toEqual({ mode: 'sync', syncSegmentIndex: 1, paused: false });
   });
 
   it('continuous mode uses audio duration for recording end when it exceeds last segment', async () => {

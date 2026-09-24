@@ -1,5 +1,9 @@
 import type { PracticeSegment } from '../types/models.js';
-import { findPracticeSegmentIndex, type PracticeTimeAxis } from './playback-utils.js';
+import {
+  findPracticeSegmentIndex,
+  getPracticeSegmentViewRange,
+  type PracticeTimeAxis,
+} from './playback-utils.js';
 import { throttle } from './util.js';
 
 export type DualTrackMode = 'idle' | 'source' | 'recording' | 'sync' | 'continuous';
@@ -51,6 +55,7 @@ export class DualTrackPlayback {
     recordingAudio.addEventListener('ended', this._handleRecordingEnded);
     sourceAudio.addEventListener('timeupdate', this._handleSourceTimeUpdate);
     recordingAudio.addEventListener('timeupdate', this._handleRecordingTimeUpdate);
+    recordingAudio.addEventListener('loadedmetadata', this._handleRecordingMetadata);
     document.addEventListener('visibilitychange', this._handleVisibilityChange);
   }
 
@@ -96,6 +101,7 @@ export class DualTrackPlayback {
   /** Enter or continue recording mode from an absolute recording timeline time. */
   async playRecordingAt(time: number): Promise<void> {
     this._enterRecordingAt(time, true);
+    this._refreshFullRecordingEndBoundary();
     await this.recordingAudio.play();
   }
 
@@ -198,7 +204,10 @@ export class DualTrackPlayback {
    * Returns false when the time cannot be mapped to a practice segment.
    */
   async playSyncAt(time: number, axis: PracticeTimeAxis): Promise<boolean> {
-    const segmentIndex = findPracticeSegmentIndex(this.segments, time, axis);
+    const segmentIndex =
+      axis === 'recording'
+        ? this._resolveSyncRecordingSegmentIndex(time)
+        : findPracticeSegmentIndex(this.segments, time, axis);
     if (segmentIndex < 0) {
       return false;
     }
@@ -212,10 +221,9 @@ export class DualTrackPlayback {
       const elapsed = sourceTime - segment.sourceStartTime;
       recordingTime = Math.min(segment.recordingStartTime + elapsed, segment.recordingEndTime);
     } else {
-      recordingTime = Math.max(
-        segment.recordingStartTime,
-        Math.min(time, segment.recordingEndTime),
-      );
+      const recMin = this._syncRecordingPlayableStart(segmentIndex);
+      const recMax = this._syncRecordingPlayableEnd(segmentIndex);
+      recordingTime = Math.max(recMin, Math.min(time, recMax));
       const elapsed = recordingTime - segment.recordingStartTime;
       sourceTime = Math.min(segment.sourceStartTime + elapsed, segment.sourceEndTime);
     }
@@ -236,32 +244,17 @@ export class DualTrackPlayback {
       return this.playSyncAt(recStart, 'recording');
     }
 
-    const segmentIndex = findPracticeSegmentIndex(this.segments, recStart, 'recording');
-    if (segmentIndex < 0) {
+    const span = this._resolveSyncRecordingWordSpan(recStart, recEnd);
+    if (!span) {
       return false;
     }
 
-    const segment = this.segments[segmentIndex]!;
-    const recordingStart = Math.max(
-      segment.recordingStartTime,
-      Math.min(recStart, segment.recordingEndTime),
-    );
-    const recordingEnd = Math.max(recordingStart, Math.min(recEnd, segment.recordingEndTime));
-    const sourceStart = Math.min(
-      segment.sourceStartTime + (recordingStart - segment.recordingStartTime),
-      segment.sourceEndTime,
-    );
-    const sourceEnd = Math.min(
-      segment.sourceStartTime + (recordingEnd - segment.recordingStartTime),
-      segment.sourceEndTime,
-    );
-
     await this._playSyncClipAtTimes(
-      segmentIndex,
-      sourceStart,
-      recordingStart,
-      sourceEnd,
-      recordingEnd,
+      span.segmentIndex,
+      span.sourceStart,
+      span.recordingStart,
+      span.sourceEnd,
+      span.recordingEnd,
     );
     return true;
   }
@@ -427,6 +420,7 @@ export class DualTrackPlayback {
       return;
     }
     if (this.mode === 'recording') {
+      this._refreshFullRecordingEndBoundary();
       await this.recordingAudio.play();
       return;
     }
@@ -454,10 +448,7 @@ export class DualTrackPlayback {
     if (this.sourceAudio.currentTime < segment.sourceEndTime - SYNC_END_EPSILON) {
       await this.sourceAudio.play();
     }
-    const isLastSegment = this._syncSegmentIndex === this.segments.length - 1;
-    const effectiveRecEnd = isLastSegment
-      ? this._effectiveLastRecordingEnd(segment.recordingEndTime)
-      : segment.recordingEndTime;
+    const effectiveRecEnd = this._syncSegmentRecordingEnd(this._syncSegmentIndex, segment);
     if (this.recordingAudio.currentTime < effectiveRecEnd - SYNC_END_EPSILON) {
       await this.recordingAudio.play();
     }
@@ -597,8 +588,13 @@ export class DualTrackPlayback {
     this.recordingAudio.removeEventListener('ended', this._handleRecordingEnded);
     this.sourceAudio.removeEventListener('timeupdate', this._handleSourceTimeUpdate);
     this.recordingAudio.removeEventListener('timeupdate', this._handleRecordingTimeUpdate);
+    this.recordingAudio.removeEventListener('loadedmetadata', this._handleRecordingMetadata);
     document.removeEventListener('visibilitychange', this._handleVisibilityChange);
   }
+
+  private _handleRecordingMetadata = (): void => {
+    this._refreshFullRecordingEndBoundary();
+  };
 
   private _handleSourceEnded = (): void => {
     if (this.mode === 'source') {
@@ -612,6 +608,14 @@ export class DualTrackPlayback {
 
   private _handleRecordingEnded = (): void => {
     if (this.mode === 'recording') {
+      this._refreshFullRecordingEndBoundary();
+      if (
+        this._recordingEndTime !== null &&
+        this.recordingAudio.currentTime < this._recordingEndTime - SYNC_END_EPSILON &&
+        this.recordingAudio.currentTime > SYNC_END_EPSILON
+      ) {
+        return;
+      }
       this._pauseAtEnd();
       return;
     }
@@ -745,11 +749,8 @@ export class DualTrackPlayback {
     this.recordingAudio.currentTime = recordingTime;
     this._emitState();
 
-    const isLastSegment = index === this.segments.length - 1;
     const sourceRemaining = segment.sourceEndTime - sourceTime > SYNC_END_EPSILON;
-    const effectiveRecEnd = isLastSegment
-      ? this._effectiveLastRecordingEnd(segment.recordingEndTime)
-      : segment.recordingEndTime;
+    const effectiveRecEnd = this._syncSegmentRecordingEnd(index, segment);
     const recordingRemaining = effectiveRecEnd - recordingTime > SYNC_END_EPSILON;
     if (sourceRemaining) {
       await this.sourceAudio.play();
@@ -806,6 +807,8 @@ export class DualTrackPlayback {
       return;
     }
 
+    this._refreshFullRecordingEndBoundary();
+
     if (this.recordingAudio.currentTime >= this._recordingEndTime - SYNC_END_EPSILON) {
       if (this._clipBoundary) {
         this._pauseAtClipEnd();
@@ -853,12 +856,9 @@ export class DualTrackPlayback {
 
     const segment = this._syncSegment;
     const index = this._syncSegmentIndex;
-    const isLastSegment = index === this.segments.length - 1;
 
     const sourceAtEnd = sourceTime >= segment.sourceEndTime - SYNC_END_EPSILON;
-    const effectiveRecEnd = isLastSegment
-      ? this._effectiveLastRecordingEnd(segment.recordingEndTime)
-      : segment.recordingEndTime;
+    const effectiveRecEnd = this._syncSegmentRecordingEnd(index, segment);
     const recordingAtEnd = recordingTime >= effectiveRecEnd - SYNC_END_EPSILON;
 
     if (sourceAtEnd && !this.sourceAudio.paused) {
@@ -892,7 +892,8 @@ export class DualTrackPlayback {
     if (sourceTime >= segment.sourceEndTime - SYNC_END_EPSILON) {
       return;
     }
-    if (recordingTime >= segment.recordingEndTime - SYNC_END_EPSILON) {
+    const effectiveRecEnd = this._syncSegmentRecordingEnd(this._syncSegmentIndex, segment);
+    if (recordingTime >= effectiveRecEnd - SYNC_END_EPSILON) {
       return;
     }
 
@@ -996,6 +997,157 @@ export class DualTrackPlayback {
   private _effectiveLastRecordingEnd(segmentEnd: number): number {
     const dur = this.recordingAudio.duration;
     return Number.isFinite(dur) && dur > segmentEnd ? dur : segmentEnd;
+  }
+
+  /** Recording-axis segment for sync word seek, including last-segment tail padding. */
+  private _resolveSyncRecordingSegmentIndex(time: number): number {
+    let index = findPracticeSegmentIndex(this.segments, time, 'recording');
+    if (index >= 0) {
+      return index;
+    }
+    const lastIdx = this.segments.length - 1;
+    const last = this.segments[lastIdx];
+    if (!last) {
+      return -1;
+    }
+    const tailEnd = this._syncSegmentRecordingEnd(lastIdx, last);
+    if (time >= last.recordingStartTime && time <= tailEnd) {
+      return lastIdx;
+    }
+    return -1;
+  }
+
+  private _syncRecordingPlayableStart(segmentIndex: number): number {
+    const segment = this.segments[segmentIndex];
+    if (!segment) {
+      return 0;
+    }
+    const viewRange = getPracticeSegmentViewRange(this.segments, segmentIndex, 'recording');
+    return viewRange?.start ?? segment.recordingStartTime;
+  }
+
+  private _syncRecordingPlayableEnd(segmentIndex: number): number {
+    const segment = this.segments[segmentIndex];
+    if (!segment) {
+      return 0;
+    }
+    const viewRange = getPracticeSegmentViewRange(this.segments, segmentIndex, 'recording');
+    let end = Math.max(
+      viewRange?.end ?? segment.recordingEndTime,
+      this._syncSegmentRecordingEnd(segmentIndex, segment),
+    );
+    const dur = this.recordingAudio.duration;
+    if (Number.isFinite(dur)) {
+      end = Math.min(end, dur);
+    }
+    return end;
+  }
+
+  private _mapSyncRecordingSpanToSource(
+    segmentIndex: number,
+    recordingStart: number,
+    recordingEnd: number,
+  ): {
+    segmentIndex: number;
+    recordingStart: number;
+    recordingEnd: number;
+    sourceStart: number;
+    sourceEnd: number;
+  } {
+    const segment = this.segments[segmentIndex]!;
+    const sourceStart = Math.min(
+      segment.sourceStartTime + (recordingStart - segment.recordingStartTime),
+      segment.sourceEndTime,
+    );
+    const sourceEnd = Math.min(
+      segment.sourceStartTime + (recordingEnd - segment.recordingStartTime),
+      segment.sourceEndTime,
+    );
+    return { segmentIndex, recordingStart, recordingEnd, sourceStart, sourceEnd };
+  }
+
+  private _resolveSyncRecordingWordSpan(
+    recStart: number,
+    recEnd: number,
+  ): {
+    segmentIndex: number;
+    recordingStart: number;
+    recordingEnd: number;
+    sourceStart: number;
+    sourceEnd: number;
+  } | null {
+    let segmentIndex = this._resolveSyncRecordingSegmentIndex(recStart);
+    if (segmentIndex < 0) {
+      segmentIndex = this._resolveSyncRecordingSegmentIndex((recStart + recEnd) / 2);
+    }
+    if (segmentIndex < 0) {
+      return null;
+    }
+
+    const recMin = this._syncRecordingPlayableStart(segmentIndex);
+    const recMax = this._syncRecordingPlayableEnd(segmentIndex);
+    if (recEnd < recMin || recStart > recMax) {
+      return null;
+    }
+
+    let recordingStart = Math.max(recMin, recStart);
+    let recordingEnd = Math.min(recMax, recEnd);
+    if (recordingEnd - recordingStart <= SYNC_END_EPSILON) {
+      return null;
+    }
+
+    return this._mapSyncRecordingSpanToSource(segmentIndex, recordingStart, recordingEnd);
+  }
+
+  /**
+   * Sync sentence end on the recording axis: at least stored metadata and wall-clock
+   * span matching the source window, capped before the next segment and blob duration.
+   * When metadata ends before the next segment starts, include inter-segment tail audio.
+   */
+  private _syncSegmentRecordingEnd(index: number, segment: PracticeSegment): number {
+    const sourceSpan = segment.sourceEndTime - segment.sourceStartTime;
+    const wallClockEnd = segment.recordingStartTime + sourceSpan;
+
+    const dur = this.recordingAudio.duration;
+    let ceiling = Number.isFinite(dur) ? dur : Infinity;
+
+    const next = this.segments[index + 1];
+    if (next) {
+      ceiling = Math.min(ceiling, next.recordingStartTime - SYNC_END_EPSILON);
+    }
+
+    let end = Math.max(segment.recordingEndTime, wallClockEnd);
+
+    if (next && next.recordingStartTime > segment.recordingEndTime + SYNC_END_EPSILON) {
+      end = Math.max(end, Math.min(next.recordingStartTime - SYNC_END_EPSILON, ceiling));
+    }
+
+    end = Math.min(end, ceiling);
+
+    if (index === this.segments.length - 1) {
+      end = Math.max(end, this._effectiveLastRecordingEnd(segment.recordingEndTime));
+      if (Number.isFinite(dur)) {
+        end = Math.min(end, dur);
+      }
+    }
+
+    return end;
+  }
+
+  /** Re-read blob duration after metadata loads (preview arms paused before duration is known). */
+  private _refreshFullRecordingEndBoundary(): void {
+    if (this._clipBoundary || this.segments.length === 0) {
+      return;
+    }
+    if (this.mode !== 'recording' && this.mode !== 'continuous') {
+      return;
+    }
+    const last = this.segments[this.segments.length - 1]!;
+    const effective = this._effectiveLastRecordingEnd(last.recordingEndTime);
+    if (this._recordingEndTime === null || effective <= this._recordingEndTime) {
+      return;
+    }
+    this._recordingEndTime = effective;
   }
 
   private _isSourceAtEnd(): boolean {

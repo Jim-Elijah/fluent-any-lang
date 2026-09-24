@@ -2,11 +2,15 @@ import { getMediaSourceWordAlignment } from '../../db/media-source-word-alignmen
 import { getSourceWordAlignment } from '../../db/source-word-alignment.js';
 import type { PracticeSegment, SubtitleTrack } from '../../types/models.js';
 import type { WordTiming } from '../../types/models.js';
-import { projectWordsToSourceRange } from './project-words.js';
+import { wordsAssignedToSegmentIndex } from './project-words.js';
 
 export type ResolveSegmentSourceWordsInput = {
   mediaId: string;
   segment: Pick<PracticeSegment, 'id' | 'sourceStartTime' | 'sourceEndTime'>;
+  /** All segments on the source axis (for exclusive assignment from Media canonical words). */
+  allSegments?: ReadonlyArray<
+    Pick<PracticeSegment, 'id' | 'sourceStartTime' | 'sourceEndTime'>
+  >;
   subtitleTrack?: Pick<SubtitleTrack, 'contentHash'>;
 };
 
@@ -31,9 +35,12 @@ export async function resolveSegmentSourceWords(
     return [];
   }
 
-  return projectWordsToSourceRange(
-    mediaRow.words,
-    input.segment.sourceStartTime,
-    input.segment.sourceEndTime,
-  );
+  const segmentsForBounds = input.allSegments ?? [input.segment];
+  const bounds = segmentsForBounds.map((entry) => ({
+    start: entry.sourceStartTime,
+    end: entry.sourceEndTime,
+  }));
+  const segmentIndex = segmentsForBounds.findIndex((entry) => entry.id === input.segment.id);
+  const index = segmentIndex >= 0 ? segmentIndex : 0;
+  return wordsAssignedToSegmentIndex(mediaRow.words, bounds, index);
 }

@@ -16,7 +16,7 @@ import { getSubtitle } from '../../db/subtitle.js';
 import { getAppSettings, setAppSettings } from '../../lib/app-settings.js';
 import {
   ExtendedMediaEventType,
-  getSubtitleSegmentViewRange,
+  getSubtitleSegmentSpeechRange,
   subtitleSegmentsToAlignTargets,
 } from '../../lib/playback-utils.js';
 import {
@@ -307,7 +307,7 @@ export class SpeakingSourceAlignToolbar extends LitElement {
       this.requestUpdate();
       return;
     }
-    const viewRange = getSubtitleSegmentViewRange(segments, currentSegmentIndex);
+    const viewRange = getSubtitleSegmentSpeechRange(segments, currentSegmentIndex);
     this._waveformController.setViewRange(viewRange);
     await this._loadAlignWordsForSegment(currentSegmentIndex);
     this.requestUpdate();
@@ -329,9 +329,11 @@ export class SpeakingSourceAlignToolbar extends LitElement {
     }
     try {
       const subtitleTrack = await getSubtitle(this.mediaId);
+      const alignSegments = subtitleSegmentsToAlignTargets(segments);
       const words = await resolveSegmentSourceWords({
         mediaId: this.mediaId,
         segment: alignSegment,
+        allSegments: alignSegments,
         subtitleTrack,
       });
       if (words.length > 0) {
@@ -516,6 +518,7 @@ export class SpeakingSourceAlignToolbar extends LitElement {
             const words = await resolveSegmentSourceWords({
               mediaId: this.mediaId,
               segment,
+              allSegments: alignSegments,
               subtitleTrack,
             });
             if (words.length > 0) {

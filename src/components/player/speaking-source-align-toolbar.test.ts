@@ -251,6 +251,42 @@ describe('speaking-source-align-toolbar', () => {
     expect(playSpy).not.toHaveBeenCalled();
   });
 
+  it('lays out word markers on the segment speech window when the next subtitle has a gap', async () => {
+    mockDecodeAudioData.mockResolvedValue(makeDecodedBuffer(12));
+    controller.segments = [
+      { id: 's0', startTime: 0, endTime: 2, text: 'one' },
+      { id: 's1', startTime: 5, endTime: 7, text: 'two' },
+    ];
+    vi.mocked(resolveSegmentSourceWords).mockResolvedValue([
+      { word: 'hello', start: 0.2, end: 0.8 },
+    ]);
+    const mounted = mount(
+      html`<speaking-source-align-toolbar
+        .controller=${controller}
+        mediaId="m1"
+      ></speaking-source-align-toolbar>`,
+    );
+    cleanup = mounted.cleanup;
+    const el = mounted.container.querySelector(
+      'speaking-source-align-toolbar',
+    ) as SpeakingSourceAlignToolbar;
+    await el.updateComplete;
+    await vi.waitFor(async () => {
+      await el.updateComplete;
+      expect(mockWordClipPrepare).toHaveBeenCalled();
+    });
+
+    railToggleButton(el)?.click();
+    await el.updateComplete;
+    await vi.waitFor(async () => {
+      await el.updateComplete;
+      expect(el.shadowRoot?.querySelector('.word-marker')).toBeTruthy();
+    });
+
+    const marker = el.shadowRoot?.querySelector('.word-marker') as HTMLElement;
+    expect(parseFloat(marker.style.width)).toBeCloseTo(30, 5);
+  });
+
   it('narrows word marker widths when the waveform view resets to the full track', async () => {
     mockDecodeAudioData.mockResolvedValue(makeDecodedBuffer(5));
     vi.mocked(resolveSegmentSourceWords).mockResolvedValue([

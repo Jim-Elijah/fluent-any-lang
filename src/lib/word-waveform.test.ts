@@ -32,15 +32,15 @@ const foo: PronunciationWordScore = { word: 'foo', start: 5, end: 5.4, score: 40
 const gapWord: PronunciationWordScore = { word: 'uh', start: 9.2, end: 9.4, score: 50 };
 
 describe('wordsInPracticeSegment', () => {
-  it('keeps words whose midpoint falls in the Practice Segment recording window', () => {
+  it('keeps words that overlap the Practice Segment recording window', () => {
     expect(wordsInPracticeSegment([hello, world, foo], segments, 0)).toEqual([hello, world]);
     expect(wordsInPracticeSegment([hello, world, foo], segments, 1)).toEqual([foo]);
   });
 
-  it('assigns a word on the shared recording boundary to the later Practice Segment', () => {
+  it('assigns a word on the shared recording boundary to one segment only', () => {
     const onBoundary: PronunciationWordScore = { word: 'join', start: 4.4, end: 4.6, score: 80 };
-    expect(wordsInPracticeSegment([onBoundary], segments, 0)).toEqual([]);
-    expect(wordsInPracticeSegment([onBoundary], segments, 1)).toEqual([onBoundary]);
+    expect(wordsInPracticeSegment([onBoundary], segments, 0)).toEqual([onBoundary]);
+    expect(wordsInPracticeSegment([onBoundary], segments, 1)).toEqual([]);
   });
 
   it('returns no words for an out-of-range Practice Segment index', () => {

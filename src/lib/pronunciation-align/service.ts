@@ -21,6 +21,7 @@ import type {
   SubtitleTrack,
   WordTiming,
 } from '../../types/models.js';
+import { subtitleSegmentsToAlignTargets } from '../playback-utils.js';
 import { normalizeNewlines } from '../pronunciation-score/normalize.js';
 import { canAlignWholeMedia } from './can-align-whole-media.js';
 import { PronunciationAlignHttpError, alignPronunciation } from './client.js';
@@ -32,7 +33,7 @@ import {
   isSpeechAlignConfigured,
 } from './constants.js';
 import { buildSubtitleTrackReferenceText } from './reference-text.js';
-import { projectWordsToSourceRange } from './project-words.js';
+import { wordsAssignedToSegmentIndex } from './project-words.js';
 import { isMediaSourceWordAlignmentCurrent } from './media-alignment-current.js';
 import { resolveSegmentSourceWords } from './resolve-segment-words.js';
 import {
@@ -159,6 +160,7 @@ function wholeMediaAlignFailureMessage(input: {
 async function cachedSegmentAlignment(input: {
   mediaId: string;
   segment: PracticeSegment;
+  allSegments?: PracticeSegment[];
   subtitleTrack?: SubtitleTrack;
   subtitleById: Map<string, string>;
 }): Promise<StoredSourceWordAlignment | null> {
@@ -170,6 +172,7 @@ async function cachedSegmentAlignment(input: {
   const words = await resolveSegmentSourceWords({
     mediaId: input.mediaId,
     segment: input.segment,
+    allSegments: input.allSegments,
     subtitleTrack: input.subtitleTrack,
   });
   if (words.length === 0) {
@@ -204,7 +207,12 @@ async function materializeBatchSegmentRows(input: {
   subtitleById: Map<string, string>;
   overwriteExisting?: boolean;
 }): Promise<void> {
-  for (const segment of input.segments) {
+  const bounds = input.segments.map((segment) => ({
+    start: segment.sourceStartTime,
+    end: segment.sourceEndTime,
+  }));
+  for (let segmentIndex = 0; segmentIndex < input.segments.length; segmentIndex++) {
+    const segment = input.segments[segmentIndex];
     const existing = await getSourceWordAlignment(input.mediaId, segment.id);
     if (existing && !input.overwriteExisting) {
       continue;
@@ -213,11 +221,7 @@ async function materializeBatchSegmentRows(input: {
     if (!referenceText) {
       continue;
     }
-    const words = projectWordsToSourceRange(
-      input.mediaWords,
-      segment.sourceStartTime,
-      segment.sourceEndTime,
-    );
+    const words = wordsAssignedToSegmentIndex(input.mediaWords, bounds, segmentIndex);
     if (words.length === 0) {
       continue;
     }
@@ -330,9 +334,13 @@ export async function alignPracticeSegment(input: {
   const subtitleTrack = await getSubtitle(input.mediaId);
 
   if (skipIfCached) {
+    const allSegments = input.subtitleSegments
+      ? subtitleSegmentsToAlignTargets(input.subtitleSegments)
+      : undefined;
     const cached = await cachedSegmentAlignment({
       mediaId: input.mediaId,
       segment: input.segment,
+      allSegments,
       subtitleTrack,
       subtitleById: byId,
     });

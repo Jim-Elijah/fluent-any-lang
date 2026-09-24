@@ -22,7 +22,13 @@ export {
   type SubtitleAlignWindow,
 } from './subtitle-align-window.js';
 export { buildSubtitleTrackReferenceText, buildSubtitleSegmentsReferenceText } from './reference-text.js';
-export { projectWordsToSourceRange } from './project-words.js';
+export {
+  assignTimedWordToSegmentIndex,
+  projectWordsToSourceRange,
+  wordsAssignedToSegmentIndex,
+  wordOverlapsTimeRange,
+} from './project-words.js';
+export type { SegmentTimeBounds } from './project-words.js';
 export { resolveSegmentSourceWords } from './resolve-segment-words.js';
 export {
   hasCurrentMediaSourceWordAlignment,

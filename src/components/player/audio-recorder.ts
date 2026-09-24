@@ -624,11 +624,22 @@ export class AudioRecorder extends LitElement {
       this._openSegment = null;
     }
 
+    const recordingStartTime = Math.max(
+      this._getRecordingElapsedSeconds(),
+      this._nextOpenStartFloor,
+    );
+    if (this._practiceSegments.length > 0) {
+      this._extendClosedSegmentRecordingTail(
+        this._practiceSegments[this._practiceSegments.length - 1]!,
+        recordingStartTime,
+      );
+    }
+
     this._openSegment = {
       id: segment.id,
       sourceStartTime: segment.startTime,
       sourceEndTime: segment.endTime,
-      recordingStartTime: Math.max(this._getRecordingElapsedSeconds(), this._nextOpenStartFloor),
+      recordingStartTime,
       ...practiceScriptFromSubtitle(segment),
     };
   }
@@ -675,6 +686,19 @@ export class AudioRecorder extends LitElement {
       ...open,
       recordingEndTime: end,
     });
+  }
+
+  /** Pad closed segment toward the next cue without overlapping its recording window. */
+  private _extendClosedSegmentRecordingTail(
+    closed: PracticeSegment,
+    nextRecordingStart: number,
+  ): void {
+    const tailCap = closed.recordingEndTime + RECORDING_TAIL_PAD_MS / 1000 + 0.05;
+    const beforeNext = nextRecordingStart - 0.001;
+    if (beforeNext <= closed.recordingEndTime) {
+      return;
+    }
+    closed.recordingEndTime = Math.min(tailCap, beforeNext);
   }
 
   private _ensureOpenSegmentFromController(): void {

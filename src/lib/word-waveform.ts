@@ -1,5 +1,8 @@
-import { findPracticeSegmentIndex, type PracticeTimeAxis } from './playback-utils.js';
-import { projectWordsToSourceRange } from './pronunciation-align/project-words.js';
+import type { PracticeTimeAxis } from './playback-utils.js';
+import {
+  assignTimedWordToSegmentIndex,
+  type SegmentTimeBounds,
+} from './pronunciation-align/project-words.js';
 import type {
   PracticeSegment,
   SubtitleSegment,
@@ -24,7 +27,17 @@ export type WordWaveformMarker = TimedWord & {
   widthPct: number;
 };
 
-/** Words whose midpoint falls on this Practice Segment's chosen axis. */
+function practiceSegmentBounds(
+  segments: PracticeSegment[],
+  axis: PracticeTimeAxis,
+): SegmentTimeBounds[] {
+  return segments.map((segment) => ({
+    start: axis === 'source' ? segment.sourceStartTime : segment.recordingStartTime,
+    end: axis === 'source' ? segment.sourceEndTime : segment.recordingEndTime,
+  }));
+}
+
+/** Words assigned to this Practice Segment on the chosen axis (exclusive). */
 export function wordsInPracticeSegment(
   words: TimedWord[],
   segments: PracticeSegment[],
@@ -34,10 +47,10 @@ export function wordsInPracticeSegment(
   if (segmentIndex < 0 || segmentIndex >= segments.length) {
     return [];
   }
-  return words.filter((word) => {
-    const midpoint = (word.start + word.end) / 2;
-    return findPracticeSegmentIndex(segments, midpoint, axis) === segmentIndex;
-  });
+  const bounds = practiceSegmentBounds(segments, axis);
+  return words.filter(
+    (word) => assignTimedWordToSegmentIndex(word, bounds) === segmentIndex,
+  );
 }
 
 /** Place timed words onto a view range. Omits words fully outside. */
@@ -158,13 +171,8 @@ export function wordMarkersForSourceSubtitle(input: {
   if (!segment) {
     return [];
   }
-  const words = projectWordsToSourceRange(
-    input.words,
-    segment.startTime,
-    segment.endTime,
-  );
   const viewRange =
     input.sourceViewRange ??
     ({ start: segment.startTime, end: segment.endTime } satisfies TimeRange);
-  return layoutWordMarkers(words, viewRange, input.layout ?? 'duration');
+  return layoutWordMarkers(input.words, viewRange, input.layout ?? 'duration');
 }
