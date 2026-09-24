@@ -1276,7 +1276,7 @@ export class RecordingPreview extends LitElement {
       return msg('评分会将录音上传到你配置的服务器以计算分数。服务端不保存音频。是否继续？');
     }
     return msg(
-      '生成原音词条会将原声片段上传到你配置的服务器以获取词级时间戳。服务端不保存音频。是否继续？',
+      '生成原音词条会将原音片段上传到你配置的服务器，以便在波形上标出每个词。服务端不保存音频。是否继续？',
     );
   }
 
@@ -1303,7 +1303,7 @@ export class RecordingPreview extends LitElement {
         <source-segment-align-button
           .hasCache=${hasSegmentCache}
           ?disabled=${busy}
-          tooltipPlacement="right"
+          tooltipPlacement="top"
           @align-segment=${this._onAlignSegmentRequest}
         ></source-segment-align-button>
         ${showAlignAll
@@ -1313,7 +1313,7 @@ export class RecordingPreview extends LitElement {
                 .blockedTip=${this._alignMediaBlockedTip}
                 .blocked=${alignAllBlocked}
                 ?disabled=${busy}
-                tooltipPlacement="right"
+                tooltipPlacement="top"
                 @align-all=${this._onAlignAllRequest}
               ></source-word-align-all-button>
             `
@@ -1390,7 +1390,7 @@ export class RecordingPreview extends LitElement {
       return;
     }
     if (!isSpeechAlignConfigured(getAppSettings())) {
-      Message.warning(msg('请先在设置中填写对齐接口地址和 API Key'));
+      Message.warning(msg('请先在设置中填写原音词条接口地址和 API Key'));
       return;
     }
     if (!hasSpeechScorePrivacyAck()) {
@@ -1407,7 +1407,7 @@ export class RecordingPreview extends LitElement {
       return;
     }
     if (!isSpeechAlignConfigured(getAppSettings())) {
-      Message.warning(msg('请先在设置中填写对齐接口地址和 API Key'));
+      Message.warning(msg('请先在设置中填写原音词条接口地址和 API Key'));
       return;
     }
     if (!hasSpeechScorePrivacyAck()) {

@@ -23,6 +23,6 @@ export function sourceWordAlignTooltip(scope: SourceWordAlignScope, hasCache: bo
       : msg('为当前句生成原音词条');
   }
   return hasCache
-    ? msg('重新为全部句子生成原音词条（整段原音重新对齐）')
-    : msg('为全部句子生成原音词条（整段原音一次对齐，已有则跳过）');
+    ? msg('重新为全部句子生成原音词条（整段原音会重新上传）')
+    : msg('为全部句子生成原音词条（整段原音上传一次，已有则跳过）');
 }

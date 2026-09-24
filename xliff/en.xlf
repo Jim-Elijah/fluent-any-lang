@@ -2323,10 +2323,6 @@
   <source>自动检测</source>
   <target>Auto-detect</target>
 </trans-unit>
-<trans-unit id="sd6785bee17b842a7">
-  <source>发音评分</source>
-  <target>Pronunciation scoring</target>
-</trans-unit>
 <trans-unit id="sd409c11833f6b38f">
   <source>评分接口地址</source>
   <target>Scoring API URL</target>
@@ -2479,10 +2475,6 @@
   <source>评分会将录音上传到你配置的服务器以计算分数。服务端不保存音频。是否继续？</source>
   <target>Scoring uploads your recording to the server you configured to compute a score. The server does not keep audio. Continue?</target>
 </trans-unit>
-<trans-unit id="se4067cfc3b0b5cf8">
-  <source>只根据你的录音评语速、节奏是否自然。Echo 与 Shadowing 都只上传录音，不上传原声，更省流量。</source>
-  <target>Scores how natural your recording sounds (pace, rhythm). Echo and Shadowing both upload only your recording—not the reference—so it uses less data.</target>
-</trans-unit>
 <trans-unit id="sd2d05af28ba50819">
   <source>网络不可用或评分服务未运行，请检查连接后重试</source>
   <target>Network unavailable or scoring service is not running. Check the connection and try again.</target>
@@ -2595,66 +2587,6 @@
 <trans-unit id="sd06ce7085f313af5">
   <source>紧凑</source>
 </trans-unit>
-<trans-unit id="sddb73706dc3a8bcc">
-  <source>按需将口语录音或原声片段发送到评分/对齐服务，结果保存在本设备。</source>
-</trans-unit>
-<trans-unit id="s6896f627bd4d8628">
-  <source>对齐接口地址</source>
-</trans-unit>
-<trans-unit id="s69eeb4c242f535a1">
-  <source>用于原声词级时间戳（波形词条）。与评分共用 API Key；填写评分地址时可自动预填。</source>
-</trans-unit>
-<trans-unit id="s601e91defb681c04">
-  <source>对齐已取消</source>
-</trans-unit>
-<trans-unit id="s669532ff97d8896e">
-  <source>网络不可用或对齐服务未运行，请检查连接后重试</source>
-</trans-unit>
-<trans-unit id="sc2d30ba7a45bc319">
-  <source>音频过大或过长，无法对齐</source>
-</trans-unit>
-<trans-unit id="sf376b78688ffbea9">
-  <source>无法对齐词级时间戳，请确认原文与音频后重试</source>
-</trans-unit>
-<trans-unit id="s72fc25d0c8006d57">
-  <source>对齐次数已达上限，请稍后再试</source>
-</trans-unit>
-<trans-unit id="s2c572cd562b8bc73">
-  <source>对齐服务未就绪，请稍后再试</source>
-</trans-unit>
-<trans-unit id="sfb577f65260d5e6f">
-  <source>对齐失败（<x id="0" equiv-text="${status}"/>）</source>
-</trans-unit>
-<trans-unit id="s95cc61da2ceacf84">
-  <source>原声片段超过 <x id="0" equiv-text="${ALIGN_MAX_DURATION_SEC}"/> 秒，无法对齐</source>
-</trans-unit>
-<trans-unit id="s4b1fa16afa164fa2">
-  <source>原声文件超过 <x id="0" equiv-text="${formatAlignMaxMb(ALIGN_MAX_BYTES)}"/> MB，无法对齐</source>
-</trans-unit>
-<trans-unit id="sab22fa927a38876f">
-  <source>请先在设置中填写对齐接口地址和 API Key</source>
-</trans-unit>
-<trans-unit id="se7033e09381f722f">
-  <source>需要对照原稿才能对齐</source>
-</trans-unit>
-<trans-unit id="sf0359997b0aec41a">
-  <source>原声文件不存在</source>
-</trans-unit>
-<trans-unit id="s819c7d98b1ff7d0d">
-  <source>原声片段时长无效</source>
-</trans-unit>
-<trans-unit id="s09f551e850ccdc36">
-  <source>无法裁剪原声片段</source>
-</trans-unit>
-<trans-unit id="s646c30ef0c873def">
-  <source>对齐结果未能保存</source>
-</trans-unit>
-<trans-unit id="s8d85f6170556e9e5">
-  <source>对齐失败，请重试</source>
-</trans-unit>
-<trans-unit id="s875a833bc741e0dc">
-  <source><x id="0" equiv-text="${failed}"/>/<x id="1" equiv-text="${total}"/> 句对齐失败</source>
-</trans-unit>
 <trans-unit id="s39e0bd3b3e70e584">
   <source>部分条目导出失败</source>
 </trans-unit>
@@ -2663,9 +2595,6 @@
 </trans-unit>
 <trans-unit id="sfdd85bebe6edce49">
   <source>同意并生成</source>
-</trans-unit>
-<trans-unit id="s2ebe608c55968bd8">
-  <source>生成原音词条会将原声片段上传到你配置的服务器以获取词级时间戳。服务端不保存音频。是否继续？</source>
 </trans-unit>
 <trans-unit id="s0488738745e3729e">
   <source>生成原音词条</source>
@@ -2685,14 +2614,6 @@
 <trans-unit id="scbf3ddbef5db906f">
   <source>为当前句生成原音词条</source>
   <target>Generate source word timings for the current sentence</target>
-</trans-unit>
-<trans-unit id="s7ee5ac119156da90">
-  <source>重新为全部句子生成原音词条（整段原音重新对齐）</source>
-  <target>Regenerate source word timings for all sentences (re-align full source audio)</target>
-</trans-unit>
-<trans-unit id="sd00266e0aa2bb007">
-  <source>为全部句子生成原音词条（整段原音一次对齐，已有则跳过）</source>
-  <target>Generate source word timings for all sentences (one full-source align; skip existing)</target>
 </trans-unit>
 <trans-unit id="s8f53a91191b0fe5e">
   <source>隐藏原音波形</source>
@@ -2730,14 +2651,89 @@
   <source>重新生成本句的原音词条</source>
   <target>Regenerate source word timings for this sentence</target>
 </trans-unit>
-<trans-unit id="sb8973aa963ed1e45">
-  <source>Echo 与 Shadowing 均会对照示范音频的节奏与语调打分，可能额外上传原声片段（已有缓存时流量更少）；取不到原声时改按自然度评。</source>
-</trans-unit>
 <trans-unit id="se0bb96cbb734c790">
   <source>口语评分依据</source>
+  <target>Prosody scoring basis</target>
 </trans-unit>
-<trans-unit id="s7f0c90cba584ba1f">
-  <source>评分或对齐时会把音频上传到你配置的服务器；选「像原声」时 Echo 与 Shadowing 还可能上传原声片段。服务端不保存音频；分数与词级时间戳只保存在本设备。</source>
+<trans-unit id="sf2d8a83d19e723d3">
+  <source>生成原音词条会将原音片段上传到你配置的服务器，以便在波形上标出每个词。服务端不保存音频。是否继续？</source>
+</trans-unit>
+<trans-unit id="sb381ada36286ff3b">
+  <source>按需将口语录音或原音片段发送到评分或原音词条服务，结果保存在本设备。</source>
+</trans-unit>
+<trans-unit id="sfa45a0167e1c58b9">
+  <source>原音词条接口地址</source>
+</trans-unit>
+<trans-unit id="s3524f5017efce539">
+  <source>重新为全部句子生成原音词条（整段原音会重新上传）</source>
+</trans-unit>
+<trans-unit id="s7b488900b3a87306">
+  <source>为全部句子生成原音词条（整段原音上传一次，已有则跳过）</source>
+</trans-unit>
+<trans-unit id="s12880f14f2ac5ae6">
+  <source>生成已取消</source>
+</trans-unit>
+<trans-unit id="s61b67572720db74b">
+  <source>网络不可用或原音词条服务未运行，请检查连接后重试</source>
+</trans-unit>
+<trans-unit id="s40c0c398fdf1f687">
+  <source>音频过大或过长，无法生成原音词条</source>
+</trans-unit>
+<trans-unit id="s4d9163f4f931745c">
+  <source>无法生成原音词条，请检查原文、分段与语言设置后重试</source>
+</trans-unit>
+<trans-unit id="s2d85ebb22bd23e69">
+  <source>生成次数已达上限，请稍后再试</source>
+</trans-unit>
+<trans-unit id="se8d8b03a32a3ac78">
+  <source>原音词条服务未就绪，请稍后再试</source>
+</trans-unit>
+<trans-unit id="sb15d46fce58032b2">
+  <source>无法生成原音词条（<x id="0" equiv-text="${status}"/>）</source>
+</trans-unit>
+<trans-unit id="sc6fab60bafcb24e3">
+  <source>原音片段超过 <x id="0" equiv-text="${ALIGN_MAX_DURATION_SEC}"/> 秒，无法生成词条</source>
+</trans-unit>
+<trans-unit id="s79e407819d206b3f">
+  <source>原音文件超过 <x id="0" equiv-text="${formatAlignMaxMb(ALIGN_MAX_BYTES)}"/> MB，无法生成词条</source>
+</trans-unit>
+<trans-unit id="s9b989dcba10a5340">
+  <source>请先在设置中填写原音词条接口地址和 API Key</source>
+</trans-unit>
+<trans-unit id="sb978c0f73b1543d5">
+  <source>原音文件不存在</source>
+</trans-unit>
+<trans-unit id="s1ce4a87c52fb7caf">
+  <source>无法裁剪原音片段</source>
+</trans-unit>
+<trans-unit id="sc6d5f8815d6dd766">
+  <source>无法生成原音词条，请重试</source>
+</trans-unit>
+<trans-unit id="s8015714d46761f64">
+  <source>原音片段时长无效</source>
+</trans-unit>
+<trans-unit id="sb532d7dc8a3cf795">
+  <source>原音词条未能保存</source>
+</trans-unit>
+<trans-unit id="s1a15ca8e46291e2b">
+  <source><x id="0" equiv-text="${failed}"/>/<x id="1" equiv-text="${total}"/> 句未能生成词条</source>
+</trans-unit>
+<trans-unit id="s9f6efd86e7ffd6e1">
+  <source>需要对照原稿才能生成原音词条</source>
+</trans-unit>
+<trans-unit id="s8e5a7cc9fe9194f2">
+  <source>只根据你的录音评语速、节奏是否自然。口语评分只上传录音，不上传原声，更省流量。</source>
+  <target>Scores pace and rhythm from your recording only. Speech scoring uploads your recording—not source audio—so it uses less data.</target>
+</trans-unit>
+<trans-unit id="s4a29367590e9b70f">
+  <source>语音服务</source>
+</trans-unit>
+<trans-unit id="s49f53f6dfe85855f">
+  <source>口语评分或生成原音词条会把音频上传到你配置的服务器。生成原音词条需上传原声片段；口语评分默认只上传你的录音，选「像原声」时还会上传原声片段（已有缓存时更少流量）。服务端不保存音频；分数与原音词条只保存在本设备。</source>
+  <target>Speech scoring and source word alignment upload audio to the server you configure. Source word alignment requires source audio clips; speech scoring uploads your recording by default, and also uploads source clips when you choose “Match reference” (less data when cached). The server does not keep audio; scores and alignments stay on this device only.</target>
+</trans-unit>
+<trans-unit id="sd8b002e4217ebd63">
+  <source>口语评分时会对照示范音频的节奏与语调打分，会额外上传原声片段（已有缓存时更少流量）；取不到原声时改按自然度评。</source>
 </trans-unit>
 </body>
 </file>

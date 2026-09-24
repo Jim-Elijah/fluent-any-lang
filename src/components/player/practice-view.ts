@@ -47,6 +47,7 @@ import {
   setAppSettings,
   shouldSkipDiscriminationTips,
 } from '../../lib/app-settings.js';
+import { isSpeechAlignConfigured } from '../../lib/pronunciation-align/index.js';
 import { NoiseMixer } from '../../lib/noise-mixer.js';
 import { RateLadder } from '../../lib/rate-ladder.js';
 import { getNoiseBlob, getNoiseList } from '../../db/noise.js';
@@ -926,7 +927,7 @@ export class PracticeView extends NavigatorElement {
             `
           : null}
 
-        ${isSpeaking && hasSubtitles
+        ${isSpeaking && hasSubtitles && isSpeechAlignConfigured(getAppSettings())
           ? html`<speaking-source-align-toolbar
               .controller=${this._controller}
               .mediaId=${this._mediaId}

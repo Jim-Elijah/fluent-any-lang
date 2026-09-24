@@ -52,17 +52,10 @@ function parseSpeechScoreApiUrl(raw: Record<string, unknown>, fallback: string):
   return fallback;
 }
 
-function parseSpeechAlignApiUrl(
-  raw: Record<string, unknown>,
-  fallback: string,
-  scoreUrl: string,
-): string {
+function parseSpeechAlignApiUrl(raw: Record<string, unknown>, fallback: string): string {
   const next = typeof raw.speechAlignApiUrl === 'string' ? raw.speechAlignApiUrl.trim() : null;
-  if (next) return toAlignApiUrl(next);
+  if (next) return next;
   if (next === '') return '';
-  if (scoreUrl) {
-    return suggestAlignApiUrlFromScoreUrl(scoreUrl) || fallback;
-  }
   return fallback;
 }
 
@@ -331,7 +324,6 @@ function parseAppSettings(raw: unknown): AppSettings {
     speechAlignApiUrl: parseSpeechAlignApiUrl(
       raw,
       defaultSpeechAlignApiUrl() || DEFAULT_SETTINGS.speechAlignApiUrl,
-      speechScoreApiUrl,
     ),
     speechScoreApiKey: parseString(raw.speechScoreApiKey, DEFAULT_SETTINGS.speechScoreApiKey),
     speechScoreLanguage:

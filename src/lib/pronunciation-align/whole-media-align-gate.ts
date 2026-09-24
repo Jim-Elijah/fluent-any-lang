@@ -47,7 +47,7 @@ export async function resolveWholeMediaAlignBlockedTip(
       ) {
         return alignDurationSec > ALIGN_MAX_DURATION_SEC
           ? alignTooLongMessage()
-          : msg('需要对照原稿才能对齐');
+          : msg('需要对照原稿才能生成原音词条');
       }
     } else {
       const blobSizeBytes =

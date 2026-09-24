@@ -161,6 +161,20 @@ describe('app-settings', () => {
     expect(getAppSettings().speechScoreProsodyBasis).toBe('match');
   });
 
+  it('persists speech align URL as trimmed literal without path rewriting', () => {
+    setAppSettings({
+      speechAlignApiUrl: ' https://speech.example.com/api/v1/pronunciation/alig ',
+    });
+    expect(getAppSettings().speechAlignApiUrl).toBe(
+      'https://speech.example.com/api/v1/pronunciation/alig',
+    );
+    setAppSettings({
+      speechScoreApiUrl: 'https://speech.example.com/api/v2/pronunciation/score',
+      speechAlignApiUrl: '',
+    });
+    expect(getAppSettings().speechAlignApiUrl).toBe('');
+  });
+
   it('defaults speechScoreProsodyBasis to naturalness and rejects unknown values', () => {
     expect(getAppSettings().speechScoreProsodyBasis).toBe('naturalness');
     localStorage.setItem(

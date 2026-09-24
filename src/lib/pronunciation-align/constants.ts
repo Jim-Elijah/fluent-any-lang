@@ -19,11 +19,11 @@ function formatAlignMaxMb(bytes: number): string {
 }
 
 export function alignTooLongMessage(): string {
-  return msg(str`原声片段超过 ${ALIGN_MAX_DURATION_SEC} 秒，无法对齐`);
+  return msg(str`原音片段超过 ${ALIGN_MAX_DURATION_SEC} 秒，无法生成词条`);
 }
 
 export function alignTooLargeMessage(): string {
-  return msg(str`原声文件超过 ${formatAlignMaxMb(ALIGN_MAX_BYTES)} MB，无法对齐`);
+  return msg(str`原音文件超过 ${formatAlignMaxMb(ALIGN_MAX_BYTES)} MB，无法生成词条`);
 }
 
 /**

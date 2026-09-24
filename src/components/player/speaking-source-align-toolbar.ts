@@ -64,6 +64,10 @@ export class SpeakingSourceAlignToolbar extends LitElement {
   static styles = [
     wordRailStyles,
     css`
+      :host([data-unconfigured]) {
+        display: none;
+      }
+
       :host {
         display: grid;
         gap: var(--space-block);
@@ -144,6 +148,15 @@ export class SpeakingSourceAlignToolbar extends LitElement {
   private _alignAllForce = false;
   private _alignSegmentForce = false;
   private _privacyAction: 'align-segment' | 'align-all' = 'align-all';
+
+  protected willUpdate(changed: PropertyValues): void {
+    super.willUpdate(changed);
+    if (isSpeechAlignConfigured(getAppSettings())) {
+      this.removeAttribute('data-unconfigured');
+    } else {
+      this.setAttribute('data-unconfigured', '');
+    }
+  }
 
   connectedCallback(): void {
     super.connectedCallback();
@@ -424,7 +437,7 @@ export class SpeakingSourceAlignToolbar extends LitElement {
       return;
     }
     if (!isSpeechAlignConfigured(getAppSettings())) {
-      Message.warning(msg('请先在设置中填写对齐接口地址和 API Key'));
+      Message.warning(msg('请先在设置中填写原音词条接口地址和 API Key'));
       return;
     }
     if (!hasSpeechScorePrivacyAck()) {
@@ -441,7 +454,7 @@ export class SpeakingSourceAlignToolbar extends LitElement {
       return;
     }
     if (!isSpeechAlignConfigured(getAppSettings())) {
-      Message.warning(msg('请先在设置中填写对齐接口地址和 API Key'));
+      Message.warning(msg('请先在设置中填写原音词条接口地址和 API Key'));
       return;
     }
     if (!hasSpeechScorePrivacyAck()) {
@@ -675,7 +688,7 @@ export class SpeakingSourceAlignToolbar extends LitElement {
         <source-segment-align-button
           .hasCache=${hasSegmentCache}
           ?disabled=${busy}
-          tooltipPlacement="right"
+          tooltipPlacement="top"
           @align-segment=${this._onAlignSegmentRequest}
         ></source-segment-align-button>
         ${showAlignAll
@@ -685,7 +698,7 @@ export class SpeakingSourceAlignToolbar extends LitElement {
                 .blockedTip=${this._alignMediaBlockedTip}
                 .blocked=${alignAllBlocked}
                 ?disabled=${busy}
-                tooltipPlacement="right"
+                tooltipPlacement="top"
                 @align-all=${this._onAlignAllRequest}
               ></source-word-align-all-button>
             `
@@ -759,7 +772,7 @@ export class SpeakingSourceAlignToolbar extends LitElement {
       >
         <p>
           ${msg(
-            '生成原音词条会将原声片段上传到你配置的服务器以获取词级时间戳。服务端不保存音频。是否继续？',
+            '生成原音词条会将原音片段上传到你配置的服务器，以便在波形上标出每个词。服务端不保存音频。是否继续？',
           )}
         </p>
       </ui-modal>

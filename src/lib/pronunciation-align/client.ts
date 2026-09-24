@@ -37,12 +37,12 @@ function isAbortError(error: unknown): boolean {
 /** Maps fetch transport failures (no HTTP response) to a typed client error. */
 export function mapAlignFetchFailure(error: unknown): PronunciationAlignHttpError {
   if (isAbortError(error)) {
-    return new PronunciationAlignHttpError(0, 'aborted', msg('对齐已取消'));
+    return new PronunciationAlignHttpError(0, 'aborted', msg('生成已取消'));
   }
   return new PronunciationAlignHttpError(
     0,
     'network',
-    msg('网络不可用或对齐服务未运行，请检查连接后重试'),
+    msg('网络不可用或原音词条服务未运行，请检查连接后重试'),
   );
 }
 
@@ -59,15 +59,15 @@ function statusMessage(status: number): string {
     case 401:
       return msg('API Key 无效或已过期，请检查设置');
     case 413:
-      return msg('音频过大或过长，无法对齐');
+      return msg('音频过大或过长，无法生成原音词条');
     case 422:
-      return msg('无法对齐词级时间戳，请检查原文、分段与语言设置后重试');
+      return msg('无法生成原音词条，请检查原文、分段与语言设置后重试');
     case 429:
-      return msg('对齐次数已达上限，请稍后再试');
+      return msg('生成次数已达上限，请稍后再试');
     case 503:
-      return msg('对齐服务未就绪，请稍后再试');
+      return msg('原音词条服务未就绪，请稍后再试');
     default:
-      return msg(str`对齐失败（${status}）`);
+      return msg(str`无法生成原音词条（${status}）`);
   }
 }
 

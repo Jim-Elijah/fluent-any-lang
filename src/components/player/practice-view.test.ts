@@ -434,6 +434,11 @@ describe('practice-view', () => {
   }
 
   it('defaults to echo speaking mode and lists echo before shadowing when subtitles exist', async () => {
+    const { setAppSettings } = await import('../../lib/app-settings.js');
+    setAppSettings({
+      speechAlignApiUrl: 'https://align.example/api/v1/pronunciation/align',
+      speechScoreApiKey: 'test-key',
+    });
     const el = await renderView();
     await settleView(el);
 
@@ -451,6 +456,16 @@ describe('practice-view', () => {
       button.textContent?.trim(),
     );
     expect(labels).toEqual(['回声跟读', '影子跟读']);
+  });
+
+  it('hides source align toolbar when speech align is not configured', async () => {
+    const { setAppSettings } = await import('../../lib/app-settings.js');
+    setAppSettings({ speechAlignApiUrl: '', speechScoreApiKey: '' });
+    const el = await renderView();
+    await settleView(el);
+    findButton(el, '口语')?.click();
+    await el.updateComplete;
+    expect(el.shadowRoot?.querySelector('speaking-source-align-toolbar')).toBeFalsy();
   });
 
   it('falls back to shadowing and hides echo when media has no subtitles', async () => {

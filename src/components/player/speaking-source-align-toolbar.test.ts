@@ -156,6 +156,7 @@ describe('speaking-source-align-toolbar', () => {
     ) as SpeakingSourceAlignToolbar;
     await el.updateComplete;
     expect(el.shadowRoot?.textContent?.trim()).toBe('');
+    expect(el.hasAttribute('data-unconfigured')).toBe(true);
   });
 
   it('enables rail toggle after source waveform loads', async () => {

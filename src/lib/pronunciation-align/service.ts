@@ -85,15 +85,15 @@ export type AlignAllOptions = {
 };
 
 function notConfigured() {
-  return msg('请先在设置中填写对齐接口地址和 API Key');
+  return msg('请先在设置中填写原音词条接口地址和 API Key');
 }
 
 function noReferenceText() {
-  return msg('需要对照原稿才能对齐');
+  return msg('需要对照原稿才能生成原音词条');
 }
 
 function missingMedia() {
-  return msg('原声文件不存在');
+  return msg('原音文件不存在');
 }
 
 function resolveSegmentReferenceText(
@@ -139,7 +139,7 @@ async function prepareSubtitleWindowAlignAudio(input: {
       input.window.endTime,
     );
   } catch {
-    return { ok: false, message: msg('无法裁剪原声片段') };
+    return { ok: false, message: msg('无法裁剪原音片段') };
   }
   if (clipped.blob.size > ALIGN_MAX_BYTES) {
     return { ok: false, message: alignTooLargeMessage() };
@@ -342,10 +342,10 @@ export async function alignMediaSource(input: {
       ok: false,
       reason: 'api',
       message: aborted
-        ? msg('对齐已取消')
+        ? msg('生成已取消')
         : error instanceof Error
           ? error.message
-          : msg('对齐失败，请重试'),
+          : msg('无法生成原音词条，请重试'),
     };
   }
 }
@@ -393,7 +393,7 @@ export async function alignPracticeSegment(input: {
 
   const duration = input.segment.sourceEndTime - input.segment.sourceStartTime;
   if (!(duration > 0)) {
-    return { ok: false, reason: 'validation', message: msg('原声片段时长无效') };
+    return { ok: false, reason: 'validation', message: msg('原音片段时长无效') };
   }
   if (duration > ALIGN_MAX_DURATION_SEC) {
     return { ok: false, reason: 'validation', message: alignTooLongMessage() };
@@ -412,7 +412,7 @@ export async function alignPracticeSegment(input: {
       input.segment.sourceEndTime,
     );
   } catch {
-    return { ok: false, reason: 'validation', message: msg('无法裁剪原声片段') };
+    return { ok: false, reason: 'validation', message: msg('无法裁剪原音片段') };
   }
 
   if (clipped.blob.size > ALIGN_MAX_BYTES) {
@@ -445,7 +445,7 @@ export async function alignPracticeSegment(input: {
       if (existing) {
         return { ok: true, alignment: existing };
       }
-      return { ok: false, reason: 'api', message: msg('对齐结果未能保存') };
+      return { ok: false, reason: 'api', message: msg('原音词条未能保存') };
     }
 
     return { ok: true, alignment };
@@ -458,10 +458,10 @@ export async function alignPracticeSegment(input: {
       ok: false,
       reason: 'api',
       message: aborted
-        ? msg('对齐已取消')
+        ? msg('生成已取消')
         : error instanceof Error
           ? error.message
-          : msg('对齐失败，请重试'),
+          : msg('无法生成原音词条，请重试'),
     };
   }
 }
@@ -598,6 +598,6 @@ export async function alignAllPracticeSegments(input: {
     succeeded,
     failed,
     skipped,
-    message: failed > 0 ? msg(str`${failed}/${total} 句对齐失败`) : undefined,
+    message: failed > 0 ? msg(str`${failed}/${total} 句未能生成词条`) : undefined,
   };
 }
