@@ -88,6 +88,8 @@ export function getHotkeyActionLabel(action: HotkeyAction): string {
       return msg('显示/隐藏字幕');
     case 'toggleTranslation':
       return msg('显示/隐藏翻译');
+    case 'toggleSubtitleSourceMask':
+      return msg('遮罩/取消遮罩原文');
     case 'toggleSubtitleFullscreen':
       return msg('字幕全屏/退出');
     case 'toggleHotkeysHelp':

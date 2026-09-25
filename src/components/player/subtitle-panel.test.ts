@@ -234,6 +234,78 @@ describe('subtitle-panel', () => {
     expect(el.shadowRoot?.querySelector('.translation.hidden')).toBeNull();
   });
 
+  it('masks non-current source text while keeping the active segment readable', async () => {
+    controller = new MediaController();
+    const segments: SubtitleSegment[] = [
+      { id: 's1', startTime: 0, endTime: 2, text: 'hello' },
+      { id: 's2', startTime: 2, endTime: 4, text: 'world' },
+    ];
+    await controller.loadTracks([makeTrack('a', 'Track A', segments)]);
+    controller.setSubtitlesVisible(true);
+    controller.seekToSegment(0);
+
+    const result = mount(html`<subtitle-panel .controller=${controller}></subtitle-panel>`);
+    cleanup = result.cleanup;
+    const el = result.container.querySelector('subtitle-panel') as SubtitlePanel;
+    await el.updateComplete;
+    await flushUpdates();
+
+    el.toggleSourceTextMask();
+    await el.updateComplete;
+    await flushUpdates();
+
+    const rows = [...(el.shadowRoot?.querySelectorAll('.segment') ?? [])];
+    expect(rows[0]?.querySelector('.text')?.textContent).toContain('hello');
+    expect(rows[0]?.querySelector('.source-text-blurred')).toBeNull();
+    expect(rows[1]?.querySelector('.source-text-blurred')).not.toBeNull();
+    expect(rows[1]?.querySelector('.source-text-blurred')?.textContent).toBe('world');
+  });
+
+  it('keeps echo score badge visible when source text is masked', async () => {
+    const el = await renderPanel({ subtitlesVisible: true });
+    el.echoMode = true;
+    el.echoLatestScoreBySegmentId = { s1: 84.2, s2: 70 };
+    controller.seekToSegment(0);
+    await el.updateComplete;
+    await flushUpdates();
+
+    el.toggleSourceTextMask();
+    await el.updateComplete;
+    await flushUpdates();
+
+    const rows = [...(el.shadowRoot?.querySelectorAll('.segment') ?? [])];
+    expect(rows[1]?.querySelector('.echo-score')).not.toBeNull();
+    expect(rows[1]?.querySelector('.source-text-blurred')).not.toBeNull();
+  });
+
+  it('ignores source mask toggle when subtitles are hidden', async () => {
+    controller = new MediaController();
+    const segments: SubtitleSegment[] = [{ id: 's1', startTime: 0, endTime: 2, text: 'hello' }];
+    await controller.loadTracks([makeTrack('a', 'Track A', segments)]);
+
+    const result = mount(html`<subtitle-panel .controller=${controller}></subtitle-panel>`);
+    cleanup = result.cleanup;
+    const el = result.container.querySelector('subtitle-panel') as SubtitlePanel;
+    await el.updateComplete;
+    await flushUpdates();
+
+    controller.setSubtitlesVisible(true);
+    await el.updateComplete;
+    el.toggleSourceTextMask();
+    await el.updateComplete;
+
+    controller.setSubtitlesVisible(false);
+    await el.updateComplete;
+    el.toggleSourceTextMask();
+    await el.updateComplete;
+
+    controller.setSubtitlesVisible(true);
+    await el.updateComplete;
+    await flushUpdates();
+
+    expect(el.shadowRoot?.querySelector('.source-text-masked')).not.toBeNull();
+  });
+
   it('shows import subtitle CTA when media has no subtitles', async () => {
     controller = new MediaController();
     await controller.loadTracks([makeTrack('a', 'Track A', [])]);

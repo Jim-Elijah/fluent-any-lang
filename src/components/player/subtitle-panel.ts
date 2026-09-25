@@ -176,6 +176,17 @@ const FULLSCREEN_PORTAL_STYLES = `
     display: none;
   }
 
+  .source-text-blurred {
+    filter: blur(6px);
+    opacity: 0.65;
+    user-select: none;
+    pointer-events: none;
+  }
+
+  .list.source-text-masked .segment:not(.active):hover .text {
+    text-decoration: none;
+  }
+
   .echo-controls {
     display: flex;
     align-items: center;
@@ -312,6 +323,17 @@ export class SubtitlePanel extends LitElement {
 
       .translation.hidden {
         display: none;
+      }
+
+      .source-text-blurred {
+        filter: blur(6px);
+        opacity: 0.65;
+        user-select: none;
+        pointer-events: none;
+      }
+
+      .list.source-text-masked .segment:not(.active):hover .text {
+        text-decoration: none;
       }
 
       .empty {
@@ -470,6 +492,9 @@ export class SubtitlePanel extends LitElement {
 
   @state()
   private _translationVisible = false;
+
+  @state()
+  private _sourceTextMasked = false;
 
   @state()
   private _internalFullscreen = false;
@@ -664,7 +689,8 @@ export class SubtitlePanel extends LitElement {
   ): TemplateResult {
     const activeIndex = this._getActiveSegmentIndex(snapshot);
     const lockedClass = this.seekDisabled ? 'navigation-locked' : '';
-    return html`<ul class="${listClass} ${lockedClass}">
+    const maskClass = this._sourceTextMasked ? 'source-text-masked' : '';
+    return html`<ul class="${listClass} ${lockedClass} ${maskClass}">
       ${snapshot.segments.map(
         (segment, index) => html`
           <li
@@ -674,9 +700,7 @@ export class SubtitlePanel extends LitElement {
           >
             <div class="content">
               <span class="time">${formatTime(segment.startTime)}</span>
-              <p class="text">
-                ${segment.text}${this.echoMode ? this._renderEchoScoreBadge(segment.id) : nothing}
-              </p>
+              <p class="text">${this._renderSegmentSourceText(segment, index, activeIndex)}</p>
               ${segment.translation
                 ? html`<p class="text translation ${!this._translationVisible ? 'hidden' : ''}">
                     ${segment.translation}
@@ -803,6 +827,20 @@ export class SubtitlePanel extends LitElement {
         </ui-button>
       </ui-tooltip>
     `;
+  }
+
+  private _renderSegmentSourceText(
+    segment: SubtitleSegment,
+    index: number,
+    activeIndex: number,
+  ): TemplateResult {
+    const badge = this.echoMode ? this._renderEchoScoreBadge(segment.id) : nothing;
+    const maskSource = this._sourceTextMasked && index !== activeIndex;
+    if (maskSource) {
+      return html`<span class="source-text-blurred" aria-hidden="true">${segment.text}</span
+        >${badge}`;
+    }
+    return html`${segment.text}${badge}`;
   }
 
   private _renderEchoScoreBadge(segmentId: string): TemplateResult | typeof nothing {
@@ -1027,6 +1065,13 @@ export class SubtitlePanel extends LitElement {
       : keyboardShortcuts
         ? msg('显示翻译 (T)')
         : msg('显示翻译');
+    const sourceMaskTitle = this._sourceTextMasked
+      ? keyboardShortcuts
+        ? msg('取消遮罩原文 (M)')
+        : msg('取消遮罩原文')
+      : keyboardShortcuts
+        ? msg('遮罩原文 (M)')
+        : msg('遮罩原文');
     const fullscreenTitle = this._isFullscreen()
       ? keyboardShortcuts
         ? msg('退出全屏 (F)')
@@ -1076,6 +1121,20 @@ export class SubtitlePanel extends LitElement {
                 </ui-button>
               </ui-tooltip>`
             : ''}
+          ${snapshot.hasSubtitles && snapshot.subtitlesVisible
+            ? html`<ui-tooltip title="${sourceMaskTitle}">
+                <ui-button
+                  variant="ghost"
+                  aria-label="${sourceMaskTitle}"
+                  @click="${this._toggleSourceTextMask}"
+                >
+                  <ui-icon
+                    size="var(--icon-xl)"
+                    name="${this._sourceTextMasked ? 'subtitle-on' : 'subtitle-hide'}"
+                  ></ui-icon>
+                </ui-button>
+              </ui-tooltip>`
+            : ''}
           ${snapshot.hasSubtitles && snapshot.subtitlesVisible && this.showFullscreenIcon
             ? html`<ui-tooltip title="${fullscreenTitle}">
                 <ui-button
@@ -1107,6 +1166,19 @@ export class SubtitlePanel extends LitElement {
       return;
     }
     this._translationVisible = !this._translationVisible;
+  }
+
+  /** Practice hotkeys / toolbar: mask non-current segment source text (session-only). */
+  toggleSourceTextMask(): void {
+    const snapshot = this._controllerHost?.snapshot;
+    if (!snapshot?.hasSubtitles || !snapshot.subtitlesVisible) {
+      return;
+    }
+    this._sourceTextMasked = !this._sourceTextMasked;
+  }
+
+  private _toggleSourceTextMask(): void {
+    this.toggleSourceTextMask();
   }
 
   /**

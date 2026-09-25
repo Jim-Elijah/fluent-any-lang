@@ -14,6 +14,7 @@ export type HotkeyAction =
   | 'playSync'
   | 'toggleSubtitles'
   | 'toggleTranslation'
+  | 'toggleSubtitleSourceMask'
   | 'toggleSubtitleFullscreen'
   | 'toggleHotkeysHelp';
 

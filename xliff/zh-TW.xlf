@@ -2749,6 +2749,21 @@
   <source>口语评分时会对照示范音频的节奏与语调打分，会额外上传原声片段（已有缓存时更少流量）；取不到原声时改按自然度评。</source>
 <target>口語評分時會對照示範音訊的節奏與語調打分，會額外上傳原聲片段（已有快取時更少流量）；取不到原聲時改按自然度評。</target>
 </trans-unit>
+<trans-unit id="s3b2af5848702c7ba">
+  <source>取消遮罩原文 (M)</source>
+</trans-unit>
+<trans-unit id="s3aaf9be4fa8c29f8">
+  <source>取消遮罩原文</source>
+</trans-unit>
+<trans-unit id="s62f3443bf93392a0">
+  <source>遮罩原文 (M)</source>
+</trans-unit>
+<trans-unit id="s19e9651ea1c09356">
+  <source>遮罩原文</source>
+</trans-unit>
+<trans-unit id="s16affb4ceced0a58">
+  <source>遮罩/取消遮罩原文</source>
+</trans-unit>
 </body>
 </file>
 </xliff>

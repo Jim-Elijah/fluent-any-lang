@@ -43,6 +43,7 @@ describe('getHotkeyCatalog', () => {
       'BracketRight',
       'KeyC',
       'KeyT',
+      'KeyM',
       'KeyF',
       'KeyH',
     ]);

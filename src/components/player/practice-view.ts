@@ -431,6 +431,10 @@ export class PracticeView extends NavigatorElement {
             if (!this._practiceUiHotkeysEnabled()) return;
             this._toggleTranslationFromHotkey();
           },
+          toggleSubtitleSourceMask: () => {
+            if (!this._practiceUiHotkeysEnabled()) return;
+            this._toggleSubtitleSourceMaskFromHotkey();
+          },
           toggleSubtitleFullscreen: () => {
             if (!this._practiceUiHotkeysEnabled()) return;
             this._toggleSubtitleFullscreenFromHotkey();
@@ -482,6 +486,14 @@ export class PracticeView extends NavigatorElement {
       return;
     }
     this._subtitlePanelEl?.toggleTranslationVisible();
+  }
+
+  private _toggleSubtitleSourceMaskFromHotkey(): void {
+    const snapshot = this._controller.getSnapshot();
+    if (!snapshot.hasSubtitles || !snapshot.subtitlesVisible) {
+      return;
+    }
+    this._subtitlePanelEl?.toggleSourceTextMask();
   }
 
   private _toggleSubtitleFullscreenFromHotkey(): void {
@@ -926,7 +938,6 @@ export class PracticeView extends NavigatorElement {
               </div>
             `
           : null}
-
         ${isSpeaking && hasSubtitles && isSpeechAlignConfigured(getAppSettings())
           ? html`<speaking-source-align-toolbar
               .controller=${this._controller}

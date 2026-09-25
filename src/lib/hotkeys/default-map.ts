@@ -11,6 +11,7 @@ export const PRACTICE_HOTKEY_BINDINGS: readonly HotkeyBinding[] = [
   { code: 'BracketRight', action: 'rateUp' },
   { code: 'KeyC', action: 'toggleSubtitles' },
   { code: 'KeyT', action: 'toggleTranslation' },
+  { code: 'KeyM', action: 'toggleSubtitleSourceMask' },
   { code: 'KeyF', action: 'toggleSubtitleFullscreen' },
   { code: 'KeyH', action: 'toggleHotkeysHelp' },
 ] as const;
