@@ -1,9 +1,13 @@
 import { css, html, LitElement } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
-import { msg, localized } from '@lit/localize';
+import { msg, str, localized } from '@lit/localize';
 
 import { getAppSettings, setAppSettings } from '../../lib/app-settings.js';
-import type { AppSettings, ShadowingGapPolicy } from '../../types/models.js';
+import {
+  RECORDING_COUNTDOWN_SECONDS_LIMITS,
+  type AppSettings,
+  type ShadowingGapPolicy,
+} from '../../types/models.js';
 import { settingsCardStyles } from './settings-styles.js';
 import '../ui/switch.js';
 import type { SwitchChangeDetail } from '../ui/switch.js';
@@ -90,6 +94,30 @@ export class SettingsPreferences extends LitElement {
     }
   }
 
+  private _recordingCountdownSecondOptions() {
+    const options = [];
+    for (
+      let sec = RECORDING_COUNTDOWN_SECONDS_LIMITS.min;
+      sec <= RECORDING_COUNTDOWN_SECONDS_LIMITS.max;
+      sec += 1
+    ) {
+      options.push({ value: String(sec), label: msg(str`${sec} 秒`) });
+    }
+    return options;
+  }
+
+  private _onRecordingCountdownSecondsChange(event: CustomEvent<SelectChangeDetail>): void {
+    const seconds = Number.parseInt(event.detail.value, 10);
+    if (!Number.isFinite(seconds)) {
+      return;
+    }
+    const prev = this._settings.recordingCountdownSeconds;
+    this._settings = setAppSettings({ recordingCountdownSeconds: seconds });
+    if (this._settings.recordingCountdownSeconds !== prev) {
+      Message.success(msg('已保存'));
+    }
+  }
+
   render() {
     const s = this._settings;
     return html`
@@ -159,13 +187,29 @@ export class SettingsPreferences extends LitElement {
           >
             <div class="label-wrap">
               <span class="label">${msg('跳过录音倒计时')}</span>
-              <span class="hint">${msg('开启后录音前不再显示 3 秒倒计时。')}</span>
+              <span class="hint"
+                >${msg('开启后录音前不再显示倒计时（回声与影子跟读均生效）。')}</span
+              >
             </div>
             <ui-switch
               .checked=${s.skipRecordingCountdown}
               .label=${msg('跳过录音倒计时')}
               @change=${this._onSwitch('skipRecordingCountdown')}
             ></ui-switch>
+          </div>
+          <div class="field">
+            <span class="field-label">${msg('录音前倒计时')}</span>
+            <ui-select
+              .value=${String(s.recordingCountdownSeconds)}
+              .options=${this._recordingCountdownSecondOptions()}
+              ?disabled=${s.skipRecordingCountdown}
+              @change=${this._onRecordingCountdownSecondsChange}
+            ></ui-select>
+            <p class="hint">
+              ${s.skipRecordingCountdown
+                ? msg('已跳过倒计时；关闭上方开关后可选择 3–10 秒。')
+                : msg('回声与影子跟读在开始录音前显示的固定等待秒数（3–10 秒）。')}
+            </p>
           </div>
           <div
             class="row"

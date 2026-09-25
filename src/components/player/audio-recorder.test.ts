@@ -529,6 +529,23 @@ describe('audio-recorder component', () => {
     expect(lastRecorder).not.toBeNull();
   });
 
+  it('uses recording countdown seconds from app settings', async () => {
+    vi.useFakeTimers();
+    localStorage.setItem(
+      'fluent-any-lang:app-settings',
+      JSON.stringify({ recordingCountdownSeconds: 5 }),
+    );
+    const el = await renderRecorder({ countdownBeforeStart: true });
+    const startPromise = el.startRecording();
+    await el.updateComplete;
+
+    await vi.advanceTimersByTimeAsync(5400);
+    await startPromise;
+    await el.updateComplete;
+
+    expect(lastRecorder).not.toBeNull();
+  });
+
   it('does not start recorder when countdown is cancelled', async () => {
     vi.useFakeTimers();
     const el = await renderRecorder({ countdownBeforeStart: true });

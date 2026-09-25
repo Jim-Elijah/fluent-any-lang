@@ -8,6 +8,7 @@ export {
   getAppSettings,
   setAppSettings,
   shouldSkipRecordingCountdown,
+  getRecordingCountdownSeconds,
   shouldSkipShadowingTips,
   shouldSkipEchoTips,
   shouldSkipDiscriminationTips,

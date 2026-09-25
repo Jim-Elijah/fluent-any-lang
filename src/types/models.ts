@@ -557,6 +557,8 @@ export type AppSettings = {
   maxPlaybackRate: number;
   /** When true, recording countdown overlay is skipped. */
   skipRecordingCountdown: boolean;
+  /** Seconds shown before recording when countdown is not skipped (Echo and Shadowing). */
+  recordingCountdownSeconds: number;
   /** When true, shadowing mode tips modal is skipped. */
   skipShadowingTips: boolean;
   /** 影子跟读句间空隙：compress（默认）或 preserve。 */
@@ -669,6 +671,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   maxVolumeBoost: 2,
   maxPlaybackRate: 2,
   skipRecordingCountdown: false,
+  recordingCountdownSeconds: 3,
   skipShadowingTips: false,
   shadowingGapPolicy: 'compress',
   skipEchoTips: false,
@@ -694,8 +697,11 @@ export const APP_SETTINGS_LIMITS = {
 } as const;
 
 /** Allowed ranges for player / practice default numeric fields. */
+export const RECORDING_COUNTDOWN_SECONDS_LIMITS = { min: 3, max: 10 } as const;
+
 export const APP_SETTINGS_PLAYER_LIMITS = {
   defaultSleepMinutes: { min: 1, max: 90 },
+  recordingCountdownSeconds: { ...RECORDING_COUNTDOWN_SECONDS_LIMITS, step: 1 },
   repeatPausePercent: { min: 100, max: 500, step: 10 },
   defaultSourceVolume: { min: 0, max: 1, step: 0.05 },
   defaultNoiseVolume: { min: 0, max: 1, step: 0.05 },

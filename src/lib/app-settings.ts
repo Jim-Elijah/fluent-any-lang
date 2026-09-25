@@ -3,6 +3,7 @@ import {
   APP_SETTINGS_PLAYER_LIMITS,
   DEFAULT_DISCRIMINATION_SETTINGS,
   DEFAULT_SETTINGS,
+  RECORDING_COUNTDOWN_SECONDS_LIMITS,
   DISCRIMINATION_LADDER_COUNT_MAX,
   DISCRIMINATION_LADDER_COUNT_MIN,
   DISCRIMINATION_MAX_NOISE_TRACKS,
@@ -21,10 +22,7 @@ import {
   WORD_MARKER_LAYOUT_VALUES,
 } from '../types/models.js';
 import { toScoreApiUrl } from './pronunciation-score/constants.js';
-import {
-  suggestAlignApiUrlFromScoreUrl,
-  toAlignApiUrl,
-} from './pronunciation-align/constants.js';
+import { suggestAlignApiUrlFromScoreUrl, toAlignApiUrl } from './pronunciation-align/constants.js';
 
 export const APP_SETTINGS_STORAGE_KEY = 'fluent-any-lang:app-settings';
 
@@ -300,6 +298,13 @@ function parseAppSettings(raw: unknown): AppSettings {
       raw.skipRecordingCountdown,
       DEFAULT_SETTINGS.skipRecordingCountdown,
     ),
+    recordingCountdownSeconds: clampNumber(
+      raw.recordingCountdownSeconds,
+      DEFAULT_SETTINGS.recordingCountdownSeconds,
+      RECORDING_COUNTDOWN_SECONDS_LIMITS.min,
+      RECORDING_COUNTDOWN_SECONDS_LIMITS.max,
+      APP_SETTINGS_PLAYER_LIMITS.recordingCountdownSeconds.step,
+    ),
     skipShadowingTips: parseBoolean(raw.skipShadowingTips, DEFAULT_SETTINGS.skipShadowingTips),
     shadowingGapPolicy: parseShadowingGapPolicy(
       raw.shadowingGapPolicy,
@@ -460,6 +465,10 @@ export function setUserSettings(partial: Partial<UserSettings>): UserSettings {
 
 export function shouldSkipRecordingCountdown(): boolean {
   return getAppSettings().skipRecordingCountdown;
+}
+
+export function getRecordingCountdownSeconds(): number {
+  return getAppSettings().recordingCountdownSeconds;
 }
 
 export function shouldSkipShadowingTips(): boolean {

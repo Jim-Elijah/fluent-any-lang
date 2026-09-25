@@ -15,7 +15,10 @@ import { ExtendedMediaEventType, practiceScriptFromSubtitle } from '../../lib/pl
 import { throttle } from '../../lib/util.js';
 import { CountdownCancelledError, runRecordingCountdown } from '../ui/countdown-overlay.js';
 import { Message } from '../ui/message.js';
-import { shouldSkipRecordingCountdown } from '../../lib/user-settings.js';
+import {
+  getRecordingCountdownSeconds,
+  shouldSkipRecordingCountdown,
+} from '../../lib/user-settings.js';
 import type { PracticeSegment, SubtitleSegment } from '../../types/models.js';
 import '../ui/icon.js';
 import '../ui/button.js';
@@ -180,9 +183,6 @@ export class AudioRecorder extends LitElement {
 
   @property({ type: Boolean })
   countdownBeforeStart = true;
-
-  @property({ type: Number })
-  countdownSeconds = 3;
 
   @property({ type: Number })
   shadowingLatencyOffset = 0;
@@ -420,7 +420,7 @@ export class AudioRecorder extends LitElement {
       if (!skipped) {
         this._dispatchCountdownStart();
         try {
-          await runRecordingCountdown({ seconds: this.countdownSeconds });
+          await runRecordingCountdown({ seconds: getRecordingCountdownSeconds() });
         } catch (error) {
           if (error instanceof CountdownCancelledError) {
             this._dispatchCountdownEnd({ skipped: false, cancelled: true });

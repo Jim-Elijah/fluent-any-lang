@@ -6,6 +6,7 @@ import {
   getAppSettings,
   getMaxPlaybackRate,
   getMaxVolumeBoost,
+  getRecordingCountdownSeconds,
   getUserSettings,
   normalizeAppSettings,
   normalizeDiscriminationSettings,
@@ -33,6 +34,7 @@ describe('app-settings', () => {
     expect(getAppSettings()).toEqual(DEFAULT_SETTINGS);
     expect(getUserSettings()).toEqual(DEFAULT_USER_SETTINGS);
     expect(shouldSkipRecordingCountdown()).toBe(false);
+    expect(getRecordingCountdownSeconds()).toBe(3);
     expect(shouldSkipShadowingTips()).toBe(false);
     expect(shouldSkipEchoTips()).toBe(false);
     expect(shouldReduceSpeakerEcho()).toBe(false);
@@ -78,6 +80,13 @@ describe('app-settings', () => {
     expect(next.defaultNoiseVolume).toBe(0);
     expect(next.maxVolumeBoost).toBe(3);
     expect(next.maxPlaybackRate).toBe(4);
+  });
+
+  it('clamps recording countdown seconds to 3–10', () => {
+    expect(setAppSettings({ recordingCountdownSeconds: 2 }).recordingCountdownSeconds).toBe(3);
+    expect(setAppSettings({ recordingCountdownSeconds: 11 }).recordingCountdownSeconds).toBe(10);
+    expect(setAppSettings({ recordingCountdownSeconds: 7 }).recordingCountdownSeconds).toBe(7);
+    expect(getRecordingCountdownSeconds()).toBe(7);
   });
 
   it('parses default loop mode', () => {

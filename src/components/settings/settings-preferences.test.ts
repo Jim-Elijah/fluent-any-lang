@@ -69,8 +69,25 @@ describe('settings-preferences', () => {
     const el = await renderPreferences();
     expect(switches(el).length).toBe(5);
     expect(switches(el).every((sw) => !(sw as UiSwitchLike).checked)).toBe(true);
-    expect(el.shadowRoot?.querySelector('ui-select')).not.toBeNull();
+    expect(el.shadowRoot?.querySelectorAll('ui-select').length).toBe(2);
     expect(el.shadowRoot?.textContent).toContain('减少外放回声');
+  });
+
+  it('persists recording countdown seconds from the select control', async () => {
+    const el = await renderPreferences();
+    const selects = el.shadowRoot?.querySelectorAll('ui-select');
+    const countdownSelect = selects?.[1] as HTMLElement & {
+      dispatchEvent: (event: Event) => boolean;
+    };
+    countdownSelect.dispatchEvent(
+      new CustomEvent('change', {
+        detail: { value: '8', option: { value: '8', label: '8' } },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+    await el.updateComplete;
+    expect(setAppSettings).toHaveBeenCalledWith({ recordingCountdownSeconds: 8 });
   });
 
   it('persists shadowing gap policy from the select control', async () => {

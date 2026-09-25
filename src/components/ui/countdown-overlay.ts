@@ -2,7 +2,11 @@ import { msg, localized } from '@lit/localize';
 import { css, html, LitElement, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 
-import { setUserSettings, shouldSkipRecordingCountdown } from '../../lib/user-settings.js';
+import {
+  getRecordingCountdownSeconds,
+  setUserSettings,
+  shouldSkipRecordingCountdown,
+} from '../../lib/user-settings.js';
 import { Z_INDEX } from './internal/z-index.js';
 
 // ---------------------------------------------------------------------------
@@ -503,8 +507,8 @@ export async function runRecordingCountdown(options: CountdownOverlayOptions = {
   }
 
   return Countdown.run({
-    seconds: 3,
     showSkipOption: true,
+    seconds: getRecordingCountdownSeconds(),
     ...options,
   });
 }
