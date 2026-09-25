@@ -1,5 +1,5 @@
 import { msg, localized, str } from '@lit/localize';
-import { css, html, LitElement } from 'lit';
+import { css, html, LitElement, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 
 import { getMediaBlob } from '../../db/media.js';
@@ -51,12 +51,16 @@ import type {
   SubtitleTrack,
 } from '../../types/models.js';
 import { formatDate, formatTime } from '../../lib/playback-utils.js';
+import {
+  resolvePracticeRecordSegmentOrdinal,
+  resolvePracticeRecordSummary,
+} from '../../lib/practice-record-display.js';
 import { Message } from '../ui/message.js';
 
 /** Row height including the --space-md (12px) gap below each card. */
-const RECORD_ROW_HEIGHT = 88;
+const RECORD_ROW_HEIGHT = 104;
 /** Narrow: meta + actions stacked; includes the same gap below each card. */
-const RECORD_ROW_HEIGHT_NARROW = 100;
+const RECORD_ROW_HEIGHT_NARROW = 116;
 const RECORD_LIST_HEIGHT = 480;
 
 @customElement('record-list')
@@ -154,6 +158,31 @@ export class RecordList extends LitElement {
         margin: 0 0 var(--space-xs);
         font-size: 1rem;
         font-weight: 600;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .context {
+        display: flex;
+        align-items: baseline;
+        gap: var(--space-sm);
+        margin: 0 0 var(--space-xs);
+        min-width: 0;
+        font-size: 0.8125rem;
+        line-height: 1.35;
+        color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
+      }
+
+      .context .ordinal {
+        flex-shrink: 0;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+        color: var(--color-text, rgba(0, 0, 0, 0.88));
+      }
+
+      .context .excerpt {
+        min-width: 0;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -696,6 +725,20 @@ export class RecordList extends LitElement {
       : noReference
         ? msg('需要对照原稿才能评分')
         : scoreLabel;
+    const subtitleTrack = this._subtitleByMediaId.get(recording.mediaId);
+    const segmentOrdinal = resolvePracticeRecordSegmentOrdinal(recording, subtitleTrack);
+    const summary = resolvePracticeRecordSummary(recording, subtitleTrack);
+    const contextLine =
+      segmentOrdinal || summary
+        ? html`<p class="context">
+            ${segmentOrdinal ? html`<span class="ordinal">#${segmentOrdinal}</span>` : nothing}
+            ${summary
+              ? html`<span class="excerpt">${summary}</span>`
+              : segmentOrdinal
+                ? nothing
+                : html`<span class="excerpt">—</span>`}
+          </p>`
+        : nothing;
     return html`
       <div
         class="item"
@@ -712,6 +755,7 @@ export class RecordList extends LitElement {
           : null}
         <div class="meta">
           <p class="title">${recording.mediaTitle}</p>
+          ${contextLine}
           <p class="details">
             ${showModeBadge
               ? html`<span class="badge ${recording.mode}"

@@ -96,6 +96,14 @@ describe('subtitle-panel', () => {
     expect(el.shadowRoot?.querySelector('.surface')).not.toBeNull();
   });
 
+  it('shows 1-based segment ordinals beside timestamps', async () => {
+    const el = await renderPanel({ subtitlesVisible: true });
+    const indices = [...(el.shadowRoot?.querySelectorAll('.segment-index') ?? [])].map(
+      (node) => node.textContent,
+    );
+    expect(indices).toEqual(['#1', '#2']);
+  });
+
   function clickShadowButtonByLabel(el: SubtitlePanel, keyword: string): void {
     const buttons = [...(el.shadowRoot?.querySelectorAll('ui-button') ?? [])];
     const button = buttons.find((item) =>

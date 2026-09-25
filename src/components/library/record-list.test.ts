@@ -113,6 +113,27 @@ describe('record-list', () => {
     expect(el.shadowRoot?.textContent).toContain('Lesson');
   });
 
+  it('shows segment ordinal and source excerpt when subtitle track is available', async () => {
+    vi.mocked(recordDb.getRecordingList).mockResolvedValue([sampleRecord]);
+    vi.mocked(subtitleDb.getSubtitle).mockResolvedValue({
+      id: 'sub-1',
+      mediaId: 'media-1',
+      title: 'sub',
+      segments: [
+        { id: 's0', startTime: 0, endTime: 10, text: 'hello there' },
+        { id: 's1', startTime: 10, endTime: 20, text: 'next' },
+      ],
+    });
+
+    const el = await renderList();
+    await el.refresh();
+    await el.updateComplete;
+
+    const context = el.shadowRoot?.querySelector('.context');
+    expect(context?.querySelector('.ordinal')?.textContent).toBe('#1');
+    expect(context?.querySelector('.excerpt')?.textContent).toBe('hello');
+  });
+
   it('shows mode badge for shadowing and echo recordings', async () => {
     const echoRecord: PracticeRecord = {
       ...sampleRecord,
@@ -270,7 +291,7 @@ describe('record-list', () => {
       | { itemHeight?: number }
       | null
       | undefined;
-    expect(grid?.itemHeight).toBe(100);
+    expect(grid?.itemHeight).toBe(116);
   });
 
   it('loads recordings for a specific media id', async () => {
@@ -612,9 +633,7 @@ describe('record-list', () => {
     expect(
       el.shadowRoot?.querySelector('.batch-controls ui-button[aria-label="全选"]'),
     ).not.toBeNull();
-    expect(
-      el.shadowRoot?.querySelector('.batch-controls ui-icon[name="download"]'),
-    ).not.toBeNull();
+    expect(el.shadowRoot?.querySelector('.batch-controls ui-icon[name="download"]')).not.toBeNull();
     expect(el.shadowRoot?.textContent).toContain('已选 0 项');
     expect(el.shadowRoot?.textContent).not.toContain('反选');
   });

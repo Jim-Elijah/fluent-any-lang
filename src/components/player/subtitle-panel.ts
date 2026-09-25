@@ -155,11 +155,23 @@ const FULLSCREEN_PORTAL_STYLES = `
     flex: 1;
   }
 
-  .time {
+  .cue-meta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-xs, 4px);
     color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
     font-size: 0.75rem;
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
+  }
+
+  .segment-index {
+    font-weight: 600;
+  }
+
+  .time {
+    font-variant-numeric: tabular-nums;
   }
 
   .text {
@@ -304,11 +316,23 @@ export class SubtitlePanel extends LitElement {
         flex: 1;
       }
 
-      .time {
+      .cue-meta {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: var(--space-xs, 4px);
         color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
         font-size: 0.75rem;
         font-variant-numeric: tabular-nums;
         white-space: nowrap;
+      }
+
+      .segment-index {
+        font-weight: 600;
+      }
+
+      .time {
+        font-variant-numeric: tabular-nums;
       }
 
       .text {
@@ -699,7 +723,10 @@ export class SubtitlePanel extends LitElement {
             @click="${() => this._handleSegmentClick(index)}"
           >
             <div class="content">
-              <span class="time">${formatTime(segment.startTime)}</span>
+              <span class="cue-meta">
+                <span class="segment-index">#${index + 1}</span>
+                <span class="time">${formatTime(segment.startTime)}</span>
+              </span>
               <p class="text">${this._renderSegmentSourceText(segment, index, activeIndex)}</p>
               ${segment.translation
                 ? html`<p class="text translation ${!this._translationVisible ? 'hidden' : ''}">
