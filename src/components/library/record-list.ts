@@ -543,9 +543,7 @@ export class RecordList extends LitElement {
       );
     }
     if (this.keyword) {
-      renderedItems = renderedItems.filter((item: PracticeRecord) =>
-        item.mediaTitle.toLowerCase().includes(this.keyword!.toLowerCase()),
-      );
+      renderedItems = renderedItems.filter((item) => this._matchesKeyword(item, this.keyword!));
     }
     if (this.sortBy && this.sortDirection) {
       renderedItems = [...renderedItems].sort((a: PracticeRecord, b: PracticeRecord) => {
@@ -737,6 +735,19 @@ export class RecordList extends LitElement {
         </ui-modal>
       </section>
     `;
+  }
+
+  /** Title or full subtitle reference (snapshot, else live track). Not the truncated list excerpt. */
+  private _matchesKeyword(item: PracticeRecord, keyword: string): boolean {
+    const q = keyword.trim().toLowerCase();
+    if (!q) {
+      return true;
+    }
+    if (item.mediaTitle.toLowerCase().includes(q)) {
+      return true;
+    }
+    const reference = resolveReferenceText(item, this._subtitleByMediaId.get(item.mediaId));
+    return (reference ?? '').toLowerCase().includes(q);
   }
 
   private _modeLabel(mode: SpeakingMode): string {

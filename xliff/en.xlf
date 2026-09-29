@@ -2528,10 +2528,6 @@
   <source>搜索噪音标题</source>
   <target>Search noise titles</target>
   </trans-unit>
-<trans-unit id="s99e4c3765ecdbee4">
-  <source>搜索录音标题</source>
-  <target>Search recording titles</target>
-  </trans-unit>
 <trans-unit id="s5620b2a45ddbbbab">
   <source>加入「喜欢」</source>
 <target>Add to likes</target>
@@ -2835,6 +2831,37 @@
 <trans-unit id="sa1f2891ded53b573">
   <source>切换遮罩原文</source>
   <target>Cycle source mask</target>
+</trans-unit>
+<trans-unit id="sf5ba6dd2cf39ed1f">
+  <source>确定仅保留本条录音吗？</source>
+</trans-unit>
+<trans-unit id="se0121ced70cc0d34">
+  <source>保留本条</source>
+</trans-unit>
+<trans-unit id="s329c03407985137f">
+  <source>将删除同句其余 <x id="0" equiv-text="${this._pendingKeepOnly.deleteCount}"/> 条录音，不可恢复。</source>
+</trans-unit>
+<trans-unit id="s0f883bca22ebefb9">
+  <source>仅保留本条</source>
+</trans-unit>
+<trans-unit id="s5a2b24fb47d03ac5">
+  <source>确定仅保留本条吗？将删除同句其余 <x id="0" equiv-text="${keepOnlyDeleteCount}"/> 条录音，不可恢复。</source>
+</trans-unit>
+<trans-unit id="s42e658c55e7f9b10">
+  <source>已保留本条录音</source>
+</trans-unit>
+<trans-unit id="s64e1c169da338de9">
+  <source>删除其余录音失败，请重试。</source>
+</trans-unit>
+<trans-unit id="sc00a6288a540ea31">
+  <source>导航快捷入口</source>
+</trans-unit>
+<trans-unit id="sb49c01e015fef4b7">
+  <source>把常用的库页面固定到导航。其余仍从「库」进入。</source>
+</trans-unit>
+<trans-unit id="s301e519327e16223">
+  <source>搜索录音标题 / 字幕</source>
+  <target>Search recording titles / subtitles</target>
 </trans-unit>
 </body>
 </file>

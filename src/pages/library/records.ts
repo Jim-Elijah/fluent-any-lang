@@ -84,7 +84,7 @@ export class LibraryRecordsPage extends NavigatorElement {
           .sortBy=${this._sortBy}
           .sortDirection=${this._sortDirection}
           .sortByOptions=${this._getSortByOptions()}
-          searchPlaceholder="${msg('搜索录音标题')}"
+          searchPlaceholder="${msg('搜索录音标题 / 字幕')}"
           @filters-change=${this._onFiltersChange}
         ></library-list-toolbar>
         <p class="hint">${msg('口语练习产生的录音')}</p>

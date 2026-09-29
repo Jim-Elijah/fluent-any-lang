@@ -112,6 +112,54 @@ describe('record-list', () => {
     expect(el.shadowRoot?.textContent).toContain('无匹配录音');
   });
 
+  it('filters by media title or full subtitle reference, including text past the excerpt', async () => {
+    const tail = 'uniqueword';
+    const longText = `${'a'.repeat(80)}${tail}`;
+    const titled: PracticeRecord = { ...sampleRecord, id: 'by-title', mediaTitle: 'Rain lesson' };
+    const bySnapshot: PracticeRecord = {
+      ...sampleRecord,
+      id: 'by-text',
+      mediaTitle: 'Other',
+      segments: [{ ...sampleRecord.segments[0]!, text: longText }],
+    };
+    vi.mocked(recordDb.getRecordingList).mockResolvedValue([titled, bySnapshot]);
+
+    const byTitle = await renderList(html`<record-list keyword="rain"></record-list>`);
+    await byTitle.refresh();
+    await byTitle.updateComplete;
+    expect(byTitle.shadowRoot?.textContent).toContain('Rain lesson');
+    expect(byTitle.shadowRoot?.textContent).not.toContain('Other');
+
+    cleanup?.();
+    const bySubtitle = await renderList(html`<record-list keyword="uniqueword"></record-list>`);
+    await bySubtitle.refresh();
+    await bySubtitle.updateComplete;
+    expect(bySubtitle.shadowRoot?.textContent).toContain('Other');
+    expect(bySubtitle.shadowRoot?.querySelector('.excerpt')?.textContent).not.toContain(tail);
+    expect(bySubtitle.shadowRoot?.textContent).not.toContain('Rain lesson');
+  });
+
+  it('filters by live subtitle text when the practice snapshot is empty', async () => {
+    const legacy: PracticeRecord = {
+      ...sampleRecord,
+      mediaTitle: 'Legacy',
+      segments: [{ ...sampleRecord.segments[0]!, text: '' }],
+    };
+    vi.mocked(recordDb.getRecordingList).mockResolvedValue([legacy]);
+    vi.mocked(subtitleDb.getSubtitle).mockResolvedValue({
+      id: 'sub-1',
+      mediaId: 'media-1',
+      title: 'sub',
+      segments: [{ id: 's0', startTime: 0, endTime: 10, text: 'live subtitle phrase' }],
+    });
+
+    const el = await renderList(html`<record-list keyword="phrase"></record-list>`);
+    await el.refresh();
+    await el.updateComplete;
+
+    expect(el.shadowRoot?.textContent).toContain('Legacy');
+  });
+
   it('lists recordings after refresh', async () => {
     vi.mocked(recordDb.getRecordingList).mockResolvedValue([sampleRecord]);
 
