@@ -225,6 +225,24 @@ const FULLSCREEN_PORTAL_STYLES = `
     margin-left: auto;
   }
 
+  .echo-score {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    vertical-align: middle;
+    margin-left: var(--space-xs);
+    min-width: 1.375rem;
+    height: 1.25rem;
+    padding: 0 4px;
+    border-radius: 999px;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    line-height: 1;
+    text-decoration: none;
+  }
+
+  ${scoreBandStyles.cssText}
+
   @media (max-width: 767px) {
     .content {
       align-items: flex-start;

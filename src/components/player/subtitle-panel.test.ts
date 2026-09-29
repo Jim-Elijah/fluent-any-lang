@@ -430,6 +430,22 @@ describe('subtitle-panel', () => {
     expect(manageButton?.hasAttribute('disabled') || manageButton?.disabled).toBe(true);
   });
 
+  it('colors echo score badges in the fullscreen subtitle list', async () => {
+    const el = await renderPanel({ subtitlesVisible: true, defaultFullscreen: true });
+    el.echoMode = true;
+    el.echoLatestScoreBySegmentId = { s1: 84.2 };
+    await el.updateComplete;
+    await flushUpdates();
+
+    const badge = getPortalShadow('[data-subtitle-fullscreen-portal]')?.querySelector(
+      '.echo-score',
+    ) as HTMLElement | null;
+    expect(badge?.textContent?.trim()).toBe('84');
+    expect(badge?.classList.contains('score-band')).toBe(true);
+    expect(badge?.classList.contains('good')).toBe(true);
+    expect(getComputedStyle(badge!).color).toBe('#0958d9');
+  });
+
   it('shows an overall badge inside segment text when a score is present', async () => {
     const el = await renderPanel({ subtitlesVisible: true });
     el.echoMode = true;
