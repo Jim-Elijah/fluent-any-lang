@@ -108,6 +108,19 @@ describe('noise-list', () => {
     expect(el.shadowRoot?.textContent).toContain('1 项');
   });
 
+  it('matches titles without surrounding spaces in the keyword', async () => {
+    mockGetNoiseList.mockResolvedValue([
+      makeItem({ id: 'a', title: 'Alpha', filename: 'alpha.mp3', createdAt: 100 }),
+      makeItem({ id: 'b', title: 'Beta Rain', filename: 'beta.mp3', createdAt: 200 }),
+    ]);
+    const el = await renderList({ keyword: ' rain ' });
+    expect(getTitles(el)).toEqual(['Beta Rain']);
+
+    el.keyword = '   ';
+    await el.updateComplete;
+    expect(getTitles(el)).toEqual(['Beta Rain', 'Alpha']);
+  });
+
   it('shows load error when refresh fails', async () => {
     mockGetNoiseList.mockRejectedValue(new Error('db'));
     const el = await renderList();
@@ -205,7 +218,7 @@ describe('noise-list', () => {
       makeItem({ id: 'noise-1' }),
       makeItem({ id: 'noise-2', title: 'Wind', createdAt: 200 }),
     ]);
-    const el = await renderList() as NoiseList & { _selected: Set<string> };
+    const el = (await renderList()) as NoiseList & { _selected: Set<string> };
     el.selectionMode = true;
     el._selected = new Set(['noise-1', 'noise-2']);
     await el.updateComplete;
@@ -227,7 +240,7 @@ describe('noise-list', () => {
       ])
       .mockResolvedValue([]);
     mockDeleteNoiseBatch.mockResolvedValue(undefined);
-    const el = await renderList() as NoiseList & {
+    const el = (await renderList()) as NoiseList & {
       _selected: Set<string>;
       _visibleIds: string[];
       _handleBatchDelete: () => Promise<void>;

@@ -62,6 +62,11 @@ import { Message } from '../ui/message.js';
 /** How many sibling takes to name in the keep-only confirm dialog. */
 export const KEEP_ONLY_DELETE_PREVIEW_LIMIT = 5;
 
+/** Collapse whitespace in reference text so cross-sentence shadowing search matches user input. */
+function normalizeForSearch(s: string): string {
+  return s.replace(/\s+/g, ' ').toLowerCase();
+}
+
 /** Row height including the --space-md (12px) gap below each card. */
 const RECORD_ROW_HEIGHT = 104;
 /** Narrow: meta + actions stacked; includes the same gap below each card. */
@@ -570,8 +575,9 @@ export class RecordList extends LitElement {
         (item) => (item.segmentId ?? item.segments[0]?.id) === this.segmentId,
       );
     }
-    if (this.keyword) {
-      renderedItems = renderedItems.filter((item) => this._matchesKeyword(item, this.keyword!));
+    const keyword = (this.keyword ?? '').trim();
+    if (keyword) {
+      renderedItems = renderedItems.filter((item) => this._matchesKeyword(item, keyword));
     }
     if (this.sortBy && this.sortDirection) {
       renderedItems = [...renderedItems].sort((a, b) => this._compareRecords(a, b));
@@ -584,7 +590,7 @@ export class RecordList extends LitElement {
       ? '100%'
       : Math.min(Math.max(renderedItems.length, 1) * rowHeight, RECORD_LIST_HEIGHT);
 
-    const emptyMessage = this.keyword ? msg('无匹配录音') : msg('暂无录音');
+    const emptyMessage = keyword ? msg('无匹配录音') : msg('暂无录音');
 
     const visibleIds = renderedItems.map((item) => item.id);
     this._visibleIds = visibleIds;
@@ -761,7 +767,7 @@ export class RecordList extends LitElement {
       return true;
     }
     const reference = resolveReferenceText(item, this._subtitleByMediaId.get(item.mediaId));
-    return (reference ?? '').toLowerCase().includes(q);
+    return normalizeForSearch(reference ?? '').includes(q);
   }
 
   private _modeLabel(mode: SpeakingMode): string {

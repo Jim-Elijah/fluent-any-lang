@@ -462,9 +462,10 @@ export class MediaList extends LitElement {
 
   render() {
     let renderedItems = this._items;
-    if (this.keyword) {
+    const keyword = (this.keyword ?? '').trim().toLowerCase();
+    if (keyword) {
       renderedItems = renderedItems.filter((item: MediaItem) =>
-        item.title.toLowerCase().includes(this.keyword!.toLowerCase()),
+        item.title.toLowerCase().includes(keyword),
       );
     }
     if (this.sortBy && this.sortDirection) {
@@ -582,7 +583,7 @@ export class MediaList extends LitElement {
           ? html`<div class="empty">${msg('加载中…')}</div>`
           : renderedItems.length === 0
             ? html`<div class="empty">
-                ${this.keyword ? msg('无匹配内容') : msg('暂无内容，请先导入音视频')}
+                ${keyword ? msg('无匹配内容') : msg('暂无内容，请先导入音视频')}
               </div>`
             : html`
                 <div class="list-viewport">

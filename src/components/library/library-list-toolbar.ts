@@ -83,7 +83,8 @@ export class LibraryListToolbar extends LitElement {
           placeholder="${placeholder}"
           aria-label="${placeholder}"
           @change=${(e: CustomEvent<InputChangeDetail>) => {
-            this._emit({ keyword: (e.detail.value || '').trim() });
+            // Do not trim: the controlled input would drop a trailing space.
+            this._emit({ keyword: e.detail.value || '' });
           }}
         >
           <ui-icon slot="prefix" name="search" size="var(--icon-md)"></ui-icon>

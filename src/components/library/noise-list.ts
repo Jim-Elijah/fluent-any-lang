@@ -435,10 +435,12 @@ export class NoiseList extends LitElement {
 
   render() {
     let renderedItems = this._items;
-    if (this.keyword) {
-      const q = this.keyword.toLowerCase();
+    const keyword = (this.keyword ?? '').trim().toLowerCase();
+    if (keyword) {
       renderedItems = renderedItems.filter(
-        (item) => item.title.toLowerCase().includes(q) || item.filename.toLowerCase().includes(q),
+        (item) =>
+          item.title.toLowerCase().includes(keyword) ||
+          item.filename.toLowerCase().includes(keyword),
       );
     }
     if (this.sortBy && this.sortDirection) {
@@ -459,7 +461,7 @@ export class NoiseList extends LitElement {
 
     this._visibleCount = renderedItems.length;
 
-    const emptyMessage = this.keyword ? msg('无匹配噪音素材') : msg('暂无噪音素材，请先导入');
+    const emptyMessage = keyword ? msg('无匹配噪音素材') : msg('暂无噪音素材，请先导入');
     const viewportStyle = this.fillHeight
       ? ''
       : `max-height: ${Math.min(

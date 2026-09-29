@@ -154,6 +154,39 @@ describe('record-list', () => {
     expect(bySubtitle.shadowRoot?.textContent).not.toContain('Rain lesson');
   });
 
+  it('filters shadowing records when keyword spans sentences joined by newline', async () => {
+    const shadowing: PracticeRecord = {
+      ...sampleRecord,
+      mode: 'shadowing',
+      segments: [
+        {
+          id: 's0',
+          sourceStartTime: 0,
+          sourceEndTime: 5,
+          recordingStartTime: 0,
+          recordingEndTime: 5,
+          text: 'Hello there',
+        },
+        {
+          id: 's1',
+          sourceStartTime: 5,
+          sourceEndTime: 10,
+          recordingStartTime: 5,
+          recordingEndTime: 10,
+          text: 'How are you',
+        },
+      ],
+    };
+    vi.mocked(recordDb.getRecordingList).mockResolvedValue([shadowing]);
+
+    const el = await renderList(html`<record-list keyword="there How"></record-list>`);
+    await el.refresh();
+    await el.updateComplete;
+
+    expect(el.shadowRoot?.textContent).toContain('Lesson');
+    expect(el.shadowRoot?.textContent).not.toContain('无匹配录音');
+  });
+
   it('filters by live subtitle text when the practice snapshot is empty', async () => {
     const legacy: PracticeRecord = {
       ...sampleRecord,

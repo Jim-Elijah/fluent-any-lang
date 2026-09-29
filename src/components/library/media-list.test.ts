@@ -328,6 +328,21 @@ describe('media-list', () => {
     expect(el.shadowRoot?.textContent).toMatch(/1\s*项/);
   });
 
+  it('matches titles without surrounding spaces in the keyword', async () => {
+    vi.mocked(mediaDb.getMediaList).mockResolvedValue([
+      makeMedia({ id: 'a', title: 'Alpha Lesson' }),
+      makeMedia({ id: 'b', title: 'Beta Rain', createdAt: 2 }),
+    ]);
+    const el = await renderList(html`<media-list keyword=" rain "></media-list>`);
+    await el.refresh();
+    await el.updateComplete;
+    expect(getTitles(el)).toEqual(['Beta Rain']);
+
+    el.keyword = '   ';
+    await el.updateComplete;
+    expect(getTitles(el)).toEqual(['Beta Rain', 'Alpha Lesson']);
+  });
+
   it('shows no-match empty message when keyword filters everything out', async () => {
     vi.mocked(mediaDb.getMediaList).mockResolvedValue([makeMedia()]);
     const el = await renderList(html`<media-list keyword="missing"></media-list>`);
@@ -565,9 +580,7 @@ describe('media-list', () => {
     await el.updateComplete;
 
     expect(
-      el.shadowRoot?.querySelector(
-        '.batch-controls ui-button[aria-label="加入播放列表"]',
-      ),
+      el.shadowRoot?.querySelector('.batch-controls ui-button[aria-label="加入播放列表"]'),
     ).not.toBeNull();
     expect(
       el.shadowRoot?.querySelector('.batch-controls ui-button[aria-label="删除"]'),
