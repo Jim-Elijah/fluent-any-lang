@@ -54,6 +54,7 @@ import type {
 } from '../../types/models.js';
 import { formatDate, formatTime } from '../../lib/playback-utils.js';
 import {
+  formatPracticeRecordSegmentOrdinalLabel,
   resolvePracticeRecordSegmentOrdinal,
   resolvePracticeRecordSummary,
 } from '../../lib/practice-record-display.js';
@@ -192,7 +193,9 @@ export class RecordList extends LitElement {
       }
 
       .context .excerpt {
+        flex: 1 1 0;
         min-width: 0;
+        max-width: 100%;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -797,7 +800,11 @@ export class RecordList extends LitElement {
     const contextLine =
       segmentOrdinal || summary
         ? html`<p class="context">
-            ${segmentOrdinal ? html`<span class="ordinal">#${segmentOrdinal}</span>` : nothing}
+            ${segmentOrdinal
+              ? html`<span class="ordinal"
+                  >${formatPracticeRecordSegmentOrdinalLabel(segmentOrdinal)}</span
+                >`
+              : nothing}
             ${summary
               ? html`<span class="excerpt">${summary}</span>`
               : segmentOrdinal

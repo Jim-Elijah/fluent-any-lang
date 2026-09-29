@@ -1,9 +1,6 @@
 import type { PracticeRecord } from '../types/models.js';
 import { resolveReferenceText } from './pronunciation-score/service.js';
 
-/** Max characters shown for Practice Record source excerpt in lists. */
-export const PRACTICE_RECORD_SUMMARY_MAX_CHARS = 80;
-
 export function buildSubtitleSegmentOrdinalMap(
   segments: ReadonlyArray<{ id: string }>,
 ): Map<string, number> {
@@ -25,6 +22,17 @@ export function formatSubtitleSegmentOrdinalRange(indices: readonly number[]): s
     return String(min);
   }
   return `${min}–${max}`;
+}
+
+const ORDINAL_RANGE_SEPARATOR = '–';
+
+/** Display label for subtitle segment ordinals: #3 or #2–#4 (matches range-chip in subtitle-panel). */
+export function formatPracticeRecordSegmentOrdinalLabel(ordinal: string): string {
+  const dash = ordinal.indexOf(ORDINAL_RANGE_SEPARATOR);
+  if (dash === -1) {
+    return `#${ordinal}`;
+  }
+  return `#${ordinal.slice(0, dash)}${ORDINAL_RANGE_SEPARATOR}#${ordinal.slice(dash + ORDINAL_RANGE_SEPARATOR.length)}`;
 }
 
 function practiceSegmentIds(record: PracticeRecord): string[] {
@@ -65,14 +73,6 @@ export function resolvePracticeRecordSegmentOrdinal(
   return formatSubtitleSegmentOrdinalRange(ordinals);
 }
 
-export function truncatePracticeRecordSummary(text: string, maxChars: number): string {
-  const trimmed = text.trim();
-  if (trimmed.length <= maxChars) {
-    return trimmed;
-  }
-  return `${trimmed.slice(0, maxChars)}…`;
-}
-
 export function resolvePracticeRecordSummary(
   record: PracticeRecord,
   subtitleTrack: { segments: ReadonlyArray<{ id: string; text: string }> } | undefined,
@@ -81,5 +81,5 @@ export function resolvePracticeRecordSummary(
   if (!reference) {
     return null;
   }
-  return truncatePracticeRecordSummary(reference, PRACTICE_RECORD_SUMMARY_MAX_CHARS);
+  return reference.trim();
 }

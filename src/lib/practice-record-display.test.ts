@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import type { PracticeRecord, SubtitleTrack } from '../types/models.js';
 import {
+  formatPracticeRecordSegmentOrdinalLabel,
   formatSubtitleSegmentOrdinalRange,
   resolvePracticeRecordSegmentOrdinal,
   resolvePracticeRecordSummary,
-  truncatePracticeRecordSummary,
 } from './practice-record-display.js';
 
 const track: SubtitleTrack = {
@@ -35,6 +35,17 @@ function makeRecord(overrides: Partial<PracticeRecord> = {}): PracticeRecord {
     ...overrides,
   };
 }
+
+describe('formatPracticeRecordSegmentOrdinalLabel', () => {
+  it('prefixes a single ordinal with #', () => {
+    expect(formatPracticeRecordSegmentOrdinalLabel('3')).toBe('#3');
+  });
+
+  it('prefixes both ends of a range with #', () => {
+    expect(formatPracticeRecordSegmentOrdinalLabel('2–4')).toBe('#2–#4');
+    expect(formatPracticeRecordSegmentOrdinalLabel('1–3')).toBe('#1–#3');
+  });
+});
 
 describe('formatSubtitleSegmentOrdinalRange', () => {
   it('returns a single ordinal when min equals max', () => {
@@ -120,10 +131,23 @@ describe('resolvePracticeRecordSegmentOrdinal', () => {
 });
 
 describe('resolvePracticeRecordSummary', () => {
-  it('truncates long reference text', () => {
+  it('returns trimmed reference text without character truncation', () => {
     const long = 'a'.repeat(100);
-    expect(truncatePracticeRecordSummary(long, 80)).toHaveLength(81);
-    expect(truncatePracticeRecordSummary(long, 80).endsWith('…')).toBe(true);
+    const record = makeRecord({
+      mode: 'echo',
+      segmentId: 'a',
+      segments: [
+        {
+          id: 'a',
+          sourceStartTime: 0,
+          sourceEndTime: 1,
+          recordingStartTime: 0,
+          recordingEndTime: 1,
+          text: `  ${long}  `,
+        },
+      ],
+    });
+    expect(resolvePracticeRecordSummary(record, undefined)).toBe(long);
   });
 
   it('uses snapshot and live track fallback', () => {

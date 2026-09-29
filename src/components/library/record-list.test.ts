@@ -150,7 +150,7 @@ describe('record-list', () => {
     await bySubtitle.refresh();
     await bySubtitle.updateComplete;
     expect(bySubtitle.shadowRoot?.textContent).toContain('Other');
-    expect(bySubtitle.shadowRoot?.querySelector('.excerpt')?.textContent).not.toContain(tail);
+    expect(bySubtitle.shadowRoot?.querySelector('.excerpt')?.textContent).toContain(tail);
     expect(bySubtitle.shadowRoot?.textContent).not.toContain('Rain lesson');
   });
 
