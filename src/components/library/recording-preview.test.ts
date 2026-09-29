@@ -136,6 +136,7 @@ type RecordingPreviewInternals = HTMLElement & {
   _recordingVolume: number;
   _activeSubtitle: SubtitleSegment | null;
   _score: PronunciationScore | null;
+  _alignWordsBySegmentId: Map<string, { word: string; start: number; end: number }[]>;
   _pairedMisreadIndex: number | null;
   _refreshActiveSubtitle: () => void;
   _handleVolumeChange: (track: 'source' | 'recording', value: number) => void;
@@ -1695,9 +1696,9 @@ describe('recording-preview', () => {
     await el.updateComplete;
 
     const layoutToggle = el.shadowRoot?.querySelector('word-marker-layout-toggle');
-    const buttons = [
-      ...(layoutToggle?.shadowRoot?.querySelectorAll('ui-button') ?? []),
-    ] as Array<{ click: () => void }>;
+    const buttons = [...(layoutToggle?.shadowRoot?.querySelectorAll('ui-button') ?? [])] as Array<{
+      click: () => void;
+    }>;
     expect(buttons).toHaveLength(2);
     buttons[1]!.click();
     await el.updateComplete;
@@ -1764,6 +1765,39 @@ describe('recording-preview', () => {
 
     expect(el.shadowRoot?.querySelector('.word-marker')).toBeNull();
     expect(el.shadowRoot?.querySelector('.word-chip')?.textContent?.trim()).toBe('hello');
+  });
+
+  it('shows word layout toggle in source mode when source align words exist', async () => {
+    const el = await renderPreview();
+    el.segments = samplePracticeSegments;
+    el.subtitleSegments = sampleSegments;
+    el._playMode = 'source';
+    el._syncSegmentIndex = 0;
+    el._alignWordsBySegmentId.set('s0', [
+      { word: 'one', start: 0.2, end: 0.8 },
+      { word: 'two', start: 1, end: 1.6 },
+    ]);
+    el._controller.setViewRange({ start: 0, end: 5 });
+    await el.updateComplete;
+
+    expect(el.shadowRoot?.querySelectorAll('.word-marker').length).toBeGreaterThan(0);
+    expect(el.shadowRoot?.querySelector('word-marker-layout-toggle')).not.toBeNull();
+  });
+
+  it('hides word layout toggle in recording mode when there is no score', async () => {
+    vi.spyOn(scoreDb, 'getScoreByRecordId').mockResolvedValue(null);
+    const el = await renderPreview();
+    el.segments = samplePracticeSegments;
+    el.subtitleSegments = sampleSegments;
+    el.record = scoredRecord();
+    el._playMode = 'recording';
+    el._syncSegmentIndex = 0;
+    el._alignWordsBySegmentId.set('s0', [{ word: 'one', start: 0.2, end: 0.8 }]);
+    el._controller.setViewRange({ start: 0, end: 4.5 });
+    await el.updateComplete;
+
+    expect(el.shadowRoot?.querySelector('.word-marker')).toBeNull();
+    expect(el.shadowRoot?.querySelector('word-marker-layout-toggle')).toBeNull();
   });
 
   it('plays only the clicked waveform word then soft-pauses on recording', async () => {

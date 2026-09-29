@@ -1069,9 +1069,11 @@ export class RecordingPreview extends LitElement {
   }
 
   private _renderWordLayoutToggle(visible: boolean) {
+    if (!visible) {
+      return nothing;
+    }
     return html`
       <word-marker-layout-toggle
-        ?visible=${visible}
         .layout=${this._wordMarkerLayout}
         @layout-change=${this._onWordLayoutChange}
       ></word-marker-layout-toggle>
@@ -1486,9 +1488,7 @@ export class RecordingPreview extends LitElement {
       if (!result.ok && result.message) {
         Message.warning(result.message);
       } else {
-        Message.success(
-          force ? msg('全部原音词条已重新生成') : msg('全部原音词条已生成'),
-        );
+        Message.success(force ? msg('全部原音词条已重新生成') : msg('全部原音词条已生成'));
       }
     } finally {
       this._aligning = false;
