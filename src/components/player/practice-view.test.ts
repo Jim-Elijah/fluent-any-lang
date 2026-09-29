@@ -2686,6 +2686,23 @@ describe('practice-view', () => {
       expect(el._shadowingRangeConfirmed).toBe(true);
     });
 
+    it('sets shadowing range end on controller when recording starts with a range', async () => {
+      const el = await renderView();
+      await switchToShadowingMode(el);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      el._shadowingRange = { start: 1, end: 3 };
+      el._shadowingRangeConfirmed = false;
+
+      const setRangeEndSpy = vi.spyOn(el._controller, 'setShadowingSegmentRangeEnd');
+
+      (
+        el as PracticeViewInternals & { _applyShadowingPlaybackProfile: () => void }
+      )._applyShadowingPlaybackProfile();
+
+      expect(setRangeEndSpy).toHaveBeenCalledWith(3);
+    });
+
     it('clears range when switching from shadowing to echo', async () => {
       const el = await renderView();
       await switchToShadowingMode(el);

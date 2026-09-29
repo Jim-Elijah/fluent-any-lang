@@ -332,6 +332,65 @@ describe('MediaController', () => {
     vi.useRealTimers();
   });
 
+  it('shadowing range end pauses instead of gap-compressing to the next cue', async () => {
+    vi.useFakeTimers();
+    const segments: SubtitleSegment[] = [
+      { id: 's1', startTime: 0, endTime: 2, text: 'one' },
+      { id: 's2', startTime: 10, endTime: 12, text: 'two' },
+      { id: 's3', startTime: 20, endTime: 22, text: 'three' },
+    ];
+    await controller.loadTracks([makeTrack('a', 'Track A', { segments })]);
+    controller.setShadowingGapCompress(true);
+    controller.setShadowingSegmentRangeEnd(1);
+    controller.seekToSegment(1);
+    audio.play.mockClear();
+
+    (
+      controller as unknown as {
+        _applySegmentPause: (segment: SubtitleSegment) => void;
+      }
+    )._applySegmentPause(segments[1]!);
+
+    expect(controller.currentSegmentIndex).toBe(1);
+    expect(controller.getSnapshot().isPlaying).toBe(false);
+    expect(controller.getSnapshot().segmentPausePending).toBe(false);
+
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(controller.currentSegmentIndex).toBe(1);
+    expect(controller.currentTime).toBe(10);
+    expect(audio.play).not.toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+
+  it('shadowing range end pauses instead of resuming after segment pause', async () => {
+    vi.useFakeTimers();
+    const segments: SubtitleSegment[] = [
+      { id: 's1', startTime: 0, endTime: 2, text: 'one' },
+      { id: 's2', startTime: 10, endTime: 12, text: 'two' },
+      { id: 's3', startTime: 20, endTime: 22, text: 'three' },
+    ];
+    await controller.loadTracks([makeTrack('a', 'Track A', { segments })]);
+    controller.setShadowingSegmentRangeEnd(1);
+    controller.setPauseMode('seconds');
+    controller.setPauseSeconds(2);
+    controller.seekToSegment(1);
+    audio.play.mockClear();
+
+    (
+      controller as unknown as {
+        _applySegmentPause: (segment: SubtitleSegment) => void;
+      }
+    )._applySegmentPause(segments[1]!);
+
+    expect(controller.getSnapshot().isPlaying).toBe(false);
+    expect(controller.getSnapshot().segmentPausePending).toBe(false);
+
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(controller.currentSegmentIndex).toBe(1);
+    expect(audio.play).not.toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+
   it('shadowing gap compress does not snap back when timeupdate lands in inter-cue gap', async () => {
     vi.useFakeTimers();
     const segments: SubtitleSegment[] = [

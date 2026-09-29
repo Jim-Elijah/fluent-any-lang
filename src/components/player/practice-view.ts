@@ -1570,6 +1570,7 @@ export class PracticeView extends NavigatorElement {
       pauseMode: gapPolicy === 'compress' ? 'off' : 'keep',
     });
     this._controller.setShadowingGapCompress(gapPolicy === 'compress');
+    this._controller.setShadowingSegmentRangeEnd(this._shadowingRange?.end ?? null);
 
     // Implicitly confirm range when recording starts (consume then lock).
     if (this._shadowingRange) {
@@ -1621,6 +1622,7 @@ export class PracticeView extends NavigatorElement {
 
   private _applyEchoPlaybackProfile = (): void => {
     this._controller.setShadowingGapCompress(false);
+    this._controller.setShadowingSegmentRangeEnd(null);
     this._suppressNonPracticeSettings({ pauseMode: 'off' });
 
     if (this._echoSegmentIndex >= 0) {
@@ -1658,6 +1660,7 @@ export class PracticeView extends NavigatorElement {
     this._practicePlaybackSettingsSnapshot = null;
 
     this._controller.setShadowingGapCompress(false);
+    this._controller.setShadowingSegmentRangeEnd(null);
     this._controller.setLoopMode(saved.loopMode);
     this._controller.setSleepMinutes(saved.sleepMinutes);
     this._controller.setSleepMode(saved.sleepMode);

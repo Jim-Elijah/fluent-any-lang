@@ -128,6 +128,11 @@ export class MediaController extends EventTarget {
    */
   shadowingGapCompress = false;
   /**
+   * Shadowing segment-range upper bound (inclusive). When set, playback pauses at
+   * this segment's end instead of advancing to the next cue or resuming after pause.
+   */
+  shadowingSegmentRangeEnd: number | null = null;
+  /**
    * When true, force native `HTMLMediaElement.loop` (unless sleep is until-end).
    * Used by Discrimination while the document is hidden so lock-screen replay
    * does not depend on JS `ended` → seek/play.
@@ -667,6 +672,11 @@ export class MediaController extends EventTarget {
     if (!enabled) {
       this._clearSegmentPauseTimer();
     }
+    this._emitChange();
+  }
+
+  setShadowingSegmentRangeEnd(index: number | null): void {
+    this.shadowingSegmentRangeEnd = index;
     this._emitChange();
   }
 
@@ -1212,6 +1222,10 @@ export class MediaController extends EventTarget {
   }
 
   private _applySegmentPause(segment: SubtitleSegment): void {
+    if (this._pauseAtShadowingRangeEnd(segment)) {
+      return;
+    }
+
     if (this.shadowingGapCompress) {
       this._applyShadowingGapCompress(segment);
       return;
@@ -1236,6 +1250,23 @@ export class MediaController extends EventTarget {
       },
     });
     this._emitChange();
+  }
+
+  /** Pause at the inclusive shadowing range end; recording stop remains user-controlled. */
+  private _pauseAtShadowingRangeEnd(endedSegment: SubtitleSegment): boolean {
+    if (this.shadowingSegmentRangeEnd === null) {
+      return false;
+    }
+
+    const endedIndex = this.segments.findIndex((segment) => segment.id === endedSegment.id);
+    if (endedIndex < 0 || endedIndex !== this.shadowingSegmentRangeEnd) {
+      return false;
+    }
+
+    this._clearSegmentPauseTimer();
+    this.pause({ reason: 'segment' });
+    this._emitChange();
+    return true;
   }
 
   /** Skip natural subtitle gaps: wait a fixed beat on the ended cue, then jump and play. */

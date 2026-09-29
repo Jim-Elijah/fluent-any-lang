@@ -67,7 +67,7 @@ See [`architecture.md`](./architecture.md#discrimination-lock-screen-risks). Sho
 1. Import one audio + SRT
 2. Free Listening: seek + loop one Subtitle Segment
 3. Discrimination: enable one Noise track briefly; with 2+ ladder steps, lock screen mid-play then unlock (main should keep looping at the same rate; ladder advances only after a visible `ended`)
-4. Shadowing: one take → appears in records; optional: select 2–3 segments, confirm range, record — verify playback starts from first selected segment
+4. Shadowing: one take → appears in records; optional: select 2–3 segments, confirm range, record — verify playback starts from first selected segment and pauses after the last selected segment (recording still manual stop)
 5. Echo: one segment listen + record; optional — two takes on one line → **仅保留本条** in manage recordings or library records (confirm dialog tables the other take’s date, duration, and score before delete)
 6. Confirm today’s Practice Session time moved on Stats/Home
 7. Save one Sentence Bank Entry and open sentence practice
