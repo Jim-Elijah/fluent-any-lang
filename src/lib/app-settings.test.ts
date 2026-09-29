@@ -104,6 +104,15 @@ describe('app-settings', () => {
     expect(getAppSettings().shadowingGapPolicy).toBe('preserve');
   });
 
+  it('parses source mask mode with off default', () => {
+    expect(getAppSettings().sourceMaskMode).toBe('off');
+    expect(normalizeAppSettings({ sourceMaskMode: 'nope' }).sourceMaskMode).toBe('off');
+    setAppSettings({ sourceMaskMode: 'current' });
+    expect(getAppSettings().sourceMaskMode).toBe('current');
+    setAppSettings({ sourceMaskMode: 'all' });
+    expect(getAppSettings().sourceMaskMode).toBe('all');
+  });
+
   it('migrates legacy user-settings once', () => {
     localStorage.setItem(
       USER_SETTINGS_STORAGE_KEY,

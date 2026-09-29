@@ -110,6 +110,6 @@ Native `HTMLMediaElement.loop` keeps the main Media (and Noise) wrapping when th
 
 ## Settings vs data
 
-- **Preferences / limits / Discrimination defaults / last-played resume ids / speech score API URL + key + align API URL + Echo prosody basis / reduceSpeakerEcho (mic AEC)** → `app-settings` (localStorage)
+- **Preferences / limits / Discrimination defaults / last-played resume ids / speech score API URL + key + align API URL + Echo prosody basis / reduceSpeakerEcho (mic AEC) / source-mask default (`sourceMaskMode`)** → `app-settings` (localStorage). Practice subtitle mask cycles in the session and does not write this default back.
 - **Learner content, sessions, and Pronunciation Scores** → IndexedDB
 - **Backup** → `lib/backup/` (export/import IDB content; respect soft-delete rules; scores travel with recordings; reference prosody profiles and source word alignments are omitted)

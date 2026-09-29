@@ -16,6 +16,11 @@ vi.mock('../../db/service.js', () => ({
 }));
 
 import { MediaController, type LoadedTrack } from '../../controllers/media-controller.js';
+import {
+  APP_SETTINGS_STORAGE_KEY,
+  getAppSettings,
+  setAppSettings,
+} from '../../lib/app-settings.js';
 import type { SubtitleSegment, SubtitleTrack } from '../../types/models.js';
 import { flushUpdates, getPortalShadow, mount } from '../ui/test-utils.js';
 import { Message } from '../ui/message.js';
@@ -110,6 +115,23 @@ describe('subtitle-panel', () => {
       (item.getAttribute('aria-label') ?? '').includes(keyword),
     );
     button?.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
+  }
+
+  function segmentRows(el: SubtitlePanel): Element[] {
+    return [...(el.shadowRoot?.querySelectorAll('.segment') ?? [])];
+  }
+
+  function maskButtonLabel(el: SubtitlePanel): string {
+    const buttons = [...(el.shadowRoot?.querySelectorAll('ui-button') ?? [])];
+    const button = buttons.find((item) => {
+      const label = item.getAttribute('aria-label') ?? '';
+      return (
+        label.includes('只显示当前句') ||
+        label.includes('全部遮罩原文') ||
+        label.includes('取消遮罩原文')
+      );
+    });
+    return button?.getAttribute('aria-label') ?? '';
   }
 
   it('opens fullscreen portal in uncontrolled mode', async () => {
@@ -312,6 +334,71 @@ describe('subtitle-panel', () => {
     await flushUpdates();
 
     expect(el.shadowRoot?.querySelector('.source-text-masked')).not.toBeNull();
+  });
+
+  it('cycles source mask from off to current line, then all, then off', async () => {
+    const el = await renderPanel({ subtitlesVisible: true });
+    controller.seekToSegment(0);
+    await el.updateComplete;
+    await flushUpdates();
+
+    expect(maskButtonLabel(el)).toContain('只显示当前句');
+
+    el.toggleSourceTextMask();
+    await el.updateComplete;
+    await flushUpdates();
+    let rows = segmentRows(el);
+    expect(rows[0]?.querySelector('.source-text-blurred')).toBeNull();
+    expect(rows[1]?.querySelector('.source-text-blurred')).not.toBeNull();
+    expect(maskButtonLabel(el)).toContain('全部遮罩原文');
+
+    el.toggleSourceTextMask();
+    await el.updateComplete;
+    await flushUpdates();
+    rows = segmentRows(el);
+    expect(rows[0]?.querySelector('.source-text-blurred')).not.toBeNull();
+    expect(rows[1]?.querySelector('.source-text-blurred')).not.toBeNull();
+    expect(maskButtonLabel(el)).toContain('取消遮罩原文');
+
+    el.toggleSourceTextMask();
+    await el.updateComplete;
+    await flushUpdates();
+    expect(el.shadowRoot?.querySelector('.source-text-blurred')).toBeNull();
+    expect(maskButtonLabel(el)).toContain('只显示当前句');
+  });
+
+  it('blurs every source line in current mode when no segment is active', async () => {
+    const el = await renderPanel({ subtitlesVisible: true });
+    el.toggleSourceTextMask();
+    controller.currentSegmentIndex = -1;
+    controller.setNavigationLocked(true);
+    await el.updateComplete;
+    await flushUpdates();
+
+    const rows = segmentRows(el);
+    expect(rows[0]?.querySelector('.source-text-blurred')).not.toBeNull();
+    expect(rows[1]?.querySelector('.source-text-blurred')).not.toBeNull();
+    expect(maskButtonLabel(el)).toContain('全部遮罩原文');
+  });
+
+  it('starts from the saved source mask and keeps session cycles out of settings', async () => {
+    localStorage.removeItem(APP_SETTINGS_STORAGE_KEY);
+    setAppSettings({ sourceMaskMode: 'all' });
+    try {
+      const el = await renderPanel({ subtitlesVisible: true });
+      const rows = segmentRows(el);
+      expect(rows[0]?.querySelector('.source-text-blurred')).not.toBeNull();
+      expect(rows[1]?.querySelector('.source-text-blurred')).not.toBeNull();
+
+      el.toggleSourceTextMask();
+      await el.updateComplete;
+      await flushUpdates();
+
+      expect(getAppSettings().sourceMaskMode).toBe('all');
+      expect(el.shadowRoot?.querySelector('.source-text-blurred')).toBeNull();
+    } finally {
+      localStorage.removeItem(APP_SETTINGS_STORAGE_KEY);
+    }
   });
 
   it('shows import subtitle CTA when media has no subtitles', async () => {

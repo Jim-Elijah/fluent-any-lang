@@ -69,7 +69,7 @@ describe('settings-preferences', () => {
     const el = await renderPreferences();
     expect(switches(el).length).toBe(5);
     expect(switches(el).every((sw) => !(sw as UiSwitchLike).checked)).toBe(true);
-    expect(el.shadowRoot?.querySelectorAll('ui-select').length).toBe(2);
+    expect(el.shadowRoot?.querySelectorAll('ui-select').length).toBe(3);
     expect(el.shadowRoot?.textContent).toContain('减少外放回声');
   });
 
@@ -104,6 +104,30 @@ describe('settings-preferences', () => {
     );
     await el.updateComplete;
     expect(setAppSettings).toHaveBeenCalledWith({ shadowingGapPolicy: 'preserve' });
+  });
+
+  it('persists the default source mask from the select control', async () => {
+    const el = await renderPreferences();
+    const selects = el.shadowRoot?.querySelectorAll('ui-select');
+    const maskSelect = selects?.[2] as HTMLElement & {
+      dispatchEvent: (event: Event) => boolean;
+      options?: Array<{ value: string; label: string }>;
+    };
+    expect(maskSelect.options?.map((option) => option.label)).toEqual([
+      '不遮罩',
+      '只显示当前句',
+      '全部遮罩原文',
+    ]);
+    maskSelect.dispatchEvent(
+      new CustomEvent('change', {
+        detail: { value: 'all', option: { value: 'all', label: '全部遮罩原文' } },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+    await el.updateComplete;
+    expect(setAppSettings).toHaveBeenCalledWith({ sourceMaskMode: 'all' });
+    expect(el.shadowRoot?.textContent).toContain('遮罩原文');
   });
 
   it.each(PREFERENCE_TOGGLES)(

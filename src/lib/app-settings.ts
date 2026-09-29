@@ -11,12 +11,14 @@ import {
   LOOP_MODE_VALUES,
   PLAYBACK_RATE_LIMITS,
   SHADOWING_GAP_POLICY_VALUES,
+  SOURCE_MASK_MODE_VALUES,
   SPEECH_SCORE_PROSODY_BASIS_VALUES,
   type AppSettings,
   type DiscriminationNoiseSelection,
   type DiscriminationSettings,
   type LoopMode,
   type ShadowingGapPolicy,
+  type SourceMaskMode,
   type SpeechScoreProsodyBasis,
   type WordMarkerLayout,
   WORD_MARKER_LAYOUT_VALUES,
@@ -86,6 +88,12 @@ function parseShadowingGapPolicy(value: unknown, fallback: ShadowingGapPolicy): 
   return typeof value === 'string' &&
     (SHADOWING_GAP_POLICY_VALUES as readonly string[]).includes(value)
     ? (value as ShadowingGapPolicy)
+    : fallback;
+}
+
+function parseSourceMaskMode(value: unknown, fallback: SourceMaskMode): SourceMaskMode {
+  return typeof value === 'string' && (SOURCE_MASK_MODE_VALUES as readonly string[]).includes(value)
+    ? (value as SourceMaskMode)
     : fallback;
 }
 
@@ -315,6 +323,7 @@ function parseAppSettings(raw: unknown): AppSettings {
       raw.skipDiscriminationTips,
       DEFAULT_SETTINGS.skipDiscriminationTips,
     ),
+    sourceMaskMode: parseSourceMaskMode(raw.sourceMaskMode, DEFAULT_SETTINGS.sourceMaskMode),
     reduceSpeakerEcho: parseBoolean(raw.reduceSpeakerEcho, DEFAULT_SETTINGS.reduceSpeakerEcho),
     lastPlayedPlaylistId:
       typeof raw.lastPlayedPlaylistId === 'string'

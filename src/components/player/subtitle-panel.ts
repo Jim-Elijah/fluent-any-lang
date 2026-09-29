@@ -8,6 +8,7 @@ import type {
   MediaControllerSnapshot,
 } from '../../controllers/media-controller.js';
 import { reportSubtitleImportResult } from '../import/subtitle-import-feedback.js';
+import { getAppSettings } from '../../lib/app-settings.js';
 import { formatTime } from '../../lib/playback-utils.js';
 import { formatOverallBadge, overallBadgeBand } from '../../lib/pronunciation-score/index.js';
 import { scoreBandStyles } from '../shared/score-band-styles.js';
@@ -19,7 +20,12 @@ import {
   subtitleBasenameMatchesMedia,
   type PendingSubtitleImport,
 } from '../../lib/subtitle-import-helpers.js';
-import type { PracticeRecord, SubtitleSegment, SubtitleTrack } from '../../types/models.js';
+import type {
+  PracticeRecord,
+  SourceMaskMode,
+  SubtitleSegment,
+  SubtitleTrack,
+} from '../../types/models.js';
 import '../ui/button.js';
 import '../ui/icon.js';
 import '../ui/modal.js';
@@ -29,6 +35,14 @@ import { isControlledOpen } from '../ui/internal/controlled-state.js';
 import { OverlayController } from '../ui/internal/overlay-controller.js';
 import { Z_INDEX } from '../ui/internal/z-index.js';
 import { SESSION_DOCK_INSET_PX } from './echo-session-dock.js';
+
+const SOURCE_MASK_MODE_CYCLE: readonly SourceMaskMode[] = ['off', 'current', 'all'];
+
+function nextSourceMaskMode(mode: SourceMaskMode): SourceMaskMode {
+  const index = SOURCE_MASK_MODE_CYCLE.indexOf(mode);
+  const next = SOURCE_MASK_MODE_CYCLE[(index + 1) % SOURCE_MASK_MODE_CYCLE.length];
+  return next ?? 'off';
+}
 
 export type SubtitleImportedDetail = {
   mediaId: string;
@@ -199,6 +213,10 @@ const FULLSCREEN_PORTAL_STYLES = `
     text-decoration: none;
   }
 
+  .list.source-text-masked-all .segment:hover .text {
+    text-decoration: none;
+  }
+
   .echo-controls {
     display: flex;
     align-items: center;
@@ -360,6 +378,10 @@ export class SubtitlePanel extends LitElement {
         text-decoration: none;
       }
 
+      .list.source-text-masked-all .segment:hover .text {
+        text-decoration: none;
+      }
+
       .empty {
         padding: var(--space-stack) var(--space-inline);
         text-align: center;
@@ -517,8 +539,9 @@ export class SubtitlePanel extends LitElement {
   @state()
   private _translationVisible = false;
 
+  /** Session mask. Starts from settings; cycling does not write settings back. */
   @state()
-  private _sourceTextMasked = false;
+  private _sourceMaskMode: SourceMaskMode = getAppSettings().sourceMaskMode;
 
   @state()
   private _internalFullscreen = false;
@@ -713,7 +736,12 @@ export class SubtitlePanel extends LitElement {
   ): TemplateResult {
     const activeIndex = this._getActiveSegmentIndex(snapshot);
     const lockedClass = this.seekDisabled ? 'navigation-locked' : '';
-    const maskClass = this._sourceTextMasked ? 'source-text-masked' : '';
+    const maskClass =
+      this._sourceMaskMode === 'off'
+        ? ''
+        : this._sourceMaskMode === 'all'
+          ? 'source-text-masked source-text-masked-all'
+          : 'source-text-masked';
     return html`<ul class="${listClass} ${lockedClass} ${maskClass}">
       ${snapshot.segments.map(
         (segment, index) => html`
@@ -862,7 +890,7 @@ export class SubtitlePanel extends LitElement {
     activeIndex: number,
   ): TemplateResult {
     const badge = this.echoMode ? this._renderEchoScoreBadge(segment.id) : nothing;
-    const maskSource = this._sourceTextMasked && index !== activeIndex;
+    const maskSource = this._shouldBlurSourceText(index, activeIndex);
     if (maskSource) {
       return html`<span class="source-text-blurred" aria-hidden="true">${segment.text}</span
         >${badge}`;
@@ -1092,13 +1120,7 @@ export class SubtitlePanel extends LitElement {
       : keyboardShortcuts
         ? msg('显示翻译 (T)')
         : msg('显示翻译');
-    const sourceMaskTitle = this._sourceTextMasked
-      ? keyboardShortcuts
-        ? msg('取消遮罩原文 (M)')
-        : msg('取消遮罩原文')
-      : keyboardShortcuts
-        ? msg('遮罩原文 (M)')
-        : msg('遮罩原文');
+    const sourceMaskTitle = this._sourceMaskActionTitle(keyboardShortcuts);
     const fullscreenTitle = this._isFullscreen()
       ? keyboardShortcuts
         ? msg('退出全屏 (F)')
@@ -1157,7 +1179,7 @@ export class SubtitlePanel extends LitElement {
                 >
                   <ui-icon
                     size="var(--icon-xl)"
-                    name="${this._sourceTextMasked ? 'subtitle-on' : 'subtitle-hide'}"
+                    name="${this._sourceMaskMode === 'off' ? 'subtitle-hide' : 'subtitle-on'}"
                   ></ui-icon>
                 </ui-button>
               </ui-tooltip>`
@@ -1195,13 +1217,39 @@ export class SubtitlePanel extends LitElement {
     this._translationVisible = !this._translationVisible;
   }
 
-  /** Practice hotkeys / toolbar: mask non-current segment source text (session-only). */
+  /** Practice hotkeys / toolbar: cycle source mask for this visit only. */
   toggleSourceTextMask(): void {
     const snapshot = this._controllerHost?.snapshot;
     if (!snapshot?.hasSubtitles || !snapshot.subtitlesVisible) {
       return;
     }
-    this._sourceTextMasked = !this._sourceTextMasked;
+    this._sourceMaskMode = nextSourceMaskMode(this._sourceMaskMode);
+  }
+
+  private _sourceMaskActionTitle(keyboardShortcuts: boolean): string {
+    switch (this._sourceMaskMode) {
+      case 'off':
+        return keyboardShortcuts ? msg('只显示当前句 (M)') : msg('只显示当前句');
+      case 'current':
+        return keyboardShortcuts ? msg('全部遮罩原文 (M)') : msg('全部遮罩原文');
+      case 'all':
+        return keyboardShortcuts ? msg('取消遮罩原文 (M)') : msg('取消遮罩原文');
+      default: {
+        const _exhaustive: never = this._sourceMaskMode;
+        return _exhaustive;
+      }
+    }
+  }
+
+  /** `current` blurs every row when no Subtitle Segment is active (index < 0). */
+  private _shouldBlurSourceText(index: number, activeIndex: number): boolean {
+    if (this._sourceMaskMode === 'all') {
+      return true;
+    }
+    if (this._sourceMaskMode === 'current') {
+      return index !== activeIndex;
+    }
+    return false;
   }
 
   private _toggleSourceTextMask(): void {

@@ -66,6 +66,21 @@ export const SHADOWING_GAP_POLICY_VALUES: readonly ShadowingGapPolicy[] = [
 ] as const;
 
 /**
+ * Default source-text mask when opening practice.
+ * The subtitle panel cycles this for the current visit and does not write it back.
+ * - off: source text readable
+ * - current: only the active Subtitle Segment stays readable
+ * - all: every segment's source text is blurred
+ */
+export type SourceMaskMode = 'off' | 'current' | 'all';
+
+export const SOURCE_MASK_MODE_VALUES: readonly SourceMaskMode[] = [
+  'off',
+  'current',
+  'all',
+] as const;
+
+/**
  * Echo Pronunciation Score prosody basis (settings).
  * - naturalness: score how natural the learner sounds (no reference audio/profile).
  * - match: compare Echo takes to the source clip / cached prosody profile ("像原声").
@@ -568,6 +583,11 @@ export type AppSettings = {
   /** When true, discrimination mode tips modal is skipped. */
   skipDiscriminationTips: boolean;
   /**
+   * Source-text mask applied when a practice page opens.
+   * In-session subtitle-panel / M changes stay on that visit only.
+   */
+  sourceMaskMode: SourceMaskMode;
+  /**
    * When true, enable browser echoCancellation (AEC) on the practice mic.
    * Helps speaker/phone use; may clip Shadowing takes. Default off (headphones).
    */
@@ -676,6 +696,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   shadowingGapPolicy: 'compress',
   skipEchoTips: false,
   skipDiscriminationTips: false,
+  sourceMaskMode: 'off',
   reduceSpeakerEcho: false,
   lastPlayedPlaylistId: '',
   lastPlayedMediaId: '',
