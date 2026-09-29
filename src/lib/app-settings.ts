@@ -22,11 +22,16 @@ import {
   type SpeechScoreProsodyBasis,
   type WordMarkerLayout,
   WORD_MARKER_LAYOUT_VALUES,
+  PINNABLE_LIBRARY_ROUTE_VALUES,
+  type PinnableLibraryRoute,
 } from '../types/models.js';
 import { toScoreApiUrl } from './pronunciation-score/constants.js';
 import { suggestAlignApiUrlFromScoreUrl, toAlignApiUrl } from './pronunciation-align/constants.js';
 
 export const APP_SETTINGS_STORAGE_KEY = 'fluent-any-lang:app-settings';
+
+/** Fired on `window` after {@link setAppSettings} persists. Same-tab nav can refresh. */
+export const APP_SETTINGS_CHANGED_EVENT = 'fluent-any-lang:app-settings-changed';
 
 function defaultSpeechScoreApiUrl(): string {
   const value = import.meta.env.VITE_SPEECH_SCORE_API_BASE_URL;
@@ -116,6 +121,19 @@ function parseWordMarkerLayout(value: unknown, fallback: WordMarkerLayout): Word
 
 function parseBoolean(value: unknown, fallback: boolean): boolean {
   return typeof value === 'boolean' ? value : fallback;
+}
+
+function parsePinnedLibraryRoutes(value: unknown): PinnableLibraryRoute[] {
+  if (!Array.isArray(value)) return [];
+  const allowed = new Set<string>(PINNABLE_LIBRARY_ROUTE_VALUES);
+  const picked: PinnableLibraryRoute[] = [];
+  for (const entry of value) {
+    if (typeof entry !== 'string' || !allowed.has(entry)) continue;
+    const route = entry as PinnableLibraryRoute;
+    if (picked.includes(route)) continue;
+    picked.push(route);
+  }
+  return PINNABLE_LIBRARY_ROUTE_VALUES.filter((key) => picked.includes(key));
 }
 
 function parseString(value: unknown, fallback: string): string {
@@ -351,6 +369,7 @@ function parseAppSettings(raw: unknown): AppSettings {
       raw.wordMarkerLayout,
       DEFAULT_SETTINGS.wordMarkerLayout,
     ),
+    pinnedLibraryRoutes: parsePinnedLibraryRoutes(raw.pinnedLibraryRoutes),
   };
 }
 
@@ -447,6 +466,9 @@ export function setAppSettings(partial: Partial<AppSettings>): AppSettings {
   }
   const next = parseAppSettings(merged);
   writeLocalStorage(APP_SETTINGS_STORAGE_KEY, JSON.stringify(next));
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(APP_SETTINGS_CHANGED_EVENT));
+  }
   return next;
 }
 

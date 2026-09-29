@@ -8,6 +8,7 @@ import '../../components/settings/settings-player-defaults.js';
 import '../../components/settings/settings-limits.js';
 import '../../components/settings/settings-speech-score.js';
 import '../../components/settings/settings-backup.js';
+import '../../components/settings/settings-nav-pins.js';
 import '../../components/settings/settings-pwa.js';
 import '../../components/settings/settings-diagnostics.js';
 import '../../components/settings/settings-clear-data.js';
@@ -279,6 +280,7 @@ export class SettingsPage extends LitElement {
 
         <section id="group-app" class="group">
           <h3 class="group-title">${msg('应用')}</h3>
+          <settings-nav-pins></settings-nav-pins>
           <settings-pwa></settings-pwa>
           <settings-diagnostics></settings-diagnostics>
         </section>

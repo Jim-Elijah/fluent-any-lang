@@ -124,6 +124,23 @@ describe('ui-menu', () => {
     expect(home?.getAttribute('aria-current')).toBe('page');
   });
 
+  it('shows icons only in the bottom nav and keeps the label as the accessible name', async () => {
+    const el = await renderMenu(
+      html`<ui-menu
+        .bottomNav=${true}
+        ?bottom-nav=${true}
+        mode="horizontal"
+        .items=${ITEMS}
+      ></ui-menu>`,
+    );
+    const home = el.shadowRoot?.querySelector('.item');
+    const label = home?.querySelector('.label');
+    expect(el.bottomNav).toBe(true);
+    expect(el.hasAttribute('bottom-nav')).toBe(true);
+    expect(home?.getAttribute('aria-label')).toBe('Home');
+    expect(label?.textContent).toBe('Home');
+  });
+
   it('renders horizontal mode', async () => {
     const el = await renderMenu(html`<ui-menu mode="horizontal" .items=${ITEMS}></ui-menu>`);
     expect(el.shadowRoot?.querySelector('.menu.horizontal')).not.toBeNull();

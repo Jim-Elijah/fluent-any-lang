@@ -617,7 +617,22 @@ export type AppSettings = {
    * Default `duration`.
    */
   wordMarkerLayout: WordMarkerLayout;
+  /**
+   * Library sub-routes pinned into the app nav.
+   * Noise is not pinnable. Empty by default.
+   */
+  pinnedLibraryRoutes: PinnableLibraryRoute[];
 };
+
+/** Library collection routes that may appear in the app nav. Hub order, Noise excluded. */
+export const PINNABLE_LIBRARY_ROUTE_VALUES = [
+  'library-media',
+  'library-playlists',
+  'library-sentences',
+  'library-records',
+] as const;
+
+export type PinnableLibraryRoute = (typeof PINNABLE_LIBRARY_ROUTE_VALUES)[number];
 
 export const FAVORITES_PLAYLIST_ID =
   'f42d0f9e4b0ec07df97f58277cd5e5ae2cde973c0bf96ae598827e4da1c3bad1';
@@ -707,6 +722,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   speechScoreLanguage: 'auto',
   speechScoreProsodyBasis: 'naturalness',
   wordMarkerLayout: 'duration',
+  pinnedLibraryRoutes: [],
 };
 
 /** Allowed ranges for persisted storage / quota numeric fields. */

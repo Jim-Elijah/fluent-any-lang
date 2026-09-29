@@ -14,6 +14,7 @@ import { mount } from '../components/ui/test-utils.js';
 import '../app/my-app.js';
 import type { MyApp } from '../app/my-app.js';
 import { LOCALE_STORAGE_KEY } from '../i18n/localization.js';
+import { setAppSettings } from '../lib/app-settings.js';
 import type { MenuOpenChangeDetail, MenuSelectDetail } from '../components/ui/menu.js';
 
 // Register page custom elements before any app-shell render (avoids happy-dom
@@ -150,6 +151,45 @@ describe('app-shell', () => {
 
     expect(el.selectedKeys).toEqual(['sentence-practice']);
     await waitForSelector(el, 'sentence-practice-page');
+  });
+
+  function menuKeys(el: MyApp): string[] {
+    const menu = el.shadowRoot?.querySelector('ui-menu') as {
+      items?: Array<{ key: string }>;
+    } | null;
+    return (menu?.items ?? []).map((item) => item.key);
+  }
+
+  it('inserts pinned library routes after the hub and highlights the pin', async () => {
+    setAppSettings({ pinnedLibraryRoutes: ['library-records', 'library-media'] });
+    stubMatchMedia(false);
+    const el = await renderApp();
+
+    expect(menuKeys(el)).toEqual([
+      'home',
+      'library',
+      'library-media',
+      'library-records',
+      'stats',
+      'settings',
+    ]);
+
+    el.router('library-media', {}, {}, {});
+    await el.updateComplete;
+    expect(el.selectedKeys).toEqual(['library-media']);
+
+    el.router('library-noise', {}, {}, {});
+    await el.updateComplete;
+    expect(el.selectedKeys).toEqual(['library']);
+
+    el.router('sentence-practice', {}, {}, {});
+    await el.updateComplete;
+    expect(el.selectedKeys).toEqual(['sentence-practice']);
+
+    setAppSettings({ pinnedLibraryRoutes: ['library-sentences'] });
+    await el.updateComplete;
+    expect(menuKeys(el)).toEqual(['home', 'library', 'library-sentences', 'stats', 'settings']);
+    expect(el.selectedKeys).toEqual(['library-sentences']);
   });
 
   it('maps library sub-routes to library menu selection', async () => {

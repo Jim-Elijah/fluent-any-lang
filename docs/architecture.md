@@ -73,6 +73,12 @@ Sentence practice (`/sentence-practice`) is a lighter path on clipped Sentence B
 
 Legacy `/playlists` and `/sentences` redirect into the hub. Sentence practice returns to `/library/sentences`.
 
+Media, Playlists, the Sentence Bank, and Practice Records can be pinned into the app nav from Settings (off by default, hub order, no count cap). Noise stays hub-only. The hub still lists every collection.
+
+Highlight the most specific item. A pinned route highlights that pin. The hub and unpinned library routes, including Noise, highlight 库. Sentence practice highlights 句库 only while that route is pinned.
+
+The mobile bottom nav is icon-only so long labels fit in every locale. The full label is the item's accessible name and is not shown in a tooltip. The side nav keeps the icon and the label.
+
 ## Critical couplings
 
 - **`practice-view` ↔ `MediaController`** — mode profiles, seek/lock, segment alignment; Discrimination may set `setLockScreenLoop` while the document is hidden. Segment loop: scrub into a mid-track gap adopts the following Subtitle Segment; leading/trailing gaps clear `currentSegmentIndex` (−1, no highlight / replay) until playback or seek lands inside a segment again. Loading Media with no Subtitle Track (or clearing subtitles) downgrades `segment` loop to `none` and turns pause-between-segments off. All auto-resume paths (segment pause, segment/single loop `ended`, shadowing gap compress) assign `currentTime` directly then `play()` via `_seekDirectAndPlay` — never `seek()` + `play()` which awaits `seeked`. Mobile lock-screen swallows `seeked`; `visibilitychange → visible` force-settles any stranded seek.
@@ -110,6 +116,6 @@ Native `HTMLMediaElement.loop` keeps the main Media (and Noise) wrapping when th
 
 ## Settings vs data
 
-- **Preferences / limits / Discrimination defaults / last-played resume ids / speech score API URL + key + align API URL + Echo prosody basis / reduceSpeakerEcho (mic AEC) / source-mask default (`sourceMaskMode`)** → `app-settings` (localStorage). Practice subtitle mask cycles in the session and does not write this default back.
+- **Preferences / limits / Discrimination defaults / last-played resume ids / speech score API URL + key + align API URL + Echo prosody basis / reduceSpeakerEcho (mic AEC) / source-mask default (`sourceMaskMode`) / pinned library nav routes (`pinnedLibraryRoutes`, Noise excluded)** → `app-settings` (localStorage). Practice subtitle mask cycles in the session and does not write this default back.
 - **Learner content, sessions, and Pronunciation Scores** → IndexedDB
 - **Backup** → `lib/backup/` (export/import IDB content; respect soft-delete rules; scores travel with recordings; reference prosody profiles and source word alignments are omitted)

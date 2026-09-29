@@ -205,6 +205,38 @@ describe('app-settings', () => {
     expect(getAppSettings().speechScoreProsodyBasis).toBe('naturalness');
   });
 
+  it('keeps pinnable library routes in hub order and drops Noise', () => {
+    expect(getAppSettings().pinnedLibraryRoutes).toEqual([]);
+    setAppSettings({
+      pinnedLibraryRoutes: [
+        'library-records',
+        'library-media',
+        'library-sentences',
+        'library-playlists',
+        'library-noise' as 'library-media',
+      ],
+    });
+    expect(getAppSettings().pinnedLibraryRoutes).toEqual([
+      'library-media',
+      'library-playlists',
+      'library-sentences',
+      'library-records',
+    ]);
+    localStorage.setItem(
+      APP_SETTINGS_STORAGE_KEY,
+      JSON.stringify({
+        ...DEFAULT_SETTINGS,
+        pinnedLibraryRoutes: ['library-media', 'library-media', 'library-playlists'],
+      }),
+    );
+    expect(getAppSettings().pinnedLibraryRoutes).toEqual(['library-media', 'library-playlists']);
+    localStorage.setItem(
+      APP_SETTINGS_STORAGE_KEY,
+      JSON.stringify({ ...DEFAULT_SETTINGS, pinnedLibraryRoutes: 'library-media' }),
+    );
+    expect(getAppSettings().pinnedLibraryRoutes).toEqual([]);
+  });
+
   it('defaults wordMarkerLayout to duration and rejects unknown values', () => {
     expect(getAppSettings().wordMarkerLayout).toBe('duration');
     setAppSettings({ wordMarkerLayout: 'compact' });

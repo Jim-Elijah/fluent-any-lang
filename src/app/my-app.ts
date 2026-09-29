@@ -9,6 +9,9 @@ import '../components/ui/menu.js';
 import { Loading, type LoadingInstance } from '../components/ui/loading.js';
 import { MenuItem, MenuOpenChangeDetail, MenuSelectDetail } from '../components/ui/menu.js';
 import { getLocale, isLocale, Locale, LOCALE_STORAGE_KEY } from '../i18n/localization.js';
+import { APP_SETTINGS_CHANGED_EVENT, getAppSettings } from '../lib/app-settings.js';
+import { PINNABLE_LIBRARY_NAV, resolveLibraryNavKey } from '../lib/library-nav-pins.js';
+import type { PinnableLibraryRoute } from '../types/models.js';
 
 type AppRoute =
   | 'home'
@@ -30,17 +33,6 @@ type RedirectRoute = 'playlists' | 'sentences';
 type RouteRenderContext = {
   routeContext: RouteContext;
 };
-
-const LIBRARY_MENU_ROUTES = new Set<string>([
-  'library',
-  'library-media',
-  'library-records',
-  'library-noise',
-  'library-playlists',
-  'library-sentences',
-  'playlists',
-  'sentences',
-]);
 
 const LEGACY_REDIRECTS: Record<RedirectRoute, string> = {
   playlists: '/library/playlists',
@@ -289,10 +281,43 @@ export class MyApp extends RouterNavigatorApp {
   @state()
   private _loadedRoutes: readonly AppRoute[] = [];
 
+  @state()
+  private _pinnedLibraryRoutes: readonly PinnableLibraryRoute[] =
+    getAppSettings().pinnedLibraryRoutes;
+
+  private _onAppSettingsChanged = () => {
+    const next = getAppSettings().pinnedLibraryRoutes;
+    const prev = this._pinnedLibraryRoutes;
+    if (prev.length === next.length && prev.every((key, index) => key === next[index])) return;
+    this._pinnedLibraryRoutes = next;
+    this.selectedKeys = [resolveLibraryNavKey(this.activeRoute, next)];
+  };
+
+  private _pinLabel(key: PinnableLibraryRoute): string {
+    switch (key) {
+      case 'library-media':
+        return msg('媒体库');
+      case 'library-playlists':
+        return msg('播放列表');
+      case 'library-sentences':
+        return msg('句库');
+      case 'library-records':
+        return msg('录音库');
+    }
+  }
+
   private _getMenuItems(): Array<MenuItem & { link: string }> {
+    const pins = new Set(this._pinnedLibraryRoutes);
+    const pinnedItems = PINNABLE_LIBRARY_NAV.filter((item) => pins.has(item.key)).map((item) => ({
+      key: item.key,
+      label: this._pinLabel(item.key),
+      link: item.link,
+      icon: item.icon,
+    }));
     return [
       { key: 'home', label: msg('首页'), link: '/', icon: 'home' },
       { key: 'library', label: msg('库'), link: '/library', icon: 'media' },
+      ...pinnedItems,
       { key: 'stats', label: msg('统计'), link: '/stats', icon: 'stats' },
       { key: 'settings', label: msg('设置'), link: '/settings', icon: 'setting' },
     ];
@@ -380,12 +405,14 @@ export class MyApp extends RouterNavigatorApp {
     this._mq = window.matchMedia('(max-width: 767px)');
     this._isMobile = this._mq.matches;
     this._mq.addEventListener('change', this._onMediaChange);
+    window.addEventListener(APP_SETTINGS_CHANGED_EVENT, this._onAppSettingsChanged);
     // Defer so :host media-query vars are computed before mirroring to :root.
     requestAnimationFrame(() => this._syncAppBottomNavInsetToRoot());
   }
   disconnectedCallback() {
     super.disconnectedCallback();
     this._mq?.removeEventListener('change', this._onMediaChange);
+    window.removeEventListener(APP_SETTINGS_CHANGED_EVENT, this._onAppSettingsChanged);
     this._pageLoading?.close();
     this._pageLoading = null;
     this._mainEl = null;
@@ -426,7 +453,7 @@ export class MyApp extends RouterNavigatorApp {
       query,
       data,
     };
-    this.selectedKeys = [LIBRARY_MENU_ROUTES.has(route) ? 'library' : route || 'home'];
+    this.selectedKeys = [resolveLibraryNavKey(route, this._pinnedLibraryRoutes)];
     if (route in ROUTE_LOADERS) {
       void this._ensurePageLoaded(route as AppRoute);
     }
@@ -518,6 +545,7 @@ export class MyApp extends RouterNavigatorApp {
             .selectedKeys=${this.selectedKeys}
             .openKeys=${this.openKeys}
             mode=${this._isMobile ? 'horizontal' : 'vertical'}
+            .bottomNav=${this._isMobile}
             ?bottom-nav=${this._isMobile}
             ?inline=${!this._isMobile}
             @select=${this._handleMenuSelect}

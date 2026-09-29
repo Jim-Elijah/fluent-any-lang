@@ -37,6 +37,7 @@ Most language apps lock you into their curriculum. FluentAnyLang is built for **
 - **Media, recordings & noise libraries** — Search, sort, filter, custom covers, and export; tolerant `.srt` / `.lrc` import with warnings when lines need attention.
 - **Playlists & favorites** — Group materials, reorder, create a playlist while adding media, and continue the last playlist from the home dashboard.
 - **Sentence bank** — Save individual lines (with clipped audio) and drill them later.
+- **Nav shortcuts** — Pin media, playlists, the sentence bank, or recordings onto the app nav from Settings. Noise stays under Library. On a phone the bar shows icons only.
 - **Practice statistics** — Effective practice time (not wall-clock), streaks, mode mix, trends, and media ranking.
 
 ### More

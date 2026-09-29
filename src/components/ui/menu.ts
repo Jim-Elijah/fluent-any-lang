@@ -227,6 +227,11 @@ export class UiMenu extends LitElement {
       gap: var(--space-xs);
     }
 
+    /* Labels stay in the side nav. Bottom tabs are icon-only so long locales still fit. */
+    :host([bottom-nav]) .menu.horizontal .item > .label {
+      display: none;
+    }
+
     /* 底部激活指示：左侧竖条 → 顶部横条 */
     :host([bottom-nav]) .menu.horizontal .item[aria-current='page']::before {
       left: 20%;
@@ -246,6 +251,10 @@ export class UiMenu extends LitElement {
     }
   `;
 
+  /**
+   * Icon-only layout. Also set the `bottom-nav` attribute for the CSS;
+   * the attribute binding does not update this property.
+   */
   @property({ type: Boolean, reflect: true }) bottomNav = false;
   @property({ type: Boolean, reflect: true }) inline = false;
 
@@ -474,13 +483,14 @@ export class UiMenu extends LitElement {
           <div
             class="item ${item.disabled ? 'disabled' : ''}"
             aria-current=${isSelected ? 'page' : 'false'}
+            aria-label=${this.bottomNav ? item.label : nothing}
             role="menuitem"
             @click=${(e: Event) => this._handleSelect(item, e)}
           >
             ${item.icon
               ? html`<ui-icon name=${item.icon} size="var(--icon-xl)"></ui-icon>`
               : nothing}
-            <span>${item.label}</span>
+            <span class="label">${item.label}</span>
           </div>
         `;
       })}
