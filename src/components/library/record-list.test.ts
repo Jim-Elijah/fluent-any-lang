@@ -55,6 +55,16 @@ const sampleRecord: PracticeRecord = {
   ],
 };
 
+function echoRecord(id: string, createdAt: number, segmentId = 'seg-a'): PracticeRecord {
+  return {
+    ...sampleRecord,
+    id,
+    mode: 'echo',
+    segmentId,
+    createdAt,
+  };
+}
+
 describe('record-list', () => {
   let cleanup: (() => void) | undefined;
 
@@ -378,6 +388,7 @@ describe('record-list', () => {
   });
 
   it('exports a recording from the row action', async () => {
+    speechScoreConfigured = false;
     vi.mocked(recordDb.getRecordingList).mockResolvedValue([sampleRecord]);
     vi.mocked(exportRecording).mockResolvedValue(undefined);
 
@@ -392,6 +403,7 @@ describe('record-list', () => {
   });
 
   it('shows export error when export fails', async () => {
+    speechScoreConfigured = false;
     vi.mocked(recordDb.getRecordingList).mockResolvedValue([sampleRecord]);
     vi.mocked(exportRecording).mockRejectedValue(new Error('export fail'));
 
@@ -765,5 +777,83 @@ describe('record-list', () => {
     button.click();
     await flushUpdates();
     expect(requestScoreMock).toHaveBeenCalled();
+  });
+
+  it('shows more menu instead of inline export when speech score is configured', async () => {
+    vi.mocked(recordDb.getRecordingList).mockResolvedValue([sampleRecord]);
+
+    const el = await renderList();
+    await el.refresh();
+    await el.updateComplete;
+
+    expect(el.shadowRoot?.querySelector('ui-button[aria-label="导出"]')).toBeNull();
+    expect(el.shadowRoot?.querySelector('ui-button[aria-label="更多操作"]')).not.toBeNull();
+  });
+
+  it('hides keep-only when only one echo take exists for the segment', async () => {
+    speechScoreConfigured = false;
+    vi.mocked(recordDb.getRecordingList).mockResolvedValue([echoRecord('rec-echo-1', 1)]);
+
+    const el = await renderList();
+    await el.refresh();
+    await el.updateComplete;
+
+    expect(el.shadowRoot?.querySelector('ui-button[aria-label="仅保留本条"]')).toBeNull();
+  });
+
+  it('deletes sibling echo takes when keep-only is confirmed without score menu', async () => {
+    speechScoreConfigured = false;
+    const first = echoRecord('rec-echo-1', 2);
+    const second = echoRecord('rec-echo-2', 1);
+    vi.mocked(recordDb.getRecordingList).mockResolvedValue([first, second]);
+
+    const el = await renderList();
+    await el.refresh();
+    await el.updateComplete;
+
+    const changed = vi.fn();
+    el.addEventListener('recordings-changed', changed);
+
+    const keepButtons = el.shadowRoot!.querySelectorAll('ui-button[aria-label="仅保留本条"]');
+    expect(keepButtons.length).toBe(2);
+
+    keepButtons[0]!
+      .closest('ui-popconfirm')!
+      .dispatchEvent(new Event('confirm', { bubbles: true, composed: true }));
+    await flushUpdates();
+
+    expect(recordDb.deleteRecordingBatch).toHaveBeenCalledWith(['rec-echo-2']);
+    expect(changed).toHaveBeenCalledWith(
+      expect.objectContaining({
+        detail: { reason: 'batch-deleted' },
+      }),
+    );
+  });
+
+  it('opens keep-only modal from more menu when speech score is configured', async () => {
+    const first = echoRecord('rec-echo-1', 2);
+    const second = echoRecord('rec-echo-2', 1);
+    vi.mocked(recordDb.getRecordingList).mockResolvedValue([first, second]);
+
+    const el = await renderList();
+    await el.refresh();
+    await el.updateComplete;
+
+    const list = el as unknown as {
+      _handleRowMenuClick: (event: CustomEvent<{ key: string }>, recording: PracticeRecord) => void;
+      _confirmKeepOnly: () => Promise<void>;
+    };
+    list._handleRowMenuClick(
+      new CustomEvent('menu-click', { detail: { key: 'keep-only' } }),
+      first,
+    );
+    await el.updateComplete;
+
+    expect(el.shadowRoot?.textContent).toContain('将删除同句其余 1 条录音，不可恢复。');
+
+    await list._confirmKeepOnly();
+    await flushUpdates();
+
+    expect(recordDb.deleteRecordingBatch).toHaveBeenCalledWith(['rec-echo-2']);
   });
 });

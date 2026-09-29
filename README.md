@@ -28,7 +28,7 @@ Most language apps lock you into their curriculum. FluentAnyLang is built for **
 ### Speaking
 
 - **Shadowing** — Record in sync with the original, with countdown cues and a live waveform; choose inter-sentence gaps as “compress to ~1s” or “preserve full gaps” in Settings.
-- **Echo** — Hear the line first, then record; keep multiple takes per sentence and pick the best.
+- **Echo** — Hear the line first, then record; keep multiple takes per sentence and **keep only one** when you are done (library or manage recordings).
 - **Compare takes** — Play source only, recording only, or compare (sentence-aligned **sync** when gaps were compressed; **continuous compare** when full gaps were preserved); click the waveform to seek and play.
 - **Pronunciation score (optional, experimental)** — On-demand scoring after a take. Requires an API URL and API key in Settings. The scoring service is **not publicly available**; contact the developer if you want to try it. Enabling scoring uploads your recording (and, for Echo "Match reference", may also send a reference clip) to the configured server; the server uses a self-hosted scoring model, does not keep audio, and scores stay on your device.
 

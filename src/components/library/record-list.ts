@@ -38,9 +38,11 @@ import '../ui/alert.js';
 import '../ui/button.js';
 import '../ui/modal.js';
 import '../ui/popconfirm.js';
+import '../ui/dropdown.js';
 import './recording-preview.js';
 import '../ui/icon.js';
 import '../ui/tooltip.js';
+import type { DropdownMenuClickDetail, DropdownMenuItem } from '../ui/dropdown.js';
 import '../ui/virtual-grid.js';
 import type {
   SpeakingMode,
@@ -421,6 +423,19 @@ export class RecordList extends LitElement {
   private _privacyRecord: PracticeRecord | null = null;
 
   @state()
+  private _pendingKeepOnly: {
+    keepId: string;
+    deleteIds: string[];
+    deleteCount: number;
+  } | null = null;
+
+  @state()
+  private _keepOnlyDeleting = false;
+
+  @state()
+  private _keepOnlyTargetId = '';
+
+  @state()
   private _subtitleByMediaId = new Map<string, SubtitleTrack | undefined>();
 
   private _visibleCount = 0;
@@ -698,6 +713,28 @@ export class RecordList extends LitElement {
         >
           <p>${msg('评分会将录音上传到你配置的服务器以计算分数。服务端不保存音频。是否继续？')}</p>
         </ui-modal>
+        <ui-modal
+          title="${msg('确定仅保留本条录音吗？')}"
+          .zIndex=${this._confirmOverlayZIndex()}
+          ?open=${Boolean(this._pendingKeepOnly)}
+          ok-text="${msg('保留本条')}"
+          cancel-text="${msg('取消')}"
+          width="420px"
+          centered
+          ?confirm-loading=${this._keepOnlyDeleting}
+          @ok=${() => void this._confirmKeepOnly()}
+          @cancel=${() => this._cancelPendingKeepOnly()}
+          @update:open="${(e: CustomEvent<{ open: boolean }>) => {
+            if (e.target !== e.currentTarget) return;
+            if (!e.detail.open) this._cancelPendingKeepOnly();
+          }}"
+        >
+          ${this._pendingKeepOnly
+            ? html`<p>
+                ${msg(str`将删除同句其余 ${this._pendingKeepOnly.deleteCount} 条录音，不可恢复。`)}
+              </p>`
+            : nothing}
+        </ui-modal>
       </section>
     `;
   }
@@ -768,55 +805,238 @@ export class RecordList extends LitElement {
           </p>
         </div>
         <div class="actions" @click=${(e: Event) => e.stopPropagation()}>
-          <ui-tooltip title="${msg('查看')}">
-            <ui-button
-              variant="primary"
-              aria-label="${msg('查看')}"
-              @click="${() => this._handleView(recording)}"
-            >
-              <ui-icon name="play"></ui-icon>
-            </ui-button>
-          </ui-tooltip>
-          <ui-tooltip title="${msg('导出')}">
-            <ui-button
-              variant="secondary"
-              aria-label="${msg('导出')}"
-              @click="${() => this._handleExport(recording)}"
-            >
-              <ui-icon name="download"></ui-icon>
-            </ui-button>
-          </ui-tooltip>
-          ${scoreConfigured
-            ? html`<ui-tooltip title="${scoreTip}">
-                <ui-button
-                  variant="secondary"
-                  aria-label="${scoreLabel}"
-                  ?disabled=${scoreBlocked}
-                  @click="${() => this._handleScore(recording)}"
-                >
-                  <ui-icon name="score"></ui-icon>
-                </ui-button>
-              </ui-tooltip>`
-            : null}
-          <ui-popconfirm
-            title=${msg('确定删除该录音吗？')}
-            placement="bottom"
-            .zIndex=${this.popupZIndex ?? Z_INDEX.POPCONFIRM}
-            ?confirm-loading=${this._deletingId === recording.id}
-            @confirm=${() => this._handleDelete(recording)}
-          >
-            <ui-button
-              variant="danger"
-              aria-label="${msg('删除')}"
-              ?disabled="${this._deletingId === recording.id}"
-            >
-              <ui-icon name="delete"></ui-icon>
-            </ui-button>
-          </ui-popconfirm>
+          ${this._renderRowActions(recording, scoreConfigured, scoreLabel, scoreTip, scoreBlocked)}
         </div>
       </div>
     `;
   };
+
+  private _dropdownZIndex(): number {
+    return this.popupZIndex ?? Z_INDEX.DROPDOWN;
+  }
+
+  private _confirmOverlayZIndex(): number {
+    return this.popupZIndex != null ? this.popupZIndex + 50 : Z_INDEX.POPCONFIRM;
+  }
+
+  private _resolveSegmentId(recording: PracticeRecord): string | undefined {
+    return recording.segmentId ?? recording.segments[0]?.id;
+  }
+
+  private _echoTakeIds(recording: PracticeRecord): string[] {
+    const segmentId = this._resolveSegmentId(recording);
+    if (!segmentId || recording.mode !== 'echo') {
+      return [];
+    }
+    return this._items
+      .filter(
+        (item) =>
+          item.mode === 'echo' &&
+          item.mediaId === recording.mediaId &&
+          this._resolveSegmentId(item) === segmentId,
+      )
+      .map((item) => item.id);
+  }
+
+  private _canKeepOnly(recording: PracticeRecord): boolean {
+    return this._echoTakeIds(recording).length >= 2;
+  }
+
+  private _keepOnlyDeleteIds(recording: PracticeRecord): string[] {
+    return this._echoTakeIds(recording).filter((id) => id !== recording.id);
+  }
+
+  private _getRowMenuItems(recording: PracticeRecord): DropdownMenuItem[] {
+    const items: DropdownMenuItem[] = [{ key: 'export', label: msg('导出'), icon: 'download' }];
+    if (this._canKeepOnly(recording)) {
+      items.push({
+        key: 'keep-only',
+        label: msg('仅保留本条'),
+        danger: true,
+        disabled: this._keepOnlyDeleting,
+      });
+    }
+    return items;
+  }
+
+  private _renderRowActions(
+    recording: PracticeRecord,
+    scoreConfigured: boolean,
+    scoreLabel: string,
+    scoreTip: string,
+    scoreBlocked: boolean,
+  ) {
+    const canKeepOnly = this._canKeepOnly(recording);
+    const keepOnlyDeleteCount = this._keepOnlyDeleteIds(recording).length;
+    const deletePopconfirm = html`<ui-popconfirm
+      title=${msg('确定删除该录音吗？')}
+      placement="bottom"
+      .zIndex=${this._confirmOverlayZIndex()}
+      ?confirm-loading=${this._deletingId === recording.id}
+      @confirm=${() => this._handleDelete(recording)}
+    >
+      <ui-button
+        variant="danger"
+        aria-label="${msg('删除')}"
+        ?disabled="${this._deletingId === recording.id}"
+      >
+        <ui-icon name="delete"></ui-icon>
+      </ui-button>
+    </ui-popconfirm>`;
+
+    const keepOnlyPopconfirm = canKeepOnly
+      ? html`<ui-popconfirm
+          title=${msg(
+            str`确定仅保留本条吗？将删除同句其余 ${keepOnlyDeleteCount} 条录音，不可恢复。`,
+          )}
+          placement="bottom"
+          .zIndex=${this._confirmOverlayZIndex()}
+          ?confirm-loading=${this._keepOnlyDeleting && this._keepOnlyTargetId === recording.id}
+          @confirm=${() => void this._executeKeepOnly(recording)}
+        >
+          <ui-button
+            variant="secondary"
+            aria-label="${msg('仅保留本条')}"
+            ?disabled=${this._keepOnlyDeleting}
+          >
+            <ui-icon name="select-all"></ui-icon>
+          </ui-button>
+        </ui-popconfirm>`
+      : null;
+
+    const moreMenu = html`<ui-dropdown
+      trigger="click"
+      placement="bottomRight"
+      .zIndex=${this._dropdownZIndex()}
+      .menu=${{ items: this._getRowMenuItems(recording) }}
+      @menu-click=${(e: CustomEvent<DropdownMenuClickDetail>) =>
+        this._handleRowMenuClick(e, recording)}
+    >
+      <ui-tooltip title="${msg('更多操作')}" .zIndex=${this._dropdownZIndex()}>
+        <ui-button variant="secondary" aria-label="${msg('更多操作')}">
+          <ui-icon name="more"></ui-icon>
+        </ui-button>
+      </ui-tooltip>
+    </ui-dropdown>`;
+
+    return html`
+      <ui-tooltip title="${msg('查看')}">
+        <ui-button
+          variant="primary"
+          aria-label="${msg('查看')}"
+          @click="${() => this._handleView(recording)}"
+        >
+          <ui-icon name="play"></ui-icon>
+        </ui-button>
+      </ui-tooltip>
+      ${scoreConfigured
+        ? html`<ui-tooltip title="${scoreTip}">
+              <ui-button
+                variant="secondary"
+                aria-label="${scoreLabel}"
+                ?disabled=${scoreBlocked}
+                @click="${() => this._handleScore(recording)}"
+              >
+                <ui-icon name="score"></ui-icon>
+              </ui-button>
+            </ui-tooltip>
+            ${deletePopconfirm} ${moreMenu}`
+        : html`<ui-tooltip title="${msg('导出')}">
+              <ui-button
+                variant="secondary"
+                aria-label="${msg('导出')}"
+                @click="${() => this._handleExport(recording)}"
+              >
+                <ui-icon name="download"></ui-icon>
+              </ui-button>
+            </ui-tooltip>
+            ${keepOnlyPopconfirm} ${deletePopconfirm}`}
+    `;
+  }
+
+  private _handleRowMenuClick(
+    event: CustomEvent<DropdownMenuClickDetail>,
+    recording: PracticeRecord,
+  ): void {
+    const { key } = event.detail;
+    if (key === 'export') {
+      void this._handleExport(recording);
+      return;
+    }
+    if (key === 'keep-only') {
+      this._requestKeepOnly(recording);
+    }
+  }
+
+  private _requestKeepOnly(recording: PracticeRecord): void {
+    const deleteIds = this._keepOnlyDeleteIds(recording);
+    if (deleteIds.length === 0) {
+      return;
+    }
+    this._pendingKeepOnly = {
+      keepId: recording.id,
+      deleteIds,
+      deleteCount: deleteIds.length,
+    };
+  }
+
+  private _cancelPendingKeepOnly(): void {
+    if (this._keepOnlyDeleting) {
+      return;
+    }
+    this._pendingKeepOnly = null;
+  }
+
+  private async _executeKeepOnly(recording: PracticeRecord): Promise<void> {
+    const deleteIds = this._keepOnlyDeleteIds(recording);
+    if (deleteIds.length === 0) {
+      return;
+    }
+
+    this._keepOnlyDeleting = true;
+    this._keepOnlyTargetId = recording.id;
+    try {
+      await deleteRecordingBatch(deleteIds);
+      Message.success(msg('已保留本条录音'));
+      await this.refresh();
+      this._emitRecordingsChanged('batch-deleted');
+    } catch (error) {
+      void reportError(error, {
+        where: 'record-list.keepOnly',
+        keepId: recording.id,
+        count: deleteIds.length,
+      });
+      Message.error(msg('删除其余录音失败，请重试。'));
+    } finally {
+      this._keepOnlyDeleting = false;
+      this._keepOnlyTargetId = '';
+    }
+  }
+
+  private async _confirmKeepOnly(): Promise<void> {
+    const pending = this._pendingKeepOnly;
+    if (!pending) {
+      return;
+    }
+
+    this._keepOnlyDeleting = true;
+    try {
+      await deleteRecordingBatch(pending.deleteIds);
+      Message.success(msg('已保留本条录音'));
+      this._pendingKeepOnly = null;
+      await this.refresh();
+      this._emitRecordingsChanged('batch-deleted');
+    } catch (error) {
+      void reportError(error, {
+        where: 'record-list.keepOnly',
+        keepId: pending.keepId,
+        count: pending.deleteIds.length,
+      });
+      Message.error(msg('删除其余录音失败，请重试。'));
+    } finally {
+      this._keepOnlyDeleting = false;
+    }
+  }
 
   private _renderScoreBadge(score: PronunciationScore | undefined) {
     if (score?.status === 'pending') {
