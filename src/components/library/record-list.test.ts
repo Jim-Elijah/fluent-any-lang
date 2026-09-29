@@ -26,9 +26,10 @@ vi.mock('../../lib/pronunciation-score/index.js', async (importOriginal) => {
   };
 });
 
-import './record-list.js';
-import type { RecordList } from './record-list.js';
+import { KEEP_ONLY_DELETE_PREVIEW_LIMIT, type RecordList } from './record-list.js';
 import { exportRecording, exportRecordingsBatch } from '../../lib/export-content.js';
+import { formatDate, formatTime } from '../../lib/playback-utils.js';
+import { formatOverallBadge } from '../../lib/pronunciation-score/aggregate.js';
 import { mount, flushUpdates } from '../ui/test-utils.js';
 import { Message } from '../ui/message.js';
 import { RECORDING_PREVIEW_OPEN_EVENT } from '../../lib/audio-focus.js';
@@ -54,6 +55,20 @@ const sampleRecord: PracticeRecord = {
     },
   ],
 };
+
+function expectKeepOnlyRow(text: string, recording: PracticeRecord, overall?: number): void {
+  expect(text).toContain(formatDate(recording.createdAt, true));
+  expect(text).toContain(formatTime(recording.recordingDuration));
+  if (overall != null) {
+    expect(text).toContain(formatOverallBadge(overall));
+  }
+}
+
+function keepOnlyModal(el: HTMLElement): HTMLElement | undefined {
+  return [...el.shadowRoot!.querySelectorAll('ui-modal')].find(
+    (modal) => modal.getAttribute('title') === '确定仅保留本条录音吗？',
+  ) as HTMLElement | undefined;
+}
 
 function echoRecord(id: string, createdAt: number, segmentId = 'seg-a'): PracticeRecord {
   return {
@@ -851,8 +866,8 @@ describe('record-list', () => {
 
   it('deletes sibling echo takes when keep-only is confirmed without score menu', async () => {
     speechScoreConfigured = false;
-    const first = echoRecord('rec-echo-1', 2);
-    const second = echoRecord('rec-echo-2', 1);
+    const first = echoRecord('rec-echo-1', Date.UTC(2024, 0, 10, 12, 2));
+    const second = echoRecord('rec-echo-2', Date.UTC(2024, 0, 10, 12, 1));
     vi.mocked(recordDb.getRecordingList).mockResolvedValue([first, second]);
 
     const el = await renderList();
@@ -864,10 +879,24 @@ describe('record-list', () => {
 
     const keepButtons = el.shadowRoot!.querySelectorAll('ui-button[aria-label="仅保留本条"]');
     expect(keepButtons.length).toBe(2);
+    expect(keepButtons[0]!.closest('ui-popconfirm')).toBeNull();
 
-    keepButtons[0]!
-      .closest('ui-popconfirm')!
-      .dispatchEvent(new Event('confirm', { bubbles: true, composed: true }));
+    (keepButtons[0] as HTMLElement).click();
+    await el.updateComplete;
+
+    const modal = keepOnlyModal(el);
+    const modalText = modal?.textContent ?? '';
+    expect(modalText).toContain('将删除同句其余 1 条录音，不可恢复。');
+    expect(modal?.querySelector('table.keep-only-table')).not.toBeNull();
+    expect(modalText).toContain('前 1 条详情如下：');
+    expect(modalText).toContain('日期');
+    expect(modalText).toContain('时长');
+    expect(modalText).toContain('得分');
+    expectKeepOnlyRow(modalText, second);
+    expect(modalText).not.toContain(formatDate(first.createdAt, true));
+
+    const list = el as unknown as { _confirmKeepOnly: () => Promise<void> };
+    await list._confirmKeepOnly();
     await flushUpdates();
 
     expect(recordDb.deleteRecordingBatch).toHaveBeenCalledWith(['rec-echo-2']);
@@ -879,8 +908,8 @@ describe('record-list', () => {
   });
 
   it('opens keep-only modal from more menu when speech score is configured', async () => {
-    const first = echoRecord('rec-echo-1', 2);
-    const second = echoRecord('rec-echo-2', 1);
+    const first = echoRecord('rec-echo-1', Date.UTC(2024, 0, 10, 12, 2));
+    const second = echoRecord('rec-echo-2', Date.UTC(2024, 0, 10, 12, 1));
     vi.mocked(recordDb.getRecordingList).mockResolvedValue([first, second]);
 
     const el = await renderList();
@@ -897,11 +926,83 @@ describe('record-list', () => {
     );
     await el.updateComplete;
 
-    expect(el.shadowRoot?.textContent).toContain('将删除同句其余 1 条录音，不可恢复。');
+    const modal = keepOnlyModal(el);
+    expect(modal?.textContent).toContain('将删除同句其余 1 条录音，不可恢复。');
+    expect(modal?.textContent).toContain('前 1 条详情如下：');
+    expect(modal?.textContent).toContain(formatDate(second.createdAt, true));
+    expect(modal?.textContent).not.toContain(formatDate(first.createdAt, true));
 
     await list._confirmKeepOnly();
     await flushUpdates();
 
     expect(recordDb.deleteRecordingBatch).toHaveBeenCalledWith(['rec-echo-2']);
+  });
+
+  it('lists a scored sibling with the same keep-only preview as an unscored one', async () => {
+    speechScoreConfigured = false;
+    const first = echoRecord('rec-echo-1', Date.UTC(2024, 0, 10, 12, 2));
+    const second = echoRecord('rec-echo-2', Date.UTC(2024, 0, 10, 12, 1));
+    vi.mocked(recordDb.getRecordingList).mockResolvedValue([first, second]);
+    vi.mocked(scoreDb.getScoresByRecordIds).mockResolvedValue(
+      new Map([
+        [
+          second.id,
+          {
+            id: 'score-2',
+            recordId: second.id,
+            status: 'success',
+            referenceText: 'hello',
+            overall: 84.2,
+            createdAt: 1,
+          },
+        ],
+      ]),
+    );
+
+    const el = await renderList();
+    await el.refresh();
+    await el.updateComplete;
+
+    (el.shadowRoot!.querySelector('ui-button[aria-label="仅保留本条"]') as HTMLElement).click();
+    await el.updateComplete;
+
+    const modalText = keepOnlyModal(el)?.textContent ?? '';
+    expect(modalText).toContain(formatDate(second.createdAt, true));
+    expect(modalText).toContain(formatTime(second.recordingDuration));
+    expect(modalText).toContain(formatOverallBadge(84.2));
+  });
+
+  it('previews only the first keep-only rows and still deletes every sibling', async () => {
+    speechScoreConfigured = false;
+    const base = Date.UTC(2024, 0, 10, 12, 0);
+    const keep = echoRecord('rec-keep', base);
+    const siblings = Array.from({ length: KEEP_ONLY_DELETE_PREVIEW_LIMIT + 1 }, (_, index) =>
+      echoRecord(`rec-old-${index}`, base - (index + 1) * 60_000),
+    );
+    vi.mocked(recordDb.getRecordingList).mockResolvedValue([keep, ...siblings]);
+
+    const el = await renderList();
+    await el.refresh();
+    await el.updateComplete;
+
+    (el.shadowRoot!.querySelector('ui-button[aria-label="仅保留本条"]') as HTMLElement).click();
+    await el.updateComplete;
+
+    const modalText = keepOnlyModal(el)?.textContent ?? '';
+    expect(modalText).toContain(
+      `将删除同句其余 ${KEEP_ONLY_DELETE_PREVIEW_LIMIT + 1} 条录音，不可恢复。`,
+    );
+    expect(modalText).toContain(`前 ${KEEP_ONLY_DELETE_PREVIEW_LIMIT} 条详情如下：`);
+    expect(modalText).not.toContain('及其他');
+    for (const sibling of siblings.slice(0, KEEP_ONLY_DELETE_PREVIEW_LIMIT)) {
+      expect(modalText).toContain(formatDate(sibling.createdAt, true));
+    }
+    expect(modalText).not.toContain(formatDate(siblings.at(-1)!.createdAt, true));
+
+    const list = el as unknown as { _confirmKeepOnly: () => Promise<void> };
+    await list._confirmKeepOnly();
+    await flushUpdates();
+
+    expect(recordDb.deleteRecordingBatch).toHaveBeenCalledWith(siblings.map((item) => item.id));
   });
 });

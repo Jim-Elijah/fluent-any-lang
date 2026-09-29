@@ -2839,13 +2839,10 @@
   <source>保留本条</source>
 </trans-unit>
 <trans-unit id="s329c03407985137f">
-  <source>将删除同句其余 <x id="0" equiv-text="${this._pendingKeepOnly.deleteCount}"/> 条录音，不可恢复。</source>
+  <source>将删除同句其余 <x id="0" equiv-text="${deleteIds.length}"/> 条录音，不可恢复。</source>
 </trans-unit>
 <trans-unit id="s0f883bca22ebefb9">
   <source>仅保留本条</source>
-</trans-unit>
-<trans-unit id="s5a2b24fb47d03ac5">
-  <source>确定仅保留本条吗？将删除同句其余 <x id="0" equiv-text="${keepOnlyDeleteCount}"/> 条录音，不可恢复。</source>
 </trans-unit>
 <trans-unit id="s42e658c55e7f9b10">
   <source>已保留本条录音</source>
@@ -2862,6 +2859,12 @@
 <trans-unit id="s301e519327e16223">
   <source>搜索录音标题 / 字幕</source>
   <target>Search recording titles / subtitles</target>
+</trans-unit>
+<trans-unit id="s1d545898038a6cc3">
+  <source>前 <x id="0" equiv-text="${shown.length}"/> 条详情如下：</source>
+</trans-unit>
+<trans-unit id="s3855b008b726ce50">
+  <source>得分</source>
 </trans-unit>
 </body>
 </file>

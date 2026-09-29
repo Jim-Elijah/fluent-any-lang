@@ -316,7 +316,7 @@ export class MyApp extends RouterNavigatorApp {
     }));
     return [
       { key: 'home', label: msg('首页'), link: '/', icon: 'home' },
-      { key: 'library', label: msg('库'), link: '/library', icon: 'media' },
+      { key: 'library', label: msg('库'), link: '/library', icon: 'resource' },
       ...pinnedItems,
       { key: 'stats', label: msg('统计'), link: '/stats', icon: 'stats' },
       { key: 'settings', label: msg('设置'), link: '/settings', icon: 'setting' },

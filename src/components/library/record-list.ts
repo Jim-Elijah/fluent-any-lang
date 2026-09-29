@@ -59,6 +59,9 @@ import {
 } from '../../lib/practice-record-display.js';
 import { Message } from '../ui/message.js';
 
+/** How many sibling takes to name in the keep-only confirm dialog. */
+export const KEEP_ONLY_DELETE_PREVIEW_LIMIT = 5;
+
 /** Row height including the --space-md (12px) gap below each card. */
 const RECORD_ROW_HEIGHT = 104;
 /** Narrow: meta + actions stacked; includes the same gap below each card. */
@@ -281,6 +284,35 @@ export class RecordList extends LitElement {
         border-radius: var(--radius-md, 8px);
       }
 
+      .keep-only-caption {
+        margin: var(--space-md) 0 0;
+      }
+
+      .keep-only-table {
+        width: 100%;
+        margin-top: var(--space-sm);
+        border-collapse: collapse;
+        font-size: 0.875rem;
+      }
+
+      .keep-only-table th,
+      .keep-only-table td {
+        padding: var(--space-xs) var(--space-sm);
+        text-align: left;
+        border-bottom: 1px solid var(--color-border, #f0f0f0);
+      }
+
+      .keep-only-table th {
+        color: var(--color-text-secondary, rgba(0, 0, 0, 0.45));
+        font-weight: 500;
+      }
+
+      .keep-only-table th:nth-child(n + 2),
+      .keep-only-table td:nth-child(n + 2) {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+      }
+
       .batch-controls {
         display: flex;
         align-items: center;
@@ -426,14 +458,10 @@ export class RecordList extends LitElement {
   private _pendingKeepOnly: {
     keepId: string;
     deleteIds: string[];
-    deleteCount: number;
   } | null = null;
 
   @state()
   private _keepOnlyDeleting = false;
-
-  @state()
-  private _keepOnlyTargetId = '';
 
   @state()
   private _subtitleByMediaId = new Map<string, SubtitleTrack | undefined>();
@@ -546,19 +574,7 @@ export class RecordList extends LitElement {
       renderedItems = renderedItems.filter((item) => this._matchesKeyword(item, this.keyword!));
     }
     if (this.sortBy && this.sortDirection) {
-      renderedItems = [...renderedItems].sort((a: PracticeRecord, b: PracticeRecord) => {
-        if (this.sortBy === 'date') {
-          return this.sortDirection === 'asc'
-            ? a.createdAt - b.createdAt
-            : b.createdAt - a.createdAt;
-        }
-        if (this.sortBy === 'title') {
-          return this.sortDirection === 'asc'
-            ? a.mediaTitle.localeCompare(b.mediaTitle)
-            : b.mediaTitle.localeCompare(a.mediaTitle);
-        }
-        return 0;
-      });
+      renderedItems = [...renderedItems].sort((a, b) => this._compareRecords(a, b));
     }
 
     this._visibleCount = renderedItems.length;
@@ -715,7 +731,7 @@ export class RecordList extends LitElement {
           title="${msg('确定仅保留本条录音吗？')}"
           .zIndex=${this._confirmOverlayZIndex()}
           ?open=${Boolean(this._pendingKeepOnly)}
-          ok-text="${msg('保留本条')}"
+          ok-text="${msg('确定')}"
           cancel-text="${msg('取消')}"
           width="420px"
           centered
@@ -728,9 +744,7 @@ export class RecordList extends LitElement {
           }}"
         >
           ${this._pendingKeepOnly
-            ? html`<p>
-                ${msg(str`将删除同句其余 ${this._pendingKeepOnly.deleteCount} 条录音，不可恢复。`)}
-              </p>`
+            ? this._renderKeepOnlyConfirm(this._pendingKeepOnly.deleteIds)
             : nothing}
         </ui-modal>
       </section>
@@ -863,6 +877,7 @@ export class RecordList extends LitElement {
       items.push({
         key: 'keep-only',
         label: msg('仅保留本条'),
+        icon: 'clear-all',
         danger: true,
         disabled: this._keepOnlyDeleting,
       });
@@ -878,7 +893,6 @@ export class RecordList extends LitElement {
     scoreBlocked: boolean,
   ) {
     const canKeepOnly = this._canKeepOnly(recording);
-    const keepOnlyDeleteCount = this._keepOnlyDeleteIds(recording).length;
     const deletePopconfirm = html`<ui-popconfirm
       title=${msg('确定删除该录音吗？')}
       placement="bottom"
@@ -895,24 +909,17 @@ export class RecordList extends LitElement {
       </ui-button>
     </ui-popconfirm>`;
 
-    const keepOnlyPopconfirm = canKeepOnly
-      ? html`<ui-popconfirm
-          title=${msg(
-            str`确定仅保留本条吗？将删除同句其余 ${keepOnlyDeleteCount} 条录音，不可恢复。`,
-          )}
-          placement="bottom"
-          .zIndex=${this._confirmOverlayZIndex()}
-          ?confirm-loading=${this._keepOnlyDeleting && this._keepOnlyTargetId === recording.id}
-          @confirm=${() => void this._executeKeepOnly(recording)}
-        >
+    const keepOnlyButton = canKeepOnly
+      ? html`<ui-tooltip title="${msg('仅保留本条')}">
           <ui-button
             variant="secondary"
             aria-label="${msg('仅保留本条')}"
             ?disabled=${this._keepOnlyDeleting}
+            @click=${() => this._requestKeepOnly(recording)}
           >
-            <ui-icon name="select-all"></ui-icon>
+            <ui-icon name="clear-all"></ui-icon>
           </ui-button>
-        </ui-popconfirm>`
+        </ui-tooltip>`
       : null;
 
     const moreMenu = html`<ui-dropdown
@@ -961,7 +968,7 @@ export class RecordList extends LitElement {
                 <ui-icon name="download"></ui-icon>
               </ui-button>
             </ui-tooltip>
-            ${keepOnlyPopconfirm} ${deletePopconfirm}`}
+            ${keepOnlyButton} ${deletePopconfirm}`}
     `;
   }
 
@@ -987,7 +994,6 @@ export class RecordList extends LitElement {
     this._pendingKeepOnly = {
       keepId: recording.id,
       deleteIds,
-      deleteCount: deleteIds.length,
     };
   }
 
@@ -998,30 +1004,59 @@ export class RecordList extends LitElement {
     this._pendingKeepOnly = null;
   }
 
-  private async _executeKeepOnly(recording: PracticeRecord): Promise<void> {
-    const deleteIds = this._keepOnlyDeleteIds(recording);
-    if (deleteIds.length === 0) {
-      return;
+  private _compareRecords(a: PracticeRecord, b: PracticeRecord): number {
+    if (this.sortBy === 'date') {
+      return this.sortDirection === 'asc' ? a.createdAt - b.createdAt : b.createdAt - a.createdAt;
     }
+    if (this.sortBy === 'title') {
+      return this.sortDirection === 'asc'
+        ? a.mediaTitle.localeCompare(b.mediaTitle)
+        : b.mediaTitle.localeCompare(a.mediaTitle);
+    }
+    return 0;
+  }
 
-    this._keepOnlyDeleting = true;
-    this._keepOnlyTargetId = recording.id;
-    try {
-      await deleteRecordingBatch(deleteIds);
-      Message.success(msg('已保留本条录音'));
-      await this.refresh();
-      this._emitRecordingsChanged('batch-deleted');
-    } catch (error) {
-      void reportError(error, {
-        where: 'record-list.keepOnly',
-        keepId: recording.id,
-        count: deleteIds.length,
-      });
-      Message.error(msg('删除其余录音失败，请重试。'));
-    } finally {
-      this._keepOnlyDeleting = false;
-      this._keepOnlyTargetId = '';
+  private _keepOnlyPreviewRecords(deleteIds: string[]): PracticeRecord[] {
+    const idSet = new Set(deleteIds);
+    return this._items
+      .filter((item) => idSet.has(item.id))
+      .sort((a, b) => this._compareRecords(a, b));
+  }
+
+  private _keepOnlyPreviewScore(recording: PracticeRecord): string {
+    const score = this._scores.get(recording.id);
+    if (score?.status === 'success' && typeof score.overall === 'number') {
+      return formatOverallBadge(score.overall);
     }
+    return '';
+  }
+
+  private _renderKeepOnlyConfirm(deleteIds: string[]) {
+    const shown = this._keepOnlyPreviewRecords(deleteIds).slice(0, KEEP_ONLY_DELETE_PREVIEW_LIMIT);
+    return html`
+      <p>${msg(str`将删除同句其余 ${deleteIds.length} 条录音，不可恢复。`)}</p>
+      <p class="keep-only-caption">${msg(str`前 ${shown.length} 条详情如下：`)}</p>
+      <table class="keep-only-table">
+        <thead>
+          <tr>
+            <th>${msg('日期')}</th>
+            <th>${msg('时长')}</th>
+            <th>${msg('得分')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${shown.map(
+            (recording) => html`
+              <tr>
+                <td>${formatDate(recording.createdAt, true)}</td>
+                <td>${formatTime(recording.recordingDuration)}</td>
+                <td>${this._keepOnlyPreviewScore(recording)}</td>
+              </tr>
+            `,
+          )}
+        </tbody>
+      </table>
+    `;
   }
 
   private async _confirmKeepOnly(): Promise<void> {

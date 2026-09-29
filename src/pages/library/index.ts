@@ -146,7 +146,7 @@ export class LibraryPage extends NavigatorElement {
       },
       {
         href: '/library/noise',
-        icon: 'listen',
+        icon: 'listen1',
         title: msg('噪音素材'),
         description: msg('听辨练习用的环境噪音叠加素材'),
       },
@@ -158,7 +158,7 @@ export class LibraryPage extends NavigatorElement {
       },
       {
         href: '/library/records',
-        icon: 'recording',
+        icon: 'recording-file',
         title: msg('录音库'),
         description: msg('口语练习产生的录音'),
       },

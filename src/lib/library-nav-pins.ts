@@ -17,7 +17,7 @@ export const PINNABLE_LIBRARY_NAV: readonly PinnableLibraryNavItem[] =
       case 'library-sentences':
         return { key, link: '/library/sentences', icon: 'dialog' };
       case 'library-records':
-        return { key, link: '/library/records', icon: 'recording' };
+        return { key, link: '/library/records', icon: 'recording-file' };
     }
   });
 

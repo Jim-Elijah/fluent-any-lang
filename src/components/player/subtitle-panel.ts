@@ -1197,7 +1197,7 @@ export class SubtitlePanel extends LitElement {
                 >
                   <ui-icon
                     size="var(--icon-xl)"
-                    name="${this._sourceMaskMode === 'off' ? 'subtitle-hide' : 'subtitle-on'}"
+                    name="${this._sourceMaskMode !== 'all' ? 'blur' : 'blur-off'}"
                   ></ui-icon>
                 </ui-button>
               </ui-tooltip>`
