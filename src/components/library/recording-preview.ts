@@ -1486,7 +1486,11 @@ export class RecordingPreview extends LitElement {
       void this._refreshAlignMediaBlockedTip();
       this.requestUpdate();
       if (!result.ok && result.message) {
-        Message.warning(result.message);
+        if (result.succeeded > 0 && result.failed > 0) {
+          Message.warning(result.message);
+        } else {
+          Message.error(result.message);
+        }
       } else {
         Message.success(force ? msg('全部原音词条已重新生成') : msg('全部原音词条已生成'));
       }

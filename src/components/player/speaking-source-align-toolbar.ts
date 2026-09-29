@@ -188,11 +188,7 @@ export class SpeakingSourceAlignToolbar extends LitElement {
       this._attachMediaController(this.controller);
     }
 
-    if (
-      changed.has('mediaId') ||
-      changed.has('subtitleRevision') ||
-      changed.has('controller')
-    ) {
+    if (changed.has('mediaId') || changed.has('subtitleRevision') || changed.has('controller')) {
       this._alignWordsBySegmentId.clear();
       void this._refreshAlignMediaBlockedTip();
       if (changed.has('mediaId')) {
@@ -227,10 +223,7 @@ export class SpeakingSourceAlignToolbar extends LitElement {
       this._mediaHost = new MediaControllerHost(this, controller);
     }
     controller.addEventListener('state-change', this._onMediaStateChange);
-    controller.addEventListener(
-      ExtendedMediaEventType.SEGMENT_CHANGE,
-      this._onMediaSegmentChange,
-    );
+    controller.addEventListener(ExtendedMediaEventType.SEGMENT_CHANGE, this._onMediaSegmentChange);
     this._syncWaveformTime();
   }
 
@@ -545,11 +538,13 @@ export class SpeakingSourceAlignToolbar extends LitElement {
       void this._refreshAlignMediaBlockedTip();
       this.requestUpdate();
       if (!result.ok && result.message) {
-        Message.warning(result.message);
+        if (result.succeeded > 0 && result.failed > 0) {
+          Message.warning(result.message);
+        } else {
+          Message.error(result.message);
+        }
       } else {
-        Message.success(
-          force ? msg('全部原音词条已重新生成') : msg('全部原音词条已生成'),
-        );
+        Message.success(force ? msg('全部原音词条已重新生成') : msg('全部原音词条已生成'));
       }
     } finally {
       this._aligning = false;
@@ -676,8 +671,7 @@ export class SpeakingSourceAlignToolbar extends LitElement {
     const wordLanePx = markers.length > 0 ? WORD_RAIL_LANE_PX : 0;
     const interactive = !this.sessionLocked && !this.disabled;
     const { currentSegmentIndex } = snapshot ?? { currentSegmentIndex: -1 };
-    const currentSegment =
-      currentSegmentIndex >= 0 ? segments[currentSegmentIndex] : undefined;
+    const currentSegment = currentSegmentIndex >= 0 ? segments[currentSegmentIndex] : undefined;
     const hasSegmentCache = Boolean(
       currentSegment && this._alignWordsBySegmentId.has(currentSegment.id),
     );
