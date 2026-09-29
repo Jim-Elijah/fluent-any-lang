@@ -149,10 +149,7 @@ vi.mock('../../lib/microphone-access.js', async (importOriginal) => {
 });
 
 import './practice-view.js';
-import {
-  MIN_AUDIO_ONLY_SHADOWING_RECORDING_S,
-  type PracticeView,
-} from './practice-view.js';
+import { MIN_AUDIO_ONLY_SHADOWING_RECORDING_S, type PracticeView } from './practice-view.js';
 import { getMediaDuration } from '../../lib/file-validation.js';
 import { flushUpdates, mount } from '../ui/test-utils.js';
 import { Message } from '../ui/message.js';
@@ -226,6 +223,11 @@ type PracticeViewInternals = PracticeView & {
   _speakingMode: 'shadowing' | 'echo';
   _subtitlePanelFullscreen: boolean;
   _onTrackChange: () => void;
+  _shadowingRangeSelectActive: boolean;
+  _shadowingRangeAnchor: number | null;
+  _shadowingRange: { start: number; end: number } | null;
+  _shadowingRangeConfirmed: boolean;
+  _shadowingRangeFocus: boolean;
   _shadowingRecorderEl?: {
     startRecording: () => Promise<void>;
     stopRecording: () => Promise<void>;
@@ -2648,6 +2650,180 @@ describe('practice-view', () => {
         'audio-recorder#shadowing-recorder',
       ) as { disabled: boolean };
       expect(shadowingRecorder.disabled).toBe(true);
+    });
+  });
+
+  describe('shadowing range selection', () => {
+    it('seeks to range start when shadowing starts with an active range', async () => {
+      const el = await renderView();
+      await switchToShadowingMode(el);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      el._shadowingRange = { start: 1, end: 3 };
+      el._shadowingRangeConfirmed = false;
+
+      const seekSpy = vi.spyOn(el._controller, 'seekToSegment');
+
+      (
+        el as PracticeViewInternals & { _applyShadowingPlaybackProfile: () => void }
+      )._applyShadowingPlaybackProfile();
+
+      expect(seekSpy).toHaveBeenCalledWith(1, false, { force: true });
+    });
+
+    it('implicitly confirms range when recording starts', async () => {
+      const el = await renderView();
+      await switchToShadowingMode(el);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      el._shadowingRange = { start: 0, end: 2 };
+      el._shadowingRangeConfirmed = false;
+
+      (
+        el as PracticeViewInternals & { _applyShadowingPlaybackProfile: () => void }
+      )._applyShadowingPlaybackProfile();
+
+      expect(el._shadowingRangeConfirmed).toBe(true);
+    });
+
+    it('clears range when switching from shadowing to echo', async () => {
+      const el = await renderView();
+      await switchToShadowingMode(el);
+
+      el._shadowingRangeSelectActive = true;
+      el._shadowingRange = { start: 0, end: 1 };
+      el._shadowingRangeConfirmed = true;
+      el._shadowingRangeFocus = true;
+
+      findButton(el, '回声跟读')?.click();
+      await el.updateComplete;
+      await settleView(el);
+
+      expect(el._shadowingRangeSelectActive).toBe(false);
+      expect(el._shadowingRange).toBeNull();
+      expect(el._shadowingRangeConfirmed).toBe(false);
+      expect(el._shadowingRangeFocus).toBe(false);
+    });
+
+    it('clears range when switching from speaking to listening', async () => {
+      const el = await renderView();
+      await switchToShadowingMode(el);
+
+      el._shadowingRange = { start: 0, end: 1 };
+      el._shadowingRangeSelectActive = true;
+
+      findButton(el, '听力')?.click();
+      await el.updateComplete;
+
+      expect(el._shadowingRangeSelectActive).toBe(false);
+      expect(el._shadowingRange).toBeNull();
+    });
+
+    it('clears range on track change', async () => {
+      const el = await renderView();
+      await switchToShadowingMode(el);
+
+      el._shadowingRange = { start: 0, end: 1 };
+      el._shadowingRangeSelectActive = true;
+
+      el._onTrackChange();
+      await settleView(el);
+
+      expect(el._shadowingRange).toBeNull();
+      expect(el._shadowingRangeSelectActive).toBe(false);
+    });
+
+    it('reveals hidden subtitles when range select turns on', async () => {
+      const el = await renderView();
+      await switchToShadowingMode(el);
+
+      el._controller.setSubtitlesVisible(false);
+      const subtitlesSpy = vi.spyOn(el._controller, 'setSubtitlesVisible');
+
+      el.shadowRoot!.querySelector('shadowing-range-panel')!.dispatchEvent(
+        new CustomEvent('shadowing-range-select-active-change', {
+          detail: { active: true },
+          bubbles: true,
+          composed: true,
+        }),
+      );
+
+      expect(subtitlesSpy).toHaveBeenCalledWith(true);
+      expect(el._shadowingRangeSelectActive).toBe(true);
+    });
+
+    it('leaves visible subtitles alone when range select turns on', async () => {
+      const el = await renderView();
+      await switchToShadowingMode(el);
+
+      el._controller.setSubtitlesVisible(true);
+      const subtitlesSpy = vi.spyOn(el._controller, 'setSubtitlesVisible');
+
+      el.shadowRoot!.querySelector('shadowing-range-panel')!.dispatchEvent(
+        new CustomEvent('shadowing-range-select-active-change', {
+          detail: { active: true },
+          bubbles: true,
+          composed: true,
+        }),
+      );
+
+      expect(subtitlesSpy).not.toHaveBeenCalled();
+    });
+
+    it('passes range props to subtitle-panel', async () => {
+      const el = await renderView();
+      await switchToShadowingMode(el);
+      await el.updateComplete;
+
+      el._shadowingRangeSelectActive = true;
+      el._shadowingRange = { start: 0, end: 1 };
+      el._shadowingRangeConfirmed = true;
+      el._shadowingRangeFocus = true;
+      await el.updateComplete;
+
+      const panel = el.shadowRoot!.querySelector('subtitle-panel') as {
+        shadowingMode: boolean;
+        shadowingRangeSelectActive: boolean;
+        shadowingRange: { start: number; end: number } | null;
+        shadowingRangeConfirmed: boolean;
+        shadowingRangeFocus: boolean;
+      };
+      expect(panel.shadowingMode).toBe(true);
+      expect(panel.shadowingRangeSelectActive).toBe(true);
+      expect(panel.shadowingRange).toEqual({ start: 0, end: 1 });
+      expect(panel.shadowingRangeConfirmed).toBe(true);
+      expect(panel.shadowingRangeFocus).toBe(true);
+    });
+
+    it('handles shadowing-range-click event to build range', async () => {
+      const el = await renderView();
+      await switchToShadowingMode(el);
+
+      el._shadowingRangeSelectActive = true;
+      await el.updateComplete;
+
+      const panel = el.shadowRoot!.querySelector('subtitle-panel')!;
+      panel.dispatchEvent(
+        new CustomEvent('shadowing-range-click', {
+          detail: { index: 1 },
+          bubbles: true,
+          composed: true,
+        }),
+      );
+      await el.updateComplete;
+      expect(el._shadowingRangeAnchor).toBe(1);
+
+      panel.dispatchEvent(
+        new CustomEvent('shadowing-range-click', {
+          detail: { index: 0 },
+          bubbles: true,
+          composed: true,
+        }),
+      );
+      await el.updateComplete;
+      expect(el._shadowingRange).toEqual({ start: 0, end: 1 });
+      expect(el._shadowingRangeAnchor).toBeNull();
+      expect(el._shadowingRangeConfirmed).toBe(true);
     });
   });
 });

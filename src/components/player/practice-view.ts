@@ -82,6 +82,7 @@ import './audio-recorder.js';
 import './speaking-source-align-toolbar.js';
 import './echo-session-dock.js';
 import './discrimination-panel.js';
+import './shadowing-range-panel.js';
 import './practice-tips-modal.js';
 import './practice-hotkeys-help.js';
 import {
@@ -116,7 +117,12 @@ import {
   EchoRecordRequestDetail,
   SubtitlePanel,
   SubtitlePanelFullscreenChangeDetail,
+  type ShadowingRangeClickDetail,
 } from './subtitle-panel.js';
+import {
+  applyShadowingRangeClick,
+  type ShadowingSegmentRange,
+} from '../../lib/shadowing-range-selection.js';
 import {
   addToSentenceBank,
   getSentenceBankList,
@@ -253,6 +259,21 @@ export class PracticeView extends NavigatorElement {
 
   @state()
   private _hotkeysHelpOpen = false;
+
+  @state()
+  private _shadowingRangeSelectActive = false;
+
+  @state()
+  private _shadowingRangeAnchor: number | null = null;
+
+  @state()
+  private _shadowingRange: ShadowingSegmentRange | null = null;
+
+  @state()
+  private _shadowingRangeConfirmed = false;
+
+  @state()
+  private _shadowingRangeFocus = false;
 
   private _echoSegment: SubtitleSegment | null = null;
 
@@ -508,6 +529,54 @@ export class PracticeView extends NavigatorElement {
     this._hotkeysHelpOpen = !this._hotkeysHelpOpen;
   };
 
+  private _clearShadowingRange(): void {
+    this._shadowingRangeSelectActive = false;
+    this._shadowingRangeAnchor = null;
+    this._shadowingRange = null;
+    this._shadowingRangeConfirmed = false;
+    this._shadowingRangeFocus = false;
+  }
+
+  private _onShadowingRangeClick = (event: CustomEvent<ShadowingRangeClickDetail>): void => {
+    const result = applyShadowingRangeClick(
+      {
+        anchor: this._shadowingRangeAnchor,
+        range: this._shadowingRange,
+        confirmed: this._shadowingRangeConfirmed,
+      },
+      event.detail.index,
+    );
+    this._shadowingRangeAnchor = result.anchor;
+    this._shadowingRange = result.range;
+    this._shadowingRangeConfirmed = result.confirmed;
+  };
+
+  private _onShadowingRangeSelectActiveChange = (event: CustomEvent<{ active: boolean }>): void => {
+    this._shadowingRangeSelectActive = event.detail.active;
+    if (!event.detail.active) {
+      this._shadowingRangeAnchor = null;
+      this._shadowingRange = null;
+      this._shadowingRangeConfirmed = false;
+      this._shadowingRangeFocus = false;
+      return;
+    }
+    const snapshot = this._controller.getSnapshot();
+    if (snapshot.hasSubtitles && !snapshot.subtitlesVisible) {
+      this._controller.setSubtitlesVisible(true);
+    }
+  };
+
+  private _onShadowingRangeClear = (): void => {
+    this._shadowingRangeAnchor = null;
+    this._shadowingRange = null;
+    this._shadowingRangeConfirmed = false;
+    this._shadowingRangeFocus = false;
+  };
+
+  private _onShadowingRangeFocusChange = (event: CustomEvent<{ focus: boolean }>): void => {
+    this._shadowingRangeFocus = event.detail.focus;
+  };
+
   /** Pause practice media (and cancel echo listen) so recording review can own the speakers. */
   private _yieldPlaybackToPreview(showTip = true): void {
     const wasPlaying =
@@ -711,6 +780,7 @@ export class PracticeView extends NavigatorElement {
       this._echoSegment = null;
     }
     this._echoClipPlayer.dispose();
+    this._clearShadowingRange();
     this._syncMediaIdFromController();
     this._rememberLastPlayedMedia();
     this._syncTimeTrackerMedia();
@@ -915,6 +985,19 @@ export class PracticeView extends NavigatorElement {
                     ${this._renderStorageInfo()} ${this._renderShadowingRecordingsEntry()}
                   </div>
                 </div>
+                ${hasSubtitles
+                  ? html`<shadowing-range-panel
+                      .selectActive=${this._shadowingRangeSelectActive}
+                      .anchor=${this._shadowingRangeAnchor}
+                      .range=${this._shadowingRange}
+                      .focus=${this._shadowingRangeFocus}
+                      .disabled=${sessionActive}
+                      @shadowing-range-select-active-change=${this
+                        ._onShadowingRangeSelectActiveChange}
+                      @shadowing-range-clear=${this._onShadowingRangeClear}
+                      @shadowing-range-focus-change=${this._onShadowingRangeFocusChange}
+                    ></shadowing-range-panel>`
+                  : nothing}
               </div>
             `
           : null}
@@ -960,6 +1043,12 @@ export class PracticeView extends NavigatorElement {
             .fullscreen="${this._subtitlePanelFullscreen}"
             showFullscreenIcon="${!this._subtitlePanelFullscreen}"
             .echoMode="${isEcho}"
+            .shadowingMode=${isShadowing && hasSubtitles}
+            .shadowingRangeSelectActive=${this._shadowingRangeSelectActive}
+            .shadowingRangeAnchor=${this._shadowingRangeAnchor}
+            .shadowingRange=${this._shadowingRange}
+            .shadowingRangeConfirmed=${this._shadowingRangeConfirmed}
+            .shadowingRangeFocus=${this._shadowingRangeFocus}
             .echoRecordingsBySegmentId="${this._echoRecordingsBySegmentId}"
             .echoLatestScoreBySegmentId="${this._echoLatestScoreBySegmentId}"
             .echoRecordingSegmentIndex="${this._echoSegmentIndex}"
@@ -983,6 +1072,7 @@ export class PracticeView extends NavigatorElement {
             @echo-manage-recordings="${this._onEchoManageRecordings}"
             @sentence-bank-add="${this._onSentenceBankAdd}"
             @sentence-bank-remove="${this._onSentenceBankRemove}"
+            @shadowing-range-click=${this._onShadowingRangeClick}
           ></subtitle-panel>
           ${isEcho
             ? html`<div class="echo-recorder">
@@ -1359,6 +1449,7 @@ export class PracticeView extends NavigatorElement {
     this._echoSegmentIndex = -1;
     this._echoSegment = null;
     this._resetSessionUi();
+    this._clearShadowingRange();
     if (type === 'speaking') {
       this._syncSpeakingModeAvailability();
       void this._refreshMicStatus();
@@ -1432,6 +1523,7 @@ export class PracticeView extends NavigatorElement {
     this._echoSegmentIndex = -1;
     this._echoSegment = null;
     this._resetSessionUi();
+    this._clearShadowingRange();
     this._recordingsModalOpen = false;
     this._recordingPreviewOpen = false;
     this._timeTracker.setMode(this._resolveAnalyticsMode());
@@ -1479,6 +1571,11 @@ export class PracticeView extends NavigatorElement {
     });
     this._controller.setShadowingGapCompress(gapPolicy === 'compress');
 
+    // Implicitly confirm range when recording starts (consume then lock).
+    if (this._shadowingRange) {
+      this._shadowingRangeConfirmed = true;
+    }
+
     // Align recording to a full sentence so PracticeSegment source/recording axes match.
     this._alignShadowingStartSegment();
     void this._scrollSubtitleActiveIntoView();
@@ -1493,6 +1590,13 @@ export class PracticeView extends NavigatorElement {
     if (snapshot.segments.length === 0) {
       return -1;
     }
+
+    if (this._shadowingRange) {
+      const start = this._shadowingRange.start;
+      this._controller.seekToSegment(start, false, { force: true });
+      return start;
+    }
+
     // At t=0 (typical after load / rewind), always start from the first subtitle —
     // its startTime may be > 0 when there is a non-subtitled intro.
     const segmentIndex =
@@ -1688,6 +1792,10 @@ export class PracticeView extends NavigatorElement {
     // Shadowing: align + scroll as soon as the user taps record (first cue may be off-screen).
     // No-op when there are no subtitle segments.
     if (this._speakingMode === 'shadowing') {
+      // Implicitly confirm range when countdown starts.
+      if (this._shadowingRange) {
+        this._shadowingRangeConfirmed = true;
+      }
       this._alignShadowingStartSegment();
       void this._scrollSubtitleActiveIntoView();
     }

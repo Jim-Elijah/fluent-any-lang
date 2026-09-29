@@ -11,7 +11,7 @@ Prefer automated tests where they exist; use this list when changing the named a
 | 1   | Import Media (+ optional Subtitle Track) | Library → 媒体库 / importer                   | Item in library; subtitles play in sync                                   |
 | 2   | Free Listening                           | `/practice?mediaId=`                              | Play, rate, loop, segment nav, pause                                      |
 | 3   | Discrimination                           | Practice → Discrimination                         | Noise overlay + optional rate ladder; main track still controllable       |
-| 4   | Shadowing                                | Practice → Speaking → Shadowing                   | Record in sync; Practice Record saved; compare playback                   |
+| 4   | Shadowing                                | Practice → Speaking → Shadowing                   | Record in sync; Practice Record saved; compare playback; optional range select from start |
 | 5   | Echo                                     | Practice → Speaking → Echo (needs subtitles)      | Listen clip → record; multiple takes per segment OK                       |
 | 6   | Practice Session accounting              | Any Practice Mode with real practice              | Stats/home show active time (not mere page open)                          |
 | 7   | Playlist practice                        | `/library/playlists` → `/practice?playlistId=&mediaId=` | Track order / next; Favorites still works                                 |
@@ -24,7 +24,7 @@ Prefer automated tests where they exist; use this list when changing the named a
 | If you change…                                            | Also verify…                                                                                                                                                                       |
 | --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `MediaController` seek / segment end / `navigationLocked` | Free Listening loop & segment nav; **single** uses native `loop` except when sleep is until-end; Discrimination may set `lockScreenLoop` while hidden (not last ladder step); Shadowing stop-on-segment; Discrimination ladder still advances in foreground |
-| `practice-view` mode switching                            | All 4 Practice Modes; tracker mode labels (`free` not legacy `listening`); tip/hotkey wiring; Discrimination enter/exit clears `lockScreenLoop`                                                                                       |
+| `practice-view` mode switching                            | All 4 Practice Modes; tracker mode labels (`free` not legacy `listening`); tip/hotkey wiring; Discrimination enter/exit clears `lockScreenLoop`; Shadowing range cleared on mode/type/track switch; turning range select on reveals hidden subtitles |
 | `PracticeTimeTracker` / session flush                     | Stats dashboard; background/tab hide; short sessions dropped; no side effects on playback                                                                                                                                          |
 | `EchoClipPlayer` / echo listen                            | Listen without mic; drain then warmUp/record (AEC must not mute clip); main element position stable                                                                                                                                |
 | `audio-recorder` / `saveRecording`                        | Shadowing multi-segment + Echo per-segment records; library preview dual-track; Practice Segment snapshot text present when recorded with subtitles                                                                                |
@@ -66,7 +66,7 @@ See [`architecture.md`](./architecture.md#discrimination-lock-screen-risks). Sho
 1. Import one audio + SRT
 2. Free Listening: seek + loop one Subtitle Segment
 3. Discrimination: enable one Noise track briefly; with 2+ ladder steps, lock screen mid-play then unlock (main should keep looping at the same rate; ladder advances only after a visible `ended`)
-4. Shadowing: one take → appears in records
+4. Shadowing: one take → appears in records; optional: select 2–3 segments, confirm range, record — verify playback starts from first selected segment
 5. Echo: one segment listen + record; optional — two takes on one line → **仅保留本条** in manage recordings or library records (confirm dialog tables the other take’s date, duration, and score before delete)
 6. Confirm today’s Practice Session time moved on Stats/Home
 7. Save one Sentence Bank Entry and open sentence practice

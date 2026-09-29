@@ -26,6 +26,7 @@ import type {
   SubtitleSegment,
   SubtitleTrack,
 } from '../../types/models.js';
+import type { ShadowingSegmentRange } from '../../lib/shadowing-range-selection.js';
 import '../ui/button.js';
 import '../ui/icon.js';
 import '../ui/modal.js';
@@ -59,6 +60,10 @@ export type EchoRecordRequestDetail = {
 
 export type EchoManageRecordingsDetail = {
   segmentId: string;
+};
+
+export type ShadowingRangeClickDetail = {
+  index: number;
 };
 
 const FULLSCREEN_PORTAL_STYLES = `
@@ -242,6 +247,52 @@ const FULLSCREEN_PORTAL_STYLES = `
   }
 
   ${scoreBandStyles.cssText}
+
+  .fullscreen-range-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 10px;
+    border-radius: 999px;
+    background: rgba(22, 119, 255, 0.1);
+    color: var(--color-primary, #1677ff);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .segment.range-selected {
+    --range-edge: var(--color-primary, #1677ff);
+    box-shadow:
+      inset 2px 0 0 var(--range-edge),
+      inset -2px 0 0 var(--range-edge);
+  }
+
+  .segment.range-selected.range-edge-start {
+    box-shadow:
+      inset 2px 0 0 var(--range-edge),
+      inset -2px 0 0 var(--range-edge),
+      inset 0 2px 0 var(--range-edge);
+  }
+
+  .segment.range-selected.range-edge-end {
+    box-shadow:
+      inset 2px 0 0 var(--range-edge),
+      inset -2px 0 0 var(--range-edge),
+      inset 0 -2px 0 var(--range-edge);
+  }
+
+  .segment.range-selected.range-edge-start.range-edge-end {
+    box-shadow:
+      inset 2px 0 0 var(--range-edge),
+      inset -2px 0 0 var(--range-edge),
+      inset 0 2px 0 var(--range-edge),
+      inset 0 -2px 0 var(--range-edge);
+  }
+
+  .segment.range-anchor {
+    outline: 2px dashed var(--color-primary, #1677ff);
+    outline-offset: -2px;
+  }
 
   @media (max-width: 767px) {
     .content {
@@ -473,6 +524,52 @@ export class SubtitlePanel extends LitElement {
           text-align: left;
         }
       }
+
+      .fullscreen-range-chip {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 10px;
+        border-radius: 999px;
+        background: rgba(22, 119, 255, 0.1);
+        color: var(--color-primary, #1677ff);
+        font-size: 0.8125rem;
+        font-weight: 500;
+        white-space: nowrap;
+      }
+
+      .segment.range-selected {
+        --range-edge: var(--color-primary, #1677ff);
+        box-shadow:
+          inset 2px 0 0 var(--range-edge),
+          inset -2px 0 0 var(--range-edge);
+      }
+
+      .segment.range-selected.range-edge-start {
+        box-shadow:
+          inset 2px 0 0 var(--range-edge),
+          inset -2px 0 0 var(--range-edge),
+          inset 0 2px 0 var(--range-edge);
+      }
+
+      .segment.range-selected.range-edge-end {
+        box-shadow:
+          inset 2px 0 0 var(--range-edge),
+          inset -2px 0 0 var(--range-edge),
+          inset 0 -2px 0 var(--range-edge);
+      }
+
+      .segment.range-selected.range-edge-start.range-edge-end {
+        box-shadow:
+          inset 2px 0 0 var(--range-edge),
+          inset -2px 0 0 var(--range-edge),
+          inset 0 2px 0 var(--range-edge),
+          inset 0 -2px 0 var(--range-edge);
+      }
+
+      .segment.range-anchor {
+        outline: 2px dashed var(--color-primary, #1677ff);
+        outline-offset: -2px;
+      }
     `,
   ];
 
@@ -540,6 +637,30 @@ export class SubtitlePanel extends LitElement {
    */
   @property({ type: Boolean })
   seekDisabled = false;
+
+  /** True when Shadowing mode is active and the media has subtitles. */
+  @property({ type: Boolean })
+  shadowingMode = false;
+
+  /** When true, segment clicks enter range-selection instead of seek. */
+  @property({ type: Boolean })
+  shadowingRangeSelectActive = false;
+
+  /** Pending anchor index waiting for the second click. */
+  @property({ type: Number })
+  shadowingRangeAnchor: number | null = null;
+
+  /** Selected Subtitle Segment range (inclusive start..end). */
+  @property({ attribute: false })
+  shadowingRange: ShadowingSegmentRange | null = null;
+
+  /** When true, range is locked — clicks no longer modify it. */
+  @property({ type: Boolean })
+  shadowingRangeConfirmed = false;
+
+  /** When true, only segments inside the range are rendered. */
+  @property({ type: Boolean })
+  shadowingRangeFocus = false;
 
   /** Segment ids already saved in the sentence bank for the current media. */
   @property({ attribute: false })
@@ -760,11 +881,35 @@ export class SubtitlePanel extends LitElement {
         : this._sourceMaskMode === 'all'
           ? 'source-text-masked source-text-masked-all'
           : 'source-text-masked';
+
+    const range = this.shadowingRange;
+    const anchor = this.shadowingRangeAnchor;
+    const focus = this.shadowingRangeFocus && range;
+
+    const segments = focus
+      ? snapshot.segments
+          .map((seg, i) => ({ seg, i }))
+          .filter(({ i }) => i >= range!.start && i <= range!.end)
+      : snapshot.segments.map((seg, i) => ({ seg, i }));
+
     return html`<ul class="${listClass} ${lockedClass} ${maskClass}">
-      ${snapshot.segments.map(
-        (segment, index) => html`
+      ${segments.map(({ seg: segment, i: index }) => {
+        const inRange = range ? index >= range.start && index <= range.end : false;
+        const showRangeOutline = inRange && !focus;
+        const isAnchor = anchor === index;
+        const segClass = [
+          'segment',
+          index === activeIndex ? 'active' : '',
+          showRangeOutline ? 'range-selected' : '',
+          showRangeOutline && index === range!.start ? 'range-edge-start' : '',
+          showRangeOutline && index === range!.end ? 'range-edge-end' : '',
+          isAnchor ? 'range-anchor' : '',
+        ]
+          .filter(Boolean)
+          .join(' ');
+        return html`
           <li
-            class="segment ${index === activeIndex ? 'active' : ''}"
+            class="${segClass}"
             data-segment-index="${index}"
             @click="${() => this._handleSegmentClick(index)}"
           >
@@ -788,13 +933,24 @@ export class SubtitlePanel extends LitElement {
                 : nothing}
             </div>
           </li>
-        `,
-      )}
+        `;
+      })}
     </ul>`;
   }
 
   private _stopRowClick(event: Event): void {
     event.stopPropagation();
+  }
+
+  private _renderShadowingRangeFullscreenChip(): TemplateResult | typeof nothing {
+    const range = this.shadowingRange;
+    if (!this.shadowingMode || !range) {
+      return nothing;
+    }
+    const count = range.end - range.start + 1;
+    return html`<span class="fullscreen-range-chip"
+      >${msg(str`#${range.start + 1}–#${range.end + 1} · ${count}句`)}</span
+    >`;
   }
 
   private _renderSentenceBankButton(segment: SubtitleSegment): TemplateResult {
@@ -956,6 +1112,7 @@ export class SubtitlePanel extends LitElement {
         <div class="fullscreen-panel">
           <div class="fullscreen-header">
             <h3 class="fullscreen-title">${msg('字幕')}</h3>
+            ${this._renderShadowingRangeFullscreenChip()}
             <ui-tooltip
               title="${supportsKeyboardShortcuts() ? msg('退出全屏 (F)') : msg('退出全屏')}"
               .zIndex=${Z_INDEX.POPUP_ABOVE_FULLSCREEN}
@@ -1293,6 +1450,10 @@ export class SubtitlePanel extends LitElement {
   }
 
   private _handleSegmentClick(index: number): void {
+    if (this.shadowingRangeSelectActive && !this.shadowingRangeConfirmed) {
+      this._dispatch('shadowing-range-click', { index } satisfies ShadowingRangeClickDetail);
+      return;
+    }
     if (this.seekDisabled) {
       return;
     }

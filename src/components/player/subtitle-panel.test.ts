@@ -922,4 +922,159 @@ describe('subtitle-panel', () => {
 
     expect(entered).toHaveBeenCalled();
   });
+
+  describe('shadowing range selection', () => {
+    async function renderRangePanel(
+      overrides: Partial<{
+        shadowingMode: boolean;
+        shadowingRangeSelectActive: boolean;
+        shadowingRangeAnchor: number | null;
+        shadowingRange: { start: number; end: number } | null;
+        shadowingRangeConfirmed: boolean;
+        shadowingRangeFocus: boolean;
+        seekDisabled: boolean;
+      }> = {},
+    ) {
+      controller = new MediaController();
+      const segments: SubtitleSegment[] = [
+        { id: 's1', startTime: 0, endTime: 2, text: 'hello' },
+        { id: 's2', startTime: 2, endTime: 4, text: 'world' },
+        { id: 's3', startTime: 4, endTime: 6, text: 'foo' },
+        { id: 's4', startTime: 6, endTime: 8, text: 'bar' },
+      ];
+      await controller.loadTracks([makeTrack('a', 'Track A', segments)]);
+      controller.setSubtitlesVisible(true);
+
+      const result = mount(html`
+        <subtitle-panel
+          .controller=${controller}
+          .shadowingMode=${overrides.shadowingMode ?? true}
+          .shadowingRangeSelectActive=${overrides.shadowingRangeSelectActive ?? false}
+          .shadowingRangeAnchor=${overrides.shadowingRangeAnchor ?? null}
+          .shadowingRange=${overrides.shadowingRange ?? null}
+          .shadowingRangeConfirmed=${overrides.shadowingRangeConfirmed ?? false}
+          .shadowingRangeFocus=${overrides.shadowingRangeFocus ?? false}
+          .seekDisabled=${overrides.seekDisabled ?? false}
+        ></subtitle-panel>
+      `);
+      cleanup = result.cleanup;
+      const el = result.container.querySelector('subtitle-panel') as SubtitlePanel;
+      await el.updateComplete;
+      await flushUpdates();
+      return el;
+    }
+
+    it('shows fullscreen range chip when range is set in fullscreen mode', async () => {
+      const el = await renderRangePanel({
+        shadowingMode: true,
+        shadowingRange: { start: 0, end: 2 },
+      });
+      el.fullscreen = true;
+      await el.updateComplete;
+      await flushUpdates();
+
+      const chip = getPortalShadow('[data-subtitle-fullscreen-portal]')?.querySelector(
+        '.fullscreen-range-chip',
+      );
+      expect(chip?.textContent).toContain('#1–#3');
+    });
+
+    it('dispatches shadowing-range-click instead of seeking when range select is active', async () => {
+      const el = await renderRangePanel({
+        shadowingRangeSelectActive: true,
+      });
+      const seekSpy = vi.spyOn(controller, 'seekToSegment');
+      const rangeClicked = vi.fn();
+      el.addEventListener('shadowing-range-click', rangeClicked);
+
+      const row = el.shadowRoot?.querySelector('[data-segment-index="1"]') as HTMLElement;
+      row?.click();
+      await el.updateComplete;
+
+      expect(rangeClicked).toHaveBeenCalledWith(expect.objectContaining({ detail: { index: 1 } }));
+      expect(seekSpy).not.toHaveBeenCalled();
+    });
+
+    it('does not dispatch range click when confirmed', async () => {
+      const el = await renderRangePanel({
+        shadowingRangeSelectActive: true,
+        shadowingRangeConfirmed: true,
+        shadowingRange: { start: 0, end: 1 },
+      });
+      const rangeClicked = vi.fn();
+      el.addEventListener('shadowing-range-click', rangeClicked);
+
+      const row = el.shadowRoot?.querySelector('[data-segment-index="2"]') as HTMLElement;
+      row?.click();
+
+      expect(rangeClicked).not.toHaveBeenCalled();
+    });
+
+    it('highlights segments within the range', async () => {
+      const el = await renderRangePanel({
+        shadowingRangeSelectActive: true,
+        shadowingRange: { start: 0, end: 2 },
+      });
+
+      const rows = [...(el.shadowRoot?.querySelectorAll('.segment') ?? [])];
+      expect(rows[0]?.classList.contains('range-selected')).toBe(true);
+      expect(rows[0]?.classList.contains('range-edge-start')).toBe(true);
+      expect(rows[0]?.classList.contains('range-edge-end')).toBe(false);
+      expect(rows[1]?.classList.contains('range-selected')).toBe(true);
+      expect(rows[1]?.classList.contains('range-edge-start')).toBe(false);
+      expect(rows[1]?.classList.contains('range-edge-end')).toBe(false);
+      expect(rows[2]?.classList.contains('range-selected')).toBe(true);
+      expect(rows[2]?.classList.contains('range-edge-end')).toBe(true);
+      expect(rows[2]?.classList.contains('range-edge-start')).toBe(false);
+      expect(rows[3]?.classList.contains('range-selected')).toBe(false);
+    });
+
+    it('outlines a single-sentence range on all sides', async () => {
+      const el = await renderRangePanel({
+        shadowingRangeSelectActive: true,
+        shadowingRange: { start: 2, end: 2 },
+      });
+
+      const row = el.shadowRoot?.querySelector('[data-segment-index="2"]');
+      expect(row?.classList.contains('range-selected')).toBe(true);
+      expect(row?.classList.contains('range-edge-start')).toBe(true);
+      expect(row?.classList.contains('range-edge-end')).toBe(true);
+    });
+
+    it('marks anchor segment', async () => {
+      const el = await renderRangePanel({
+        shadowingRangeSelectActive: true,
+        shadowingRangeAnchor: 2,
+      });
+
+      const rows = [...(el.shadowRoot?.querySelectorAll('.segment') ?? [])];
+      expect(rows[2]?.classList.contains('range-anchor')).toBe(true);
+      expect(rows[0]?.classList.contains('range-anchor')).toBe(false);
+    });
+
+    it('shows only range segments when focus mode is on', async () => {
+      const el = await renderRangePanel({
+        shadowingRangeSelectActive: true,
+        shadowingRange: { start: 1, end: 2 },
+        shadowingRangeFocus: true,
+      });
+
+      const rows = [...(el.shadowRoot?.querySelectorAll('.segment') ?? [])];
+      expect(rows).toHaveLength(2);
+      expect(rows[0]?.getAttribute('data-segment-index')).toBe('1');
+      expect(rows[1]?.getAttribute('data-segment-index')).toBe('2');
+      expect(rows.every((row) => !row.classList.contains('range-selected'))).toBe(true);
+    });
+
+    it('renders all segments when focus is off', async () => {
+      const el = await renderRangePanel({
+        shadowingRangeSelectActive: true,
+        shadowingRange: { start: 1, end: 2 },
+        shadowingRangeFocus: false,
+      });
+
+      const rows = [...(el.shadowRoot?.querySelectorAll('.segment') ?? [])];
+      expect(rows).toHaveLength(4);
+    });
+  });
 });
