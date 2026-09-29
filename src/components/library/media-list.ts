@@ -548,15 +548,13 @@ export class MediaList extends LitElement {
                   ?confirm-loading=${this._batchDeleting}
                   @confirm=${() => this._handleBatchDelete()}
                 >
-                  <ui-tooltip title="${msg('删除')}">
-                    <ui-button
-                      variant="danger"
-                      aria-label="${msg('删除')}"
-                      ?disabled=${this._visibleSelected.size === 0 || this._batchDeleting}
-                    >
-                      <ui-icon name="delete"></ui-icon>
-                    </ui-button>
-                  </ui-tooltip>
+                  <ui-button
+                    variant="danger"
+                    aria-label="${msg('删除')}"
+                    ?disabled=${this._visibleSelected.size === 0 || this._batchDeleting}
+                  >
+                    <ui-icon name="delete"></ui-icon>
+                  </ui-button>
                 </ui-popconfirm>
               </div>
             </div>`

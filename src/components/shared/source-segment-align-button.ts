@@ -51,35 +51,31 @@ export class SourceSegmentAlignButton extends LitElement {
 
     if (this.hasCache) {
       return html`
-        <ui-tooltip
-          title=${tooltip}
+        <ui-popconfirm
+          .title=${sourceWordAlignPopconfirmTitle('segment')}
+          .zIndex=${Z_INDEX.MODAL + 2}
+          ?disabled=${this.disabled}
           placement=${this.tooltipPlacement}
-          .zIndex=${Z_INDEX.MODAL + 1}
+          @confirm=${() => this._emit(true)}
         >
-          <ui-popconfirm
-            .title=${sourceWordAlignPopconfirmTitle('segment')}
-            .zIndex=${Z_INDEX.MODAL + 2}
+          <ui-button
+            size="small"
+            variant="secondary"
+            aria-label=${label}
             ?disabled=${this.disabled}
-            placement=${this.tooltipPlacement}
-            @confirm=${() => this._emit(true)}
           >
-            <ui-button size="small" variant="secondary" ?disabled=${this.disabled}>
-              ${label}
-            </ui-button>
-          </ui-popconfirm>
-        </ui-tooltip>
+            ${label}
+          </ui-button>
+        </ui-popconfirm>
       `;
     }
 
     return html`
-      <ui-tooltip
-        title=${tooltip}
-        placement=${this.tooltipPlacement}
-        .zIndex=${Z_INDEX.MODAL + 1}
-      >
+      <ui-tooltip title=${tooltip} placement=${this.tooltipPlacement} .zIndex=${Z_INDEX.MODAL + 1}>
         <ui-button
           size="small"
           variant="secondary"
+          aria-label=${label}
           ?disabled=${this.disabled}
           @click=${() => this._emit(false)}
         >

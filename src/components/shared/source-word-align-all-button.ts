@@ -58,37 +58,47 @@ export class SourceWordAlignAllButton extends LitElement {
     const label = sourceWordAlignButtonLabel('whole', hasCache);
     const tooltip = this.blockedTip ?? sourceWordAlignTooltip('whole', hasCache);
 
-    if (hasCache) {
+    if (this.blocked) {
       return html`
         <ui-tooltip
           title=${tooltip}
           placement=${this.tooltipPlacement}
           .zIndex=${Z_INDEX.MODAL + 1}
         >
-          <ui-popconfirm
-            .title=${sourceWordAlignPopconfirmTitle('whole')}
-            .zIndex=${Z_INDEX.MODAL + 2}
+          <ui-button
+            size="small"
+            variant="secondary"
+            aria-label=${label}
             ?disabled=${buttonDisabled}
-            placement=${this.tooltipPlacement}
-            @confirm=${() => this._emit(true)}
           >
-            <ui-button size="small" variant="secondary" ?disabled=${buttonDisabled}>
-              ${label}
-            </ui-button>
-          </ui-popconfirm>
+            ${label}
+          </ui-button>
         </ui-tooltip>
       `;
     }
 
+    if (hasCache) {
+      return html`
+        <ui-popconfirm
+          .title=${sourceWordAlignPopconfirmTitle('whole')}
+          .zIndex=${Z_INDEX.MODAL + 2}
+          ?disabled=${busy}
+          placement=${this.tooltipPlacement}
+          @confirm=${() => this._emit(true)}
+        >
+          <ui-button size="small" variant="secondary" aria-label=${label} ?disabled=${busy}>
+            ${label}
+          </ui-button>
+        </ui-popconfirm>
+      `;
+    }
+
     return html`
-      <ui-tooltip
-        title=${tooltip}
-        placement=${this.tooltipPlacement}
-        .zIndex=${Z_INDEX.MODAL + 1}
-      >
+      <ui-tooltip title=${tooltip} placement=${this.tooltipPlacement} .zIndex=${Z_INDEX.MODAL + 1}>
         <ui-button
           size="small"
           variant="secondary"
+          aria-label=${label}
           ?disabled=${buttonDisabled}
           @click=${() => this._emit(false)}
         >

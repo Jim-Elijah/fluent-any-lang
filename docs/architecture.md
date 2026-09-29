@@ -79,6 +79,8 @@ Highlight the most specific item. A pinned route highlights that pin. The hub an
 
 The mobile bottom nav is icon-only so long labels fit in every locale. The full label is the item's accessible name and is not shown in a tooltip. The side nav keeps the icon and the label.
 
+Overlay composition (`ui-tooltip` vs `ui-popconfirm`, regenerate vs re-score confirmation): [`ui-patterns.md`](./ui-patterns.md).
+
 ## Critical couplings
 
 - **`practice-view` ↔ `MediaController`** — mode profiles, seek/lock, segment alignment; Discrimination may set `setLockScreenLoop` while the document is hidden. Segment loop: scrub into a mid-track gap adopts the following Subtitle Segment; leading/trailing gaps clear `currentSegmentIndex` (−1, no highlight / replay) until playback or seek lands inside a segment again. Loading Media with no Subtitle Track (or clearing subtitles) downgrades `segment` loop to `none` and turns pause-between-segments off. All auto-resume paths (segment pause, segment/single loop `ended`, shadowing gap compress) assign `currentTime` directly then `play()` via `_seekDirectAndPlay` — never `seek()` + `play()` which awaits `seeked`. Mobile lock-screen swallows `seeked`; `visibilitychange → visible` force-settles any stranded seek.
