@@ -1,3 +1,9 @@
+## [0.6.1](https://github.com/Jim-Elijah/fluent-any-lang/compare/v0.6.0...v0.6.1) (2026-09-30)
+
+### Bug Fixes
+
+* satisfy TypeScript checks blocking production build ([b5574fa](https://github.com/Jim-Elijah/fluent-any-lang/commit/b5574fa4bc3fc349a48bb5547ff372f140754001))
+
 ## [0.6.0](https://github.com/Jim-Elijah/fluent-any-lang/compare/v0.5.0...v0.6.0) (2026-09-30)
 
 ### Features
