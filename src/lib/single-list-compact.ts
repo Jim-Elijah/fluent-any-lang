@@ -88,7 +88,10 @@ export class SingleListCompactController implements ReactiveController {
 
     const chrome = this.options.chromeSelectors
       .map((sel) => root.querySelector(sel))
-      .filter((el): el is Element => Boolean(el) && isLayoutBox(el));
+      .filter((el): el is Element => {
+        if (!el) return false;
+        return isLayoutBox(el);
+      });
     const stack = this.options.stackSelector
       ? (root.querySelector(this.options.stackSelector) as HTMLElement | null)
       : null;

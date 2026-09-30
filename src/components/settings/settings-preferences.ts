@@ -107,7 +107,11 @@ export class SettingsPreferences extends LitElement {
   }
 
   private _onRecordingCountdownSecondsChange(event: CustomEvent<SelectChangeDetail>): void {
-    const seconds = Number.parseInt(event.detail.value, 10);
+    const raw = event.detail.value;
+    if (typeof raw !== 'string') {
+      return;
+    }
+    const seconds = Number.parseInt(raw, 10);
     if (!Number.isFinite(seconds)) {
       return;
     }
