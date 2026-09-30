@@ -69,7 +69,7 @@ export class SettingsNavPins extends LitElement {
     return html`
       <section class="card" aria-labelledby="nav-pins-heading">
         <h2 id="nav-pins-heading">${msg('导航快捷入口')}</h2>
-        <p class="desc">${msg('把常用的库页面固定到导航。其余仍从「库」进入。')}</p>
+        <p class="desc">${msg('把「库」中常用的页面固定到导航，其余仍从「库」进入。')}</p>
         <div class="rows">
           ${PINNABLE_LIBRARY_NAV.map((item) => {
             const pinned = this._isPinned(item.key);

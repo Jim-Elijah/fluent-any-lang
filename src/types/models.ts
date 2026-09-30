@@ -68,9 +68,9 @@ export const SHADOWING_GAP_POLICY_VALUES: readonly ShadowingGapPolicy[] = [
 /**
  * Default source-text mask when opening practice.
  * The subtitle panel cycles this for the current visit and does not write it back.
- * - off: source text readable
- * - current: only the active Subtitle Segment stays readable
- * - all: every segment's source text is blurred
+ * - off: mask off (all source text readable)
+ * - current: mask non-current lines (active Subtitle Segment stays readable)
+ * - all: mask all source text
  */
 export type SourceMaskMode = 'off' | 'current' | 'all';
 

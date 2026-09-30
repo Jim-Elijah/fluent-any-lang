@@ -126,9 +126,9 @@ describe('subtitle-panel', () => {
     const button = buttons.find((item) => {
       const label = item.getAttribute('aria-label') ?? '';
       return (
-        label.includes('只显示当前句') ||
-        label.includes('全部遮罩原文') ||
-        label.includes('取消遮罩原文')
+        label.includes('遮罩非当前句') ||
+        label.includes('遮罩全部') ||
+        label.includes('关闭遮罩')
       );
     });
     return button?.getAttribute('aria-label') ?? '';
@@ -342,7 +342,7 @@ describe('subtitle-panel', () => {
     await el.updateComplete;
     await flushUpdates();
 
-    expect(maskButtonLabel(el)).toContain('只显示当前句');
+    expect(maskButtonLabel(el)).toContain('遮罩非当前句');
 
     el.toggleSourceTextMask();
     await el.updateComplete;
@@ -350,7 +350,7 @@ describe('subtitle-panel', () => {
     let rows = segmentRows(el);
     expect(rows[0]?.querySelector('.source-text-blurred')).toBeNull();
     expect(rows[1]?.querySelector('.source-text-blurred')).not.toBeNull();
-    expect(maskButtonLabel(el)).toContain('全部遮罩原文');
+    expect(maskButtonLabel(el)).toContain('遮罩全部');
 
     el.toggleSourceTextMask();
     await el.updateComplete;
@@ -358,13 +358,13 @@ describe('subtitle-panel', () => {
     rows = segmentRows(el);
     expect(rows[0]?.querySelector('.source-text-blurred')).not.toBeNull();
     expect(rows[1]?.querySelector('.source-text-blurred')).not.toBeNull();
-    expect(maskButtonLabel(el)).toContain('取消遮罩原文');
+    expect(maskButtonLabel(el)).toContain('关闭遮罩');
 
     el.toggleSourceTextMask();
     await el.updateComplete;
     await flushUpdates();
     expect(el.shadowRoot?.querySelector('.source-text-blurred')).toBeNull();
-    expect(maskButtonLabel(el)).toContain('只显示当前句');
+    expect(maskButtonLabel(el)).toContain('遮罩非当前句');
   });
 
   it('blurs every source line in current mode when no segment is active', async () => {
@@ -378,7 +378,7 @@ describe('subtitle-panel', () => {
     const rows = segmentRows(el);
     expect(rows[0]?.querySelector('.source-text-blurred')).not.toBeNull();
     expect(rows[1]?.querySelector('.source-text-blurred')).not.toBeNull();
-    expect(maskButtonLabel(el)).toContain('全部遮罩原文');
+    expect(maskButtonLabel(el)).toContain('遮罩全部');
   });
 
   it('starts from the saved source mask and keeps session cycles out of settings', async () => {

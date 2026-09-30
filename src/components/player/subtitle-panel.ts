@@ -1404,11 +1404,11 @@ export class SubtitlePanel extends LitElement {
   private _sourceMaskActionTitle(keyboardShortcuts: boolean): string {
     switch (this._sourceMaskMode) {
       case 'off':
-        return keyboardShortcuts ? msg('只显示当前句 (M)') : msg('只显示当前句');
+        return keyboardShortcuts ? msg('遮罩非当前句 (M)') : msg('遮罩非当前句');
       case 'current':
-        return keyboardShortcuts ? msg('全部遮罩原文 (M)') : msg('全部遮罩原文');
+        return keyboardShortcuts ? msg('遮罩全部 (M)') : msg('遮罩全部');
       case 'all':
-        return keyboardShortcuts ? msg('取消遮罩原文 (M)') : msg('取消遮罩原文');
+        return keyboardShortcuts ? msg('关闭遮罩 (M)') : msg('关闭遮罩');
       default: {
         const _exhaustive: never = this._sourceMaskMode;
         return _exhaustive;

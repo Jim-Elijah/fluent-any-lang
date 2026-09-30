@@ -7,7 +7,6 @@ import {
   RECORDING_COUNTDOWN_SECONDS_LIMITS,
   type AppSettings,
   type ShadowingGapPolicy,
-  type SourceMaskMode,
 } from '../../types/models.js';
 import { settingsCardStyles } from './settings-styles.js';
 import '../ui/switch.js';
@@ -119,28 +118,13 @@ export class SettingsPreferences extends LitElement {
     }
   }
 
-  private _onSourceMaskModeChange(event: CustomEvent<SelectChangeDetail>): void {
-    const value = event.detail.value;
-    if (value !== 'off' && value !== 'current' && value !== 'all') {
-      return;
-    }
-    const mode: SourceMaskMode = value;
-    const prev = this._settings.sourceMaskMode;
-    this._settings = setAppSettings({ sourceMaskMode: mode });
-    if (this._settings.sourceMaskMode !== prev) {
-      Message.success(msg('已保存'));
-    }
-  }
-
   render() {
     const s = this._settings;
     return html`
       <section class="card" aria-labelledby="prefs-heading">
         <h2 id="prefs-heading">${msg('偏好与提示')}</h2>
         <p class="desc">
-          ${msg(
-            '控制录音麦克风处理、练习流程倒计时、字幕遮罩默认，以及各练习模式说明是否自动跳过。',
-          )}
+          ${msg('控制录音麦克风处理、练习流程倒计时，以及各练习模式说明是否自动跳过。')}
         </p>
         <div class="rows">
           <div class="field">
@@ -225,23 +209,6 @@ export class SettingsPreferences extends LitElement {
               ${s.skipRecordingCountdown
                 ? msg('已跳过倒计时；关闭上方开关后可选择 3–10 秒。')
                 : msg('回声与影子跟读在开始录音前显示的固定等待秒数（3–10 秒）。')}
-            </p>
-          </div>
-          <div class="field">
-            <span class="field-label">${msg('遮罩原文')}</span>
-            <ui-select
-              .value=${s.sourceMaskMode}
-              .options=${[
-                { value: 'off', label: msg('不遮罩') },
-                { value: 'current', label: msg('只显示当前句') },
-                { value: 'all', label: msg('全部遮罩原文') },
-              ]}
-              @change=${this._onSourceMaskModeChange}
-            ></ui-select>
-            <p class="hint">
-              ${msg(
-                '下次进入练习时使用。练习中用字幕栏或 M 只改当次，不写回这里。遮罩只模糊原文；翻译仍用显示/隐藏翻译。没有当前句时，两种遮罩都会模糊全部原文。',
-              )}
             </p>
           </div>
           <div

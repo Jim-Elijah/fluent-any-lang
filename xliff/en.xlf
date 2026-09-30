@@ -2772,37 +2772,9 @@
   <source>口语评分时会对照示范音频的节奏与语调打分，会额外上传原声片段（已有缓存时更少流量）；取不到原声时改按自然度评。</source>
 <target>When scoring speech, rhythm and intonation are compared to the reference audio, which uploads extra source clips (less data when cached). If source audio is unavailable, scoring falls back to naturalness.</target>
 </trans-unit>
-<trans-unit id="s3b2af5848702c7ba">
-  <source>取消遮罩原文 (M)</source>
-  <target>Clear source mask (M)</target>
-</trans-unit>
-<trans-unit id="s3aaf9be4fa8c29f8">
-  <source>取消遮罩原文</source>
-  <target>Clear source mask</target>
-</trans-unit>
 <trans-unit id="s19e9651ea1c09356">
   <source>遮罩原文</source>
   <target>Mask source text</target>
-</trans-unit>
-<trans-unit id="s27c99639f6aa406e">
-  <source>只显示当前句 (M)</source>
-  <target>Show current line only (M)</target>
-</trans-unit>
-<trans-unit id="sd2510f088233edc4">
-  <source>只显示当前句</source>
-  <target>Show current line only</target>
-</trans-unit>
-<trans-unit id="s5c61844a9b718088">
-  <source>全部遮罩原文 (M)</source>
-  <target>Mask all source text (M)</target>
-</trans-unit>
-<trans-unit id="s11eb5cd291fab12e">
-  <source>全部遮罩原文</source>
-  <target>Mask all source text</target>
-</trans-unit>
-<trans-unit id="saf58d7ad9d237853">
-  <source>控制录音麦克风处理、练习流程倒计时、字幕遮罩默认，以及各练习模式说明是否自动跳过。</source>
-  <target>Control microphone processing for recording, the practice countdown, the default source-text mask, and whether tips for each practice mode are skipped automatically.</target>
 </trans-unit>
 <trans-unit id="s03bf019e13d4fa7c">
   <source>开启后录音前不再显示倒计时（回声与影子跟读均生效）。</source>
@@ -2820,23 +2792,12 @@
   <source>回声与影子跟读在开始录音前显示的固定等待秒数（3–10 秒）。</source>
   <target>Fixed wait before Echo and Shadowing start recording (3–10 seconds).</target>
 </trans-unit>
-<trans-unit id="s6c712184cd23a531">
-  <source>不遮罩</source>
-  <target>No mask</target>
-</trans-unit>
-<trans-unit id="s23d9c4cc86a44b1c">
-  <source>下次进入练习时使用。练习中用字幕栏或 M 只改当次，不写回这里。遮罩只模糊原文；翻译仍用显示/隐藏翻译。没有当前句时，两种遮罩都会模糊全部原文。</source>
-  <target>Used the next time you open practice. The subtitle bar and M change it only for this visit and do not save it here. Masking blurs source text only; translation still uses show/hide translation. When no line is current, both masks blur all source text.</target>
-</trans-unit>
 <trans-unit id="sa1f2891ded53b573">
   <source>切换遮罩原文</source>
   <target>Cycle source mask</target>
 </trans-unit>
 <trans-unit id="sf5ba6dd2cf39ed1f">
   <source>确定仅保留本条录音吗？</source>
-</trans-unit>
-<trans-unit id="se0121ced70cc0d34">
-  <source>保留本条</source>
 </trans-unit>
 <trans-unit id="s329c03407985137f">
   <source>将删除同句其余 <x id="0" equiv-text="${deleteIds.length}"/> 条录音，不可恢复。</source>
@@ -2853,9 +2814,6 @@
 <trans-unit id="sc00a6288a540ea31">
   <source>导航快捷入口</source>
 </trans-unit>
-<trans-unit id="sb49c01e015fef4b7">
-  <source>把常用的库页面固定到导航。其余仍从「库」进入。</source>
-</trans-unit>
 <trans-unit id="s301e519327e16223">
   <source>搜索录音标题 / 字幕</source>
   <target>Search recording titles / subtitles</target>
@@ -2869,6 +2827,63 @@
 <trans-unit id="sd52ab5086352f443">
   <source>类型</source>
   <target>Type</target>
+</trans-unit>
+<trans-unit id="s2bdcd4dce4b685b4">
+  <source>开始句 #<x id="0" equiv-text="${this.anchor + 1}"/> · 再点最后一句</source>
+</trans-unit>
+<trans-unit id="s3b0127980bb2b679">
+  <source>先点开始句，再点最后一句</source>
+</trans-unit>
+<trans-unit id="s39046f027c9777ca">
+  <source>开启选段</source>
+</trans-unit>
+<trans-unit id="s28c251d75d0fa2e7">
+  <source>仅看选段</source>
+</trans-unit>
+<trans-unit id="sf14eff09542b8803">
+  <source>选段</source>
+</trans-unit>
+<trans-unit id="s4a6e8478da25f5de">
+  <source>限定这次影子跟读的句子范围。开启后，在字幕里先点开始的那一句，再点最后一句；从开始句到最后一句都会包含。开始录音时从第一句播放，最后一句播完会暂停音频；是否结束录音由你决定。</source>
+</trans-unit>
+<trans-unit id="sb83136c535f7aecb">
+  <source>打开后才能点字幕，把两句设成这次跟读的开始句和最后一句。</source>
+</trans-unit>
+<trans-unit id="s976b2e082f1267cc">
+  <source>清除</source>
+</trans-unit>
+<trans-unit id="sfaf271d0bbcc8ffa">
+  <source>字幕只显示从开始句到最后一句。</source>
+</trans-unit>
+<trans-unit id="sccb15b74cbbbaf46">
+  <source>#<x id="0" equiv-text="${range.start + 1}"/>–#<x id="1" equiv-text="${range.end + 1}"/> · <x id="2" equiv-text="${count}"/>句</source>
+</trans-unit>
+<trans-unit id="sf902534d93ce119b">
+  <source>遮罩非当前句 (M)</source>
+</trans-unit>
+<trans-unit id="s9cda0570dcf3d85d">
+  <source>遮罩非当前句</source>
+</trans-unit>
+<trans-unit id="s624cd214c161991a">
+  <source>遮罩全部 (M)</source>
+</trans-unit>
+<trans-unit id="s136a261e9ba9e698">
+  <source>遮罩全部</source>
+</trans-unit>
+<trans-unit id="sd1c00b6dcbcf6792">
+  <source>关闭遮罩 (M)</source>
+</trans-unit>
+<trans-unit id="s49b0338fc79d11a0">
+  <source>关闭遮罩</source>
+</trans-unit>
+<trans-unit id="s346ad6c938e17ff7">
+  <source>把「库」中常用的页面固定到导航，其余仍从「库」进入。</source>
+</trans-unit>
+<trans-unit id="s883e0638553aa9f5">
+  <source>下次进入练习时使用。遮罩只模糊原文；翻译仍用显示/隐藏翻译。</source>
+</trans-unit>
+<trans-unit id="s0c8787a3358178e1">
+  <source>控制录音麦克风处理、练习流程倒计时，以及各练习模式说明是否自动跳过。</source>
 </trans-unit>
 </body>
 </file>

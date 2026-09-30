@@ -61,6 +61,31 @@ describe('settings-player-defaults', () => {
     expect(success).toHaveBeenCalledOnce();
   });
 
+  it('persists the default source mask from the select control', async () => {
+    const success = vi.spyOn(Message, 'success');
+    const el = await renderDefaults();
+    const selects = el.shadowRoot?.querySelectorAll('ui-select');
+    const maskSelect = selects?.[1] as UiSelectLike & {
+      options?: Array<{ value: string; label: string }>;
+    };
+    expect(maskSelect.options?.map((option) => option.label)).toEqual([
+      '关闭遮罩',
+      '遮罩非当前句',
+      '遮罩全部',
+    ]);
+    maskSelect.dispatchEvent(
+      new CustomEvent('change', {
+        detail: { value: 'all', option: { value: 'all', label: '遮罩全部' } },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+    await el.updateComplete;
+    expect(setAppSettings).toHaveBeenCalledWith({ sourceMaskMode: 'all' });
+    expect(success).toHaveBeenCalledOnce();
+    expect(el.shadowRoot?.textContent).toContain('遮罩原文');
+  });
+
   it('clamps numeric input changes', async () => {
     const el = await renderDefaults();
     const sleepInput = el.shadowRoot?.querySelector('ui-input[type="number"]') as UiInputLike;

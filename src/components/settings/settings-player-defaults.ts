@@ -3,7 +3,12 @@ import { customElement, state } from 'lit/decorators.js';
 import { msg, str, localized } from '@lit/localize';
 
 import { getAppSettings, setAppSettings } from '../../lib/app-settings.js';
-import { APP_SETTINGS_PLAYER_LIMITS, type AppSettings, type LoopMode } from '../../types/models.js';
+import {
+  APP_SETTINGS_PLAYER_LIMITS,
+  type AppSettings,
+  type LoopMode,
+  type SourceMaskMode,
+} from '../../types/models.js';
 import { settingsCardStyles } from './settings-styles.js';
 import '../ui/input.js';
 import type { InputChangeDetail } from '../ui/input.js';
@@ -109,6 +114,14 @@ export class SettingsPlayerDefaults extends LitElement {
     this._save({ defaultLoopMode: event.detail.value as LoopMode });
   }
 
+  private _onSourceMaskModeChange(event: CustomEvent<SelectChangeDetail>): void {
+    const value = event.detail.value;
+    if (value !== 'off' && value !== 'current' && value !== 'all') {
+      return;
+    }
+    this._save({ sourceMaskMode: value as SourceMaskMode });
+  }
+
   private _rangeHint(key: PlayerNumericKey): string {
     const { min, max } = APP_SETTINGS_PLAYER_LIMITS[key];
     return msg(str`允许范围 ${min}–${max}`);
@@ -181,6 +194,21 @@ export class SettingsPlayerDefaults extends LitElement {
               @change=${this._onLoopModeChange}
             ></ui-select>
             <p class="hint">${msg('进入练习时的默认循环模式。')}</p>
+          </div>
+          <div class="field">
+            <span class="field-label">${msg('默认遮罩原文')}</span>
+            <ui-select
+              .value=${s.sourceMaskMode}
+              .options=${[
+                { value: 'off', label: msg('关闭遮罩') },
+                { value: 'current', label: msg('遮罩非当前句') },
+                { value: 'all', label: msg('遮罩全部') },
+              ]}
+              @change=${this._onSourceMaskModeChange}
+            ></ui-select>
+            <p class="hint">
+              ${msg('下次进入练习时使用。遮罩只模糊原文；翻译仍用显示/隐藏翻译。')}
+            </p>
           </div>
           <div class="field">
             <span class="field-label">${msg('默认定时关闭（分钟）')}</span>
