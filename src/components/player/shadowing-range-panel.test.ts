@@ -19,7 +19,7 @@ describe('shadowing-range-panel', () => {
       selectActive?: boolean;
       anchor?: number | null;
       range?: { start: number; end: number } | null;
-      focus?: boolean;
+      rangeFocus?: boolean;
       disabled?: boolean;
     } = {},
   ) {
@@ -28,7 +28,7 @@ describe('shadowing-range-panel', () => {
         .selectActive=${overrides.selectActive ?? false}
         .anchor=${overrides.anchor ?? null}
         .range=${overrides.range ?? null}
-        .focus=${overrides.focus ?? false}
+        .rangeFocus=${overrides.rangeFocus ?? false}
         .disabled=${overrides.disabled ?? false}
       ></shadowing-range-panel>
     `);

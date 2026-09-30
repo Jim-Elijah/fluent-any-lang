@@ -2736,18 +2736,24 @@ describe('practice-view', () => {
       expect(el._shadowingRange).toBeNull();
     });
 
-    it('clears range on track change', async () => {
+    it('clears range bounds on track change and keeps range select', async () => {
       const el = await renderView();
       await switchToShadowingMode(el);
 
+      el._shadowingRangeAnchor = 0;
       el._shadowingRange = { start: 0, end: 1 };
+      el._shadowingRangeConfirmed = true;
+      el._shadowingRangeFocus = true;
       el._shadowingRangeSelectActive = true;
 
       el._onTrackChange();
       await settleView(el);
 
+      expect(el._shadowingRangeAnchor).toBeNull();
       expect(el._shadowingRange).toBeNull();
-      expect(el._shadowingRangeSelectActive).toBe(false);
+      expect(el._shadowingRangeConfirmed).toBe(false);
+      expect(el._shadowingRangeFocus).toBe(false);
+      expect(el._shadowingRangeSelectActive).toBe(true);
     });
 
     it('reveals hidden subtitles when range select turns on', async () => {

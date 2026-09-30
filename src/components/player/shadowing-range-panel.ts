@@ -123,7 +123,7 @@ export class ShadowingRangePanel extends LitElement {
   range: ShadowingSegmentRange | null = null;
 
   @property({ type: Boolean })
-  focus = false;
+  rangeFocus = false;
 
   @property({ type: Boolean })
   disabled = false;
@@ -234,7 +234,7 @@ export class ShadowingRangePanel extends LitElement {
                   ? this._renderSwitchField({
                       label: focusLabel,
                       hint: msg('字幕只显示从开始句到最后一句。'),
-                      checked: this.focus,
+                      checked: this.rangeFocus,
                       onToggle: (focus) => {
                         this._emit<ShadowingRangeFocusChangeDetail>(
                           'shadowing-range-focus-change',

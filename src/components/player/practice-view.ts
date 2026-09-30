@@ -529,12 +529,17 @@ export class PracticeView extends NavigatorElement {
     this._hotkeysHelpOpen = !this._hotkeysHelpOpen;
   };
 
-  private _clearShadowingRange(): void {
-    this._shadowingRangeSelectActive = false;
+  /** Drops the picked sentences. Keeps the range-select toggle. */
+  private _clearShadowingRangeSelection(): void {
     this._shadowingRangeAnchor = null;
     this._shadowingRange = null;
     this._shadowingRangeConfirmed = false;
     this._shadowingRangeFocus = false;
+  }
+
+  private _clearShadowingRange(): void {
+    this._shadowingRangeSelectActive = false;
+    this._clearShadowingRangeSelection();
   }
 
   private _onShadowingRangeClick = (event: CustomEvent<ShadowingRangeClickDetail>): void => {
@@ -554,10 +559,7 @@ export class PracticeView extends NavigatorElement {
   private _onShadowingRangeSelectActiveChange = (event: CustomEvent<{ active: boolean }>): void => {
     this._shadowingRangeSelectActive = event.detail.active;
     if (!event.detail.active) {
-      this._shadowingRangeAnchor = null;
-      this._shadowingRange = null;
-      this._shadowingRangeConfirmed = false;
-      this._shadowingRangeFocus = false;
+      this._clearShadowingRangeSelection();
       return;
     }
     const snapshot = this._controller.getSnapshot();
@@ -567,10 +569,7 @@ export class PracticeView extends NavigatorElement {
   };
 
   private _onShadowingRangeClear = (): void => {
-    this._shadowingRangeAnchor = null;
-    this._shadowingRange = null;
-    this._shadowingRangeConfirmed = false;
-    this._shadowingRangeFocus = false;
+    this._clearShadowingRangeSelection();
   };
 
   private _onShadowingRangeFocusChange = (event: CustomEvent<{ focus: boolean }>): void => {
@@ -780,7 +779,7 @@ export class PracticeView extends NavigatorElement {
       this._echoSegment = null;
     }
     this._echoClipPlayer.dispose();
-    this._clearShadowingRange();
+    this._clearShadowingRangeSelection();
     this._syncMediaIdFromController();
     this._rememberLastPlayedMedia();
     this._syncTimeTrackerMedia();
@@ -990,7 +989,7 @@ export class PracticeView extends NavigatorElement {
                       .selectActive=${this._shadowingRangeSelectActive}
                       .anchor=${this._shadowingRangeAnchor}
                       .range=${this._shadowingRange}
-                      .focus=${this._shadowingRangeFocus}
+                      .rangeFocus=${this._shadowingRangeFocus}
                       .disabled=${sessionActive}
                       @shadowing-range-select-active-change=${this
                         ._onShadowingRangeSelectActiveChange}
