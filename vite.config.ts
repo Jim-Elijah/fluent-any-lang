@@ -154,7 +154,10 @@ export default defineConfig({
     sourcemap: true,
   },
   plugins: [
-    normalizeVitestMockImporter(),
+    // Vitest-only. Enable on Windows when vi.mock misses (real module loaded instead of mock).
+    // Disabled by default: rewriting resolveId breaks @vitest/coverage-v8 key alignment → 0% coverage.
+    // Linux CI usually needs this off; toggle locally if mocks fail, then re-run test:coverage.
+    // normalizeVitestMockImporter(),
     VitePWA({
       registerType: 'prompt',
       manifest: {
