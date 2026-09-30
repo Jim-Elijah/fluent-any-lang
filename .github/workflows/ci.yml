@@ -1,3 +1,4 @@
+# Local parity: pnpm run ci:fast (no E2E) or pnpm run ci (full). pre-push runs ci:fast; tag push runs ci.
 name: CI
 
 on:

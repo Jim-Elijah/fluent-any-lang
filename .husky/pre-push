@@ -1,1 +1,12 @@
-pnpm run build
+tag_push=false
+while read -r local_ref local_sha remote_ref remote_sha; do
+  case "$remote_ref" in
+    refs/tags/*) tag_push=true ;;
+  esac
+done
+
+if [ "$tag_push" = true ]; then
+  pnpm run ci
+else
+  pnpm run ci:fast
+fi

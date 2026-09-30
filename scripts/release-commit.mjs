@@ -35,7 +35,9 @@ function main() {
   execSync(`git commit -m "chore(release): ${version}"`, { cwd: ROOT_DIR, stdio: 'inherit' });
   execSync(`git tag "v${version}"`, { cwd: ROOT_DIR, stdio: 'inherit' });
 
-  console.log(`Committed and tagged v${version}. Push when ready (git push && git push --tags).`);
+  console.log(
+    `Committed and tagged v${version}. Push when ready (git push && git push --tags). Tag push runs full pnpm run ci via pre-push.`,
+  );
 }
 
 main();

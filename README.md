@@ -100,6 +100,8 @@ Useful scripts:
 | Command | Description |
 | --- | --- |
 | `pnpm build` | Localize, typecheck, and production build |
+| `pnpm ci:fast` | Same checks as GitHub CI except E2E (lint, format, coverage, build) |
+| `pnpm ci` | Full GitHub CI locally (includes Playwright) |
 | `pnpm test` | Unit tests |
 | `pnpm test:e2e` | Playwright end-to-end tests |
 | `pnpm lint` | ESLint |
@@ -115,6 +117,7 @@ Use a two-step flow so Agent/human translation can happen between bump and tag:
 2. `pnpm run release:notes` — refresh `CHANGELOG.md` and write `public/release-notes.json` (latest version only; locales come from `lit-localize.json`).
 3. Fill non-source locale highlights (Agent or manual) and proofread.
 4. `pnpm run release:commit` — requires every locale non-empty and matching `package.json` version → commit + `vX.Y.Z` tag (does not push).
+5. `git push && git push --tags` — **pre-push** runs `pnpm run ci:fast` on branch pushes and **`pnpm run ci`** (with E2E) when pushing tags. Run `pnpm run ci` yourself before push if you want to catch failures without relying on the hook.
 
 PWA update UI fetches `/release-notes.json` with `cache: 'no-store'` (and the file is excluded from Workbox precache) so an old page can still show the new version’s highlights.
 

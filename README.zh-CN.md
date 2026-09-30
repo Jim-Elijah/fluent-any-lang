@@ -99,6 +99,8 @@ pnpm dev
 | 命令 | 说明 |
 | --- | --- |
 | `pnpm build` | 本地化构建、类型检查与生产构建 |
+| `pnpm ci:fast` | 与 GitHub CI 相同（不含 E2E：lint、format、coverage、build） |
+| `pnpm ci` | 本地跑完整 GitHub CI（含 Playwright） |
 | `pnpm test` | 单元测试 |
 | `pnpm test:e2e` | Playwright 端到端测试 |
 | `pnpm lint` | ESLint |
@@ -114,6 +116,7 @@ pnpm dev
 2. `pnpm run release:notes` — 刷新 `CHANGELOG.md`，写入仅含最新版的 `public/release-notes.json`（语言列表取自 `lit-localize.json`）。
 3. 补齐非 source 语言要点并校对。
 4. `pnpm run release:commit` — 校验各语言非空且版本一致 → commit + `vX.Y.Z` tag（不 push）。
+5. `git push && git push --tags` — **pre-push** 在推分支时跑 `pnpm run ci:fast`，推 **tag** 时跑 **`pnpm run ci`**（含 E2E）。也可在 push 前手动执行 `pnpm run ci` 提前发现问题。
 
 PWA 更新提示以 `cache: 'no-store'` 拉取 `/release-notes.json`（且该文件不进 Workbox 预缓存），旧页面也能展示新版本要点。
 
