@@ -39,6 +39,24 @@ export function sumOffsetHeights(elements: Iterable<Element>): number {
   return total;
 }
 
+/** True when the element generates a box that participates in parent gap. */
+export function isLayoutBox(el: Element): boolean {
+  if (!(el instanceof HTMLElement)) return false;
+  if (el.hidden) return false;
+  const display = getComputedStyle(el).display;
+  return display !== 'none' && display !== 'contents';
+}
+
+/** Child count used for flex/grid gap, skipping hidden and non-boxes. */
+export function layoutBoxCount(parent: Element | null | undefined): number {
+  if (!parent) return 0;
+  let count = 0;
+  for (const child of parent.children) {
+    if (isLayoutBox(child)) count += 1;
+  }
+  return count;
+}
+
 export function gapPx(el: Element | null | undefined, fallback = 16): number {
   if (!el) return fallback;
   const raw = getComputedStyle(el).gap || getComputedStyle(el).rowGap;

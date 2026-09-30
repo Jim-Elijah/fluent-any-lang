@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { gapPx, measurePageViewportHeight, sumOffsetHeights } from './layout-compact.js';
+import {
+  gapPx,
+  layoutBoxCount,
+  measurePageViewportHeight,
+  sumOffsetHeights,
+} from './layout-compact.js';
 
 describe('layout-compact', () => {
   it('sums HTMLElement offset heights only', () => {
@@ -39,6 +44,20 @@ describe('layout-compact', () => {
     expect(measured).toBeLessThanOrEqual(800 - 56);
 
     mainContent.remove();
+  });
+
+  it('counts only children that participate in layout', () => {
+    const parent = document.createElement('div');
+    const visible = document.createElement('div');
+    const hidden = document.createElement('div');
+    hidden.hidden = true;
+    const collapsed = document.createElement('span');
+    collapsed.style.display = 'none';
+    parent.append(visible, hidden, collapsed);
+    document.body.append(parent);
+    expect(layoutBoxCount(parent)).toBe(1);
+    expect(layoutBoxCount(null)).toBe(0);
+    parent.remove();
   });
 
   it('reads gap with fallback', () => {

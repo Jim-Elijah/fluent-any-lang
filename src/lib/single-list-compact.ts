@@ -5,6 +5,8 @@ import {
   EXIT_FILL_LIST_PX,
   MIN_FILL_LIST_PX,
   gapPx,
+  isLayoutBox,
+  layoutBoxCount,
   measurePageViewportHeight,
   sumOffsetHeights,
 } from './layout-compact.js';
@@ -86,12 +88,12 @@ export class SingleListCompactController implements ReactiveController {
 
     const chrome = this.options.chromeSelectors
       .map((sel) => root.querySelector(sel))
-      .filter((el): el is Element => Boolean(el));
+      .filter((el): el is Element => Boolean(el) && isLayoutBox(el));
     const stack = this.options.stackSelector
       ? (root.querySelector(this.options.stackSelector) as HTMLElement | null)
       : null;
     const gaps = stack
-      ? gapPx(stack) * Math.max(0, stack.children.length - 1)
+      ? gapPx(stack) * Math.max(0, layoutBoxCount(stack) - 1)
       : gapPx(root.querySelector('.layout') as Element | null) *
         Math.max(0, chrome.length + (list ? 0 : -1));
 

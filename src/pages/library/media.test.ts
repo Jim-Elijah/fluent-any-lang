@@ -41,10 +41,12 @@ describe('library-media-page', () => {
     return el;
   }
 
-  it('renders toolbar, back link, and media list', async () => {
+  it('renders toolbar and media list, and hides back without the hub hash', async () => {
     stubMatchMedia(false);
     const el = await renderPage();
-    expect(el.shadowRoot?.querySelector('library-section-back')).not.toBeNull();
+    const back = el.shadowRoot?.querySelector('library-section-back') as HTMLElement;
+    expect(back.hidden).toBe(true);
+    expect(back.shadowRoot?.querySelector('button')).toBeNull();
     expect(el.shadowRoot?.querySelector('library-list-toolbar')).not.toBeNull();
     expect(el.shadowRoot?.querySelector('media-list')).not.toBeNull();
     expect(el.compact).toBe(false);

@@ -24,7 +24,9 @@ describe('library-page', () => {
 
   it('renders hub links to library sections', async () => {
     const el = await renderPage();
-    const buttons = [...(el.shadowRoot?.querySelectorAll('button.link') ?? [])] as HTMLButtonElement[];
+    const buttons = [
+      ...(el.shadowRoot?.querySelectorAll('button.link') ?? []),
+    ] as HTMLButtonElement[];
     expect(buttons.length).toBe(5);
     expect(el.shadowRoot?.textContent).toContain('媒体库');
     expect(el.shadowRoot?.textContent).toContain('录音库');
@@ -42,6 +44,7 @@ describe('library-page', () => {
 
     mediaLink.click();
 
-    expect(navigateSpy).toHaveBeenCalledWith('/library/media');
+    const href = navigateSpy.mock.calls[0]?.[0];
+    expect(href).toMatch(/^\/library\/media#[0-9a-z]+$/);
   });
 });

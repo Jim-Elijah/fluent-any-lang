@@ -131,33 +131,35 @@ export class LibraryPage extends NavigatorElement {
   }
 
   private _getLinks(): HubLink[] {
+    const token = Math.random().toString(36).slice(2, 8) || '0';
+    const href = (path: string) => `${path}#${token}`;
     return [
       {
-        href: '/library/media',
+        href: href('/library/media'),
         icon: 'media',
         title: msg('媒体库'),
         description: msg('导入的音视频练习材料'),
       },
       {
-        href: '/library/playlists',
+        href: href('/library/playlists'),
         icon: 'playlist',
         title: msg('播放列表'),
         description: msg('按列表顺序练习多个媒体'),
       },
       {
-        href: '/library/noise',
+        href: href('/library/noise'),
         icon: 'listen1',
         title: msg('噪音素材'),
         description: msg('听辨练习用的环境噪音叠加素材'),
       },
       {
-        href: '/library/sentences',
+        href: href('/library/sentences'),
         icon: 'dialog',
         title: msg('句库'),
         description: msg('收藏的句子，可单独练习'),
       },
       {
-        href: '/library/records',
+        href: href('/library/records'),
         icon: 'recording-file',
         title: msg('录音库'),
         description: msg('口语练习产生的录音'),
