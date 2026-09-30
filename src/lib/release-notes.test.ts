@@ -81,5 +81,10 @@ describe('fetchReleaseNotes', () => {
       throw new Error('offline');
     }) as unknown as typeof fetch;
     expect(await fetchReleaseNotes(network)).toBeNull();
+
+    const invalidShape = vi.fn(async () =>
+      Response.json({ version: '1.0.0', highlights: { en: 'not-sections' } }, { status: 200 }),
+    ) as unknown as typeof fetch;
+    expect(await fetchReleaseNotes(invalidShape)).toBeNull();
   });
 });

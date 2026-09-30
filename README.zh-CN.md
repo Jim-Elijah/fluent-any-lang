@@ -117,6 +117,8 @@ pnpm dev
 
 PWA 更新提示以 `cache: 'no-store'` 拉取 `/release-notes.json`（且该文件不进 Workbox 预缓存），旧页面也能展示新版本要点。
 
+实现说明（脚本与运行时、校验逻辑重复等）：[`docs/release-notes.md`](./docs/release-notes.md)。
+
 静态托管生产构建时，请配置 SPA 回退，使深链（`/library`、`/practice` 等）重写到 `index.html`。Service Worker（以及麦克风）需要 HTTPS。
 
 ## 许可证

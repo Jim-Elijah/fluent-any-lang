@@ -75,6 +75,14 @@ function isReleaseNotes(value: unknown): value is ReleaseNotes {
   if (!value || typeof value !== 'object') return false;
   const record = value as Record<string, unknown>;
   if (typeof record.version !== 'string' || !record.version) return false;
-  if (!record.highlights || typeof record.highlights !== 'object') return false;
-  return true;
+  if (
+    !record.highlights ||
+    typeof record.highlights !== 'object' ||
+    Array.isArray(record.highlights)
+  ) {
+    return false;
+  }
+  return Object.values(record.highlights as Record<string, unknown>).every(
+    (sections) => Array.isArray(sections) && sections.every(isReleaseNotesSection),
+  );
 }

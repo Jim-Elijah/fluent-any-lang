@@ -6,6 +6,8 @@ alwaysApply: false
 
 # Release notes translation
 
+Pipeline and duplicate validators (`isReleaseNotesSection`, `localeHighlightsFilled` in scripts vs `src/lib/release-notes.ts`): [`docs/release-notes.md`](../../docs/release-notes.md).
+
 When asked to translate `public/release-notes.json`:
 
 1. Source of truth is `highlights.en` (array of **sections**). Mirror the same `category` values and section order in `zh-CN`, `ja`, and `zh-TW`.

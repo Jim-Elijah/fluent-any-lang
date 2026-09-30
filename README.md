@@ -118,6 +118,8 @@ Use a two-step flow so Agent/human translation can happen between bump and tag:
 
 PWA update UI fetches `/release-notes.json` with `cache: 'no-store'` (and the file is excluded from Workbox precache) so an old page can still show the new version’s highlights.
 
+Implementation notes (scripts vs runtime, duplicate validators): [`docs/release-notes.md`](./docs/release-notes.md).
+
 When hosting the production build as static files, configure SPA fallback so deep links (`/library`, `/practice`, …) rewrite to `index.html`. HTTPS is required for the service worker (and for microphone access).
 
 ## License
