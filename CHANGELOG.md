@@ -1,3 +1,30 @@
+## [0.6.0](https://github.com/Jim-Elijah/fluent-any-lang/compare/v0.5.0...v0.6.0) (2026-09-30)
+
+### Features
+
+* **library:** add keep-only action for echo takes in record list ([1c55f1d](https://github.com/Jim-Elijah/fluent-any-lang/commit/1c55f1daeca204bf49b6e5375af2e8bbc68d1d9c))
+* **library:** filter recordings by Echo or Shadowing ([69601fc](https://github.com/Jim-Elijah/fluent-any-lang/commit/69601fc2b51380f226be76df956c360d22fec783))
+* **library:** name the echo takes that keep-only will delete ([2422fb3](https://github.com/Jim-Elijah/fluent-any-lang/commit/2422fb3b7b9839e9f5b40f7197035b5e49aa4521))
+* **library:** search recordings by title and subtitle text ([062e07e](https://github.com/Jim-Elijah/fluent-any-lang/commit/062e07ea64070e3c0b49eb5e4276d0fd4150f670))
+* **nav:** pin library pages onto the app nav ([3e4f192](https://github.com/Jim-Elijah/fluent-any-lang/commit/3e4f192629e52993b5a2f1b2b6c518b313460318))
+* **practice:** add shadowing range selection from subtitle start ([f099328](https://github.com/Jim-Elijah/fluent-any-lang/commit/f0993286e12b6943eb9eea1fe1e28265d2f4463e))
+* **practice:** add subtitle source mask on practice page ([c4df277](https://github.com/Jim-Elijah/fluent-any-lang/commit/c4df277f532e5acf75e8441f48df2d8fa7814c74))
+* **practice:** pause shadowing playback at selected range end ([edb0276](https://github.com/Jim-Elijah/fluent-any-lang/commit/edb02769b67d4d58447747a0b1a9f1ada044773a))
+* **practice:** show subtitle ordinals and recording sentence context ([dcab145](https://github.com/Jim-Elijah/fluent-any-lang/commit/dcab14567faa820d0cb916619f7153bddeeb703a)), references [#1](https://github.com/Jim-Elijah/fluent-any-lang/issues/1)
+* **settings:** make recording countdown seconds configurable (3–10) ([8984e63](https://github.com/Jim-Elijah/fluent-any-lang/commit/8984e63c184dff778803f74b0e13c1d9aa4409b6))
+* **subtitle:** cycle source-text mask and remember the default ([6c9573f](https://github.com/Jim-Elijah/fluent-any-lang/commit/6c9573f450037bb9f8f3e9e8c746eb46d6fcd74a))
+
+### Bug Fixes
+
+* **library:** hide word layout toggle when source words are not shown ([b263a12](https://github.com/Jim-Elijah/fluent-any-lang/commit/b263a125ee75965b87636dc4c02644f20de4df32))
+* **library:** include seconds in displayed timestamps ([bc82dfd](https://github.com/Jim-Elijah/fluent-any-lang/commit/bc82dfdd20602aa998e400a45a3c4fd7dac04537))
+* **library:** preserve trailing spaces in search while trimming filter input ([ba73213](https://github.com/Jim-Elijah/fluent-any-lang/commit/ba73213df0333ce246924562d058603dc0b6800e))
+* **library:** show back-to-library only after a hub section link ([9be637a](https://github.com/Jim-Elijah/fluent-any-lang/commit/9be637aa1749e3c9afb7ce5889f599cf9902dfb6))
+* **library:** show full practice record excerpt with hashed ordinals ([b612950](https://github.com/Jim-Elijah/fluent-any-lang/commit/b6129502b1cf06ab15f1c870acc45dca73d634f6))
+* **practice:** keep shadowing range select on across track changes ([11b1f7d](https://github.com/Jim-Elijah/fluent-any-lang/commit/11b1f7dbf7e76cefd83457a3749cccbda9289038))
+* **practice:** use error toast when source align batch fully fails ([ee5fb05](https://github.com/Jim-Elijah/fluent-any-lang/commit/ee5fb05afd2c082943af4ddcd2e7c0a98598213f))
+* **subtitle:** keep Echo score colors in fullscreen subtitles ([7bcee4f](https://github.com/Jim-Elijah/fluent-any-lang/commit/7bcee4f204ee74aa79ee365edee5f798ac4b2e82))
+
 ## [0.5.0](https://github.com/Jim-Elijah/fluent-any-lang/compare/v0.4.3...v0.5.0) (2026-09-24)
 
 ### Features
