@@ -1252,6 +1252,7 @@ export class PracticeView extends NavigatorElement {
           <record-list
             .mediaId=${this._mediaId}
             .modeFilter=${this._recordingsModalMode}
+            .showModeBadge=${false}
             .segmentId=${this._recordingsModalSegmentId ?? undefined}
             .showHeader=${false}
             .popupZIndex=${Z_INDEX.MODAL + 1}

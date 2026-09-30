@@ -2832,6 +2832,10 @@
 <trans-unit id="s3855b008b726ce50">
   <source>得分</source>
 </trans-unit>
+<trans-unit id="sd52ab5086352f443">
+  <source>类型</source>
+  <target>類型</target>
+</trans-unit>
 </body>
 </file>
 </xliff>

@@ -117,6 +117,17 @@ describe('record-list', () => {
     expect(el.shadowRoot?.textContent).toContain('暂无录音');
   });
 
+  it('shows no-match empty state when mode filter excludes every recording', async () => {
+    vi.mocked(recordDb.getRecordingList).mockResolvedValue([sampleRecord]);
+
+    const el = await renderList(html`<record-list .modeFilter=${'echo'}></record-list>`);
+    await el.refresh();
+    await el.updateComplete;
+
+    expect(el.shadowRoot?.textContent).toContain('无匹配录音');
+    expect(el.shadowRoot?.textContent).not.toContain('Lesson');
+  });
+
   it('shows no-match empty state when keyword filters all items', async () => {
     vi.mocked(recordDb.getRecordingList).mockResolvedValue([sampleRecord]);
 
@@ -259,10 +270,23 @@ describe('record-list', () => {
     expect(badges?.[1]?.classList.contains('echo')).toBe(true);
   });
 
-  it('hides mode badge when modeFilter is set', async () => {
+  it('keeps the mode badge when a mode filter is set', async () => {
     vi.mocked(recordDb.getRecordingList).mockResolvedValue([sampleRecord]);
 
     const el = await renderList(html`<record-list .modeFilter=${'shadowing'}></record-list>`);
+    await el.refresh();
+    await el.updateComplete;
+
+    expect(el.shadowRoot?.querySelector('.badge.shadowing')).not.toBeNull();
+    expect(el.shadowRoot?.textContent).toContain('Lesson');
+  });
+
+  it('hides the mode badge when showModeBadge is false', async () => {
+    vi.mocked(recordDb.getRecordingList).mockResolvedValue([sampleRecord]);
+
+    const el = await renderList(
+      html`<record-list .modeFilter=${'shadowing'} .showModeBadge=${false}></record-list>`,
+    );
     await el.refresh();
     await el.updateComplete;
 

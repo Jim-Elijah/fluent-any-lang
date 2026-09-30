@@ -6,7 +6,10 @@ import { navigator } from 'lit-element-router';
 import '../../components/library/library-list-toolbar.js';
 import '../../components/library/library-section-back.js';
 import '../../components/library/record-list.js';
-import type { LibraryListToolbarChangeDetail } from '../../components/library/library-list-toolbar.js';
+import type {
+  LibraryListToolbarChangeDetail,
+  LibraryRecordModeFilter,
+} from '../../components/library/library-list-toolbar.js';
 import type { SelectOption } from '../../components/ui/select.js';
 import { SingleListCompactController } from '../../lib/single-list-compact.js';
 import type { SortDirection } from '../../types/models.js';
@@ -69,6 +72,9 @@ export class LibraryRecordsPage extends NavigatorElement {
   @state()
   private _sortDirection: SortDirection = 'desc';
 
+  @state()
+  private _mode: LibraryRecordModeFilter = 'all';
+
   private readonly _compactCtrl = new SingleListCompactController(this, {
     listSelector: 'record-list',
     chromeSelectors: ['library-section-back', 'library-list-toolbar', '.hint'],
@@ -80,9 +86,11 @@ export class LibraryRecordsPage extends NavigatorElement {
       <div class="layout">
         <library-section-back></library-section-back>
         <library-list-toolbar
+          show-mode-filter
           .keyword=${this._keyword}
           .sortBy=${this._sortBy}
           .sortDirection=${this._sortDirection}
+          .mode=${this._mode}
           .sortByOptions=${this._getSortByOptions()}
           searchPlaceholder="${msg('搜索录音标题 / 字幕')}"
           @filters-change=${this._onFiltersChange}
@@ -93,6 +101,7 @@ export class LibraryRecordsPage extends NavigatorElement {
           .keyword=${this._keyword}
           .sortBy=${this._sortBy}
           .sortDirection=${this._sortDirection}
+          .modeFilter=${this._mode === 'all' ? undefined : this._mode}
         ></record-list>
       </div>
     `;
@@ -109,6 +118,9 @@ export class LibraryRecordsPage extends NavigatorElement {
     this._keyword = e.detail.keyword;
     this._sortBy = e.detail.sortBy;
     this._sortDirection = e.detail.sortDirection;
+    if (e.detail.mode) {
+      this._mode = e.detail.mode;
+    }
   };
 }
 

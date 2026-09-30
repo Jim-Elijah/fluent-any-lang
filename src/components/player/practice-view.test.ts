@@ -1367,10 +1367,12 @@ describe('practice-view', () => {
     const recordList = el.shadowRoot!.querySelector('record-list') as {
       modeFilter?: string;
       segmentId?: string;
+      showModeBadge?: boolean;
     } | null;
     expect(recordList).not.toBeNull();
     expect(recordList?.modeFilter).toBe('echo');
     expect(recordList?.segmentId).toBe('s0');
+    expect(recordList?.showModeBadge).toBe(false);
 
     const modal = el.shadowRoot!.querySelector('ui-modal') as { title?: string } | null;
     expect(modal?.title).toBe('当前句的回声录音');

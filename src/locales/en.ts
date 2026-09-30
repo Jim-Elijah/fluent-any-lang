@@ -608,6 +608,7 @@ export const templates = {
   sd409c11833f6b38f: `Scoring API URL`,
   sd439f2093b659bdd: `Overwrite`,
   sd493dc3269382d8a: `Echo recordings for current sentence`,
+  sd52ab5086352f443: `Type`,
   sd5e9a3909ce1fe03: `Exported backups can be used to migrate to another device. Settings and playlists are always included in the backup.`,
   sd5e9ab093d8a68f8: `Video`,
   sd61abc5a3864fea5: `Not paused; cannot resume`,

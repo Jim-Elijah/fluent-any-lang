@@ -387,6 +387,10 @@ export class RecordList extends LitElement {
   @property({ type: String })
   modeFilter?: SpeakingMode;
 
+  /** Practice modal hides the badge because every row is already one Speaking subtype. */
+  @property({ type: Boolean })
+  showModeBadge = true;
+
   /** When set, only show recordings for this subtitle segment (echo). */
   @property({ type: String })
   segmentId?: string;
@@ -593,7 +597,8 @@ export class RecordList extends LitElement {
       ? '100%'
       : Math.min(Math.max(renderedItems.length, 1) * rowHeight, RECORD_LIST_HEIGHT);
 
-    const emptyMessage = keyword ? msg('无匹配录音') : msg('暂无录音');
+    const emptyMessage =
+      keyword || (this.modeFilter && !this.mediaId) ? msg('无匹配录音') : msg('暂无录音');
 
     const visibleIds = renderedItems.map((item) => item.id);
     this._visibleIds = visibleIds;
@@ -777,7 +782,6 @@ export class RecordList extends LitElement {
 
   private _renderItem = (item: unknown): unknown => {
     const recording = item as PracticeRecord;
-    const showModeBadge = !this.modeFilter;
     const score = this._scores.get(recording.id);
     const scoring = this._scoringId === recording.id || score?.status === 'pending';
     const tooLong = recording.recordingDuration > SCORE_MAX_DURATION_SEC;
@@ -830,7 +834,7 @@ export class RecordList extends LitElement {
           <p class="title">${recording.mediaTitle}</p>
           ${contextLine}
           <p class="details">
-            ${showModeBadge
+            ${this.showModeBadge
               ? html`<span class="badge ${recording.mode}"
                   >${this._modeLabel(recording.mode)}</span
                 >`

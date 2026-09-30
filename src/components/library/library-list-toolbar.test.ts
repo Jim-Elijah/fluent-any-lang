@@ -43,4 +43,38 @@ describe('library-list-toolbar', () => {
     expect(el.keyword).toBe('hello ');
     expect(input.value).toBe('hello ');
   });
+
+  it('hides the speaking-mode filter unless the records page asks for it', async () => {
+    const el = await render();
+    expect(el.shadowRoot?.querySelector('ui-select.mode-filter')).toBeNull();
+  });
+
+  it('emits Echo or Shadowing when the mode filter changes', async () => {
+    const result = mount(
+      html`<library-list-toolbar show-mode-filter mode="all"></library-list-toolbar>`,
+    );
+    cleanup = result.cleanup;
+    const el = result.container.querySelector('library-list-toolbar') as LibraryListToolbar;
+    await el.updateComplete;
+
+    const events: LibraryListToolbarChangeDetail[] = [];
+    el.addEventListener('filters-change', ((event: CustomEvent<LibraryListToolbarChangeDetail>) => {
+      events.push(event.detail);
+      el.mode = event.detail.mode ?? 'all';
+    }) as EventListener);
+
+    const modeSelect = el.shadowRoot?.querySelector('ui-select.mode-filter') as HTMLElement;
+    expect(modeSelect).not.toBeNull();
+    modeSelect.dispatchEvent(
+      new CustomEvent('change', {
+        detail: { value: 'echo' },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+    await el.updateComplete;
+
+    expect(events).toEqual([{ keyword: '', sortBy: 'date', sortDirection: 'desc', mode: 'echo' }]);
+    expect(el.mode).toBe('echo');
+  });
 });
