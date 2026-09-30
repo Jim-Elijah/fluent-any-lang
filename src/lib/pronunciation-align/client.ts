@@ -1,8 +1,5 @@
 import { msg, str } from '@lit/localize';
-import type {
-  PronunciationAlignResponse,
-  ReferenceSegmentInput,
-} from '../../types/models.js';
+import type { PronunciationAlignResponse, ReferenceSegmentInput } from '../../types/models.js';
 import { normalizeNewlines } from '../pronunciation-score/normalize.js';
 
 export type AlignHttpErrorCode =

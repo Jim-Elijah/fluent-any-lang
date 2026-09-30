@@ -50,8 +50,7 @@ export async function resolveWholeMediaAlignBlockedTip(
           : msg('需要对照原稿才能生成原音词条');
       }
     } else {
-      const blobSizeBytes =
-        sourceBlob && sourceBlob.size > 0 ? sourceBlob.size : media.size;
+      const blobSizeBytes = sourceBlob && sourceBlob.size > 0 ? sourceBlob.size : media.size;
       if (media.duration > ALIGN_MAX_DURATION_SEC) {
         return alignTooLongMessage();
       }

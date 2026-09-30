@@ -91,5 +91,4 @@ describe('subtitle db', () => {
     const { deleteSubtitle } = await import('./subtitle.js');
     await expect(deleteSubtitle('missing')).resolves.toBeUndefined();
   });
-
 });

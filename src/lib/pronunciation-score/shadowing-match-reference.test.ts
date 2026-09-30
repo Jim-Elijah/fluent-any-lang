@@ -8,9 +8,7 @@ import {
   shadowingProfileCacheSuffix,
 } from './shadowing-match-reference.js';
 
-function makeShadowingRecord(
-  overrides: Partial<PracticeRecord> = {},
-): PracticeRecord {
+function makeShadowingRecord(overrides: Partial<PracticeRecord> = {}): PracticeRecord {
   return {
     id: 'rec-sh',
     mediaId: 'media-1',

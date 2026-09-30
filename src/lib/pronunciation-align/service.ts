@@ -133,11 +133,7 @@ async function prepareSubtitleWindowAlignAudio(input: {
   }
   let clipped: { blob: Blob };
   try {
-    clipped = await clipAudioBlob(
-      input.mediaBlob,
-      input.window.startTime,
-      input.window.endTime,
-    );
+    clipped = await clipAudioBlob(input.mediaBlob, input.window.startTime, input.window.endTime);
   } catch {
     return { ok: false, message: msg('无法裁剪原音片段') };
   }
@@ -275,9 +271,7 @@ export async function alignMediaSource(input: {
 
   const subtitleTrack = await getSubtitle(input.mediaId);
   const referenceText = subtitleTrack ? buildSubtitleTrackReferenceText(subtitleTrack) : '';
-  const window = subtitleTrack
-    ? resolveSubtitleAlignWindow(subtitleTrack.segments)
-    : null;
+  const window = subtitleTrack ? resolveSubtitleAlignWindow(subtitleTrack.segments) : null;
   if (
     !canAlignWholeMedia({
       alignDurationSec: window ? subtitleAlignWindowDurationSec(window) : 0,
@@ -501,9 +495,7 @@ export async function alignAllPracticeSegments(input: {
   }
 
   const subtitleTrack = await getSubtitle(input.mediaId);
-  const referenceText = subtitleTrack
-    ? buildSubtitleTrackReferenceText(subtitleTrack)
-    : '';
+  const referenceText = subtitleTrack ? buildSubtitleTrackReferenceText(subtitleTrack) : '';
   if (!referenceText) {
     return {
       ok: false,
@@ -515,9 +507,7 @@ export async function alignAllPracticeSegments(input: {
   }
 
   const mediaBlob = await getMediaBlob(input.mediaId);
-  const alignWindow = subtitleTrack
-    ? resolveSubtitleAlignWindow(subtitleTrack.segments)
-    : null;
+  const alignWindow = subtitleTrack ? resolveSubtitleAlignWindow(subtitleTrack.segments) : null;
   const force = input.options?.force ?? false;
   let mediaRow = await getMediaSourceWordAlignment(input.mediaId);
   const mediaValid = isMediaSourceWordAlignmentCurrent(mediaRow, subtitleTrack);

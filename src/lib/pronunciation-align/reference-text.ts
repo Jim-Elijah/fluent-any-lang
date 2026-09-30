@@ -8,9 +8,7 @@ function normalizeSegmentText(text: string): string {
 /**
  * Join Subtitle Track segment texts in timeline order (LF-normalized, `\n` separated).
  */
-export function buildSubtitleTrackReferenceText(
-  track: Pick<SubtitleTrack, 'segments'>,
-): string {
+export function buildSubtitleTrackReferenceText(track: Pick<SubtitleTrack, 'segments'>): string {
   const sorted = [...track.segments].sort((a, b) => a.startTime - b.startTime);
   return sorted
     .map((segment) => normalizeSegmentText(segment.text))

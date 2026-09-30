@@ -100,8 +100,7 @@ export class WordMarkerLayoutToggle extends LitElement {
 
     return html`
       <div class="row" role="group" aria-label=${msg('波形词条')}>
-        ${this.showLabel ? html`<span class="label">${msg('波形词条')}</span>` : nothing}
-        ${buttons}
+        ${this.showLabel ? html`<span class="label">${msg('波形词条')}</span>` : nothing} ${buttons}
       </div>
     `;
   }

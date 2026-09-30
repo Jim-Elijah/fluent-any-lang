@@ -18,9 +18,7 @@ export function sourceWordAlignPopconfirmTitle(scope: SourceWordAlignScope): str
 
 export function sourceWordAlignTooltip(scope: SourceWordAlignScope, hasCache: boolean): string {
   if (scope === 'segment') {
-    return hasCache
-      ? msg('重新生成本句的原音词条')
-      : msg('为当前句生成原音词条');
+    return hasCache ? msg('重新生成本句的原音词条') : msg('为当前句生成原音词条');
   }
   return hasCache
     ? msg('重新为全部句子生成原音词条（整段原音会重新上传）')

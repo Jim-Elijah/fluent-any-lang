@@ -297,9 +297,8 @@ describe('sourceWordAlignment store migration', () => {
       }),
     ).resolves.toBeDefined();
     expect([
-      ...db
-        .transaction(STORE_SOURCE_WORD_ALIGNMENT)
-        .objectStore(STORE_SOURCE_WORD_ALIGNMENT).indexNames,
+      ...db.transaction(STORE_SOURCE_WORD_ALIGNMENT).objectStore(STORE_SOURCE_WORD_ALIGNMENT)
+        .indexNames,
     ]).toContain('byMediaId');
   });
 

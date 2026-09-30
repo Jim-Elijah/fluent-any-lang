@@ -48,9 +48,7 @@ export function wordsInPracticeSegment(
     return [];
   }
   const bounds = practiceSegmentBounds(segments, axis);
-  return words.filter(
-    (word) => assignTimedWordToSegmentIndex(word, bounds) === segmentIndex,
-  );
+  return words.filter((word) => assignTimedWordToSegmentIndex(word, bounds) === segmentIndex);
 }
 
 /** Place timed words onto a view range. Omits words fully outside. */

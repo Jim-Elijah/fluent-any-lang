@@ -126,9 +126,7 @@ describe('subtitle-panel', () => {
     const button = buttons.find((item) => {
       const label = item.getAttribute('aria-label') ?? '';
       return (
-        label.includes('遮罩非当前句') ||
-        label.includes('遮罩全部') ||
-        label.includes('关闭遮罩')
+        label.includes('遮罩非当前句') || label.includes('遮罩全部') || label.includes('关闭遮罩')
       );
     });
     return button?.getAttribute('aria-label') ?? '';

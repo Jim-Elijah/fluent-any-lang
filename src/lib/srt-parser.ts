@@ -93,7 +93,10 @@ function splitSpeakerTurns(raw: string): { bodies: string[]; joiner: '\n' | ' ' 
   for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
     const line = lines[lineIndex]!;
     const withoutLeading = line.replace(/^-\s+/, '');
-    const parts = withoutLeading.split(/\s+-\s+/).map((part) => part.trim()).filter(Boolean);
+    const parts = withoutLeading
+      .split(/\s+-\s+/)
+      .map((part) => part.trim())
+      .filter(Boolean);
     if (lineIndex > 0 && parts.length > 0 && bodies.length > 0) {
       usedNewlineBetweenTurns = true;
     }

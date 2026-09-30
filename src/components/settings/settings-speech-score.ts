@@ -106,9 +106,7 @@ export class SettingsSpeechScore extends LitElement {
         '口语评分时会对照示范音频的节奏与语调打分，会额外上传原声片段（已有缓存时更少流量）；取不到原声时改按自然度评。',
       );
     }
-    return msg(
-      '只根据你的录音评语速、节奏是否自然。口语评分只上传录音，不上传原声，更省流量。',
-    );
+    return msg('只根据你的录音评语速、节奏是否自然。口语评分只上传录音，不上传原声，更省流量。');
   }
 
   render() {
@@ -131,7 +129,9 @@ export class SettingsSpeechScore extends LitElement {
     return html`
       <section class="card" aria-labelledby="speech-services-heading">
         <h2 id="speech-services-heading">${msg('语音服务')}</h2>
-        <p class="desc">${msg('按需将口语录音或原音片段发送到评分或原音词条服务，结果保存在本设备。')}</p>
+        <p class="desc">
+          ${msg('按需将口语录音或原音片段发送到评分或原音词条服务，结果保存在本设备。')}
+        </p>
         <div class="fields">
           <div class="field">
             <span class="field-label">${msg('评分接口地址')}</span>

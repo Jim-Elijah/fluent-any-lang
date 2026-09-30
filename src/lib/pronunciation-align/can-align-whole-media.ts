@@ -15,10 +15,7 @@ export function canAlignWholeMedia(input: {
   ) {
     return false;
   }
-  if (
-    input.alignBlobSizeBytes !== undefined &&
-    input.alignBlobSizeBytes > ALIGN_MAX_BYTES
-  ) {
+  if (input.alignBlobSizeBytes !== undefined && input.alignBlobSizeBytes > ALIGN_MAX_BYTES) {
     return false;
   }
   return true;

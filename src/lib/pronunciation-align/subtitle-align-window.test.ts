@@ -25,8 +25,6 @@ describe('resolveSubtitleAlignWindow', () => {
   });
 
   it('returns null when no reference text', () => {
-    expect(
-      resolveSubtitleAlignWindow([{ startTime: 0, endTime: 2, text: '' }]),
-    ).toBeNull();
+    expect(resolveSubtitleAlignWindow([{ startTime: 0, endTime: 2, text: '' }])).toBeNull();
   });
 });

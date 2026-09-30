@@ -2772,10 +2772,6 @@
   <source>口语评分时会对照示范音频的节奏与语调打分，会额外上传原声片段（已有缓存时更少流量）；取不到原声时改按自然度评。</source>
 <target>When scoring speech, rhythm and intonation are compared to the reference audio, which uploads extra source clips (less data when cached). If source audio is unavailable, scoring falls back to naturalness.</target>
 </trans-unit>
-<trans-unit id="s19e9651ea1c09356">
-  <source>遮罩原文</source>
-  <target>Mask source text</target>
-</trans-unit>
 <trans-unit id="s03bf019e13d4fa7c">
   <source>开启后录音前不再显示倒计时（回声与影子跟读均生效）。</source>
   <target>When enabled, the countdown before recording is skipped (applies to Echo and Shadowing).</target>
@@ -2798,21 +2794,27 @@
 </trans-unit>
 <trans-unit id="sf5ba6dd2cf39ed1f">
   <source>确定仅保留本条录音吗？</source>
+  <target>Keep only this recording?</target>
 </trans-unit>
 <trans-unit id="s329c03407985137f">
   <source>将删除同句其余 <x id="0" equiv-text="${deleteIds.length}"/> 条录音，不可恢复。</source>
+  <target>This permanently deletes the other <x id="0" equiv-text="${deleteIds.length}"/> recording(s) for this sentence.</target>
 </trans-unit>
 <trans-unit id="s0f883bca22ebefb9">
   <source>仅保留本条</source>
+  <target>Keep only this one</target>
 </trans-unit>
 <trans-unit id="s42e658c55e7f9b10">
   <source>已保留本条录音</source>
+  <target>Kept this recording</target>
 </trans-unit>
 <trans-unit id="s64e1c169da338de9">
   <source>删除其余录音失败，请重试。</source>
+  <target>Could not delete the other recordings. Try again.</target>
 </trans-unit>
 <trans-unit id="sc00a6288a540ea31">
   <source>导航快捷入口</source>
+  <target>Navigation shortcuts</target>
 </trans-unit>
 <trans-unit id="s301e519327e16223">
   <source>搜索录音标题 / 字幕</source>
@@ -2820,9 +2822,11 @@
 </trans-unit>
 <trans-unit id="s1d545898038a6cc3">
   <source>前 <x id="0" equiv-text="${shown.length}"/> 条详情如下：</source>
+  <target>Details for the first <x id="0" equiv-text="${shown.length}"/>:</target>
 </trans-unit>
 <trans-unit id="s3855b008b726ce50">
   <source>得分</source>
+  <target>Score</target>
 </trans-unit>
 <trans-unit id="sd52ab5086352f443">
   <source>类型</source>
@@ -2830,60 +2834,83 @@
 </trans-unit>
 <trans-unit id="s2bdcd4dce4b685b4">
   <source>开始句 #<x id="0" equiv-text="${this.anchor + 1}"/> · 再点最后一句</source>
+  <target>Start sentence #<x id="0" equiv-text="${this.anchor + 1}"/> · tap last sentence</target>
 </trans-unit>
 <trans-unit id="s3b0127980bb2b679">
   <source>先点开始句，再点最后一句</source>
+  <target>Tap start sentence, then last sentence</target>
 </trans-unit>
 <trans-unit id="s39046f027c9777ca">
   <source>开启选段</source>
+  <target>Enable range selection</target>
 </trans-unit>
 <trans-unit id="s28c251d75d0fa2e7">
   <source>仅看选段</source>
+  <target>Show range only</target>
 </trans-unit>
 <trans-unit id="sf14eff09542b8803">
   <source>选段</source>
+  <target>Range</target>
 </trans-unit>
 <trans-unit id="s4a6e8478da25f5de">
   <source>限定这次影子跟读的句子范围。开启后，在字幕里先点开始的那一句，再点最后一句；从开始句到最后一句都会包含。开始录音时从第一句播放，最后一句播完会暂停音频；是否结束录音由你决定。</source>
+  <target>Limit which sentences this Shadowing session covers. When enabled, tap the start sentence in subtitles, then the last; everything from start through last is included. Playback begins at the first sentence when recording starts; audio pauses after the last sentence finishes. You decide when to stop recording.</target>
 </trans-unit>
 <trans-unit id="sb83136c535f7aecb">
   <source>打开后才能点字幕，把两句设成这次跟读的开始句和最后一句。</source>
+  <target>Turn this on to tap subtitles and set the start and last sentences for this session.</target>
 </trans-unit>
 <trans-unit id="s976b2e082f1267cc">
   <source>清除</source>
+  <target>Clear</target>
 </trans-unit>
 <trans-unit id="sfaf271d0bbcc8ffa">
   <source>字幕只显示从开始句到最后一句。</source>
+  <target>Subtitles show only from the start sentence through the last.</target>
 </trans-unit>
 <trans-unit id="sccb15b74cbbbaf46">
   <source>#<x id="0" equiv-text="${range.start + 1}"/>–#<x id="1" equiv-text="${range.end + 1}"/> · <x id="2" equiv-text="${count}"/>句</source>
+  <target>#<x id="0" equiv-text="${range.start + 1}"/>–#<x id="1" equiv-text="${range.end + 1}"/> · <x id="2" equiv-text="${count}"/> sentences</target>
 </trans-unit>
 <trans-unit id="sf902534d93ce119b">
   <source>遮罩非当前句 (M)</source>
+  <target>Mask non-current lines (M)</target>
 </trans-unit>
 <trans-unit id="s9cda0570dcf3d85d">
   <source>遮罩非当前句</source>
+  <target>Mask non-current lines</target>
 </trans-unit>
 <trans-unit id="s624cd214c161991a">
   <source>遮罩全部 (M)</source>
+  <target>Mask all lines (M)</target>
 </trans-unit>
 <trans-unit id="s136a261e9ba9e698">
   <source>遮罩全部</source>
+  <target>Mask all lines</target>
 </trans-unit>
 <trans-unit id="sd1c00b6dcbcf6792">
   <source>关闭遮罩 (M)</source>
+  <target>Turn off mask (M)</target>
 </trans-unit>
 <trans-unit id="s49b0338fc79d11a0">
   <source>关闭遮罩</source>
+  <target>Turn off mask</target>
 </trans-unit>
 <trans-unit id="s346ad6c938e17ff7">
   <source>把「库」中常用的页面固定到导航，其余仍从「库」进入。</source>
+  <target>Pin frequently used Library pages to navigation; open the rest from Library.</target>
 </trans-unit>
 <trans-unit id="s883e0638553aa9f5">
   <source>下次进入练习时使用。遮罩只模糊原文；翻译仍用显示/隐藏翻译。</source>
+  <target>Applied next time you enter practice. Masking blurs source text only; use Show/hide translation for translations.</target>
 </trans-unit>
 <trans-unit id="s0c8787a3358178e1">
   <source>控制录音麦克风处理、练习流程倒计时，以及各练习模式说明是否自动跳过。</source>
+  <target>Controls mic processing for recordings, practice countdown, and whether mode guides auto-skip.</target>
+</trans-unit>
+<trans-unit id="s162fdaf90bc93f42">
+  <source>默认遮罩原文</source>
+  <target>Default source mask</target>
 </trans-unit>
 </body>
 </file>

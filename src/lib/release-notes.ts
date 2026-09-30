@@ -50,7 +50,9 @@ export function hasReleaseHighlights(notes: ReleaseNotes, locale?: string): bool
   return highlightSectionsForLocale(notes, locale).length > 0;
 }
 
-function localeHighlightsFilled(sections: ReleaseNotesSection[] | undefined): sections is ReleaseNotesSection[] {
+function localeHighlightsFilled(
+  sections: ReleaseNotesSection[] | undefined,
+): sections is ReleaseNotesSection[] {
   if (!Array.isArray(sections) || sections.length === 0) return false;
   return sections.some(
     (section) =>

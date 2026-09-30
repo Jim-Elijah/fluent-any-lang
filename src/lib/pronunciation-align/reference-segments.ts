@@ -14,9 +14,7 @@ function normalizeSegmentText(text: string): string {
 
 type TimedSubtitleLine = Pick<SubtitleSegment, 'id' | 'startTime' | 'endTime' | 'text'>;
 
-function timedLinesWithText(
-  segments: ReadonlyArray<TimedSubtitleLine>,
-): TimedSubtitleLine[] {
+function timedLinesWithText(segments: ReadonlyArray<TimedSubtitleLine>): TimedSubtitleLine[] {
   return [...segments]
     .filter((segment) => normalizeSegmentText(segment.text).length > 0)
     .sort((a, b) => a.startTime - b.startTime);

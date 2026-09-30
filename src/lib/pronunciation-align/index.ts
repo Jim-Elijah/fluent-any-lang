@@ -21,7 +21,10 @@ export {
   subtitleAlignWindowDurationSec,
   type SubtitleAlignWindow,
 } from './subtitle-align-window.js';
-export { buildSubtitleTrackReferenceText, buildSubtitleSegmentsReferenceText } from './reference-text.js';
+export {
+  buildSubtitleTrackReferenceText,
+  buildSubtitleSegmentsReferenceText,
+} from './reference-text.js';
 export {
   buildSubtitleAlignRequestPayload,
   type SubtitleAlignRequestPayload,

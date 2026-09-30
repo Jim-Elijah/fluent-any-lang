@@ -58,17 +58,12 @@ export async function putSourceWordAlignment(
   return row;
 }
 
-export async function deleteSourceWordAlignment(
-  mediaId: string,
-  segmentId: string,
-): Promise<void> {
+export async function deleteSourceWordAlignment(mediaId: string, segmentId: string): Promise<void> {
   const db = await getDB();
   await db.delete(STORE_SOURCE_WORD_ALIGNMENT, sourceWordAlignmentId(mediaId, segmentId));
 }
 
-export async function deleteSourceWordAlignmentsByMediaIdsBatch(
-  mediaIds: string[],
-): Promise<void> {
+export async function deleteSourceWordAlignmentsByMediaIdsBatch(mediaIds: string[]): Promise<void> {
   const uniqueIds = [...new Set(mediaIds.filter(Boolean))];
   if (uniqueIds.length === 0) return;
 

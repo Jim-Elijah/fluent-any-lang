@@ -199,7 +199,9 @@ function profileCacheKeySuffix(record: PracticeRecord): string | undefined {
  */
 export async function resolveReferenceMatchExtras(
   record: PracticeRecord,
-  subtitleTrack: { segments: ReadonlyArray<{ id: string; text: string; startTime: number; endTime: number }> } | undefined,
+  subtitleTrack:
+    | { segments: ReadonlyArray<{ id: string; text: string; startTime: number; endTime: number }> }
+    | undefined,
   referenceText: string,
   referenceDuration: number,
   prosodyBasis: SpeechScoreProsodyBasis = 'naturalness',
@@ -258,7 +260,9 @@ async function resolveEchoMatchExtras(
 
 async function resolveShadowingMatchExtras(
   record: PracticeRecord,
-  subtitleTrack: { segments: ReadonlyArray<{ id: string; text: string; startTime: number; endTime: number }> } | undefined,
+  subtitleTrack:
+    | { segments: ReadonlyArray<{ id: string; text: string; startTime: number; endTime: number }> }
+    | undefined,
   referenceText: string,
 ): Promise<ReferenceMatchExtras> {
   const cacheSuffix = shadowingProfileCacheSuffix(record);

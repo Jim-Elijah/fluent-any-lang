@@ -363,9 +363,7 @@ describe('sentences-page', () => {
     expect(
       el.shadowRoot?.querySelector('.batch-controls ui-button[aria-label="全选"]'),
     ).not.toBeNull();
-    expect(
-      el.shadowRoot?.querySelector('.batch-controls ui-icon[name="download"]'),
-    ).not.toBeNull();
+    expect(el.shadowRoot?.querySelector('.batch-controls ui-icon[name="download"]')).not.toBeNull();
     expect(el.shadowRoot?.textContent).toContain('已选 0 项');
     expect(el.shadowRoot?.textContent).not.toContain('反选');
   });

@@ -8,9 +8,7 @@ export type ResolveSegmentSourceWordsInput = {
   mediaId: string;
   segment: Pick<PracticeSegment, 'id' | 'sourceStartTime' | 'sourceEndTime'>;
   /** All segments on the source axis (for exclusive assignment from Media canonical words). */
-  allSegments?: ReadonlyArray<
-    Pick<PracticeSegment, 'id' | 'sourceStartTime' | 'sourceEndTime'>
-  >;
+  allSegments?: ReadonlyArray<Pick<PracticeSegment, 'id' | 'sourceStartTime' | 'sourceEndTime'>>;
   subtitleTrack?: Pick<SubtitleTrack, 'contentHash'>;
 };
 

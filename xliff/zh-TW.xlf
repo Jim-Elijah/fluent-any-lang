@@ -2738,10 +2738,6 @@
   <source>口语评分时会对照示范音频的节奏与语调打分，会额外上传原声片段（已有缓存时更少流量）；取不到原声时改按自然度评。</source>
 <target>口語評分時會對照示範音訊的節奏與語調打分，會額外上傳原聲片段（已有快取時更少流量）；取不到原聲時改按自然度評。</target>
 </trans-unit>
-<trans-unit id="s19e9651ea1c09356">
-  <source>遮罩原文</source>
-  <target>遮罩原文</target>
-</trans-unit>
 <trans-unit id="s03bf019e13d4fa7c">
   <source>开启后录音前不再显示倒计时（回声与影子跟读均生效）。</source>
   <target>開啟後錄音前不再顯示倒數（回聲跟讀與影子跟讀均生效）。</target>
@@ -2764,21 +2760,27 @@
 </trans-unit>
 <trans-unit id="sf5ba6dd2cf39ed1f">
   <source>确定仅保留本条录音吗？</source>
+  <target>確定僅保留本條錄音嗎？</target>
 </trans-unit>
 <trans-unit id="s329c03407985137f">
   <source>将删除同句其余 <x id="0" equiv-text="${deleteIds.length}"/> 条录音，不可恢复。</source>
+  <target>將刪除同句其餘 <x id="0" equiv-text="${deleteIds.length}"/> 條錄音，不可恢復。</target>
 </trans-unit>
 <trans-unit id="s0f883bca22ebefb9">
   <source>仅保留本条</source>
+  <target>僅保留本條</target>
 </trans-unit>
 <trans-unit id="s42e658c55e7f9b10">
   <source>已保留本条录音</source>
+  <target>已保留本條錄音</target>
 </trans-unit>
 <trans-unit id="s64e1c169da338de9">
   <source>删除其余录音失败，请重试。</source>
+  <target>刪除其餘錄音失敗，請重試。</target>
 </trans-unit>
 <trans-unit id="sc00a6288a540ea31">
   <source>导航快捷入口</source>
+  <target>導航快捷入口</target>
 </trans-unit>
 <trans-unit id="s301e519327e16223">
   <source>搜索录音标题 / 字幕</source>
@@ -2786,9 +2788,11 @@
 </trans-unit>
 <trans-unit id="s1d545898038a6cc3">
   <source>前 <x id="0" equiv-text="${shown.length}"/> 条详情如下：</source>
+  <target>前 <x id="0" equiv-text="${shown.length}"/> 條詳情如下：</target>
 </trans-unit>
 <trans-unit id="s3855b008b726ce50">
   <source>得分</source>
+  <target>得分</target>
 </trans-unit>
 <trans-unit id="sd52ab5086352f443">
   <source>类型</source>
@@ -2796,60 +2800,83 @@
 </trans-unit>
 <trans-unit id="s2bdcd4dce4b685b4">
   <source>开始句 #<x id="0" equiv-text="${this.anchor + 1}"/> · 再点最后一句</source>
+  <target>開始句 #<x id="0" equiv-text="${this.anchor + 1}"/> · 再點最後一句</target>
 </trans-unit>
 <trans-unit id="s3b0127980bb2b679">
   <source>先点开始句，再点最后一句</source>
+  <target>先點開始句，再點最後一句</target>
 </trans-unit>
 <trans-unit id="s39046f027c9777ca">
   <source>开启选段</source>
+  <target>開啟選段</target>
 </trans-unit>
 <trans-unit id="s28c251d75d0fa2e7">
   <source>仅看选段</source>
+  <target>僅看選段</target>
 </trans-unit>
 <trans-unit id="sf14eff09542b8803">
   <source>选段</source>
+  <target>選段</target>
 </trans-unit>
 <trans-unit id="s4a6e8478da25f5de">
   <source>限定这次影子跟读的句子范围。开启后，在字幕里先点开始的那一句，再点最后一句；从开始句到最后一句都会包含。开始录音时从第一句播放，最后一句播完会暂停音频；是否结束录音由你决定。</source>
+  <target>限定這次影子跟讀的句子範圍。開啟後，在字幕裡先點開始的那一句，再點最後一句；從開始句到最後一句都會包含。開始錄音時從第一句播放，最後一句播完會暫停音訊；是否結束錄音由你決定。</target>
 </trans-unit>
 <trans-unit id="sb83136c535f7aecb">
   <source>打开后才能点字幕，把两句设成这次跟读的开始句和最后一句。</source>
+  <target>打開後才能點字幕，把兩句設成這次跟讀的開始句和最後一句。</target>
 </trans-unit>
 <trans-unit id="s976b2e082f1267cc">
   <source>清除</source>
+  <target>清除</target>
 </trans-unit>
 <trans-unit id="sfaf271d0bbcc8ffa">
   <source>字幕只显示从开始句到最后一句。</source>
+  <target>字幕只顯示從開始句到最後一句。</target>
 </trans-unit>
 <trans-unit id="sccb15b74cbbbaf46">
   <source>#<x id="0" equiv-text="${range.start + 1}"/>–#<x id="1" equiv-text="${range.end + 1}"/> · <x id="2" equiv-text="${count}"/>句</source>
+  <target>#<x id="0" equiv-text="${range.start + 1}"/>–#<x id="1" equiv-text="${range.end + 1}"/> · <x id="2" equiv-text="${count}"/>句</target>
 </trans-unit>
 <trans-unit id="sf902534d93ce119b">
   <source>遮罩非当前句 (M)</source>
+  <target>遮罩非當前句 (M)</target>
 </trans-unit>
 <trans-unit id="s9cda0570dcf3d85d">
   <source>遮罩非当前句</source>
+  <target>遮罩非當前句</target>
 </trans-unit>
 <trans-unit id="s624cd214c161991a">
   <source>遮罩全部 (M)</source>
+  <target>遮罩全部 (M)</target>
 </trans-unit>
 <trans-unit id="s136a261e9ba9e698">
   <source>遮罩全部</source>
+  <target>遮罩全部</target>
 </trans-unit>
 <trans-unit id="sd1c00b6dcbcf6792">
   <source>关闭遮罩 (M)</source>
+  <target>關閉遮罩 (M)</target>
 </trans-unit>
 <trans-unit id="s49b0338fc79d11a0">
   <source>关闭遮罩</source>
+  <target>關閉遮罩</target>
 </trans-unit>
 <trans-unit id="s346ad6c938e17ff7">
   <source>把「库」中常用的页面固定到导航，其余仍从「库」进入。</source>
+  <target>把「庫」中常用的頁面固定到導航，其餘仍從「庫」進入。</target>
 </trans-unit>
 <trans-unit id="s883e0638553aa9f5">
   <source>下次进入练习时使用。遮罩只模糊原文；翻译仍用显示/隐藏翻译。</source>
+  <target>下次進入練習時使用。遮罩只模糊原文；翻譯仍用顯示/隱藏翻譯。</target>
 </trans-unit>
 <trans-unit id="s0c8787a3358178e1">
   <source>控制录音麦克风处理、练习流程倒计时，以及各练习模式说明是否自动跳过。</source>
+  <target>控制錄音麥克風處理、練習流程倒數，以及各練習模式說明是否自動跳過。</target>
+</trans-unit>
+<trans-unit id="s162fdaf90bc93f42">
+  <source>默认遮罩原文</source>
+  <target>預設遮罩原文</target>
 </trans-unit>
 </body>
 </file>
