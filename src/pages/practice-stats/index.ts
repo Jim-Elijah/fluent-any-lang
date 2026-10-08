@@ -7,6 +7,8 @@ import { navigator } from 'lit-element-router';
 import {
   aggregatePracticeStats,
   formatActiveDuration,
+  PRACTICE_MODES,
+  practiceAnalyticsModeLabel,
   resolveRangeBounds,
   type ModeFilter,
   type PracticeStatsSummary,
@@ -14,7 +16,6 @@ import {
 } from '../../analytics/practice-stats-aggregate.js';
 import { getAllPracticeSessions } from '../../db/practice-session.js';
 import { reportError } from '../../lib/error-reporter.js';
-import type { PracticeAnalyticsMode } from '../../types/models.js';
 import '../../components/ui/input.js';
 import type { InputChangeDetail } from '../../components/ui/input.js';
 import '../../components/ui/icon.js';
@@ -122,6 +123,7 @@ export class PracticeStatsPage extends NavigatorElement {
       font-weight: 650;
       letter-spacing: -0.02em;
       line-height: 1.2;
+      font-variant-numeric: tabular-nums;
       color: var(--color-text, rgba(0, 0, 0, 0.88));
     }
 
@@ -331,9 +333,14 @@ export class PracticeStatsPage extends NavigatorElement {
       color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
     }
 
-    @media (max-width: 560px) {
+    @media (max-width: 767px) {
       .summary {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr);
+        gap: var(--space-sm);
+      }
+
+      .summary .stat .stat-value {
+        font-size: clamp(1.0625rem, 4.2vw, 1.375rem);
       }
 
       .bars {
@@ -408,19 +415,6 @@ export class PracticeStatsPage extends NavigatorElement {
     if (this._preset === 'custom') void this._reload();
   };
 
-  private _modeLabel(mode: PracticeAnalyticsMode): string {
-    switch (mode) {
-      case 'free':
-        return msg('自由听');
-      case 'discrimination':
-        return msg('抗噪听');
-      case 'shadowing':
-        return msg('影子跟读');
-      case 'echo':
-        return msg('回声跟读');
-    }
-  }
-
   private _pct(part: number, total: number): string {
     if (total <= 0 || part <= 0) return '0%';
     return `${Math.round((part / total) * 100)}%`;
@@ -435,10 +429,7 @@ export class PracticeStatsPage extends NavigatorElement {
     ];
     const modes: Array<{ key: ModeFilter; label: string }> = [
       { key: 'all', label: msg('全部') },
-      { key: 'free', label: msg('自由听') },
-      { key: 'discrimination', label: msg('抗噪听') },
-      { key: 'shadowing', label: msg('影子跟读') },
-      { key: 'echo', label: msg('回声跟读') },
+      ...PRACTICE_MODES.map((key) => ({ key, label: practiceAnalyticsModeLabel(key) })),
     ];
 
     return html`
@@ -540,34 +531,15 @@ export class PracticeStatsPage extends NavigatorElement {
                       <span>${b.label}</span>
                       <div class="bar-track">
                         <div class="bar-fill" style="width:${widthPct}%">
-                          ${b.byMode.free > 0
-                            ? html`<span
-                                class="seg-free"
-                                style="flex:${b.byMode.free}"
-                                title=${this._modeLabel('free')}
-                              ></span>`
-                            : nothing}
-                          ${b.byMode.discrimination > 0
-                            ? html`<span
-                                class="seg-discrimination"
-                                style="flex:${b.byMode.discrimination}"
-                                title=${this._modeLabel('discrimination')}
-                              ></span>`
-                            : nothing}
-                          ${b.byMode.shadowing > 0
-                            ? html`<span
-                                class="seg-shadowing"
-                                style="flex:${b.byMode.shadowing}"
-                                title=${this._modeLabel('shadowing')}
-                              ></span>`
-                            : nothing}
-                          ${b.byMode.echo > 0
-                            ? html`<span
-                                class="seg-echo"
-                                style="flex:${b.byMode.echo}"
-                                title=${this._modeLabel('echo')}
-                              ></span>`
-                            : nothing}
+                          ${PRACTICE_MODES.map((mode) =>
+                            b.byMode[mode] > 0
+                              ? html`<span
+                                  class="seg-${mode}"
+                                  style="flex:${b.byMode[mode]}"
+                                  title=${practiceAnalyticsModeLabel(mode)}
+                                ></span>`
+                              : nothing,
+                          )}
                         </div>
                       </div>
                       <span class="bar-value">${formatActiveDuration(b.totalMs)}</span>
@@ -581,7 +553,7 @@ export class PracticeStatsPage extends NavigatorElement {
   }
 
   private _renderBreakdown(summary: PracticeStatsSummary) {
-    const { free, discrimination, shadowing, echo } = summary.byMode;
+    const { byMode } = summary;
     const total = summary.totalMs;
 
     return html`
@@ -592,41 +564,24 @@ export class PracticeStatsPage extends NavigatorElement {
           : html`
               <div class="breakdown">
                 <div class="stack-bar" role="img" aria-label=${msg('模式构成')}>
-                  ${free > 0 ? html`<span class="seg-free" style="flex:${free}"></span>` : nothing}
-                  ${discrimination > 0
-                    ? html`<span class="seg-discrimination" style="flex:${discrimination}"></span>`
-                    : nothing}
-                  ${shadowing > 0
-                    ? html`<span class="seg-shadowing" style="flex:${shadowing}"></span>`
-                    : nothing}
-                  ${echo > 0 ? html`<span class="seg-echo" style="flex:${echo}"></span>` : nothing}
+                  ${PRACTICE_MODES.map((mode) =>
+                    byMode[mode] > 0
+                      ? html`<span class="seg-${mode}" style="flex:${byMode[mode]}"></span>`
+                      : nothing,
+                  )}
                 </div>
                 <div class="legend">
-                  <span class="legend-item">
-                    <span class="dot free"></span>${msg('自由听')}
-                    <span class="legend-value"
-                      >${formatActiveDuration(free)} · ${this._pct(free, total)}</span
-                    >
-                  </span>
-                  <span class="legend-item">
-                    <span class="dot discrimination"></span>${msg('抗噪听')}
-                    <span class="legend-value"
-                      >${formatActiveDuration(discrimination)} ·
-                      ${this._pct(discrimination, total)}</span
-                    >
-                  </span>
-                  <span class="legend-item">
-                    <span class="dot shadowing"></span>${msg('影子跟读')}
-                    <span class="legend-value"
-                      >${formatActiveDuration(shadowing)} · ${this._pct(shadowing, total)}</span
-                    >
-                  </span>
-                  <span class="legend-item">
-                    <span class="dot echo"></span>${msg('回声跟读')}
-                    <span class="legend-value"
-                      >${formatActiveDuration(echo)} · ${this._pct(echo, total)}</span
-                    >
-                  </span>
+                  ${PRACTICE_MODES.map(
+                    (mode) => html`
+                      <span class="legend-item">
+                        <span class="dot ${mode}"></span>${practiceAnalyticsModeLabel(mode)}
+                        <span class="legend-value"
+                          >${formatActiveDuration(byMode[mode])} ·
+                          ${this._pct(byMode[mode], total)}</span
+                        >
+                      </span>
+                    `,
+                  )}
                 </div>
               </div>
             `}

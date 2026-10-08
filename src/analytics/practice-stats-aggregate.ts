@@ -15,6 +15,20 @@ export const PRACTICE_MODES: readonly PracticeAnalyticsMode[] = [
   'echo',
 ] as const;
 
+/** Localized display name for practice analytics / stats UI (modes in session records). */
+export function practiceAnalyticsModeLabel(mode: PracticeAnalyticsMode): string {
+  switch (mode) {
+    case 'free':
+      return msg('自由听');
+    case 'discrimination':
+      return msg('抗噪听');
+    case 'shadowing':
+      return msg('影子跟读');
+    case 'echo':
+      return msg('回声跟读');
+  }
+}
+
 export type ModeBreakdown = Record<PracticeAnalyticsMode, number>;
 
 export type DayBucket = {

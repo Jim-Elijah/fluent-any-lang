@@ -13,7 +13,7 @@ On-device listening and speaking practice. Domain terms: [`CONTEXT.md`](../CONTE
 | `src/controllers/`                                | `MediaController` (playback truth), waveform               |
 | `src/db/`                                         | IndexedDB schema + entity CRUD                             |
 | `src/lib/`                                        | Import, playback helpers, settings, backup                 |
-| `src/analytics/`                                  | Practice Session timing + stats rollups                    |
+| `src/analytics/`                                  | Practice Session timing + stats rollups (`PRACTICE_MODES`, `practiceAnalyticsModeLabel` for stats/home mode copy) |
 | `src/types/models.ts`                             | Domain types                                               |
 
 ## Data ownership
@@ -57,6 +57,10 @@ IndexedDB: `fluent-any-lang`, version in `db/schema.ts`. Open/upgrade: `db/index
 | Echo           | `EchoClipPlayer` (private media element clip) + per-segment record |
 
 Sentence practice (`/sentence-practice`) is a lighter path on clipped Sentence Bank audio — not the full four-mode stack. Speaking still guards the recorder with `microphone-access` (same status/permission refresh pattern as `practice-view`). While recording, `media-player` is disabled (playback already paused via `beforeRecordingStart`).
+
+## Practice stats UI
+
+Home (`practice-stats-dashboard`) and `/stats` (`practice-stats-page`) aggregate `practiceSession` rows in `practice-stats-aggregate.ts`. Filters, legends, stack bars, and tooltips iterate `PRACTICE_MODES` and share labels via `practiceAnalyticsModeLabel()` (aligned with practice analytics mode ids: 自由听 / 抗噪听 / 影子跟读 / 回声跟读). The stats summary grid uses the app-wide narrow breakpoint **767px** (`NARROW_VIEWPORT_MQ` in `lib/layout-compact.ts`).
 
 ## Library hub
 

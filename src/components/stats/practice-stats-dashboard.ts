@@ -6,6 +6,8 @@ import { navigator } from 'lit-element-router';
 import {
   buildHomeDashboard,
   formatActiveDuration,
+  PRACTICE_MODES,
+  practiceAnalyticsModeLabel,
   type HomeDashboardData,
 } from '../../analytics/practice-stats-aggregate.js';
 import { getAllPracticeSessions } from '../../db/practice-session.js';
@@ -335,7 +337,7 @@ export class PracticeStatsDashboard extends NavigatorElement {
     const dash = this._dash;
     const total = dash.todayMs;
     const hasAny = total > 0 || dash.lastSession !== null || dash.streakDays > 0;
-    const { free, discrimination, shadowing, echo } = dash.byMode;
+    const byMode = dash.byMode;
 
     return html`
       <section class="card" aria-label=${msg('今日练习')}>
@@ -365,55 +367,31 @@ export class PracticeStatsDashboard extends NavigatorElement {
               </div>
 
               <div class="modes" role="list">
-                <div class="mode" role="listitem">
-                  <div class="mode-name">
-                    <span class="dot free" aria-hidden="true"></span>${msg('自由听')}
-                  </div>
-                  <div class="mode-value">${formatActiveDuration(free)}</div>
-                </div>
-                <div class="mode" role="listitem">
-                  <div class="mode-name">
-                    <span class="dot discrimination" aria-hidden="true"></span>${msg('抗噪听')}
-                  </div>
-                  <div class="mode-value">${formatActiveDuration(discrimination)}</div>
-                </div>
-                <div class="mode" role="listitem">
-                  <div class="mode-name">
-                    <span class="dot shadowing" aria-hidden="true"></span>${msg('影子跟读')}
-                  </div>
-                  <div class="mode-value">${formatActiveDuration(shadowing)}</div>
-                </div>
-                <div class="mode" role="listitem">
-                  <div class="mode-name">
-                    <span class="dot echo" aria-hidden="true"></span>${msg('回声跟读')}
-                  </div>
-                  <div class="mode-value">${formatActiveDuration(echo)}</div>
-                </div>
+                ${PRACTICE_MODES.map(
+                  (mode) => html`
+                    <div class="mode" role="listitem">
+                      <div class="mode-name">
+                        <span class="dot ${mode}" aria-hidden="true"></span
+                        >${practiceAnalyticsModeLabel(mode)}
+                      </div>
+                      <div class="mode-value">${formatActiveDuration(byMode[mode])}</div>
+                    </div>
+                  `,
+                )}
               </div>
 
               ${total > 0
                 ? html`
                     <div class="stack-bar" role="img" aria-label=${msg('今日模式占比')}>
-                      ${free > 0
-                        ? html`<span class="free" style="flex:${free}" title=${msg('听力')}></span>`
-                        : nothing}
-                      ${discrimination > 0
-                        ? html`<span
-                            class="discrimination"
-                            style="flex:${discrimination}"
-                            title=${msg('辨音')}
-                          ></span>`
-                        : nothing}
-                      ${shadowing > 0
-                        ? html`<span
-                            class="shadowing"
-                            style="flex:${shadowing}"
-                            title=${msg('跟读')}
-                          ></span>`
-                        : nothing}
-                      ${echo > 0
-                        ? html`<span class="echo" style="flex:${echo}" title=${msg('回声')}></span>`
-                        : nothing}
+                      ${PRACTICE_MODES.map((mode) =>
+                        byMode[mode] > 0
+                          ? html`<span
+                              class="${mode}"
+                              style="flex:${byMode[mode]}"
+                              title=${practiceAnalyticsModeLabel(mode)}
+                            ></span>`
+                          : nothing,
+                      )}
                     </div>
                   `
                 : nothing}
