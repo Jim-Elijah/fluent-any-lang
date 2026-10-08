@@ -38,6 +38,9 @@ export type DiscriminationLadderRateDetail = {
   rate: number;
 };
 
+/** Session progress for the mirrored rate ladder (not persisted). */
+export type DiscriminationLadderPhase = 'idle' | 'running' | 'completed';
+
 /**
  * Presentational settings panel for discrimination (抗噪听) mode.
  * Parent owns NoiseMixer / RateLadder orchestration and persistence.
@@ -65,6 +68,9 @@ export class DiscriminationPanel extends LitElement {
 
   @property({ type: Number })
   currentRate = 1;
+
+  @property({ type: String })
+  ladderPhase: DiscriminationLadderPhase = 'idle';
 
   private _emit<T>(name: string, detail: T): void {
     this.dispatchEvent(
@@ -101,12 +107,16 @@ export class DiscriminationPanel extends LitElement {
       },
     );
     const sequencePreview = this.ladderSequence.map((rate) => `${rate}x`).join(' → ');
-    const stepLabel =
-      this.ladderSequence.length > 0
-        ? msg(
-            str`当前阶梯：第 ${this.ladderDisplayIndex + 1}/${this.ladderSequence.length} 步（${this.currentRate}x）`,
-          )
-        : '';
+    let stepLabel = '';
+    if (this.ladderSequence.length > 0) {
+      if (this.ladderPhase === 'completed') {
+        stepLabel = msg('本轮阶梯已完成。再次播放将从第 1 步开始。');
+      } else {
+        stepLabel = msg(
+          str`当前阶梯：第 ${this.ladderDisplayIndex + 1}/${this.ladderSequence.length} 步（${this.currentRate}x）`,
+        );
+      }
+    }
 
     return html`
       <div class="settings-panel">

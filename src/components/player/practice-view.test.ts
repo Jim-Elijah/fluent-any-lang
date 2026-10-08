@@ -213,6 +213,7 @@ type PracticeViewInternals = PracticeView & {
   _tipsModalKind: string | null;
   _hotkeysHelpOpen: boolean;
   _discriminationSettings: { selected: { noiseId: string; volume: number }[] };
+  _ladderPhase: 'idle' | 'running' | 'completed';
   _echoListening: boolean;
   _sessionPhase: string;
   _recording: boolean;
@@ -1631,6 +1632,42 @@ describe('practice-view', () => {
       visibilityState.mockRestore();
     });
 
+    it('drops noise missing from the library out of discrimination selection', async () => {
+      const { getAppSettings, setAppSettings } = await import('../../lib/app-settings.js');
+      setAppSettings({
+        discrimination: {
+          selected: [
+            { noiseId: 'noise-1', volume: 0.4 },
+            { noiseId: 'gone', volume: 0.8 },
+          ],
+          ladderCount: 1,
+          ladderRates: [1],
+        },
+      });
+      mockGetNoiseList.mockResolvedValue([
+        {
+          id: 'noise-1',
+          title: 'Rain',
+          filename: 'rain.mp3',
+          size: 100,
+          mimeType: 'audio/mpeg',
+          duration: 30,
+          createdAt: 1,
+        },
+      ]);
+
+      const el = await renderView();
+      await settleView(el);
+
+      expect(el._discriminationSettings.selected).toEqual([
+        expect.objectContaining({ noiseId: 'noise-1', volume: 0.4 }),
+      ]);
+      expect(getAppSettings().discrimination.selected).toEqual([
+        { noiseId: 'noise-1', volume: 0.4 },
+      ]);
+      expect(getAppSettings().discrimination.ladderCount).toBe(1);
+    });
+
     it('wires discrimination panel noise and ladder events', async () => {
       mockGetNoiseList.mockResolvedValue([
         {
@@ -2637,6 +2674,29 @@ describe('practice-view', () => {
       expect(setRateSpy).toHaveBeenCalledWith(1);
       expect(mockNoiseMixer.setPlaying).toHaveBeenCalledWith(false);
       expect(playSpy).not.toHaveBeenCalled();
+      expect(el._ladderPhase).toBe('completed');
+      expect(
+        el.shadowRoot!.querySelector('discrimination-panel')?.shadowRoot?.textContent,
+      ).toContain('本轮阶梯已完成');
+    });
+
+    it('restarts discrimination ladder from step 1 when playing after completion', async () => {
+      const el = await renderView();
+      await switchToDiscriminationMode(el);
+      el._ladderPhase = 'completed';
+
+      mockRateLadder.reset.mockClear();
+      const seekSpy = vi.spyOn(el._controller, 'seek');
+      const setRateSpy = vi.spyOn(el._controller, 'setPlaybackRate');
+
+      el._controller.dispatchEvent(new CustomEvent(MediaEventType.PLAY));
+      await settleView(el);
+
+      expect(mockRateLadder.reset).toHaveBeenCalled();
+      expect(seekSpy).toHaveBeenCalledWith(0, { force: true });
+      expect(setRateSpy).toHaveBeenCalled();
+      expect(el._ladderPhase).toBe('running');
+      expect(mockNoiseMixer.setPlaying).toHaveBeenCalledWith(true);
     });
 
     it('disables recorders when browser recording is unsupported', async () => {

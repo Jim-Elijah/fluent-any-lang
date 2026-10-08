@@ -46,6 +46,7 @@ describe('discrimination-panel', () => {
       noiseItems?: NoiseItem[];
       ladderSequence?: number[];
       ladderDisplayIndex?: number;
+      ladderPhase?: 'idle' | 'running' | 'completed';
       currentRate?: number;
     } = {},
   ) {
@@ -60,6 +61,7 @@ describe('discrimination-panel', () => {
         .noiseItems=${options.noiseItems ?? []}
         .ladderSequence=${options.ladderSequence ?? []}
         .ladderDisplayIndex=${options.ladderDisplayIndex ?? 0}
+        .ladderPhase=${options.ladderPhase ?? 'idle'}
         .currentRate=${options.currentRate ?? 1}
       ></discrimination-panel>
     `);
@@ -237,10 +239,11 @@ describe('discrimination-panel', () => {
     expect(rateSelect.value).toBe('1');
   });
 
-  it('shows sequence preview and step progress when ladderSequence is non-empty', async () => {
+  it('shows sequence preview and step progress while ladder is running', async () => {
     const el = await renderPanel({
       ladderSequence: [1, 1.5, 1],
       ladderDisplayIndex: 1,
+      ladderPhase: 'running',
       currentRate: 1.5,
     });
 
@@ -248,6 +251,33 @@ describe('discrimination-panel', () => {
     expect(preview?.textContent).toContain('1x → 1.5x → 1x');
     expect(el.shadowRoot?.querySelector('.ladder-progress')?.textContent).toContain('2/3');
     expect(el.shadowRoot?.querySelector('.ladder-progress')?.textContent).toContain('1.5x');
+  });
+
+  it('shows completed copy instead of step index when ladder round finished', async () => {
+    const el = await renderPanel({
+      ladderSequence: [1, 1.5, 1],
+      ladderDisplayIndex: 0,
+      ladderPhase: 'completed',
+      currentRate: 1,
+    });
+
+    const progress = el.shadowRoot?.querySelector('.ladder-progress')?.textContent ?? '';
+    expect(progress).toContain('本轮阶梯已完成');
+    expect(progress).toContain('再次播放');
+    expect(progress).not.toContain('当前阶梯');
+  });
+
+  it('shows step progress when ladder is idle (same copy as running)', async () => {
+    const el = await renderPanel({
+      ladderSequence: [1, 1.5, 1],
+      ladderDisplayIndex: 0,
+      ladderPhase: 'idle',
+      currentRate: 1,
+    });
+    const progress = el.shadowRoot?.querySelector('.ladder-progress')?.textContent ?? '';
+    expect(progress).toContain('当前阶梯');
+    expect(progress).toContain('1/3');
+    expect(progress).toContain('1x');
   });
 
   it('omits step progress when ladderSequence is empty', async () => {

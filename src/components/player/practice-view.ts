@@ -44,6 +44,7 @@ import {
 } from '../../types/models.js';
 import {
   getAppSettings,
+  removeNoiseFromDiscriminationSelection,
   setAppSettings,
   shouldSkipDiscriminationTips,
 } from '../../lib/app-settings.js';
@@ -95,6 +96,7 @@ import {
 import type { RecordingSessionPhase } from './echo-session-dock.js';
 import type {
   DiscriminationLadderCountDetail,
+  DiscriminationLadderPhase,
   DiscriminationLadderRateDetail,
   DiscriminationNoiseToggleDetail,
   DiscriminationNoiseVolumeDetail,
@@ -196,6 +198,9 @@ export class PracticeView extends NavigatorElement {
 
   @state()
   private _ladderDisplayIndex = 0;
+
+  @state()
+  private _ladderPhase: DiscriminationLadderPhase = 'idle';
 
   @state()
   private _recording = false;
@@ -629,9 +634,15 @@ export class PracticeView extends NavigatorElement {
   }
 
   private _onMainPlay = (): void => {
-    if (this._discriminationActive) {
-      this._noiseMixer.setPlaying(true);
+    if (!this._discriminationActive) {
+      return;
     }
+    if (this._ladderPhase === 'completed') {
+      this._restartDiscriminationLadder();
+    } else if (this._ladderPhase === 'idle') {
+      this._ladderPhase = 'running';
+    }
+    this._noiseMixer.setPlaying(true);
   };
 
   private _onMainPause = (): void => {
@@ -647,11 +658,13 @@ export class PracticeView extends NavigatorElement {
     const result = this._rateLadder.onMainEnded();
     this._ladderDisplayIndex = this._rateLadder.getIndex();
     if (result.kind === 'finished') {
+      this._ladderPhase = 'completed';
       this._noiseMixer.setPlaying(false);
       this._controller.setPlaybackRate(this._rateLadder.getCurrentRate());
       this._syncDiscriminationLockScreenLoop();
       return;
     }
+    this._ladderPhase = 'running';
     this._ladderAdvancing = true;
     this._controller.setPlaybackRate(result.rate);
     this._controller.seek(0, { force: true });
@@ -685,6 +698,22 @@ export class PracticeView extends NavigatorElement {
       this._noiseItems = await getNoiseList();
     } catch {
       this._noiseItems = [];
+      return;
+    }
+    const alive = new Set(this._noiseItems.map((item) => item.id));
+    const staleIds = this._discriminationSettings.selected
+      .map((entry) => entry.noiseId)
+      .filter((id) => !alive.has(id));
+    if (!removeNoiseFromDiscriminationSelection(staleIds)) return;
+
+    const saved = getAppSettings().discrimination;
+    this._discriminationSettings = {
+      selected: saved.selected.map((entry) => ({ ...entry })),
+      ladderCount: saved.ladderCount,
+      ladderRates: [...saved.ladderRates],
+    };
+    if (this._discriminationActive) {
+      void this._syncNoiseMixerTracks();
     }
   }
 
@@ -729,14 +758,30 @@ export class PracticeView extends NavigatorElement {
     }
   }
 
+  private _restartDiscriminationLadder(): void {
+    this._rateLadder.reset();
+    this._ladderDisplayIndex = 0;
+    this._ladderPhase = 'running';
+    this._controller.setPlaybackRate(this._rateLadder.getCurrentRate());
+    this._controller.seek(0, { force: true });
+    this._syncDiscriminationLockScreenLoop();
+  }
+
+  private _resetDiscriminationLadderSession(phase: DiscriminationLadderPhase = 'idle'): void {
+    this._rateLadder.reset();
+    this._ladderDisplayIndex = 0;
+    this._ladderPhase = phase;
+    if (this._discriminationActive) {
+      this._controller.setPlaybackRate(this._rateLadder.getCurrentRate());
+      this._syncDiscriminationLockScreenLoop();
+    }
+  }
+
   private async _setupDiscrimination(): Promise<void> {
     this._discriminationActive = true;
     this._suppressNonPracticeSettings({ pauseMode: 'off' });
     this._rateLadder.setRates(this._discriminationSettings.ladderRates);
-    this._rateLadder.reset();
-    this._ladderDisplayIndex = 0;
-    this._controller.setPlaybackRate(this._rateLadder.getCurrentRate());
-    this._syncDiscriminationLockScreenLoop();
+    this._resetDiscriminationLadderSession('idle');
     await this._syncNoiseMixerTracks();
   }
 
@@ -785,10 +830,7 @@ export class PracticeView extends NavigatorElement {
     this._syncTimeTrackerMedia();
     this._syncSpeakingModeAvailability();
     if (this._discriminationActive) {
-      this._rateLadder.reset();
-      this._ladderDisplayIndex = 0;
-      this._controller.setPlaybackRate(this._rateLadder.getCurrentRate());
-      this._syncDiscriminationLockScreenLoop();
+      this._resetDiscriminationLadderSession('idle');
     }
     void this._refreshRecordings();
     void this._refreshSentenceBankIds();
@@ -901,6 +943,7 @@ export class PracticeView extends NavigatorElement {
               .noiseItems=${this._noiseItems}
               .ladderDisplayIndex=${this._ladderDisplayIndex}
               .ladderSequence=${this._rateLadder.getSequence()}
+              .ladderPhase=${this._ladderPhase}
               .currentRate=${this._rateLadder.getCurrentRate()}
               @open-tips=${() => this._openTipsModal('discrimination')}
               @open-library=${this._openLibrary}
@@ -1191,8 +1234,10 @@ export class PracticeView extends NavigatorElement {
       ladderRates.push(1);
     }
     ladderRates.length = ladderCount;
-    this._rateLadder.reset();
-    this._ladderDisplayIndex = 0;
+    const phase: DiscriminationLadderPhase = this._controller.getSnapshot().isPlaying
+      ? 'running'
+      : 'idle';
+    this._resetDiscriminationLadderSession(phase);
     this._persistDiscriminationSettings({ ladderCount, ladderRates });
   }
 
@@ -1200,8 +1245,10 @@ export class PracticeView extends NavigatorElement {
     const ladderRates = [...this._discriminationSettings.ladderRates];
     if (index < 0 || index >= ladderRates.length) return;
     ladderRates[index] = rate;
-    this._rateLadder.reset();
-    this._ladderDisplayIndex = 0;
+    const phase: DiscriminationLadderPhase = this._controller.getSnapshot().isPlaying
+      ? 'running'
+      : 'idle';
+    this._resetDiscriminationLadderSession(phase);
     this._persistDiscriminationSettings({ ladderRates });
   }
 
