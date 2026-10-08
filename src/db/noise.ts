@@ -1,3 +1,4 @@
+import { removeNoiseFromDiscriminationSelection } from '../lib/app-settings.js';
 import { getDB } from './index.js';
 import { STORE_NOISE, STORE_NOISE_BLOB } from './schema.js';
 import type { NoiseBlob, NoiseItem } from '../types/models.js';
@@ -50,6 +51,7 @@ export async function deleteNoiseBatch(ids: string[]): Promise<void> {
     await blobStore.delete(id);
   }
   await tx.done;
+  removeNoiseFromDiscriminationSelection(uniqueIds);
 }
 
 export async function deleteNoise(id: string): Promise<void> {

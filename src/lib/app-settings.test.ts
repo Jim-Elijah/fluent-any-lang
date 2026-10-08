@@ -10,6 +10,7 @@ import {
   getUserSettings,
   normalizeAppSettings,
   normalizeDiscriminationSettings,
+  removeNoiseFromDiscriminationSelection,
   setAppSettings,
   setUserSettings,
   shouldSkipDiscriminationTips,
@@ -315,6 +316,31 @@ describe('app-settings', () => {
     expect(shouldSkipDiscriminationTips()).toBe(false);
     setAppSettings({ skipDiscriminationTips: true });
     expect(shouldSkipDiscriminationTips()).toBe(true);
+  });
+
+  it('drops deleted noise ids from discrimination selection', () => {
+    setAppSettings({
+      discrimination: {
+        selected: [
+          { noiseId: 'rain', volume: 0.6 },
+          { noiseId: 'cafe', volume: 0.4 },
+        ],
+        ladderCount: 2,
+        ladderRates: [1, 1.25],
+      },
+    });
+
+    expect(removeNoiseFromDiscriminationSelection(['missing'])).toBe(false);
+    expect(getAppSettings().discrimination.selected).toEqual([
+      { noiseId: 'rain', volume: 0.6 },
+      { noiseId: 'cafe', volume: 0.4 },
+    ]);
+
+    expect(removeNoiseFromDiscriminationSelection(['rain'])).toBe(true);
+    const settings = getAppSettings().discrimination;
+    expect(settings.selected).toEqual([{ noiseId: 'cafe', volume: 0.4 }]);
+    expect(settings.ladderCount).toBe(2);
+    expect(settings.ladderRates).toEqual([1, 1.25]);
   });
 
   it('returns default discrimination settings for non-object input', () => {

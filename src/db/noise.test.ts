@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
+import { getAppSettings, setAppSettings } from '../lib/app-settings.js';
 import { resetDatabase } from '../test/db-helpers.js';
 import type { NoiseItem } from '../types/models.js';
 import {
@@ -27,6 +28,7 @@ function makeNoise(id = 'noise-1', contentHash = 'hash-1'): NoiseItem {
 
 describe('noise db', () => {
   beforeEach(async () => {
+    localStorage.clear();
     await resetDatabase();
   });
 
@@ -62,5 +64,28 @@ describe('noise db', () => {
     expect(await getNoise(a.id)).toBeUndefined();
     expect(await getNoise(b.id)).toBeUndefined();
     expect(await getNoiseList()).toHaveLength(0);
+  });
+
+  it('removes deleted noise from discrimination selection', async () => {
+    const a = makeNoise('noise-a', 'hash-a');
+    const b = makeNoise('noise-b', 'hash-b');
+    await addNoise(a, { noiseId: a.id, blob: new Blob(['a']) });
+    await addNoise(b, { noiseId: b.id, blob: new Blob(['b']) });
+    setAppSettings({
+      discrimination: {
+        selected: [
+          { noiseId: a.id, volume: 0.4 },
+          { noiseId: b.id, volume: 0.7 },
+        ],
+        ladderCount: 2,
+        ladderRates: [1, 1.25],
+      },
+    });
+
+    await deleteNoise(a.id);
+
+    expect(getAppSettings().discrimination.selected).toEqual([{ noiseId: b.id, volume: 0.7 }]);
+    expect(getAppSettings().discrimination.ladderCount).toBe(2);
+    expect(await getNoise(b.id)).toEqual(b);
   });
 });

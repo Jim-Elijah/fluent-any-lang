@@ -93,6 +93,7 @@ Overlay composition (`ui-tooltip` vs `ui-popconfirm`, regenerate vs re-score con
 - **`pronunciation-align` ↔ Media + Subtitle Segment** — on-demand Source Word Alignment only; full POST URL in `speechAlignApiUrl` (shared API key / language with score); HTTP contract in [`pronunciation-align-api.md`](./pronunciation-align-api.md); subtitle-span clip `/align` only when the clip is within 60s/10MB (local reject otherwise, like score; full Media may exceed limits); per-segment align clips that Subtitle Segment and applies 60s/10MB to the clip; results in `mediaSourceWordAlignment` with segment rows projected or batch-materialized; `segment` source rows override batch/projection; subtitle `contentHash` change clears Media canonical + batch rows; not in backup
 - **`import-content` ↔ media + subtitle`** — import writes both
 - **`deleteMedia` → playlist + sentence-bank + reference prosody profiles + source word alignments + media source word alignments`** — soft-delete / unavailable cascade; clear profile + align caches for that Media
+- **`deleteNoise` → Discrimination prefs** — single and batch delete drop those Noise ids from `discrimination.selected`. Practice reloads the Noise list and drops any selected id that is no longer stored.
 
 ### Discrimination lock-screen (risks)
 

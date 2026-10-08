@@ -455,6 +455,28 @@ export function getMaxPlaybackRate(): number {
   return getAppSettings().maxPlaybackRate;
 }
 
+/**
+ * Drop Noise ids from persisted Discrimination selection.
+ * Keeps ladder prefs. No-op when none of the ids are selected.
+ * @returns whether `discrimination.selected` changed
+ */
+export function removeNoiseFromDiscriminationSelection(noiseIds: readonly string[]): boolean {
+  const drop = new Set(noiseIds.filter((id) => id.length > 0));
+  if (drop.size === 0) return false;
+
+  const current = getAppSettings();
+  const selected = current.discrimination.selected.filter((entry) => !drop.has(entry.noiseId));
+  if (selected.length === current.discrimination.selected.length) return false;
+
+  setAppSettings({
+    discrimination: {
+      ...current.discrimination,
+      selected,
+    },
+  });
+  return true;
+}
+
 export function setAppSettings(partial: Partial<AppSettings>): AppSettings {
   const current = getAppSettings();
   const merged: Record<string, unknown> = { ...current, ...partial };
