@@ -285,6 +285,9 @@ export class PracticeView extends NavigatorElement {
   /** Bumped on each echo start/cancel so in-flight async work cannot affect a newer session. */
   private _echoSessionId = 0;
 
+  /** Resume main playback on prep abort when shadowing record paused it (countdown cancel, etc.). */
+  private _shadowingResumePlaybackAfterPrepCancel = false;
+
   /** Gap policy applied for the in-progress shadowing take (snapshotted at record start). */
   private _activeShadowingGapPolicy: ShadowingGapPolicy = 'compress';
 
@@ -1611,6 +1614,7 @@ export class PracticeView extends NavigatorElement {
   };
 
   private _applyShadowingPlaybackProfile = (): void => {
+    this._pauseMediaForShadowingPrep();
     const gapPolicy = getAppSettings().shadowingGapPolicy;
     this._activeShadowingGapPolicy = gapPolicy;
     this._suppressNonPracticeSettings({
@@ -1628,6 +1632,26 @@ export class PracticeView extends NavigatorElement {
     this._alignShadowingStartSegment();
     void this._scrollSubtitleActiveIntoView();
   };
+
+  private _pauseMediaForShadowingPrep(): void {
+    if (!this._controller.getSnapshot().isPlaying) {
+      return;
+    }
+    this._shadowingResumePlaybackAfterPrepCancel = true;
+    void this._controller.pause();
+  }
+
+  private _resumeMediaIfPausedForShadowingPrepCancel(): void {
+    if (!this._shadowingResumePlaybackAfterPrepCancel) {
+      return;
+    }
+    this._shadowingResumePlaybackAfterPrepCancel = false;
+    void this._controller.play();
+  }
+
+  private _clearShadowingPrepPlaybackResume(): void {
+    this._shadowingResumePlaybackAfterPrepCancel = false;
+  }
 
   /**
    * Seek to the sentence that shadowing should start from.
@@ -1842,6 +1866,7 @@ export class PracticeView extends NavigatorElement {
     // Shadowing: align + scroll as soon as the user taps record (first cue may be off-screen).
     // No-op when there are no subtitle segments.
     if (this._speakingMode === 'shadowing') {
+      this._pauseMediaForShadowingPrep();
       // Implicitly confirm range when countdown starts.
       if (this._shadowingRange) {
         this._shadowingRangeConfirmed = true;
@@ -1856,6 +1881,8 @@ export class PracticeView extends NavigatorElement {
       this._resetSessionUi();
       return;
     }
+
+    this._clearShadowingPrepPlaybackResume();
 
     const skipped = event.detail.skipped;
     this._setSessionPhase('recording');
@@ -1969,6 +1996,7 @@ export class PracticeView extends NavigatorElement {
     // Ends every echo session path (cancel, countdown cancel, mic failure): give back a
     // mic that was warmed after drain but never recorded. No-op while recording.
     this._echoRecorderEl?.releaseMicrophone();
+    this._resumeMediaIfPausedForShadowingPrepCancel();
     this._restorePracticePlaybackSettings();
     this._setSessionPhase('idle');
     this._sessionSpeakCue = false;

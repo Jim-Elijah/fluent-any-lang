@@ -1131,6 +1131,59 @@ describe('practice-view', () => {
     expect(subtitlePanel.seekDisabled).toBe(false);
   });
 
+  it('pauses main media when shadowing countdown starts during playback', async () => {
+    const el = await renderView();
+    await switchToShadowingMode(el);
+
+    const snapshot = el._controller.getSnapshot();
+    vi.spyOn(el._controller, 'getSnapshot').mockReturnValue({
+      ...snapshot,
+      isPlaying: true,
+    });
+    const pauseSpy = vi.spyOn(el._controller, 'pause');
+
+    el.shadowRoot!.querySelector('audio-recorder#shadowing-recorder')!.dispatchEvent(
+      new CustomEvent('recording-countdown-start', {
+        bubbles: true,
+        composed: true,
+      }),
+    );
+
+    expect(pauseSpy).toHaveBeenCalled();
+  });
+
+  it('resumes main media when shadowing countdown is cancelled after prep pause', async () => {
+    const el = await renderView();
+    await switchToShadowingMode(el);
+
+    const snapshot = el._controller.getSnapshot();
+    vi.spyOn(el._controller, 'getSnapshot').mockReturnValue({
+      ...snapshot,
+      isPlaying: true,
+    });
+    const playSpy = vi.spyOn(el._controller, 'play');
+
+    const recorder = el.shadowRoot!.querySelector(
+      'audio-recorder#shadowing-recorder',
+    ) as HTMLElement;
+    recorder.dispatchEvent(
+      new CustomEvent('recording-countdown-start', {
+        bubbles: true,
+        composed: true,
+      }),
+    );
+    recorder.dispatchEvent(
+      new CustomEvent('recording-countdown-end', {
+        detail: { skipped: false, cancelled: true },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+    await el.updateComplete;
+
+    expect(playSpy).toHaveBeenCalled();
+  });
+
   it('shows echo session dock while listening', async () => {
     const el = await renderView();
     await switchToEchoMode(el);
