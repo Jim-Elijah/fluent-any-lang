@@ -107,7 +107,7 @@ export class NoiseList extends LitElement {
 
     .item {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-columns: minmax(0, 1fr);
       gap: var(--space-md);
       align-items: center;
       margin-bottom: var(--space-md);
@@ -123,20 +123,34 @@ export class NoiseList extends LitElement {
       margin-bottom: 0;
     }
 
-    .meta {
+    .item-body {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-areas:
+        'title actions'
+        'details actions';
+      gap: var(--space-xs) var(--space-md);
+      align-items: center;
       min-width: 0;
     }
 
+    .meta {
+      display: contents;
+    }
+
     .title {
+      grid-area: title;
       margin: 0 0 var(--space-xs);
       font-size: 1rem;
       font-weight: 600;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      min-width: 0;
     }
 
     .details {
+      grid-area: details;
       display: flex;
       flex-wrap: nowrap;
       align-items: center;
@@ -161,9 +175,12 @@ export class NoiseList extends LitElement {
     }
 
     .actions {
+      grid-area: actions;
       display: flex;
       gap: var(--space-sm);
       flex-shrink: 0;
+      align-self: center;
+      justify-self: end;
     }
 
     .empty {
@@ -195,8 +212,12 @@ export class NoiseList extends LitElement {
     }
 
     :host([selection-mode]) .item {
-      grid-template-columns: auto minmax(0, 1fr) auto;
+      grid-template-columns: auto minmax(0, 1fr);
       cursor: pointer;
+    }
+
+    :host([selection-mode]) .batch-checkbox {
+      align-self: center;
     }
 
     .hidden-input {
@@ -205,19 +226,17 @@ export class NoiseList extends LitElement {
 
     @media (max-width: 767px) {
       .item {
-        gap: var(--space-xs);
+        gap: var(--space-sm);
         padding: var(--space-sm) var(--space-md);
         margin-bottom: var(--space-xs);
       }
 
-      /* Override desktop 3-col selection layout so actions stay on their own row. */
-      :host([selection-mode]) .item {
-        grid-template-columns: auto minmax(0, 1fr);
+      .item-body {
+        gap: var(--space-xs) var(--space-sm);
       }
 
-      :host([selection-mode]) .actions {
-        grid-column: 1 / -1;
-        justify-self: end;
+      .title {
+        margin-bottom: 0;
       }
 
       .details {
@@ -408,26 +427,28 @@ export class NoiseList extends LitElement {
               @click=${(e: Event) => e.stopPropagation()}
             />`
           : null}
-        <div class="meta">
-          <p class="title">${item.title}</p>
-          <p class="details">
-            <span>${formatTime(item.duration)}</span>
-            <span class="date">${formatDate(item.createdAt, true)}</span>
-          </p>
-        </div>
-        <div class="actions" @click=${(e: Event) => e.stopPropagation()}>
-          <ui-popconfirm
-            .title=${msg('删除此噪音素材？')}
-            @confirm=${() => void this._onDelete(item)}
-          >
-            <ui-button
-              variant="danger"
-              ?disabled=${this._deletingId === item.id}
-              aria-label=${msg('删除')}
+        <div class="item-body">
+          <div class="meta">
+            <p class="title">${item.title}</p>
+            <p class="details">
+              <span>${formatTime(item.duration)}</span>
+              <span class="date">${formatDate(item.createdAt, true)}</span>
+            </p>
+          </div>
+          <div class="actions" @click=${(e: Event) => e.stopPropagation()}>
+            <ui-popconfirm
+              .title=${msg('删除此噪音素材？')}
+              @confirm=${() => void this._onDelete(item)}
             >
-              <ui-icon name="delete"></ui-icon>
-            </ui-button>
-          </ui-popconfirm>
+              <ui-button
+                variant="danger"
+                ?disabled=${this._deletingId === item.id}
+                aria-label=${msg('删除')}
+              >
+                <ui-icon name="delete"></ui-icon>
+              </ui-button>
+            </ui-popconfirm>
+          </div>
         </div>
       </div>
     `;

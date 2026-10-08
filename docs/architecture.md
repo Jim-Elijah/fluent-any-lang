@@ -85,6 +85,8 @@ The mobile bottom nav is icon-only so long labels fit in every locale. The full 
 
 Overlay composition (`ui-tooltip` vs `ui-popconfirm`, regenerate vs re-score confirmation): [`ui-patterns.md`](./ui-patterns.md).
 
+Collection list rows share the **767px** narrow breakpoint (`NARROW_VIEWPORT_MQ`). `media-list` and `record-list` stack meta and row actions on separate grid rows when space is tight (multi-action toolbars). **`noise-list`** is different: each row has only a single delete control, so `item-body` uses an inner grid (title / duration+date | delete) while selection mode keeps the batch checkbox in the outer grid (`checkbox | item-body`) so manage mode does not push actions onto a full-width row.
+
 ## Critical couplings
 
 - **`practice-view` ↔ `MediaController`** — mode profiles, seek/lock, segment alignment; Shadowing record prep (countdown start / `beforeRecordingStart`) pauses main playback so sentence alignment does not drift, and restores playback when prep is cancelled; Discrimination may set `setLockScreenLoop` while the document is hidden. Segment loop: scrub into a mid-track gap adopts the following Subtitle Segment; leading/trailing gaps clear `currentSegmentIndex` (−1, no highlight / replay) until playback or seek lands inside a segment again. Loading Media with no Subtitle Track (or clearing subtitles) downgrades `segment` loop to `none` and turns pause-between-segments off. All auto-resume paths (segment pause, segment/single loop `ended`, shadowing gap compress) assign `currentTime` directly then `play()` via `_seekDirectAndPlay` — never `seek()` + `play()` which awaits `seeked`. Mobile lock-screen swallows `seeked`; `visibilitychange → visible` force-settles any stranded seek.

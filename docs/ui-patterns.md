@@ -42,6 +42,7 @@ Popconfirm copy for align: `source-word-align-labels.ts` (`sourceWordAlignPopcon
 | Regenerate segment / all align | `src/components/shared/source-segment-align-button.ts`, `source-word-align-all-button.ts` | Scenario split above |
 | Single recording delete | `src/components/library/record-list.ts` | `ui-popconfirm` + icon button + `aria-label` |
 | Batch delete (records, media, noise, sentences) | `record-list.ts`, `media-list.ts`, `noise-list.ts`, `pages/sentences/index.ts` | Same — no nested delete tooltip |
+| Noise row (single delete) | `noise-list.ts` | Inner `item-body` grid keeps delete beside duration/date; checkbox stays outside `item-body` in selection mode (see [`architecture.md`](./architecture.md#library-hub)) |
 | Re-score | `recording-preview.ts`, `record-list.ts` | Tooltip only when explaining block reason; no popconfirm |
 
 ## Adding a new confirm action
