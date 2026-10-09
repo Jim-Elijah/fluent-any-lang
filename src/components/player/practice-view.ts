@@ -8,6 +8,7 @@ import '../library/record-list.js';
 import { PracticeTimeTracker } from '../../analytics/practice-time-tracker.js';
 import { MediaController } from '../../controllers/media-controller.js';
 import { loadMediaForPlayback, loadPlaylistForPlayback } from '../../lib/media-loader.js';
+import { resolvePracticeLoadPlan } from '../../lib/practice-launch.js';
 import {
   countEchoRecordings,
   countShadowingRecordings,
@@ -145,10 +146,6 @@ type StorageEstimate = {
   remaining: number;
   remainingPercent: number;
 };
-
-type PracticeLaunchContext =
-  | { kind: 'single'; mediaId: string }
-  | { kind: 'playlist'; playlistId: string; mediaId?: string };
 
 /** Min recording duration (seconds) to keep a Shadowing take with no Subtitle Track. */
 export const MIN_AUDIO_ONLY_SHADOWING_RECORDING_S = 1;
@@ -1391,19 +1388,6 @@ export class PracticeView extends NavigatorElement {
     return `${playlistId}\u0000${mediaId}\u0000${segmentId}`;
   }
 
-  private _resolveLaunchContextFromRoute(): PracticeLaunchContext | null {
-    const playlistId = this._getPracticeQueryValue('playlistId');
-    const mediaId = this._getPracticeQueryValue('mediaId');
-
-    if (playlistId) {
-      return mediaId ? { kind: 'playlist', playlistId, mediaId } : { kind: 'playlist', playlistId };
-    }
-    if (mediaId) {
-      return { kind: 'single', mediaId };
-    }
-    return null;
-  }
-
   private _seekToSegmentId(segmentId: string): void {
     if (!segmentId) {
       return;
@@ -1417,46 +1401,66 @@ export class PracticeView extends NavigatorElement {
     this._controller.seekToSegment(index, false, { force: true });
   }
 
+  private _abortPracticeLoadAndReturnHome(
+    message: string,
+    severity: 'error' | 'warning' = 'warning',
+  ): void {
+    if (severity === 'error') {
+      Message.error(message);
+    } else {
+      Message.warning(message);
+    }
+    this.navigate('/');
+  }
+
   private async _loadPractice(): Promise<void> {
     const loadingInstance = Loading.service({ text: msg('加载媒体中…') });
     try {
-      const launchContext = this._resolveLaunchContextFromRoute();
-      if (!launchContext) {
-        Message.error(msg('请从媒体或播放列表进入练习。'));
+      const resolved = await resolvePracticeLoadPlan({
+        mediaId: this._getPracticeQueryValue('mediaId'),
+        playlistId: this._getPracticeQueryValue('playlistId'),
+      });
+
+      if ('failure' in resolved) {
+        if (resolved.failure === 'no-entry') {
+          Message.error(msg('请从媒体或播放列表进入练习。'));
+        } else if (resolved.failure === 'media-missing') {
+          this._abortPracticeLoadAndReturnHome(msg('该材料已删除，无法练习。'));
+        } else {
+          this._abortPracticeLoadAndReturnHome(msg('当前播放列表没有可练习的媒体。'));
+        }
         return;
       }
 
-      this._activePlaylistId = launchContext.kind === 'playlist' ? launchContext.playlistId : '';
+      const plan = resolved.plan;
+      this._activePlaylistId = plan.kind === 'playlist' ? plan.playlistId : '';
 
       let playlist: Awaited<ReturnType<typeof loadPlaylistForPlayback>>;
-      if (launchContext.kind === 'single') {
-        const single = await loadMediaForPlayback(launchContext.mediaId);
+      if (plan.kind === 'single') {
+        const single = await loadMediaForPlayback(plan.mediaId);
         playlist = single ? [single] : [];
       } else {
-        playlist = await loadPlaylistForPlayback(launchContext.playlistId);
+        playlist = await loadPlaylistForPlayback(plan.playlistId);
       }
 
       if (playlist.length === 0) {
-        if (launchContext.kind === 'single') {
-          Message.error(msg('该媒体不存在或无法加载。'));
+        if (plan.kind === 'single') {
+          this._abortPracticeLoadAndReturnHome(msg('该材料已删除，无法练习。'));
         } else {
-          Message.error(msg('当前播放列表为空，请先添加媒体。'));
+          this._abortPracticeLoadAndReturnHome(msg('当前播放列表没有可练习的媒体。'));
         }
         return;
       }
 
       let startIndex = 0;
-      if (launchContext.kind === 'playlist' && launchContext.mediaId) {
-        startIndex = playlist.findIndex((entry) => entry.item.id === launchContext.mediaId);
+      if (plan.kind === 'playlist' && plan.startMediaId) {
+        startIndex = playlist.findIndex((entry) => entry.item.id === plan.startMediaId);
         if (startIndex === -1) {
-          Message.info(
-            msg(str`媒体 "${launchContext.mediaId}" 不在当前播放列表，已回退到第一首。`),
-          );
           startIndex = 0;
         }
       }
-      if (launchContext.kind === 'playlist') {
-        setAppSettings({ lastPlayedPlaylistId: launchContext.playlistId });
+      if (plan.kind === 'playlist') {
+        setAppSettings({ lastPlayedPlaylistId: plan.playlistId });
       } else {
         // Single-media entry has no playlist context; clear stale playlist resume marker.
         setAppSettings({ lastPlayedPlaylistId: '' });

@@ -15,6 +15,27 @@ vi.mock('../../lib/error-reporter.js', () => ({
   reportError: vi.fn().mockResolvedValue(undefined),
 }));
 
+vi.mock('../../lib/practice-launch.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../lib/practice-launch.js')>();
+  return {
+    ...actual,
+    resolvePracticeRouteQuery: vi.fn(async (mediaId: string, playlistId?: string) =>
+      mediaId ? (playlistId ? { mediaId, playlistId } : { mediaId }) : null,
+    ),
+    resolveContinuePracticeTarget: vi.fn(
+      async (sessions: import('../../types/models.js').PracticeSession[]) => {
+        const sorted = [...sessions].sort((a, b) => b.startedAt - a.startedAt);
+        const session = sorted[0];
+        if (!session?.mediaId) return null;
+        const route = session.playlistId
+          ? { mediaId: session.mediaId, playlistId: session.playlistId }
+          : { mediaId: session.mediaId };
+        return { session, route };
+      },
+    ),
+  };
+});
+
 vi.mock('../../i18n/localization.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../i18n/localization.js')>();
   return {
@@ -66,6 +87,8 @@ describe('practice-stats-dashboard', () => {
     cleanup = result.cleanup;
     const el = result.container.querySelector('practice-stats-dashboard') as PracticeStatsDashboard;
     await el.updateComplete;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await el.updateComplete;
 
     const text = el.shadowRoot?.textContent ?? '';
     expect(text).toContain('Latest Track');
@@ -99,6 +122,8 @@ describe('practice-stats-dashboard', () => {
     const result = mount(html`<practice-stats-dashboard .data=${data}></practice-stats-dashboard>`);
     cleanup = result.cleanup;
     const el = result.container.querySelector('practice-stats-dashboard') as PracticeStatsDashboard;
+    await el.updateComplete;
+    await new Promise((resolve) => setTimeout(resolve, 0));
     await el.updateComplete;
 
     expect(el.shadowRoot?.querySelector('ui-icon')?.getAttribute('name')).toBe('video');
@@ -174,6 +199,8 @@ describe('practice-stats-dashboard', () => {
     const result = mount(html`<practice-stats-dashboard .data=${data}></practice-stats-dashboard>`);
     cleanup = result.cleanup;
     const el = result.container.querySelector('practice-stats-dashboard') as PracticeStatsDashboard;
+    await el.updateComplete;
+    await new Promise((resolve) => setTimeout(resolve, 0));
     await el.updateComplete;
 
     const handler = vi.fn();

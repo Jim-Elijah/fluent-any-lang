@@ -16,7 +16,7 @@ Prefer automated tests where they exist; use this list when changing the named a
 | 6   | Practice Session accounting              | Any Practice Mode with real practice              | Stats/home show active time (not mere page open)                          |
 | 7   | Playlist practice                        | `/library/playlists` → `/practice?playlistId=&mediaId=` | Track order / next; Favorites still works                                 |
 | 8   | Sentence Bank save → isolated practice   | Subtitle panel → `/library/sentences` → `/sentence-practice` | Clip saved; practice from bank works if source available                  |
-| 9   | Delete Media                             | Library → 媒体库                              | Soft-delete playlist/sentence refs; no orphan main-track practice         |
+| 9   | Delete Media                             | Library → 媒体库                              | Soft-delete playlist/sentence refs; home continue hidden; stats ranking shows 已删除; `/practice` deep links toast + home (see [`practice-launch.md`](./practice-launch.md)) |
 | 10  | Backup export/import                     | Settings                                          | Round-trip keeps media/subtitles/records/scores; removed entries stay out |
 
 ## Change X → must verify Y
@@ -41,7 +41,8 @@ Prefer automated tests where they exist; use this list when changing the named a
 | `app-settings` shape / defaults                           | Discrimination prefs, shadowing gap, reduceSpeakerEcho → practice mic echoCancellation, speechScoreProsodyBasis, speechAlignApiUrl, lastPlayedPlaylistId / lastPlayedMediaId, sourceMaskMode (practice entry default; subtitle-panel M cycle does not persist), pinnedLibraryRoutes (Noise excluded; nav highlight follows the pin; hub section links append an opaque hash and 「返回库」 shows for any non-empty hash; mobile bottom nav is icon-only, full label is the accessible name, no tooltip), limits; localStorage migrate/compat |
 | `ui-tooltip` / `ui-popconfirm` on the same trigger        | No nested tooltip+popconfirm ([`ui-patterns.md`](./ui-patterns.md)); align regenerate = popconfirm only; batch/single delete = popconfirm + `aria-label`; re-score stays direct (no popconfirm) |
 | `lib/backup`                                              | Soft-deleted omitted; blob stores included; Pronunciation Scores with recordings (v5); reference prosody profiles + source word alignments excluded; import does not corrupt schema version assumptions     |
-| `media-loader` / practice query params                    | Deep link `mediaId` / `playlistId` / `segmentId`                                                                                                                                   |
+| `media-loader` / practice query params                    | Deep link `mediaId` / `playlistId` / `segmentId`; stale playlist → single media; missing media → message + home ([`practice-launch.md`](./practice-launch.md))                                                                 |
+| `lib/practice-launch` / stats continue & ranking          | Home continue uses latest session with available media; stats ranking disables deleted media; practice load plan matches display rules                                                                                  |
 
 ## Suggested automated anchors
 

@@ -60,7 +60,7 @@ Sentence practice (`/sentence-practice`) is a lighter path on clipped Sentence B
 
 ## Practice stats UI
 
-Home (`practice-stats-dashboard`) and `/stats` (`practice-stats-page`) aggregate `practiceSession` rows in `practice-stats-aggregate.ts`. Filters, legends, stack bars, and tooltips iterate `PRACTICE_MODES` and share labels via `practiceAnalyticsModeLabel()` (aligned with practice analytics mode ids: 自由听 / 抗噪听 / 影子跟读 / 回声跟读). The stats summary grid uses the app-wide narrow breakpoint **767px** (`NARROW_VIEWPORT_MQ` in `lib/layout-compact.ts`).
+Home (`practice-stats-dashboard`) and `/stats` (`practice-stats-page`) aggregate `practiceSession` rows in `practice-stats-aggregate.ts`. Filters, legends, stack bars, and tooltips iterate `PRACTICE_MODES` and share labels via `practiceAnalyticsModeLabel()` (aligned with practice analytics mode ids: 自由听 / 抗噪听 / 影子跟读 / 回声跟读). The stats summary grid uses the app-wide narrow breakpoint **767px** (`NARROW_VIEWPORT_MQ` in `lib/layout-compact.ts`). Continue / ranking links validate Media availability and normalize playlist query params via [`practice-launch.md`](./practice-launch.md) (`src/lib/practice-launch.ts`).
 
 ## Library hub
 

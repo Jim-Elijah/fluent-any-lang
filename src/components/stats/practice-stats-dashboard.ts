@@ -12,6 +12,13 @@ import {
 } from '../../analytics/practice-stats-aggregate.js';
 import { getAllPracticeSessions } from '../../db/practice-session.js';
 import { reportError } from '../../lib/error-reporter.js';
+import {
+  practicePathFromQuery,
+  resolveContinuePracticeTarget,
+  resolvePracticeRouteQuery,
+  type PracticeRouteQuery,
+} from '../../lib/practice-launch.js';
+import type { PracticeSession } from '../../types/models.js';
 import '../ui/button.js';
 import '../ui/icon.js';
 import '../ui/tooltip.js';
@@ -260,27 +267,44 @@ export class PracticeStatsDashboard extends NavigatorElement {
   @state()
   private _internal: HomeDashboardData | null = null;
 
+  @state()
+  private _continueTarget: { session: PracticeSession; route: PracticeRouteQuery } | null = null;
+
   connectedCallback(): void {
     super.connectedCallback();
     if (!this.data) {
       void this.refresh();
     } else {
       this._loading = false;
+      void this._syncContinueTargetFromInjectedData();
     }
+  }
+
+  private async _syncContinueTargetFromInjectedData(): Promise<void> {
+    const session = this.data?.lastSession;
+    if (!session?.mediaId) {
+      this._continueTarget = null;
+      return;
+    }
+    const route = await resolvePracticeRouteQuery(session.mediaId, session.playlistId);
+    this._continueTarget = route ? { session, route } : null;
   }
 
   async refresh(): Promise<void> {
     if (this.data) {
       this._loading = false;
+      await this._syncContinueTargetFromInjectedData();
       return;
     }
     this._loading = true;
     try {
       const sessions = await getAllPracticeSessions();
       this._internal = buildHomeDashboard(sessions);
+      this._continueTarget = await resolveContinuePracticeTarget(sessions);
     } catch (err) {
       void reportError(err, { where: 'practice-stats-dashboard.load' });
       this._internal = buildHomeDashboard([]);
+      this._continueTarget = null;
     } finally {
       this._loading = false;
     }
@@ -304,12 +328,13 @@ export class PracticeStatsDashboard extends NavigatorElement {
   };
 
   private _handleContinue = (): void => {
-    const session = this._dash.lastSession;
-    if (!session?.mediaId) return;
+    const target = this._continueTarget;
+    if (!target) return;
+    const { session, route } = target;
     const detail: ContinuePracticeDetail = {
-      mediaId: session.mediaId,
+      mediaId: route.mediaId,
       mediaTitle: session.mediaTitle,
-      ...(session.playlistId ? { playlistId: session.playlistId } : {}),
+      ...(route.playlistId ? { playlistId: route.playlistId } : {}),
     };
     this.dispatchEvent(
       new CustomEvent<ContinuePracticeDetail>('continue-practice', {
@@ -318,11 +343,7 @@ export class PracticeStatsDashboard extends NavigatorElement {
         composed: true,
       }),
     );
-    const params = new URLSearchParams({ mediaId: session.mediaId });
-    if (session.playlistId) {
-      params.set('playlistId', session.playlistId);
-    }
-    this.navigate(`/practice?${params.toString()}`);
+    this.navigate(practicePathFromQuery(route));
   };
 
   render() {
@@ -395,24 +416,28 @@ export class PracticeStatsDashboard extends NavigatorElement {
                     </div>
                   `
                 : nothing}
-              ${dash.lastSession
+              ${this._continueTarget
                 ? html`
                     <div class="actions">
                       <div class="continue-meta">
                         <p class="continue-title">
                           <span class="continue-type">
                             <ui-tooltip
-                              title="${dash.lastSession.mediaType === 'video'
+                              title="${this._continueTarget.session.mediaType === 'video'
                                 ? msg('视频')
                                 : msg('音频')}"
                             >
                               <ui-icon
-                                name="${dash.lastSession.mediaType === 'video' ? 'video' : 'music'}"
+                                name="${this._continueTarget.session.mediaType === 'video'
+                                  ? 'video'
+                                  : 'music'}"
                                 size="var(--icon-md)"
                               ></ui-icon>
                             </ui-tooltip>
                           </span>
-                          <span class="continue-title-text">${dash.lastSession.mediaTitle}</span>
+                          <span class="continue-title-text"
+                            >${this._continueTarget.session.mediaTitle}</span
+                          >
                         </p>
                       </div>
                       <ui-button variant="primary" @click=${this._handleContinue}>

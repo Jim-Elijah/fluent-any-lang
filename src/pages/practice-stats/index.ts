@@ -16,6 +16,11 @@ import {
 } from '../../analytics/practice-stats-aggregate.js';
 import { getAllPracticeSessions } from '../../db/practice-session.js';
 import { reportError } from '../../lib/error-reporter.js';
+import {
+  isMediaAvailableForPractice,
+  practicePathFromQuery,
+  resolvePracticeRouteQuery,
+} from '../../lib/practice-launch.js';
 import '../../components/ui/input.js';
 import type { InputChangeDetail } from '../../components/ui/input.js';
 import '../../components/ui/icon.js';
@@ -281,6 +286,29 @@ export class PracticeStatsPage extends NavigatorElement {
       color: var(--color-primary-hover, #4096ff);
     }
 
+    .rank-item-unavailable .rank-title {
+      cursor: default;
+      color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
+    }
+
+    .rank-item-unavailable .rank-title:hover {
+      color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
+    }
+
+    .rank-item-unavailable .rank-type {
+      color: var(--color-text-secondary, rgba(0, 0, 0, 0.45));
+    }
+
+    .rank-deleted-badge {
+      flex-shrink: 0;
+      font-size: 0.6875rem;
+      color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
+      border: 1px solid var(--color-border, #d9d9d9);
+      border-radius: 4px;
+      padding: 0 4px;
+      line-height: 1.4;
+    }
+
     .rank-name {
       overflow: hidden;
       text-overflow: ellipsis;
@@ -367,6 +395,9 @@ export class PracticeStatsPage extends NavigatorElement {
   @state()
   private _summary: PracticeStatsSummary | null = null;
 
+  @state()
+  private _mediaAvailable: Record<string, boolean> = {};
+
   connectedCallback(): void {
     super.connectedCallback();
     void this._reload();
@@ -376,19 +407,35 @@ export class PracticeStatsPage extends NavigatorElement {
     this._loading = true;
     try {
       const sessions = await getAllPracticeSessions();
-      this._summary = aggregatePracticeStats(sessions, {
+      const summary = aggregatePracticeStats(sessions, {
         preset: this._preset,
         mode: this._mode,
         customFrom: this._customFrom || undefined,
         customTo: this._customTo || undefined,
       });
+      const availability: Record<string, boolean> = {};
+      const seen = new Set<string>();
+      for (const item of summary.mediaRanking) {
+        if (seen.has(item.mediaId)) continue;
+        seen.add(item.mediaId);
+        availability[item.mediaId] = await isMediaAvailableForPractice(item.mediaId);
+      }
+      this._mediaAvailable = availability;
+      this._summary = summary;
     } catch (err) {
       void reportError(err, { where: 'practice-stats-page.load' });
       this._summary = aggregatePracticeStats([]);
+      this._mediaAvailable = {};
     } finally {
       this._loading = false;
     }
   }
+
+  private _openRankingMedia = async (mediaId: string): Promise<void> => {
+    const route = await resolvePracticeRouteQuery(mediaId);
+    if (!route) return;
+    this.navigate(practicePathFromQuery(route));
+  };
 
   private _setPreset(preset: StatsRangePreset): void {
     this._preset = preset;
@@ -598,28 +645,43 @@ export class PracticeStatsPage extends NavigatorElement {
           ? html`<p class="empty">${msg('该区间暂无练习数据。')}</p>`
           : html`
               <ol class="ranking">
-                ${summary.mediaRanking.map(
-                  (item) => html`
-                    <li class="rank-item">
-                      <button
-                        type="button"
-                        class="rank-title"
-                        title=${item.mediaFilename || item.mediaTitle}
-                        @click=${() =>
-                          this.navigate(`/practice?mediaId=${encodeURIComponent(item.mediaId)}`)}
-                      >
-                        <span class="rank-type">
-                          <ui-tooltip
-                            title="${item.mediaType === 'video' ? msg('视频') : msg('音频')}"
+                ${summary.mediaRanking.map((item) => {
+                  const available = this._mediaAvailable[item.mediaId] === true;
+                  return html`
+                    <li class="rank-item ${available ? '' : 'rank-item-unavailable'}">
+                      ${available
+                        ? html`<button
+                            type="button"
+                            class="rank-title"
+                            title=${item.mediaFilename || item.mediaTitle}
+                            @click=${() => this._openRankingMedia(item.mediaId)}
                           >
-                            <ui-icon
-                              name="${item.mediaType === 'video' ? 'video' : 'music'}"
-                              size="var(--icon-md)"
-                            ></ui-icon>
-                          </ui-tooltip>
-                        </span>
-                        <span class="rank-name">${item.mediaTitle}</span>
-                      </button>
+                            <span class="rank-type">
+                              <ui-tooltip
+                                title="${item.mediaType === 'video' ? msg('视频') : msg('音频')}"
+                              >
+                                <ui-icon
+                                  name="${item.mediaType === 'video' ? 'video' : 'music'}"
+                                  size="var(--icon-md)"
+                                ></ui-icon>
+                              </ui-tooltip>
+                            </span>
+                            <span class="rank-name">${item.mediaTitle}</span>
+                          </button>`
+                        : html`<div class="rank-title" aria-disabled="true">
+                            <span class="rank-type">
+                              <ui-tooltip
+                                title="${item.mediaType === 'video' ? msg('视频') : msg('音频')}"
+                              >
+                                <ui-icon
+                                  name="${item.mediaType === 'video' ? 'video' : 'music'}"
+                                  size="var(--icon-md)"
+                                ></ui-icon>
+                              </ui-tooltip>
+                            </span>
+                            <span class="rank-name">${item.mediaTitle}</span>
+                            <span class="rank-deleted-badge">${msg('已删除')}</span>
+                          </div>`}
                       <span class="rank-ms">${formatActiveDuration(item.totalMs)}</span>
                       <div class="rank-track">
                         <div
@@ -628,8 +690,8 @@ export class PracticeStatsPage extends NavigatorElement {
                         ></div>
                       </div>
                     </li>
-                  `,
-                )}
+                  `;
+                })}
               </ol>
             `}
       </section>

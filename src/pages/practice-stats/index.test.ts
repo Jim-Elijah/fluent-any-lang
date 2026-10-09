@@ -19,6 +19,15 @@ vi.mock('../../lib/error-reporter.js', () => ({
   reportError: (...args: unknown[]) => mockReportError(...args),
 }));
 
+vi.mock('../../lib/practice-launch.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../lib/practice-launch.js')>();
+  return {
+    ...actual,
+    isMediaAvailableForPractice: vi.fn().mockResolvedValue(true),
+    resolvePracticeRouteQuery: vi.fn(async (mediaId: string) => ({ mediaId })),
+  };
+});
+
 import './index.js';
 import type { PracticeStatsPage } from './index.js';
 
@@ -188,9 +197,8 @@ describe('practice-stats-page', () => {
     expect(el.shadowRoot?.querySelectorAll('.custom-range ui-input').length).toBe(2);
 
     const navigateSpy = vi.spyOn(el, 'navigate').mockImplementation(() => undefined);
-    el.shadowRoot
-      ?.querySelector('.rank-title')
-      ?.dispatchEvent(new Event('click', { bubbles: true }));
+    (el.shadowRoot?.querySelector('button.rank-title') as HTMLButtonElement | null)?.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
     expect(navigateSpy).toHaveBeenCalledWith('/practice?mediaId=media-1');
   });
 });

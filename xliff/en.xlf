@@ -1196,12 +1196,6 @@
 <trans-unit id="s36f7b9e1f4bfcc7a">
   <source>请从媒体或播放列表进入练习。</source>
 <target>Please enter practice from media or playlist.</target></trans-unit>
-<trans-unit id="s85e0ce5c532b2a76">
-  <source>该媒体不存在或无法加载。</source>
-<target>This media does not exist or failed to load.</target></trans-unit>
-<trans-unit id="s8285287fae288dfb">
-  <source>媒体 "<x id="0" equiv-text="${launchContext.mediaId}"/>" 不在当前播放列表，已回退到第一首。</source>
-<target>Media "<x id="0" equiv-text="${launchContext.mediaId}"/>" is not in the current playlist, reverted to the first track.</target></trans-unit>
 <trans-unit id="s6f6113080c54acb3">
   <source>抽屉</source>
 <target>Drawer</target></trans-unit>
@@ -1663,10 +1657,6 @@
 <trans-unit id="s21092c787f4155a9">
   <source>导入中…</source>
   <target>Importing…</target>
-</trans-unit>
-<trans-unit id="sdb9ac509426855ec">
-  <source>辨音</source>
-  <target>Discrimination</target>
 </trans-unit>
 <trans-unit id="sb39931ab94d4d98e">
   <source>缺少噪音文件：<x id="0" equiv-text="${item.filename || item.id}"/></source>
@@ -2911,6 +2901,18 @@
 <trans-unit id="s162fdaf90bc93f42">
   <source>默认遮罩原文</source>
   <target>Default source mask</target>
+</trans-unit>
+<trans-unit id="sfa60d2c9f9a19688">
+  <source>本轮阶梯已完成。再次播放将从第 1 步开始。</source>
+</trans-unit>
+<trans-unit id="sce9af571f0d28359">
+  <source>该材料已删除，无法练习。</source>
+</trans-unit>
+<trans-unit id="sd9501d48de464d20">
+  <source>当前播放列表没有可练习的媒体。</source>
+</trans-unit>
+<trans-unit id="s26cc35db2d7f9b91">
+  <source>已删除</source>
 </trans-unit>
 </body>
 </file>
