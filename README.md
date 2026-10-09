@@ -23,11 +23,11 @@ Most language apps lock you into their curriculum. FluentAnyLang is built for **
 - **Anti-noise listen** — Mix up to 3 ambient noise tracks while listening; optional speed ladder advances after each play-through.
 - **Loop & pause** — Loop track or sentence; pause between sentences by fixed seconds or a percentage of line length.
 - **Sleep timer** — Stop after N minutes or when the current track ends.
-- **Flexible player** — Normal, fixed (floating bar), or mini layout; set player defaults (rate/volume ceilings, sleep, volumes) in Settings.
+- **Practice defaults** — In **Settings → Player & practice defaults**, set what applies the next time you enter practice (rate/volume ceilings, loop, pause-between-sentences, sleep, default volumes, source mask, and more). You can still change everything on the practice page for the current session.
 
 ### Speaking
 
-- **Shadowing** — Record in sync with the original, with countdown cues and a live waveform; choose inter-sentence gaps as “compress to ~1s” or “preserve full gaps” in Settings.
+- **Shadowing** — Record in sync with the original, with countdown cues and a live waveform; optional **segment range** practice across multiple lines; choose inter-sentence gaps as “compress to ~1s” or “preserve full gaps” in Settings.
 - **Echo** — Hear the line first, then record; keep multiple takes per sentence and **keep only one** when you are done (library or manage recordings).
 - **Compare takes** — Play source only, recording only, or compare (sentence-aligned **sync** when gaps were compressed; **continuous compare** when full gaps were preserved); click the waveform to seek and play.
 - **Pronunciation score (optional, experimental)** — On-demand scoring after a take. Requires an API URL and API key in Settings. The scoring service is **not publicly available**; contact the developer if you want to try it. Enabling scoring uploads your recording (and, for Echo "Match reference", may also send a reference clip) to the configured server; the server uses a self-hosted scoring model, does not keep audio, and scores stay on your device.
@@ -35,10 +35,10 @@ Most language apps lock you into their curriculum. FluentAnyLang is built for **
 ### Library & progress
 
 - **Media, recordings & noise libraries** — Search, sort, filter, custom covers, and export; tolerant `.srt` / `.lrc` import with warnings when lines need attention.
-- **Playlists & favorites** — Group materials, reorder, create a playlist while adding media, and continue the last playlist from the home dashboard.
+- **Playlists & favorites** — Group materials, reorder, create a playlist while adding media; home **Continue practice** resumes your last session (opens as single media or hides the entry when media was deleted or playlist context is stale).
 - **Sentence bank** — Save individual lines (with clipped audio) and drill them later.
 - **Nav shortcuts** — Pin media, playlists, the sentence bank, or recordings onto the app nav from Settings. Noise stays under Library. On a phone the bar shows icons only.
-- **Practice statistics** — Effective practice time (not wall-clock), streaks, mode mix, trends, and media ranking.
+- **Practice statistics** — Effective practice time (not wall-clock), streaks, mode mix, trends, and media ranking (deleted media stays in history but is not clickable).
 
 ### More
 
