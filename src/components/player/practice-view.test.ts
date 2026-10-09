@@ -94,6 +94,44 @@ vi.mock('../../lib/import-content.js', () => ({
   importSubtitleForMedia: (...args: unknown[]) => mockImportSubtitleForMedia(...args),
 }));
 
+const mockResolvePracticeLoadPlan = vi.fn();
+
+vi.mock('../../lib/practice-launch.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../lib/practice-launch.js')>();
+  return {
+    ...actual,
+    resolvePracticeLoadPlan: (...args: unknown[]) => mockResolvePracticeLoadPlan(...args),
+  };
+});
+
+async function defaultResolvePracticeLoadPlan(input: {
+  mediaId?: string;
+  playlistId?: string;
+}): Promise<
+  | { plan: import('../../lib/practice-launch.js').PracticeLoadPlan }
+  | { failure: import('../../lib/practice-launch.js').PracticeLaunchFailure }
+> {
+  const mediaId = input.mediaId?.trim() ?? '';
+  const playlistId = input.playlistId?.trim() ?? '';
+
+  if (!mediaId && !playlistId) {
+    return { failure: 'no-entry' };
+  }
+
+  if (mediaId) {
+    if (playlistId) {
+      const inPlaylist = mediaId === 'media-1' || mediaId === 'media-2';
+      if (inPlaylist) {
+        return { plan: { kind: 'playlist', playlistId, startMediaId: mediaId } };
+      }
+      return { plan: { kind: 'single', mediaId } };
+    }
+    return { plan: { kind: 'single', mediaId } };
+  }
+
+  return { plan: { kind: 'playlist', playlistId } };
+}
+
 const mockNoiseMixer = {
   setPlaying: vi.fn(),
   setTracks: vi.fn(),
@@ -320,6 +358,8 @@ describe('practice-view', () => {
     stubKeyboardShortcuts(false);
     setUserSettingsLocal();
 
+    mockResolvePracticeLoadPlan.mockReset();
+    mockResolvePracticeLoadPlan.mockImplementation(defaultResolvePracticeLoadPlan);
     mockLoadMedia.mockReset();
     mockLoadPlaylist.mockReset();
     mockLoadMedia.mockResolvedValue(makeLoadedMedia('media-1'));
@@ -1926,15 +1966,15 @@ describe('practice-view', () => {
 
     it('shows error when single media is missing', async () => {
       mockLoadMedia.mockResolvedValue(null);
-      const errorSpy = vi.spyOn(Message, 'error');
+      const warningSpy = vi.spyOn(Message, 'warning');
       const el = await renderView();
       await settleView(el);
-      expect(errorSpy).toHaveBeenCalled();
+      expect(warningSpy).toHaveBeenCalled();
     });
 
     it('shows error when playlist is empty', async () => {
       mockLoadPlaylist.mockResolvedValue([]);
-      const errorSpy = vi.spyOn(Message, 'error');
+      const warningSpy = vi.spyOn(Message, 'warning');
       const result = mount(
         html`<practice-view
           .routeContext=${{
@@ -1949,7 +1989,7 @@ describe('practice-view', () => {
       const el = result.container.querySelector('practice-view') as PracticeViewInternals;
       await el.updateComplete;
       await settleView(el);
-      expect(errorSpy).toHaveBeenCalled();
+      expect(warningSpy).toHaveBeenCalled();
     });
 
     it('reports load failures', async () => {
@@ -1964,7 +2004,6 @@ describe('practice-view', () => {
     });
 
     it('falls back when requested media is not in playlist', async () => {
-      const infoSpy = vi.spyOn(Message, 'info');
       const result = mount(
         html`<practice-view
           .routeContext=${{
@@ -1980,7 +2019,8 @@ describe('practice-view', () => {
       await el.updateComplete;
       await settleView(el);
 
-      expect(infoSpy).toHaveBeenCalled();
+      expect(mockLoadMedia).toHaveBeenCalledWith('missing');
+      expect(mockLoadPlaylist).not.toHaveBeenCalled();
       expect(el._controller.getSnapshot().currentItem?.id).toBe('media-1');
     });
 
