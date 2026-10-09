@@ -2870,15 +2870,19 @@
 </trans-unit>
 <trans-unit id="sfa60d2c9f9a19688">
   <source>本轮阶梯已完成。再次播放将从第 1 步开始。</source>
+  <target>本輪階梯已完成。再次播放將從第 1 步開始。</target>
 </trans-unit>
 <trans-unit id="sce9af571f0d28359">
   <source>该材料已删除，无法练习。</source>
+  <target>該材料已刪除，無法練習。</target>
 </trans-unit>
 <trans-unit id="sd9501d48de464d20">
   <source>当前播放列表没有可练习的媒体。</source>
+  <target>目前播放清單沒有可練習的媒體。</target>
 </trans-unit>
 <trans-unit id="s26cc35db2d7f9b91">
   <source>已删除</source>
+  <target>已刪除</target>
 </trans-unit>
 </body>
 </file>
