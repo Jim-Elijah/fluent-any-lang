@@ -1,24 +1,24 @@
 {
-  "version": "0.6.1",
+  "version": "0.6.2",
   "highlights": {
     "zh-CN": [
       {
         "category": "features",
         "label": "新功能",
         "items": [
-          "library: 录音可按回声或影子筛选，也能按标题和字幕搜索；回声跟读可只保留一条，确认前会看到将删除的录音",
-          "nav: 可以把「库」里的页面固定到导航上",
-          "practice: 影子跟读可以选定起止句，播到结束会暂停；练习时可切换原文遮罩并记住默认方式；录音会显示句序和对应字幕",
-          "settings: 录音前倒计时可在 3–10 秒之间选择"
+          "practice: 抗噪听会提示速听阶梯本轮是否已完成，再次播放将从第一步开始",
+          "practice: 媒体已不可用或播放列表上下文失效时，进入练习会校验并提示"
         ]
       },
       {
         "category": "bugFixes",
         "label": "问题修复",
         "items": [
-          "library: 时间显示到秒；练习记录展示完整字幕和 #句序；未显示原音词条时不再出现「标签紧凑排列」；从「库」的分区进入后才显示「返回库」；搜索框会保留句末空格",
-          "practice: 切换媒体后，影子跟读的选段仍然开着；整段原音词条全部失败时会提示错误",
-          "subtitle: 全屏字幕里仍能看到回声跟读的评分颜色"
+          "analytics: 更换不蒜子访问统计 CDN，本地环境不再加载",
+          "library: 手机上噪音列表行的操作按钮会保持在元信息一侧",
+          "practice: 已从库中删除的噪音会自动移出抗噪听选择",
+          "practice: 影子跟读开始录音时会暂停主媒体",
+          "vite: 关闭 Vitest mock 导入以提升覆盖率统计准确性（开发相关）"
         ]
       }
     ],
@@ -27,19 +27,19 @@
         "category": "features",
         "label": "Features",
         "items": [
-          "library: Filter recordings by Echo or Shadowing and search by title or subtitle; keep one Echo take and see which takes will be deleted",
-          "nav: Pin library pages onto the app navigation",
-          "practice: Choose a Shadowing range and pause playback at the end; cycle the source-text mask and remember the default; recordings show the sentence number and the line you practiced",
-          "settings: Set the recording countdown from 3 to 10 seconds"
+          "practice: discrimination ladder completion state and replay",
+          "practice: validate entry when media or playlist context is stale"
         ]
       },
       {
         "category": "bugFixes",
         "label": "Bug Fixes",
         "items": [
-          "library: Timestamps include seconds; recordings show the full line and a #sentence number; the compact word-label control hides when source words are not shown; Back to library appears only after you open a section from the hub; search keeps a trailing space",
-          "practice: Shadowing range selection stays on when you switch media; if generating source words for the whole track fails, you see an error",
-          "subtitle: Echo score colors stay visible in fullscreen subtitles"
+          "analytics: replace busuanzi CDN and skip loading in local env",
+          "library: keep noise list row actions beside meta on mobile",
+          "practice: drop deleted noise from discrimination selection",
+          "practice: pause main media when shadowing record starts",
+          "vite: disable Vitest mock importer for coverage accuracy"
         ]
       }
     ],
@@ -48,19 +48,19 @@
         "category": "features",
         "label": "新機能",
         "items": [
-          "library: 録音をエコーシャドーイングとシャドーイングで絞り込み、タイトルや字幕でも検索できます。エコーの録音は1件だけ残すとき、削除される録音を確認できます",
-          "nav: ライブラリのページをナビに固定できます",
-          "practice: シャドーイングの範囲を開始文から終了文まで選び、終わりで再生が一時停止します。原文マスクを切り替え、デフォルトとして覚えられます。録音には文番号と練習した字幕が表示されます",
-          "settings: 録音前のカウントダウンを 3～10 秒で選べます"
+          "practice: 抗ノイズリスニングでスピードラダーの完了状態を表示し、再再生は第1ステップから始まります",
+          "practice: メディアが使えない、またはプレイリストの文脈が無効なとき、練習への入り方を検証して案内します"
         ]
       },
       {
         "category": "bugFixes",
         "label": "不具合修正",
         "items": [
-          "library: 時刻に秒まで表示されます。練習記録には全文と #文番号が出ます。原音単語を表示していないときは「ラベルを詰めて並べる」を出しません。ライブラリの区分から入ったときだけ「ライブラリに戻る」を表示します。検索欄の末尾スペースは残ります",
-          "practice: メディアを切り替えても、シャドーイングの範囲選択はオンのままです。原音単語の一括生成がすべて失敗するとエラーを表示します",
-          "subtitle: 全画面字幕でも、エコーシャドーイングの採点色が表示されます"
+          "analytics: 不蒜子（busuanzi）の CDN を差し替え、ローカル環境では読み込みません",
+          "library: モバイルでノイズ一覧の行操作をメタ情報の横に表示します",
+          "practice: 削除したノイズを抗ノイズリスニングの選択から自動で外します",
+          "practice: シャドーイングの録音開始時にメイン音声を一時停止します",
+          "vite: カバレッジ精度のため Vitest の mock インポーターを無効化（開発向け）"
         ]
       }
     ],
@@ -69,19 +69,19 @@
         "category": "features",
         "label": "新功能",
         "items": [
-          "library: 錄音可依回聲或影子篩選，也能依標題和字幕搜尋；回聲跟讀可只保留一條，確認前會看到將刪除的錄音",
-          "nav: 可以把「庫」裡的頁面固定到導航上",
-          "practice: 影子跟讀可以選定起止句，播到結束會暫停；練習時可切換遮罩原文並記住預設方式；錄音會顯示句序和對應字幕",
-          "settings: 錄音前倒數可在 3–10 秒之間選擇"
+          "practice: 抗噪聽會提示速聽階梯本輪是否已完成，再次播放將從第一步開始",
+          "practice: 媒體已不可用或播放列表上下文失效時，進入練習會校驗並提示"
         ]
       },
       {
         "category": "bugFixes",
         "label": "問題修復",
         "items": [
-          "library: 時間顯示到秒；練習記錄展示完整字幕和 #句序；未顯示原音詞條時不再出現「標籤緊湊排列」；從「庫」的分區進入後才顯示「返回庫」；搜尋框會保留句末空格",
-          "practice: 切換媒體後，影子跟讀的選段仍然開著；整段原音詞條全部失敗時會提示錯誤",
-          "subtitle: 全螢幕字幕裡仍能看到回聲跟讀的評分顏色"
+          "analytics: 更換不蒜子造訪統計 CDN，本機環境不再載入",
+          "library: 手機上噪音列表列的操作按鈕會保持在元資訊旁",
+          "practice: 已從庫中刪除的噪音會自動移出抗噪聽選擇",
+          "practice: 影子跟讀開始錄音時會暫停主媒體",
+          "vite: 關閉 Vitest mock 匯入以提升覆蓋率統計準確度（開發相關）"
         ]
       }
     ]

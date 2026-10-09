@@ -1,3 +1,18 @@
+## [0.6.2](https://github.com/Jim-Elijah/fluent-any-lang/compare/v0.6.1...v0.6.2) (2026-10-09)
+
+### Features
+
+* **practice:** discrimination ladder completion state and replay ([504036a](https://github.com/Jim-Elijah/fluent-any-lang/commit/504036aa0d8402bececd094f88571fe48c2b3ffa))
+* **practice:** validate entry when media or playlist context is stale ([016dee0](https://github.com/Jim-Elijah/fluent-any-lang/commit/016dee0137a4927a3973666f9adfda6963f26bef))
+
+### Bug Fixes
+
+* **analytics:** replace busuanzi CDN and skip loading in local env ([5c412c7](https://github.com/Jim-Elijah/fluent-any-lang/commit/5c412c715fc5662918828eb9591e8cc807dfe395))
+* **library:** keep noise list row actions beside meta on mobile ([f264972](https://github.com/Jim-Elijah/fluent-any-lang/commit/f2649725ff33f98f209fa017296c46b23a647a33))
+* **practice:** drop deleted noise from discrimination selection ([14583c7](https://github.com/Jim-Elijah/fluent-any-lang/commit/14583c72f01d644273549e1a2e08af380e40c7b6))
+* **practice:** pause main media when shadowing record starts ([462d780](https://github.com/Jim-Elijah/fluent-any-lang/commit/462d780bc9a1941bdc08f686c15d9d8850b7c507))
+* **vite:** disable Vitest mock importer for coverage accuracy ([9ffa0b0](https://github.com/Jim-Elijah/fluent-any-lang/commit/9ffa0b042e421aaa729160cbbd79b60170c12d14))
+
 ## [0.6.1](https://github.com/Jim-Elijah/fluent-any-lang/compare/v0.6.0...v0.6.1) (2026-09-30)
 
 ### Bug Fixes
